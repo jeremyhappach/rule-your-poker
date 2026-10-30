@@ -22,11 +22,11 @@ export function wordSquares(v:WordsSnapshot){
  return [...new Set(move?.words.flatMap(w=>typeof w.square==='number'&&typeof w.direction==='number'?[...w.word].map((_,i)=>w.square!+i*(w.direction===1?15:1)):[])??[])];
 }
 /** A second tap cancels the pending first tap before it can alter the draft. */
-export function boardTapGate(single:(square:number)=>void,double:()=>void,delay=300){
+export function boardTapGate(single:(square:number)=>void,double:(square:number)=>void,delay=300){
  let pending:ReturnType<typeof setTimeout>|undefined,last:{x:number;y:number}|undefined;
  const cancel=()=>{if(pending)clearTimeout(pending);pending=undefined;last=undefined;};
  return {cancel,tap(square:number,x:number,y:number){
-  if(pending&&last&&Math.hypot(x-last.x,y-last.y)<=36){cancel();double();return;}
+  if(pending&&last&&Math.hypot(x-last.x,y-last.y)<=36){cancel();double(square);return;}
   cancel();last={x,y};pending=setTimeout(()=>{pending=undefined;last=undefined;single(square);},delay);
  }};
 }

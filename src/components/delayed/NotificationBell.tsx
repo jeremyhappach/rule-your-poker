@@ -60,6 +60,7 @@ export function NotificationBell(){
 }
 function NotificationBellContent({context}:{context:NonNullable<React.ContextType<typeof NotificationContext>>}){
  const location=useLocation(),navigate=useNavigate();
+ if(location.pathname==='/delayed'||location.pathname.startsWith('/delayed/'))return null;
  const {userId,items,count,error,refresh,setError}=context;
  const markRead=(n:Notice)=>delayedRpc('delayed_notification_read',{p_id:n.id,p_revision:n.revision}).then(refresh).catch(()=>setError('Unable to mark read.'));
  const openTurn=async(n:Notice)=>{try{const home=await delayedRpc<Home>('delayed_home',{p_match:n.match_id});void markRead(n);const destination=turnDestination(home,userId);startTransition(()=>navigate(destination,{state:turnEntryHint(home,destination.split('/play/')[1]??'',userId)}));}catch{setError('Unable to verify the current turn. Please retry.');}};

@@ -75,3 +75,6 @@
 .q-celebration-backdrop{position:absolute;inset:0;z-index:50;display:grid;place-items:center;padding:4%;background:rgb(0 0 0 / .68);pointer-events:auto}
 .q-celebration-backdrop .q-celebration{position:relative;inset:auto;width:fit-content;max-width:100%;padding:.75em 1em;border:2px solid #ffe16a;border-radius:1em;background:#082b24;color:#fff1a3;font-size:clamp(24px,5cqh,46px);line-height:1.15;text-wrap:balance;box-shadow:0 0 2em #ffe16a44,0 .4em 1em #0008}
 [data-theme=modern] .q-celebration-backdrop .q-celebration{background:#17213e}
+
+.q-bonuses [data-earned=true]>span{color:#9be5a2;font-weight:800}
+.q-bonuses [data-earned=false]>span{color:#ff9e9e;text-decoration:line-through;text-decoration-thickness:.1em}

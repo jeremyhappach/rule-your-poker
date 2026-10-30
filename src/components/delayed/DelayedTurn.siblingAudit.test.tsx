@@ -1,3 +1,4 @@
+vi.mock('@/lib/delayed/playingPresence',()=>({playingTopic:()=>'',usePlayingPresence:()=>false}));
 // @vitest-environment jsdom
 // Actual async shell: these cases reproduced the sibling defects before correction.
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
@@ -100,6 +101,7 @@ describe('actual async shell sibling audit',()=>{
  });
  it('Words: submitted winning word retains its count-up before final child return',async()=>{
   mock.snapshot=words();const ui=mount(true);await flush();
+  fireEvent.click(ui.container.querySelector('[data-square="112"]')!);fireEvent.click(ui.container.querySelector('[data-square="112"]')!);
   mock.words.mockImplementation(async(name:string)=>{if(name==='delayed_words_action')mock.snapshot={...wordFinish(),phase:'complete',finished:true,outcome:{reason:'completed',winner:'me',delta:5}};return structuredClone(mock.snapshot);});
   fireEvent.click(ui.getByRole('button',{name:'C, 3 points'}));fireEvent.click(ui.container.querySelector('[data-square="112"]')!);
   fireEvent.click(ui.getByRole('button',{name:'A, 1 points'}));fireEvent.click(ui.container.querySelector('[data-square="113"]')!);

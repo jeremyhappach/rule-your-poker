@@ -1,3 +1,4 @@
+import {PlayingNow} from '@/components/delayed/PlayingNow';
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {turnEntryHint} from '@/lib/delayed/notifications';
 import {AsyncInvite} from '@/components/delayed/AsyncInvite';
@@ -34,8 +35,9 @@ function useUpdates(userId:string,refresh:()=>void){
 function MatchList({userId}:{userId:string}){
  const [rows,setRows]=useState<Home[]>([]),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);
  const [older,setOlder]=useState(true),[loadingOlder,setLoadingOlder]=useState(false);
- const refresh=useCallback(()=>{void delayedRpc<Home[]>('delayed_list').then(v=>{setRows(v);setLoaded(true);setError('');}).catch(e=>setError(e.message));},[]);
- useEffect(refresh,[refresh]);useUpdates(userId,refresh);
+ const epoch=useRef(0);
+ const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home[]>('delayed_list').then(v=>{if(generation!==epoch.current)return;setRows(v);setLoaded(true);setError('');}).catch(e=>{if(generation===epoch.current)setError(e.message);});},[]);
+ useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
  return <><Link className="delayed-primary" to="/delayed/new">Set Up Asynchronous Match</Link>
   {error&&<p role="alert">{error} <button onClick={refresh}>Retry</button></p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
   {loaded&&!rows.some(r=>r.status!=='settled')&&<p>No active async matches.</p>}
@@ -76,7 +78,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
     {home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">Pending</em>}</div></div>)}</div>}
     {c.terminal&&c.viewed===false&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
     {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{c.result.reason==='timeout_forfeit'?' · Forfeit':''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:
-     home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):"Opponent’s turn"}</strong></p>
+     home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
       {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}</div>:<p>Waiting for acceptance</p>}</li>;})}</ol>
@@ -96,8 +98,9 @@ function RemoveMatch({id,refresh}:{id:string;refresh:()=>void}){
 
 function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userId:string}){
  const [home,setHome]=useState<Home|null>(null),[error,setError]=useState('');const navigate=useNavigate();
- const refresh=useCallback(()=>{void delayedRpc<Home>('delayed_home',{p_match:matchId}).then(v=>{if(v.removedAt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(v);}).catch(e=>setError(e.message));},[matchId,navigate]);
- useEffect(refresh,[refresh]);useUpdates(userId,refresh);
+ const epoch=useRef(0);
+ const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home>('delayed_home',{p_match:matchId}).then(v=>{if(generation!==epoch.current)return;if(v.removedAt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(old=>old&&old.revision>v.revision?old:v);}).catch(e=>{if(generation===epoch.current)setError(e.message);});},[matchId,navigate]);
+ useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
  const child=home?.lineup.find(c=>c.id===childId);
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
  return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} autoStart/>}</ReviewGate>;

@@ -51,3 +51,7 @@
 .words-scores{padding-bottom:1.4rem}
 .words-scores .words-score-plus{position:absolute;top:100%;left:50%;font-size:1.1rem;font-weight:800;color:#f6da76;white-space:nowrap;pointer-events:none;z-index:3;transform:translate(-50%,calc(-1.6rem * var(--score-progress)));opacity:calc(1 - var(--score-progress));text-shadow:0 1px 3px #000}
 @media(prefers-reduced-motion:reduce){.words-scores .words-score-plus{transform:translateX(-50%)}}
+
+/* Medium lies halfway between fitted cells and the existing 48px close view. */
+.is-overview .words-grid{width:min(100cqw,100cqh,736px);height:min(100cqw,100cqh,736px)}
+.words-scroll[data-zoom="1"] .words-grid{--words-focus-cell:calc((min(100cqw,100cqh,736px) - 16px)/30 + 24px)}

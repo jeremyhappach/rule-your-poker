@@ -1,3 +1,4 @@
+import {playingTopic,usePlayingPresence} from '@/lib/delayed/playingPresence';
 import {useEffect,useMemo,useState,useRef} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
 import {supabase} from '@/integrations/supabase/client';
@@ -22,6 +23,7 @@ export function WordsTurn({childId,matchId,userId}:{childId:string;matchId:strin
  useEffect(()=>{if(v?.finished&&!returnAfterWord.current)navigate('/delayed/'+matchId+'?review='+childId,{replace:true});},[v?.finished,matchId,childId,navigate]);
  useEffect(()=>{if(!v||v.phase==='complete'||v.paused)return;const timer=setTimeout(()=>void game.reconnect(),Math.max(0,Math.min(2147483647,v.deadline-v.serverAt+50)));return()=>clearTimeout(timer);},[v?.revision,v?.deadline,v?.paused]);
  useEffect(()=>{if(returnAt!==null&&game.now>=returnAt)navigate('/delayed/'+matchId+(v?.finished?'?review='+childId+'&finished=1':''),{replace:true});},[returnAt,game.now,v?.finished,matchId,childId,navigate]);
+ usePlayingPresence(tab==='cards'&&v&&v.identity.sessionId===matchId&&v.canAct&&!v.paused&&!v.finished&&v.phase==='playing'&&game.connected&&game.now>=(v.movePresentation?.readyAt??0)&&game.now<v.deadline?playingTopic(matchId,childId,userId,v.deadline):null,true);
  if(!v)return <main className="delayed-page"><Link to={'/delayed/'+matchId}>Match Home</Link><p role="status">{game.error||'Restoring Words…'}</p><button onClick={()=>void game.reconnect()}>Retry</button></main>;
  if(v.identity.sessionId!==matchId)return <p role="alert">Match identity mismatch.</p>;
  const panel=<><Link to={'/delayed/'+matchId}>Match Home</Link><p>36 hours per turn. Last Call after 24 hours. Deadline expiry forfeits this Words game. No time banks or player pauses.</p><p>ENABLE2K dictionary. Blanks score zero. Exchange needs seven tiles in the bag. Four consecutive passes end the game; final rack deductions and the standard tie comparison apply.</p>{v.moves.map(m=><p key={m.turn}>{v.players.find(p=>p.id===m.playerId)?.name}: {m.action==='place'?m.words.map(w=>w.word).join(', '):m.action} · {m.points}</p>)}</>;

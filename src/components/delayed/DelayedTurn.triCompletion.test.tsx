@@ -1,3 +1,4 @@
+vi.mock('@/lib/delayed/playingPresence',()=>({playingTopic:()=>'',usePlayingPresence:()=>false}));
 // @vitest-environment jsdom
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {act,cleanup,render} from '@testing-library/react';

@@ -14,7 +14,7 @@ interface Props {onMovePresentationComplete?:(playerId:string)=>void;navigation?
 export function PtownWordsRulesLabel(){return <><CircleHelp size={19} aria-hidden="true"/><span className="sr-only">Rules</span></>;}
 export function PtownWordsView({view:authoritative,now,pending,connected,error,errorVersion=0,activeTab,setActiveTab,panel,sessionEnded,onIntent,onReconnect,balance,onPause,pausePending=false,asyncDraftUserId,navigation,onMovePresentationComplete}:Props){
  const {visual:v,frame:scoreMotion}=useWordScorePresentation(authoritative,now,!!asyncDraftUserId,onMovePresentationComplete);
- const [zoom,setZoom]=useState(false),[center,setCenter]=useState(112),[selected,setSelected]=useState<number|null>(null),[draft,setDraft]=useState<Placement[]>([]),[dialog,setDialog]=useState<'blank'|'pass'|'exchange'|null>(null),[blankSquare,setBlankSquare]=useState(112),[exchanges,setExchanges]=useState<number[]>([]);
+ const [zoom,setZoom]=useState(0),[center,setCenter]=useState(112),[selected,setSelected]=useState<number|null>(null),[draft,setDraft]=useState<Placement[]>([]),[dialog,setDialog]=useState<'blank'|'pass'|'exchange'|null>(null),[blankSquare,setBlankSquare]=useState(112),[exchanges,setExchanges]=useState<number[]>([]);
  const [rackOrder,setRackOrder]=useState<number[]>([]),[invalid,setInvalid]=useState(false);
  const dialogReturnFocus=useRef<HTMLElement|null>(null);
  const openDialog=(next:'blank'|'pass'|'exchange')=>{dialogReturnFocus.current=document.activeElement as HTMLElement;setDialog(next);};
@@ -22,8 +22,8 @@ export function PtownWordsView({view:authoritative,now,pending,connected,error,e
  useEffect(()=>{if(!isInvalidWord(error)){setInvalid(false);return;}setInvalid(true);const timer=setTimeout(()=>setInvalid(false),1500);return()=>clearTimeout(timer);},[error,errorVersion]);
  const viewport=useRef<HTMLDivElement>(null),gesture=useRef({x:0,y:0,moved:false});
  const presentation=wordPresentation(v,now),[focusCell,setFocusCell]=useState<number|null>(null),[focusTarget,setFocusTarget]=useState<{row:number;col:number}|null>(null);
- const camera=useRef<{zoom:boolean;center:number;x:number;y:number}|null>(null),placeRef=useRef<(square:number)=>void>(()=>{});
- const taps=useMemo(()=>boardTapGate(square=>placeRef.current(square),()=>setZoom(false)),[]);
+ const camera=useRef<{zoom:number;center:number;x:number;y:number}|null>(null),placeRef=useRef<(square:number)=>void>(()=>{});
+ const taps=useMemo(()=>boardTapGate(square=>placeRef.current(square),square=>{setCenter(square);setZoom(level=>Math.max(0,level-1));}),[]);
  const shownBoard=visibleBoard(v,now); const highlighted=new Set(presentation?wordSquares(v):[]);
  let lastOwnWord=0;for(let i=v.moves.length-1;i>=0;i--){const move=v.moves[i];if(move.playerId===v.viewerId&&move.action==='place'){lastOwnWord=move.turn;break;}}
  const seenOwnWord=useRef(lastOwnWord);
@@ -37,16 +37,24 @@ export function PtownWordsView({view:authoritative,now,pending,connected,error,e
   if(lastOwnWord<=seenOwnWord.current)return;seenOwnWord.current=lastOwnWord;taps.cancel();
   // Acceptance can arrive by command reply or realtime/reconnect. If an opponent
   // reveal has already caught up, change its restoration target, not its focus.
-  camera.current=presentation?.opponent?{zoom:false,center:112,x:0,y:0}:null;
-  if(!presentation?.opponent){setZoom(false);setFocusCell(null);setFocusTarget(null);}
+  camera.current=presentation?.opponent?{zoom:0,center:112,x:0,y:0}:null;
+  if(!presentation?.opponent){setZoom(0);setFocusCell(null);setFocusTarget(null);}
  },[lastOwnWord,taps,presentation?.opponent]);
- useLayoutEffect(()=>{if(zoom&&viewport.current){const box=viewport.current,stride=(focusCell??48)+1;box.scrollLeft=(focusTarget?.col??center%15)*stride-box.clientWidth/2+stride/2;box.scrollTop=(focusTarget?.row??Math.floor(center/15))*stride-box.clientHeight/2+stride/2;}},[zoom,center,focusCell,focusTarget]);
+ useLayoutEffect(()=>{
+  const box=viewport.current;if(!zoom||!box)return;
+  const stride=()=>((box.firstElementChild?.firstElementChild as HTMLElement)?.getBoundingClientRect().width||focusCell||48)+1;
+  let previousStride=stride(),width=box.clientWidth,height=box.clientHeight;
+  const focus=(row:number,col:number)=>{const step=stride();box.scrollLeft=(col+.5)*step-box.clientWidth/2;box.scrollTop=(row+.5)*step-box.clientHeight/2;previousStride=step;width=box.clientWidth;height=box.clientHeight;};
+  focus(focusTarget?.row??Math.floor(center/15),focusTarget?.col??center%15);
+  const observer=new ResizeObserver(()=>{const row=(box.scrollTop+height/2)/previousStride-.5,col=(box.scrollLeft+width/2)/previousStride-.5;focus(row,col);});
+  observer.observe(box);return()=>observer.disconnect();
+ },[zoom,center,focusCell,focusTarget]);
  useLayoutEffect(()=>{
   const box=viewport.current;if(!box)return;
   if(!presentation?.opponent){if(camera.current){const prior=camera.current;camera.current=null;setFocusCell(null);setFocusTarget(null);setCenter(prior.center);setZoom(prior.zoom);requestAnimationFrame(()=>{box.scrollLeft=prior.x;box.scrollTop=prior.y;});}return;}
   if(!camera.current)camera.current={zoom,center,x:box.scrollLeft,y:box.scrollTop};
   const cells=[...wordSquares(v),...presentation.squares],rows=cells.map(s=>Math.floor(s/15)),cols=cells.map(s=>s%15),minR=Math.min(...rows),maxR=Math.max(...rows),minC=Math.min(...cols),maxC=Math.max(...cols);
-  const focus=()=>{setFocusCell(Math.max(10,Math.min(48,Math.floor(Math.min((box.clientWidth-4)/(maxC-minC+1),(box.clientHeight-4)/(maxR-minR+1)))-1)));setFocusTarget({row:(minR+maxR)/2,col:(minC+maxC)/2});setZoom(true);};
+  const focus=()=>{setFocusCell(Math.max(10,Math.min(48,Math.floor(Math.min((box.clientWidth-4)/(maxC-minC+1),(box.clientHeight-4)/(maxR-minR+1)))-1)));setFocusTarget({row:(minR+maxR)/2,col:(minC+maxC)/2});setZoom(2);};
   focus();const observer=new ResizeObserver(focus);observer.observe(box);return()=>observer.disconnect();
  },[presentation?.id,presentation?.opponent]);
  const editable=v.canAct&&!presentation&&!scoreMotion&&!v.paused&&!pending&&(connected||!!asyncDraftUserId)&&now<v.deadline&&v.phase==='playing'&&!sessionEnded;
@@ -59,7 +67,7 @@ export function PtownWordsView({view:authoritative,now,pending,connected,error,e
  const send=async(intent:Intent)=>{setDialog(null);if(await onIntent(intent)){setDraft([]);setSelected(null);}};
  const place=(square:number)=>{
   if(gesture.current.moved||v.paused)return;
-  if(!zoom){setCenter(square);setZoom(true);return;}
+  if(zoom<2){setCenter(square);setZoom(level=>Math.min(2,level+1));return;}
   if(!editable)return;const existing=draft.find(p=>p.square===square);if(existing){setDraft(d=>d.filter(p=>p.square!==square));setSelected(existing.tileId);return;}
   if(v.board[square]||selected===null)return;const tile=v.rack.find(t=>t.id===selected);if(!tile)return;
   if(tile.face==='?'){setBlankSquare(square);openDialog('blank');return;}
@@ -76,11 +84,11 @@ export function PtownWordsView({view:authoritative,now,pending,connected,error,e
   {((error&&!isInvalidWord(error))||!connected)&&<div className="words-error" role="status">{text||'Reconnecting…'}{!connected&&<button onClick={onReconnect}>Reconnect</button>}</div>}
  </div>;
  return <div className="words-host"><FullscreenGameShell navigation={navigation} className="words-shell" title="Ptown Words" description="" activeTab={activeTab} setActiveTab={setActiveTab} sessionLabel={<PtownWordsRulesLabel/>} panelTitle={activeTab==='lobby'?'Rules':undefined} panel={panel} scores={scores} actions={actions} sessionEnded={sessionEnded}>
-  {!sessionEnded&&<div className="words-board-region" data-paused={v.paused}>{v.paused&&<div className="words-paused-cover" role="status">Paused{!host&&<small>Waiting for host to resume</small>}</div>}{invalid&&<div className="words-invalid" role="alert">invalid word</div>}<div className="words-navigation" data-canonical-felt-interaction-layer=""><span>{zoom?'double tap for full board':'tap an area to zoom in'}</span>{zoom&&<button disabled={!!presentation||v.paused} aria-pressed={selected===null} onClick={()=>setSelected(null)}>Inspect</button>}</div>
-   <div className={`words-scroll ${zoom?'is-zoom':'is-overview'}`} ref={viewport} aria-busy={!!presentation} onDoubleClick={e=>e.preventDefault()} onKeyDown={e=>{if(e.key==='Escape'&&!presentation&&!v.paused){taps.cancel();setZoom(false);}}} onPointerDown={e=>{gesture.current={x:e.clientX,y:e.clientY,moved:false};}} onPointerMove={e=>{if(Math.hypot(e.clientX-gesture.current.x,e.clientY-gesture.current.y)>8){gesture.current.moved=true;taps.cancel();}}} onScroll={()=>{gesture.current.moved=true;taps.cancel();}}>
-    <div className="words-grid" role="grid" aria-label="Ptown Words board" data-canonical-felt-interaction-layer="" style={focusCell?{'--words-focus-cell':`${focusCell}px`} as CSSProperties:undefined}>{v.board.map((committed,square)=>{const stage=v.paused?undefined:draft.find(p=>p.square===square),visible=shownBoard[square],tile=stage?{...v.rack.find(t=>t.id===stage.tileId)!,letter:stage.letter}:visible,premium=premiumAt(square),flipIndex=presentation?.opponent?[...presentation.squares].sort((a,b)=>a-b).indexOf(square):-1,flipping=!!tile&&flipIndex!==undefined&&flipIndex>=0&&presentation!.at<presentation!.startedAt+presentation!.focusMs+(flipIndex+1)*presentation!.flipMs;return <button role="gridcell" key={square} data-square={square} data-word-highlight={highlighted.has(square)||undefined} className={`words-cell ${tile?'has-tile':''} ${stage?'is-staged':''} ${flipping?'is-revealing':''}`} style={flipping?{animationDuration:`${presentation!.flipMs}ms`,animationPlayState:v.paused?'paused':'running'}:undefined} aria-label={`${String.fromCharCode(65+square%15)}${Math.floor(square/15)+1}${tile?` ${tile.letter}, ${tile.value} points`:premium?` ${premium}`:''}`} onClick={e=>{if(presentation||v.paused||gesture.current.moved)return;if(!zoom||e.detail===0){taps.cancel();place(square);}else taps.tap(square,e.clientX,e.clientY);}}>{tile?<><b>{tile.letter}</b><small>{tile.value}</small></>:<span className={`words-premium ${premium}`} data-center={square===112}>{square===112?'PT':premium}</span>}</button>;})}</div>
+  {!sessionEnded&&<div className="words-board-region" data-paused={v.paused}>{v.paused&&<div className="words-paused-cover" role="status">Paused{!host&&<small>Waiting for host to resume</small>}</div>}{invalid&&<div className="words-invalid" role="alert">invalid word</div>}<div className="words-navigation" data-canonical-felt-interaction-layer=""><span>{zoom===2?'Tap to place · double tap to zoom out':'Tap to zoom in · double tap to zoom out'}</span>{zoom>0&&<button disabled={!!presentation||v.paused} aria-pressed={selected===null} onClick={()=>setSelected(null)}>Inspect</button>}</div>
+   <div className={`words-scroll ${zoom?'is-zoom':'is-overview'}`} data-zoom={zoom} ref={viewport} aria-busy={!!presentation} onDoubleClick={e=>e.preventDefault()} onKeyDown={e=>{if(e.key==='Escape'&&!presentation&&!v.paused){taps.cancel();setZoom(0);}}} onPointerDown={e=>{gesture.current={x:e.clientX,y:e.clientY,moved:false};}} onPointerMove={e=>{if(Math.hypot(e.clientX-gesture.current.x,e.clientY-gesture.current.y)>8){gesture.current.moved=true;taps.cancel();}}} onScroll={()=>{gesture.current.moved=true;taps.cancel();}}>
+    <div className="words-grid" role="grid" aria-label="Ptown Words board" data-canonical-felt-interaction-layer="" style={focusCell?{'--words-focus-cell':`${focusCell}px`} as CSSProperties:undefined}>{v.board.map((committed,square)=>{const stage=v.paused?undefined:draft.find(p=>p.square===square),visible=shownBoard[square],tile=stage?{...v.rack.find(t=>t.id===stage.tileId)!,letter:stage.letter}:visible,premium=premiumAt(square),flipIndex=presentation?.opponent?[...presentation.squares].sort((a,b)=>a-b).indexOf(square):-1,flipping=!!tile&&flipIndex!==undefined&&flipIndex>=0&&presentation!.at<presentation!.startedAt+presentation!.focusMs+(flipIndex+1)*presentation!.flipMs;return <button role="gridcell" key={square} data-square={square} data-word-highlight={highlighted.has(square)||undefined} className={`words-cell ${tile?'has-tile':''} ${stage?'is-staged':''} ${flipping?'is-revealing':''}`} style={flipping?{animationDuration:`${presentation!.flipMs}ms`,animationPlayState:v.paused?'paused':'running'}:undefined} aria-label={`${String.fromCharCode(65+square%15)}${Math.floor(square/15)+1}${tile?` ${tile.letter}, ${tile.value} points`:premium?` ${premium}`:''}`} onClick={e=>{if(presentation||v.paused||(e.detail!==0&&gesture.current.moved))return;if(e.detail===0){gesture.current.moved=false;taps.cancel();place(square);}else taps.tap(square,e.clientX,e.clientY);}}>{tile?<><b>{tile.letter}</b><small>{tile.value}</small></>:<span className={`words-premium ${premium}`} data-center={square===112}>{square===112?'PT':premium}</span>}</button>;})}</div>
    </div>
-   {zoom&&<div className="words-pan" data-canonical-felt-interaction-layer="" aria-label="Pan board">{[['←',-144,0],['↑',0,-144],['↓',0,144],['→',144,0]].map(([label,x,y])=><button disabled={!!presentation||v.paused} key={label} aria-label={`Pan ${label}`} onClick={()=>{taps.cancel();viewport.current?.scrollBy({left:Number(x),top:Number(y),behavior:'smooth'});}}>{label}</button>)}</div>}
+   {zoom>0&&<div className="words-pan" data-canonical-felt-interaction-layer="" aria-label="Pan board">{[['←',-144,0],['↑',0,-144],['↓',0,144],['→',144,0]].map(([label,x,y])=><button disabled={!!presentation||v.paused} key={label} aria-label={`Pan ${label}`} onClick={()=>{taps.cancel();viewport.current?.scrollBy({left:Number(x),top:Number(y),behavior:'smooth'});}}>{label}</button>)}</div>}
   </div>}
  </FullscreenGameShell>
  <Dialog open={dialog!==null&&!v.paused} onOpenChange={open=>{if(!open)setDialog(null);}}><DialogContent className="words-dialog" onCloseAutoFocus={e=>{e.preventDefault();dialogReturnFocus.current?.focus();}}><DialogTitle>{dialog==='blank'?'Choose blank letter':dialog==='pass'?'Pass this turn?':'Exchange tiles'}</DialogTitle><DialogDescription>{dialog==='pass'?'Your staged tiles return to your rack.':dialog==='exchange'?'Choose the tiles to exchange.':'The blank always scores zero.'}</DialogDescription>

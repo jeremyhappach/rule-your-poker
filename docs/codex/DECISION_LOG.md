@@ -3014,3 +3014,7 @@ zero closes with a receipt only. No funded wallet, reservations, balance gate or
 child payouts. Shared Words /3 freezes 36h turns and 24h Last Call while live /1
 and /2 remain intact. Future real-money/multi-child releases need separate proof.
 See [release and authority evidence](ASYNC_WORDS_RELEASE.md).
+
+## 2026-10-30 — Local async presentation candidate; publication held
+
+Owner authorized a local preview for exact-child playing presence/live cards and shared three-scale Words zoom, then added Quintzee final bonus labels and hiding bells on async routes. Presence is advisory, authenticated per child/current actor/availability window; canonical update notices and permitted projections alone change cards. The new private Realtime policy candidate is local only and needs hosted authorization/protocol qualification before an approved publication. Words uses the existing shared view and deferred gesture gate, with navigation before placement until closest scale. Quintzee uses revealed authoritative result bonuses at the existing count window across all callers. The notification provider remains mounted while its bell is route-hidden. No accounting, rules, deadlines, money-mode or production changes. See ASYNC_LIVE_WORDS_ZOOM_LOCAL.md.

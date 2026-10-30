@@ -1,3 +1,4 @@
+import {QuintzeeBonuses} from './QuintzeeBonuses';
 import {useQuintzeeScorePresentation} from './useQuintzeeScorePresentation';
 import {TriScorePill,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
 import {triResultTimeline,triCountWindow,TRI_ROUND_TIMELINE} from '@/lib/triTowers/roundTimeline';
@@ -31,7 +32,7 @@ export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineE
  const choose=(category:number)=>{if(!canAct||ready||b.dice.length!==5)return;const name=QUINTZEE_CATEGORIES[category];if(b.scores[name]!==undefined)return;const isZero=quintzeeBasePreview(name,b.dice)===0;if(v2&&isZero&&quintzeeNeedsZeroConfirmation(b,name))setZero({category,revision:v.revision,scope:v.scope});else onIntent({type:v2&&isZero?'score_zero':'score',items:[category]});};
  const confirmZero=()=>{if(!zero||confirming.current||!canAct||zero.revision!==v.revision||zero.scope!==v.scope)return;confirming.current=true;setZero(null);onIntent({type:'score_zero',items:[zero.category]});};
  const upper=QUINTZEE_CATEGORIES.slice(0,6).reduce((total,c)=>total+(b.scores[c]??0),0);
- const count=Object.keys(b.scores).length,rollNumber=b.dice.length===5?3-b.rollsRemaining:0;
+ const rollNumber=b.dice.length===5?3-b.rollsRemaining:0;
  const seconds=Math.ceil(clock.remaining/1000);
  const status=v.status==='expired'?'Start time expired':s.finished?'Match complete':v.pausedAt!==null?'Paused':b.phase==='intro'?'Get Ready':b.phase==='stage_complete'?quintzeeRoundLabel(b.result?.reason):'';
  return <FullscreenGameShell className={`quintzee-shell quintzee-${v.theme}`} title="QUINTZEE" description={s.round===3?'Bonus round':`Round ${s.round} of 2`} activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} announcement={s.players.length===1?false:undefined}
@@ -41,7 +42,7 @@ export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineE
   <div className="q-players" aria-label="Cumulative player scores">{s.players.map((p,i)=><TriScorePill key={p} root={viewport} item={{id:p,name:s.players.length===1?'TOTAL SCORE':playerName(p,i),score:s.scores[p],active:replay?p===userId:p===active,balance:balance?.(p)}} value={p===active&&result?(motion.displayScore??s.scores[p]):s.scores[p]} fraction={p===active&&!sessionEnded?motion.fraction:0}/>)}</div>
   {!sessionEnded&&<><div className="q-timing">{ready?<p className="q-start-deadline" role="timer" aria-label="Start deadline">{awaitingStart?'Start when ready':`Start within ${Math.max(0,Math.ceil((b.deadline-at)/1000))}s`}</p>:<><div className="q-base"><span>BASE SCORE</span><strong data-base-score>{baseMotion.base.toLocaleString()}</strong></div><div className="q-time"><div role="progressbar" aria-label="Time remaining" aria-valuetext={seconds+' seconds remaining'} aria-valuenow={seconds} aria-valuemin={0} aria-valuemax={b.rules.durationMs/1000}><i style={{width:`${100*clock.remaining/b.rules.durationMs}%`}}/></div></div></>}</div>
   <div className="q-scorecard">{[QUINTZEE_CATEGORIES.slice(0,6),QUINTZEE_CATEGORIES.slice(6)].map((column,j)=><section key={j} aria-label={j?'Combinations':'Numbers'}>{column.map(c=>{const banked=b.scores[c];return <button key={c} data-category={c} className="q-category" data-banked={banked!==undefined} disabled={!canAct||ready||b.dice.length!==5||banked!==undefined||(!v2&&b.potentials[c]===undefined)} onClick={()=>choose(QUINTZEE_CATEGORIES.indexOf(c))} aria-label={QUINTZEE_LABELS[c]+(banked!==undefined?': '+banked+' recorded':': unfilled')}><span>{QUINTZEE_LABELS[c]}</span><strong>{banked??'—'}</strong></button>;})}</section>)}</div>
-  <div className="q-bonuses"><div className="q-upper-bonus" data-earned={upper>=63}><span>UPPER BONUS</span><em>= +{b.rules.upperBonus}</em><b data-upper-progress aria-label={`Upper score ${upper} of 63`}>{upper}/63</b></div><div className="q-filled-bonus" data-earned={count===12}><span>ALL FILLED</span><em>= +{b.rules.clearBonus}</em></div></div>
+  <QuintzeeBonuses rules={b.rules} upper={upper} result={result&&(motion.reduced||motion.elapsed>=baseMotion.finalDelay+triCountWindow().start)?b.result:null}/>
   <div className="q-play-area">
    {v.autoplay&&<label className="q-autoplay"><input type="checkbox" checked disabled={pending||!!error} onChange={()=>onIntent({type:'reclaim',items:[]})}/>Auto-play</label>}
    <div className="q-roll-guide"><strong>{rollNumber?`Roll ${rollNumber} of 3`:ready?'Ready to start':'Ready to roll'}</strong>{mine&&!ready&&!v.autoplay&&<span>{b.rollsRemaining===0?'Choose a category':'Tap dice to hold or release'}</span>}</div>

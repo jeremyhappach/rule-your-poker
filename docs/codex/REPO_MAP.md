@@ -1374,3 +1374,11 @@ parent settlement, projections, notifications, incident holds and Words recovery
 transport into shared Words presentation. `src/lib/delayed/drafts.ts` owns private
 device drafts. `dev/async-words/` contains qualification runners and preimages.
 Installed migration and release evidence: [ASYNC_WORDS_RELEASE.md](ASYNC_WORDS_RELEASE.md).
+
+### Local async presence / Words scales / Quintzee bonus review (2026-10-30)
+
+- `src/lib/delayed/playingPresence.ts` and `src/components/delayed/PlayingNow.tsx`: ephemeral per-child private presence; playable adapters publish, parent cards observe.
+- `supabase/delayed/playing-presence.candidate.sql`: uninstalled scoped Realtime policy candidate.
+- `src/components/ptownWords/PtownWordsView.tsx`: shared three-scale camera and existing board gesture owner.
+- `src/components/quintzee/QuintzeeBonuses.tsx`: authoritative final bonus designations, admitted by shared QuintzeeView count timing.
+- `dev/async-combined/live-preview.mjs`: loopback-only interactive fixture preview; related live/bell browser scripts qualify local behavior.
