@@ -1,13 +1,16 @@
-import type {QuintzeeResult,QuintzeeRules} from '@/lib/quintzee/model';
-/** Only a revealed authoritative result resolves bonuses, never card heuristics. */
-export function QuintzeeBonuses({rules,upper,result}:{rules:QuintzeeRules;upper:number;result:QuintzeeResult|null}){
- const upperEarned=result?result.upperBonus>0:undefined,fillEarned=result?result.reason==='all_categories'||result.clearBonus>0:undefined;
+import {QUINTZEE_CATEGORIES,type QuintzeeBoard,type QuintzeeResult,type QuintzeeRules} from '@/lib/quintzee/model';
+/** Presentation only: use permitted committed scores, never dice or potentials.
+ * A terminal result closes unresolved objectives; it never overrides a recorded zero. */
+export function QuintzeeBonuses({rules,scores,result,showOutcomes=true}:{rules:QuintzeeRules;scores:QuintzeeBoard['scores'];result:QuintzeeResult|null;showOutcomes?:boolean}){
+ const upperCategories=QUINTZEE_CATEGORIES.slice(0,6),upper=upperCategories.reduce((sum,c)=>sum+(scores[c]??0),0);
+ const upperEarned=!showOutcomes?undefined:upper>=rules.upperThreshold?true:upperCategories.every(c=>scores[c]!==undefined)||result?false:undefined;
+ const fillEarned=!showOutcomes?undefined:QUINTZEE_CATEGORIES.some(c=>scores[c]===0)?false:QUINTZEE_CATEGORIES.every(c=>(scores[c]??0)>0)?true:result?false:undefined;
  return <div className="q-bonuses"><div className="q-upper-bonus" data-earned={upperEarned}>
-  <span>UPPER BONUS{result&&<span className="sr-only">{upperEarned?' achieved':' not achieved'}</span>}</span>
-  {upperEarned!==false&&<em>= +{result?.upperBonus??rules.upperBonus}</em>}
+  <span>UPPER BONUS{upperEarned!==undefined&&<span className="sr-only">{upperEarned?' achieved':' not achieved'}</span>}</span>
+  {upperEarned!==false&&<em>= +{rules.upperBonus}</em>}
   <b data-upper-progress aria-label={`Upper score ${upper} of ${rules.upperThreshold}`}>{upper}/{rules.upperThreshold}</b>
  </div><div className="q-filled-bonus" data-earned={fillEarned}>
-  <span>FILL ALL{result&&<span className="sr-only">{fillEarned?' achieved':' not achieved'}</span>}</span>
-  {fillEarned!==false&&<em>= +{result?.clearBonus??rules.clearBonus}</em>}
+  <span>FILL ALL{fillEarned!==undefined&&<span className="sr-only">{fillEarned?' achieved':' not achieved'}</span>}</span>
+  {fillEarned!==false&&<em>= +{rules.clearBonus}</em>}
  </div></div>;
 }

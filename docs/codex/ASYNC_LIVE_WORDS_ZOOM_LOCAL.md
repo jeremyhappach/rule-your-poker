@@ -180,13 +180,43 @@ Evidence: `tile-precedence-tests.log`, `tile-precedence-typecheck.log`,
 validation; the unchanged serial rerun passed. No hosted Realtime or physical-device
 acceptance is claimed; no publication or customer mutation occurred.
 
-`QuintzeeView` resolves `QuintzeeBonuses` at its existing final score count window
-(immediately for reduced motion), using the revealed authoritative result. Achieved
-labels are bold green; missed labels are red and struck through, with their helper
-removed independently. Earned values come from the result/configuration. A filled
-card with a configured zero bonus remains an achievement. All modes use this shared
-view: Arcade, synchronous own/opponent, async own and saved opponent replay.
-No eligibility, scoring, clock, manual Start/roll, review admission or hold changed.
+Owner's early-resolution refinement supersedes final-count-only label timing.
+`QuintzeeBonuses` derives independent pending/achieved/failed states from permitted
+committed category scores. Upper achieves at the configured threshold, or fails
+when all six upper categories are committed below it. No mathematical early-failure
+heuristic is used. Fill All fails on the first recorded zero and achieves only when
+all twelve scores are positive. Missing categories remain unfilled, not zero.
+Terminal timeout/no-matches results close otherwise unresolved objectives.
+
+Achieved designations are bold green and their configured bonus helper is green.
+Failed designations are red and struck through; their helper is omitted. Pending
+styles remain unchanged. A positive filled card with configured zero bonus still
+shows achievement with +0. The shared view applies this during own Arcade,
+synchronous and async play, plus authorized revealed opponent results/replays.
+Live opponent bonus resolution is withheld until a result is revealed. No new data
+is fetched, inferred from dice/potentials, or exposed from unrevealed score records.
+
+These are pure render calculations. No eligibility, scoring, celebration/audio,
+clock, manual Start/roll, review admission, result hold or bonus accumulation changed.
+Existing score-presentation tests retain replay/reentry deduplication. React review
+confirmed no new effect, state owner, event handler or fetch in the label component.
+
+Direct mid-game fixtures at `http://127.0.0.1:15403/quintzee`:
+`?mid=pending`, `?mid=upper_achieved`, `?mid=upper_failed`, `?mid=fill_failed`.
+These freeze committed-score examples and do not send gameplay commands. Append
+`&theme=classic` to inspect the Classic presentation. Existing final URLs remain:
+`?bonus=upper|fill|both|neither`, with optional `&replay=1`. These finish after
+1.5 seconds and enter the established count-up; labels now resolve as soon as
+committed facts establish them. No Words/pulse state was reset.
+
+Affected regression: 133 tests / 9 files pass, including score/celebration lifecycle,
+explicit Start, review, zero confirmation and exact early bonus cases. All 26
+phone/desktop browser scenarios pass: four mid-game states and reloads, Classic
+achieved/helper styling, and all four retained final own/replay combinations.
+Screenshots were inspected and application typecheck passes. Evidence:
+`quintzee-early-tests.log`, `quintzee-early-typecheck.log`,
+`quintzee-early-browser.json`, `quintzee-mid-{phone,desktop}-*.png`.
+These are local synthetic render fixtures, not new hosted or production qualification.
 
 `NotificationBellContent` returns null on `/delayed` and its child routes. The
 provider, unread state, invitations and realtime subscriptions continue. Main

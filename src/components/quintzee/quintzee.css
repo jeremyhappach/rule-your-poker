@@ -77,4 +77,5 @@
 [data-theme=modern] .q-celebration-backdrop .q-celebration{background:#17213e}
 
 .q-bonuses [data-earned=true]>span{color:#9be5a2;font-weight:800}
+.q-bonuses [data-earned=true]>em{color:#9be5a2}
 .q-bonuses [data-earned=false]>span{color:#ff9e9e;text-decoration:line-through;text-decoration-thickness:.1em}

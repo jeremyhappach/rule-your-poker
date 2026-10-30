@@ -1,5 +1,14 @@
 # Async presence / Words zoom / Quintzee labels — LOCAL REVIEW ONLY — 2026-10-30
 
+Quintzee refinement: committed category scores now resolve Upper Bonus and Fill All
+independently during play, without waiting for the final count. Achieved label and
+configured helper are green; failures strike the label and remove the helper.
+Missing scores remain pending; first committed zero fails Fill All. Opponent
+resolution remains limited to revealed results. Scoring, celebrations and clocks
+are unchanged. Affected 133-test regression and 26 phone/desktop browser scenarios
+pass; mid-game direct links and typecheck evidence are in the local checkpoint.
+No publication.
+
 Palette correction: the full opponent-turn pulse now stays in its established
 yellow/amber palette throughout the cycle and under reduced motion. My Turn's
 green styling is unchanged. Existing 15407/pulse verification passes the full
