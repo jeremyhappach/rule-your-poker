@@ -5,10 +5,24 @@ const bus=vi.hoisted(()=>({channels:[] as any[]}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:(topic:string,options:unknown)=>{
  const c={topic,options,state:{},sync:()=>{},status:(_:string)=>{},on:vi.fn((_e,_f,cb)=>{c.sync=cb;return c;}),subscribe:vi.fn(cb=>{c.status=cb;return c;}),track:vi.fn(),untrack:vi.fn(),presenceState:()=>c.state};bus.channels.push(c);return c;
 },removeChannel:vi.fn()}}));
-import {playingTopic,presenceLeases,usePlayingPresence,PLAYING_TTL_MS} from './playingPresence';
+import {playingTopic,presenceLeases,roundGameplayRunning,usePlayingPresence,PLAYING_TTL_MS} from './playingPresence';
 beforeEach(()=>{bus.channels=[];vi.useFakeTimers();Object.defineProperty(document,'hidden',{configurable:true,value:false});});
 afterEach(()=>{cleanup();vi.useRealTimers();});
 it('uses exact match/child/actor/availability identity',()=>{expect(playingTopic('m','c','a',10)).toBe('delayed-playing:m:c:a:10');expect(playingTopic('m','c','b',10)).not.toBe(playingTopic('m','c','a',10));});
+it('uses Run21 gameplay start, including its intro, without requiring a phase',()=>{
+ const b={startedAt:2500,deadline:10000,result:null};
+ expect(roundGameplayRunning('run21',b,2499)).toBe(false);
+ expect(roundGameplayRunning('run21',b,2500)).toBe(true);
+ expect(roundGameplayRunning('run21',{...b,startedAt:null},3000)).toBe(false);
+ expect(roundGameplayRunning('run21',{...b,result:{score:5}},3000)).toBe(false);
+ expect(roundGameplayRunning('run21',b,10000)).toBe(false);
+});
+it.each(['quintzee','tri-towers','boxdrop'])('%s starts only on an authoritative playing board',game=>{
+ expect(roundGameplayRunning(game,null,1000)).toBe(false);
+ for(const phase of ['intro','ready','stage_complete','complete'])expect(roundGameplayRunning(game,{phase,deadline:10000},1000)).toBe(false);
+ expect(roundGameplayRunning(game,{phase:'playing',deadline:10000},1000)).toBe(true);
+ expect(roundGameplayRunning(game,{phase:'playing',deadline:10000},10000)).toBe(false);
+});
 it('expires unchanged snapshots and retains another active device',()=>{
  const leases=presenceLeases(),first={tab:[{presence_ref:'one',beat:'1'}]};
  expect(leases.read(first,0)).toBe(true);expect(leases.read(first,PLAYING_TTL_MS)).toBe(false);

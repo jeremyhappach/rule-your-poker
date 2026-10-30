@@ -2,6 +2,14 @@ import {useEffect,useState} from 'react';
 import {supabase} from '@/integrations/supabase/client';
 
 export const PLAYING_BEAT_MS=10_000,PLAYING_TTL_MS=35_000;
+/** Read only the authoritative gameplay clock, never the availability deadline
+ * or a presentation placeholder. Run21 has startedAt instead of a phase. */
+export function roundGameplayRunning(game:string,board:unknown,now:number){
+ if(!board||typeof board!=='object')return false;
+ const b=board as {phase?:string;startedAt?:number|null;deadline?:number|null;result?:unknown};
+ if(typeof b.deadline!=='number'||!Number.isFinite(b.deadline)||now>=b.deadline||b.result)return false;
+ return game==='run21'?typeof b.startedAt==='number'&&Number.isFinite(b.startedAt)&&now>=b.startedAt:b.phase==='playing';
+}
 /** Actor and availability window come from a permitted server projection. */
 export function playingTopic(match:string,child:string,actor:string,deadline:number){
  return `delayed-playing:${match}:${child}:${actor}:${deadline}`;

@@ -8,6 +8,70 @@ customer repair, new credentials or money-mode expansion occurred.
 
 ## Preview
 
+### Isolated initial pulse check (supersedes shared-demo pulse instructions)
+
+Open **http://127.0.0.1:15407/pulse**. Run
+`node dev/async-combined/pulse-preview.mjs` if this separate server is stopped.
+One visible page contains Alex's actual active Words board and Blair's waiting
+match card. No submission and no second window are needed. Scroll down to the
+right-hand child card if needed. It shows Playing now with the existing three-second
+green glow. Reduced-motion preferences intentionally make it static; the page
+explains that state. Reload or Restart views restores both viewers.
+
+The October 30 failure is now explained by read-only evidence: the old shared
+15403 fixture retained revision 11, actor `b` (Blair), after Alex placed CAT on
+turn 10. It was not terminal (`finished:false`). Opening Blair's home does not
+reset the scenario, so Take Turn was correct for that retained handoff. There
+is no provenance proving who issued that move. No old preview state was reset.
+
+The new server has one immutable child with actor `a`; it rejects turn-changing
+commands. It has separate state, port and Vite cache from the handoff demo.
+The actual presence hook and CSS run over local SSE. Immutable game subscriptions
+need no SSE connections, avoiding the HTTP/1 per-origin connection limit with
+both viewers in frames. The demo does not change motion rules or the old demo files.
+
+PASS: explicit viewer identities and active/waiting permissions; initial real
+presence with no action; nine rendered-color samples across a complete three-second
+animation; rejected mutation; three reloads and another opening without retained
+handoff; reduced-motion static behavior. Evidence: `pulse-original-state.json`,
+`isolated-pulse.json`, `isolated-pulse-visible.png`. This is synthetic HTTP/SSE
+qualification only, not authenticated hosted private Realtime. Publication held.
+
+### Gameplay-start boundary correction
+
+Owner clarified that presence starts with active gameplay, never submission.
+Words already follows this: active/connected playable board, current actor,
+finished/paused guards and completion of prior-move presentation. Its existing
+36-hour turn deadline starts at acceptance/handoff; opening the board does not
+start a new timer. Presence adds foreground activity to that already-running turn.
+No new Words Start action or clock was introduced.
+
+The shared round adapter needed a local correction. The former generic
+`playing/ready` check admitted Quintzee's pre-Start presentation placeholder and
+excluded Run21 because its board has no phase. `roundGameplayRunning` now reads
+only the authoritative board: Run21 requires a started clock and `now >= startedAt`
+(after its configured intro), no result and an unexpired deadline; Tri-Towers,
+Quintzee and Box Drop require `phase: playing`, no result and an unexpired gameplay
+deadline. Pre-Start/null, intro, ready and completed boards never publish. Existing
+actor/segment, held, error, Cards tab and availability-expiry guards remain.
+ReviewGate keeps the gameplay owner unmounted during opponent-result review.
+No timer, automatic Start policy, rule, privacy policy or authority changed.
+
+The presence topic still uses the immutable 36-hour availability window for
+identity/authorization, not as evidence that gameplay started. The actual board
+clock controls publication. Background/leave/offline stops the hook; abrupt
+transport loss retains the existing bounded presence lease behavior.
+
+Focused regression: 98 tests pass across presence, actual async adapters,
+Tri-Towers completion and saved-result review. Cases include Quintzee pre-Start
+and intro, Run21's exact start time before placement, and Words before submission
+then authoritative handoff. A separate handoff server on 15409 validates the
+two-client pulse and subsequent Take Turn without touching the owner's 15403 or
+immutable 15407 demo. See `pulse-boundary-tests.log`, `pulse-boundary-typecheck.log`
+and `isolated-handoff.json` for final results.
+
+### General interaction/handoff preview
+
 Run `node dev/async-combined/live-preview.mjs` from this checkout. The running
 loopback preview is **http://127.0.0.1:15403/** on JeremyLaptop.
 

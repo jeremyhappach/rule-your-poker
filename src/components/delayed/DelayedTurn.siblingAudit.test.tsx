@@ -1,4 +1,5 @@
-vi.mock('@/lib/delayed/playingPresence',()=>({playingTopic:()=>'',usePlayingPresence:()=>false}));
+const presence=vi.hoisted(()=>({publish:vi.fn()}));
+vi.mock('@/lib/delayed/playingPresence',async importOriginal=>({...await importOriginal<typeof import('@/lib/delayed/playingPresence')>(),usePlayingPresence:presence.publish}));
 // @vitest-environment jsdom
 // Actual async shell: these cases reproduced the sibling defects before correction.
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
@@ -38,6 +39,28 @@ beforeEach(()=>{vi.useFakeTimers({toFake:['setInterval','clearInterval','setTime
  Object.defineProperty(window,'matchMedia',{configurable:true,value:()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}})});
  mock.request.mockImplementation(async()=>structuredClone(mock.snapshot));mock.words.mockImplementation(async()=>structuredClone(mock.snapshot));});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
+it('Quintzee presence waits for explicit Start and the actual playing phase',async()=>{
+ mock.snapshot={...initial('quintzee'),board:null};mount(false,true);await flush();
+ expect(presence.publish.mock.lastCall?.[0]).toBeNull();
+ expect(mock.request.mock.calls.every(([b])=>b.op==='state')).toBe(true);
+ const intro={...initial('quintzee'),revision:2,board:{...board('quintzee'),phase:'intro',deadline:3500}};
+ await receive(intro);expect(presence.publish.mock.lastCall?.[0]).toBeNull();
+ await receive({...initial('quintzee'),revision:3,serverAt:3500});
+ expect(presence.publish.mock.lastCall?.[0]).toBe('delayed-playing:match:child:me:129600000');
+ await receive({...finish('quintzee','timeout'),revision:4});expect(presence.publish.mock.lastCall?.[0]).toBeNull();
+});
+it('Run21 presence begins at startedAt before any placement, then stops at handoff',async()=>{
+ mock.snapshot={...initial('run21'),board:{...board('run21'),startedAt:3500}};mount();await flush();
+ expect(presence.publish.mock.lastCall?.[0]).toBeNull();await tick(2500);
+ expect(presence.publish.mock.lastCall?.[0]).toBe('delayed-playing:match:child:me:129600000');
+ expect(mock.request.mock.calls.every(([b])=>b.op==='state')).toBe(true);
+ await receive(finish('run21','collect'));expect(presence.publish.mock.lastCall?.[0]).toBeNull();
+});
+it('Words presence is active before submission and stops when authority hands off',async()=>{
+ mock.snapshot=words();mount(true);await flush();expect(presence.publish.mock.lastCall?.[0]).toBe('delayed-playing:match:child:me:129600000');
+ expect(mock.words.mock.calls.every(([name])=>name==='delayed_words_snapshot')).toBe(true);
+ await receive(wordFinish());expect(presence.publish.mock.lastCall?.[0]).toBeNull();
+});
 describe('actual async shell sibling audit',()=>{
  for(const [game,reasons] of [['run21',['collect','exhausted','bust','timeout']],['quintzee',['all_categories','no_matches','timeout']],['boxdrop',['full_clear','take_score','timeout']]] as const){
   for(const reason of reasons)it(`${game} ${reason}: presents the saved result then returns`,async()=>{

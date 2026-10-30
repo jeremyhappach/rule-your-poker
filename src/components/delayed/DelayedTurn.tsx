@@ -1,4 +1,4 @@
-import {playingTopic,usePlayingPresence} from '@/lib/delayed/playingPresence';
+import {playingTopic,roundGameplayRunning,usePlayingPresence} from '@/lib/delayed/playingPresence';
 import {admitTurnSnapshot} from '@/lib/delayed/turnSnapshot';
 import {ASYNC_SCORE_HOLD_MS,reviewSchedule} from '@/lib/delayed/reviewPresentation';
 import {AsyncTurnStage} from './AsyncTurnStage';
@@ -73,7 +73,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const awaitingStart=!!snapshot&&snapshot.game==='quintzee'&&!snapshot.board&&!ended;
  // Empty presentation only. The existing server Start owns dealing, rolls and clocks.
  const board=(ended?result?.board:snapshot?.board) as any ?? (awaitingStart?{rules:snapshot!.config,phase:'ready',deadline:Date.parse(snapshot!.expiresAt),dice:[],held:[],rollsRemaining:3,rollSerial:0,scores:{},potentials:{},scoreBefore:snapshot!.totals[userId]??0,score:snapshot!.totals[userId]??0,result:null}:null);
- usePlayingPresence(snapshot&&board&&['playing','ready'].includes(board.phase)&&now<board.deadline&&tab==='cards'&&!ended&&!snapshot.held&&now<Date.parse(snapshot.expiresAt)&&!error?playingTopic(matchId,childId,userId,Date.parse(snapshot.expiresAt)):null,true);
+ usePlayingPresence(snapshot&&roundGameplayRunning(snapshot.game,snapshot.board,now)&&tab==='cards'&&!ended&&!snapshot.held&&now<Date.parse(snapshot.expiresAt)&&!error?playingTopic(matchId,childId,userId,Date.parse(snapshot.expiresAt)):null,true);
  const scores=Object.keys(snapshot?.totals??{}).map(id=>({id,name:participants.find(p=>p.id===id)?.name??(id===userId?'You':'Opponent'),score:snapshot!.totals[id],active:id===userId}));
  const displayRound=ended&&result?result.round:snapshot?.round;
  const triResult=snapshot?.game==='tri-towers'&&ended&&result&&board?.result?roundResultPresentation({

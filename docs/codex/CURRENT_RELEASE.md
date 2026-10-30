@@ -1,5 +1,15 @@
 # Async presence / Words zoom / Quintzee labels — LOCAL REVIEW ONLY — 2026-10-30
 
+Initial pulse review now uses isolated **http://127.0.0.1:15407/pulse**, with both
+viewers on one visible page and no submission needed. The former shared demo had
+retained Blair's turn after Alex's CAT submission (revision 11), explaining Take
+Turn. The new pulse-only server prevents handoff contamination; actual three-second
+animation, viewer identities and repeated reloads pass. Original preview state
+remains untouched. Local gameplay-start correction now excludes Quintzee pre-Start
+and includes Run21 only after its actual start clock; Words already ordered presence
+before submission. No timer rules changed. Focused 98-case regression passes.
+Hosted private Realtime is still unqualified; no publication.
+
 Preview-only follow-up: root now opens Words directly; secondary fixture navigation
 is at `/scenarios`. Laptop/phone entry and gestures pass. Headed two-window
 Alex/Blair pulse and handoff pass using local HTTP/SSE; use two visible windows.
