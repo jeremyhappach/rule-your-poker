@@ -21,8 +21,8 @@ function response(body){
  if(name==='delayed_history'){const rows=Array.from({length:32},(_,i)=>({id:i===0?'draw':i===1?'win':i===2?'loss':'history'+i,opponent:'Jeremy Happach',completedAt:new Date(at-i*1000).toISOString(),startedAt:new Date(at-86400000).toISOString(),count:5,net:i===0?0:i%2?5:-5,realMoney:false}));return args.p_before_id?rows.slice(30):rows.slice(0,30);}
  throw Error('This fixture preview supports match home, history and finales only.');
 }
-export async function createReviewServer({port=15323,preview=false}={}){
- const server=await createServer({configFile:false,envFile:false,plugins:[react(),{name:'review-fixture',configureServer(s){s.middlewares.use(async(req,res,next)=>{
+export async function createReviewServer({port=15323,preview=false,cacheDir}={}){
+ const server=await createServer({configFile:false,envFile:false,cacheDir,plugins:[react(),{name:'review-fixture',configureServer(s){s.middlewares.use(async(req,res,next)=>{
   const path=req.url?.split('?')[0];
   if(path==='/review-health'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({ready:true,preview,fixtureOnly:true}));return;}
   if(preview&&path==='/'&&req.url.includes('sessions=completed')){res.statusCode=302;res.setHeader('Location','/completed');res.end();return;}

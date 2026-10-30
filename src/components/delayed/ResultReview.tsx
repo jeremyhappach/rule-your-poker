@@ -10,7 +10,7 @@ import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
 import {Component,useCallback,useEffect,useMemo,useRef,useState,type ReactNode,type CSSProperties} from 'react';
 import {Link,useLocation,useNavigate,useSearchParams} from 'react-router-dom';
 import {delayedRpc,type Home} from '@/lib/delayed/client';
-import {money,type ReviewEvent,type Reviews} from '@/lib/delayed/reviews';
+import {money,mayViewFinale,type ReviewEvent,type Reviews} from '@/lib/delayed/reviews';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import {Run21Felt} from '@/components/run21/Run21Felt';
 import {TriScorePill} from '@/components/triTowers/TriTowersPresentation';
@@ -97,11 +97,14 @@ function SavedBoard({event,scores,childId,userId,elapsed}:{event:ReviewEvent;sco
 export function ChildResults({childId,matchId,userId}:Identity){
  const [home,setHome]=useState<Home|null>(null),[state,setState]=useState<Reviews|null>(null),[error,setError]=useState(''),[overlay,setOverlay]=useState(false),[query]=useSearchParams(),navigate=useNavigate();
  const played=useRef(false),[playId]=useState(()=>crypto.randomUUID());
- const load=useCallback(async()=>{try{const [h,r]=await Promise.all([delayedRpc<Home>('delayed_home',{p_match:matchId}),delayedRpc<Reviews>('delayed_reviews',{p_child:childId})]);if(h.removedAt||!h.lineup.some(c=>c.id===childId&&c.terminal)){navigate('/delayed/'+matchId,{replace:true});return;}setHome(h);setState(r);setOverlay(query.has('finished')||!r.events.some(e=>e.kind==='attempt')||played.current&&!r.events.some(e=>e.kind==='attempt'&&!e.seen));}catch{setError('Unable to restore saved results.');}},[matchId,childId,navigate,query]);
+ const load=useCallback(async()=>{try{const [h,r]=await Promise.all([delayedRpc<Home>('delayed_home',{p_match:matchId}),delayedRpc<Reviews>('delayed_reviews',{p_child:childId})]);if(h.removedAt||!h.lineup.some(c=>c.id===childId&&c.terminal)){navigate('/delayed/'+matchId,{replace:true});return;}setHome(h);setState(r);setOverlay(!r.events.some(e=>e.kind==='attempt'&&!e.seen)&&(query.has('finished')||!r.events.some(e=>e.kind==='attempt')||played.current));}catch{setError('Unable to restore saved results.');}},[matchId,childId,navigate,query]);
  useEffect(()=>{void load();},[load]);
  const final=state?.events.find(e=>e.kind==='child'),child=home?.lineup.find(c=>c.id===childId),winner=final?.receipt.winner??child?.result?.winner,won=winner===userId;
  const reduced=useReduced(),play=usePlayback(reduced?1200:6000,overlay?'overlay:'+childId:'waiting'),busy=useRef(false);
- useEffect(()=>{if(!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve()).then(()=>navigate('/delayed/'+matchId+(home.receipt?'?finale=1':''),{replace:true})).catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[overlay,play.done,final,home,matchId,navigate]);
+ useEffect(()=>{if(!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
+  .then(()=>delayedRpc<Home>('delayed_home',{p_match:matchId}))
+  .then(fresh=>navigate('/delayed/'+matchId+(mayViewFinale(fresh)?'?finale=1':''),{replace:true}))
+  .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[overlay,play.done,final,home,matchId,navigate]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
  const event=state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
@@ -115,7 +118,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
 function Confetti({identity,userId,winner}:{identity:string;userId:string;winner:string}){const active=useVisible();useEffect(()=>{celebrateCanonicalWinner(identity,userId,[winner],active);},[identity,userId,winner,active]);return <div className="async-confetti" aria-hidden="true"/>;}
 export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
  const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[imageReady,setImageReady]=useState(false),[ackError,setAckError]=useState(''),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(7500,home&&imageReady?matchId:'loading'),busy=useRef(false);
- useEffect(()=>{let alive=true;setHome(null);setImageReady(false);setError('');setAckError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!h.receipt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;};},[matchId,navigate]);
+ useEffect(()=>{let alive=true;setHome(null);setImageReady(false);setError('');setAckError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!mayViewFinale(h)){navigate('/delayed/'+matchId+(h.removedAt?'?history=1':''),{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;};},[matchId,navigate]);
  const acknowledgeFinale=useCallback(()=>{if(!home||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;setAckError('');void (home.removedAt?Promise.resolve():delayedRpc('delayed_finale_ack',{p_match:matchId})).catch(()=>{busy.current=false;setAckError('Unable to confirm viewing. Your saved results remain available.');});},[home,matchId]);
  useEffect(()=>{if(imageReady&&play.done)acknowledgeFinale();},[imageReady,play.done,acknowledgeFinale]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;

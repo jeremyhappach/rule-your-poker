@@ -5,7 +5,7 @@ import {AsyncInvite} from '@/components/delayed/AsyncInvite';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Clock} from 'lucide-react';
-import {money,turnTime} from '@/lib/delayed/reviews';
+import {money,turnTime,mayViewFinale,needsChildReview} from '@/lib/delayed/reviews';
 import {AsyncTurnStage} from '@/components/delayed/AsyncTurnStage';
 import {ReviewGate,ChildResults,MatchFinale} from '@/components/delayed/ResultReview';
 import {useAuthGuard} from '@/hooks/useAuthGuard';
@@ -20,7 +20,7 @@ export default function Delayed(){
  const {user,isReady}=useAuthGuard({pageLabel:'Delayed matches'}),{matchId,childId}=useParams(),[query]=useSearchParams();
  if(!isReady||!user)return <AsyncTurnEntry/>;
  if(childId&&matchId)return <ChildTurn key={childId} childId={childId} matchId={matchId} userId={user.id}/>;
- if(matchId&&query.has('review'))return <ChildResults childId={query.get('review')!} matchId={matchId} userId={user.id}/>;
+ if(matchId&&query.has('review'))return <ChildResults key={matchId+':'+query.get('review')} childId={query.get('review')!} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('finale'))return <MatchFinale matchId={matchId} userId={user.id}/>;
  return <main className="delayed-page delayed-match-page"><header><Link to="/">Lobby</Link><h1>Async Matches</h1><NotificationBell/></header>
   {matchId==='new'?<AsyncInvite/>:matchId?<MatchHome key={matchId} id={matchId} userId={user.id}/>:<MatchList userId={user.id}/>}</main>;
@@ -68,15 +68,15 @@ function MatchHome({id,userId}:{id:string;userId:string}){
  return <section className="delayed-match-home"><Link className="delayed-back" to="/delayed">← All matches</Link><div className="delayed-match-heading"><small>{home.status==='invited'?'MATCH INVITATION':'HEAD-TO-HEAD'}</small><h2>{home.players.map(p=>p.name).join(' vs. ')}</h2>
   <p className="delayed-match-meta">{home.realMoney?'Real money':'Play money'} · {home.status} · {home.completed}/{home.lineup.length} complete</p></div>
   {home.acceptedAt&&<div className="delayed-net"><span>Current Net</span>{home.players.map(p=><strong key={p.id}>{p.name} {money(p.id===userId?home.net:-home.net)}</strong>)}<span>Unsettled: ${home.unsettled??home.lineup.filter(c=>!c.terminal).reduce((s,c)=>s+c.stake,0)}</span></div>}
-  {home.receipt&&<Link className="delayed-primary" to={'/delayed/'+id+'?finale=1'}>{home.finaleViewed?'Replay match finale':'View match results'}</Link>}
+  {mayViewFinale(home)?<Link className="delayed-primary" to={'/delayed/'+id+'?finale=1'}>{home.finaleViewed?'Replay match finale':'View match results'}</Link>:home.receipt&&!home.removedAt&&<p role="status">View the remaining game results below before the match finale.</p>}
   <div className="delayed-match-facts"><span>Maximum loss <strong>{home.exposure}</strong> per player</span><span><strong>36h</strong> per turn · Last Call <strong>24h</strong></span></div>
   <p className="delayed-match-policy">A missed deadline forfeits this game only. {home.realMoney?'One net settlement after all games finish.':'Play money settles once at the end; real balances are unaffected.'}</p>
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
   <ol className="delayed-lineup">{home.lineup.map(c=>{const ours=c.actor===userId,remaining=Date.parse(c.expiresAt??'')-now;
-   return <li className="delayed-game-card" data-unviewed={c.terminal&&c.viewed===false||undefined} key={c.id}><div className="delayed-game-heading"><h3>{c.ordinal}. {gameName(c.game)}</h3><span>Stake <strong>${c.stake}</strong></span></div>
+   return <li className="delayed-game-card" data-unviewed={needsChildReview(c,userId)||undefined} key={c.id}><div className="delayed-game-heading"><h3>{c.ordinal}. {gameName(c.game)}</h3><span>Stake <strong>${c.stake}</strong></span></div>
     {home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">Pending</em>}</div></div>)}</div>}
-    {c.terminal&&c.viewed===false&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
+    {needsChildReview(c,userId)&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
     {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{c.result.reason==='timeout_forfeit'?' · Forfeit':''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:
      home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>

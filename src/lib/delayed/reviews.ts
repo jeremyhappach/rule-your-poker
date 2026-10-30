@@ -1,3 +1,10 @@
+import type {ChildSummary,Home} from './client';
+
+// A historical finale ACK does not mean that all child reveals were watched.
+export const mayViewFinale=(home:Home)=>!!home.receipt&&home.reviewsComplete===true;
+export const needsChildReview=(child:ChildSummary,userId:string)=>child.terminal&&
+ (child.viewed===false||Object.entries(child.pendingResults??{}).some(([actor,count])=>actor!==userId&&count>0));
+
 export interface ReviewEvent {
  id:string;kind:'attempt'|'child';actor:string|null;actorName?:string;round:number;score:number|null;at:string;
  receipt:{game:string;rules:any;result?:any;move?:any;reason?:string;winner?:string|null;stake?:number;organizerDelta?:number;opponentDelta?:number};

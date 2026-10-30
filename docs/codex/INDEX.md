@@ -8,6 +8,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `ASYNC_PRESENCE_FINALE_RELEASE.md` | Approved combined polish release, per-viewer finale gate, installed Presence policies and authenticated hosted qualification |
 | `ASYNC_LIVE_WORDS_ZOOM_LOCAL.md` | Local presence/live cards, three Words scales, Quintzee final bonuses, async bell visibility, preview and held Realtime permission candidate |
 | `ASYNC_MATCH_LIST_P0_LOCAL.md` | My Async Matches blank-screen correction, real-App proof, verified publication receipt and pending owner smoke |
 | `ASYNC_ENTRY_CONTINUITY_LOCAL.md` | Approved real-app entry/loading correction, actual inviter resolution and full-entry browser evidence |

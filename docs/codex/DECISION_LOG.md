@@ -1,3 +1,13 @@
+## October 30, 2026 — Finale requires viewer review completion
+
+Financial settlement and presentation completion are separate. A settled parent
+receipt or historical finale ACK never substitutes for this viewer acknowledging
+all child results and opponent attempts. One database predicate drives home/history
+eligibility and the parent-locked finale ACK; every UI entry uses that projection.
+Old ACKs and unseen boards remain intact. The separately approved Presence access
+is limited to participants/current actor on the exact child/actor/deadline topic.
+See `ASYNC_PRESENCE_FINALE_RELEASE.md` for installed proofs and publication status.
+
 ## October 29, 2026 — Async viewer-specific result review (local candidate)
 
 Owner-approved disclosure is per viewer and per saved attempt: own points are immediate; opponent cumulative points include only acknowledged contributions, with explicit pending counts. Words keeps shared-board scores. Review revisions are independent of gameplay revisions; equal-gameplay conflicts remain rejected. Existing attempts receive derived immutable receipts with unavailable-board fallback, never rewritten authority or invented replay boards. Acceptance retirement includes prior organizer availability.

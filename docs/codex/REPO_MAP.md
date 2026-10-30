@@ -1,4 +1,9 @@
-## Async result review (local candidate)
+## Async result review
+
+- `supabase/migrations/20261030192550_async_presence_finale_reviews.sql`: installed scoped Presence authorization and parent-locked per-viewer finale eligibility.
+- `src/lib/delayed/reviews.ts`: server-qualified finale admission and outstanding child-review projection helpers.
+- `src/lib/delayed/playingPresence.ts`: exact-topic ephemeral Presence and actual gameplay-start admission; no gameplay or financial authority.
+- `src/components/quintzee/QuintzeeBonuses.tsx`: committed-score bonus labels and reused Yahtzee pace presentation.
 
 Saved async round score context: `src/lib/delayed/reviewPresentation.ts` projects acknowledged prior awards plus the active round; `ResultReview.tsx` supplies both participant pills to the existing game views. Replay highlight stays on the viewer while the result actor owns the count-up.
 

@@ -1,4 +1,17 @@
-# Async presence / Words zoom / Quintzee labels — LOCAL REVIEW ONLY — 2026-10-30
+# Combined async polish / finale gate — qualified, publication in progress — 2026-10-30
+
+Owner approved the combined package and separately approved its exact Presence
+permissions. Migration `20261030192550_async_presence_finale_reviews` is installed
+once; candidate/installed rollback proofs and authenticated hosted Realtime pass.
+Per-viewer finale admission now requires all opponent attempts and child results,
+including when a premature historical finale ACK exists. Financial authority and
+unseen snapshots are preserved. Validation: 3,331 source/server tests, eight Node
+dictionary cases, 241 harness cases, 151 focused tests, typecheck/build, six browser
+groups and independent local database races. Hosted synthetic fixtures were removed.
+Integration and exact-SHA publication verification remain in progress. This approval
+supersedes the local-only holds below for this package. See [release evidence](ASYNC_PRESENCE_FINALE_RELEASE.md).
+
+# Async presence / Words zoom / Quintzee labels — prior local review — 2026-10-30
 
 Quintzee row/pace follow-up: `x/63` aligns with UPPER BONUS, with white signed pace
 right-aligned beneath it. Pace directly reuses Yahtzee's existing calculation and
