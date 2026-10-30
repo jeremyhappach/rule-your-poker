@@ -1,5 +1,11 @@
 # Async presence / Words zoom / Quintzee labels — LOCAL REVIEW ONLY — 2026-10-30
 
+Palette correction: the full opponent-turn pulse now stays in its established
+yellow/amber palette throughout the cycle and under reduced motion. My Turn's
+green styling is unchanged. Existing 15407/pulse verification passes the full
+cycle, stable bounds, direct My Turn comparison and text contrast (minimum 5.51:1).
+Only product CSS changed; presence logic and Words gestures are preserved. No publication.
+
 Owner refinement: the gentle pulse now covers the entire opponent-turn status
 container with stable geometry. Shared Words gives tile placement/selection/movement
 priority at every scale; only no-selection navigation taps zoom. Focused 123-case

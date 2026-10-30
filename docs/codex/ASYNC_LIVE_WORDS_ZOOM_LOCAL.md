@@ -15,7 +15,7 @@ Open **http://127.0.0.1:15407/pulse**. Run
 One visible page contains Alex's actual active Words board and Blair's waiting
 match card. No submission and no second window are needed. Scroll down to the
 right-hand child card if needed. It shows Playing now with the existing three-second
-green glow. Reduced-motion preferences intentionally make it static; the page
+amber glow. Reduced-motion preferences intentionally make it static; the page
 explains that state. Reload or Restart views restores both viewers.
 
 The October 30 failure is now explained by read-only evidence: the old shared
@@ -156,6 +156,17 @@ whole container statically tinted. Publication timing, identity, privacy, expiry
 and gameplay clocks are unchanged. The isolated `/pulse` browser proof measures
 changing container colors and border, stable bounds and unanimated text, then
 verifies the reduced-motion state.
+
+Owner palette refinement: opponent pulse uses the established amber base
+`#443c1f` / border `#b59a44`, brightening to `#62532a` / `#d7b75a` with an amber
+shadow. The Playing now label is pale amber. Reduced motion uses the original
+opponent colors. My Turn remains unchanged green (`#163c2c`, border `#4baf77`).
+The refreshed 15407/pulse check passes a full animated cycle with amber-only
+background/border samples, stable bounds, unchanged green My Turn comparison,
+and minimum sampled text contrast 5.51:1. Screenshots were inspected; evidence
+is `isolated-pulse.json`, `isolated-pulse-visible.png` and
+`pulse-own-green-comparison.png`. This is a local CSS-only product correction;
+no presence logic, timers, authority, Words input or publication changed.
 
 Refinement validation: 123 focused tests pass, including the shared view in both
 sync/async modes at all three scales. Application `tsc --noEmit` passes. Actual
