@@ -8,7 +8,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
-| `ASYNC_MATCH_LIST_P0_LOCAL.md` | Local My Async Matches blank-screen regression, real-App reproduction, error recovery and publication hold |
+| `ASYNC_MATCH_LIST_P0_LOCAL.md` | My Async Matches blank-screen correction, real-App proof, verified publication receipt and pending owner smoke |
 | `ASYNC_ENTRY_CONTINUITY_LOCAL.md` | Approved real-app entry/loading correction, actual inviter resolution and full-entry browser evidence |
 | `ASYNC_SMOKE_POLISH_RELEASE.md` | Approved score holds, persistent final results, full polish qualification and production receipt |
 | `ASYNC_SMOKE_POLISH_LOCAL.md` | Local 14-item smoke polish, explicit Start/review timing, archive behavior, mobile proof and publication hold |
