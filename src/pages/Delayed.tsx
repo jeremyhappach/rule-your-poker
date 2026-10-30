@@ -37,7 +37,7 @@ function MatchList({userId}:{userId:string}){
  const refresh=useCallback(()=>{void delayedRpc<Home[]>('delayed_list').then(v=>{setRows(v);setLoaded(true);setError('');}).catch(e=>setError(e.message));},[]);
  useEffect(refresh,[refresh]);useUpdates(userId,refresh);
  return <><Link className="delayed-primary" to="/delayed/new">Set Up Asynchronous Match</Link>
-  {error&&<p role="alert">{error}</p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
+  {error&&<p role="alert">{error} <button onClick={refresh}>Retry</button></p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
   {loaded&&!rows.some(r=>r.status!=='settled')&&<p>No active async matches.</p>}
   <ul className="delayed-lineup">{rows.filter(row=>row.status!=='settled').map(row=><li key={row.id} data-turn={row.status==='active'&&!row.held?(row.lineup.some(c=>!c.terminal&&c.actor===userId)?'own':'opponent'):undefined}><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong>vs. {row.players.find(p=>p.id!==userId)?.name}</strong> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></Link>
    <p>{row.status} · {row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>

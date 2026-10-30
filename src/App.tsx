@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import Index from "./pages/Index";
 const LazyDelayed = lazy(() => import('./pages/Delayed'));
-const Delayed = () => <Suspense fallback={<AsyncTurnEntry/>}><LazyDelayed /></Suspense>;
+const Delayed = () => <RouteErrorBoundary title="Async matches unavailable"><Suspense fallback={<AsyncTurnEntry/>}><LazyDelayed /></Suspense></RouteErrorBoundary>;
 const LazyArcade = lazy(() => import("./pages/Arcade"));
 const Arcade = () => <Suspense fallback={<p role="status">Loading Arcade…</p>}><LazyArcade /></Suspense>;
 import NotFound from "./pages/NotFound";
