@@ -38,4 +38,3 @@ try {
  }
   await writeFile('../oct30-browser-evidence.json',JSON.stringify(receipt,null,2));
 } finally {await browser.close();}
-
