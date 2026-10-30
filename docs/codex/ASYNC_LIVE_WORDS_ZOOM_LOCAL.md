@@ -136,15 +136,38 @@ the closest scale so it cannot become larger than close on a roomy desktop. When
 the whole board already fits at 48px, additional zoom need not enlarge it.
 At 390px the inspected cells measured approximately 24/36/48px.
 
-All pointer board taps use the existing deferred tap gate. A single tap advances
-one scale, capped at close; a double tap retreats one scale and cancels placement.
-At full/medium, navigation takes precedence even with a selected tile. At close,
-selected-tile placement and draft-tile removal work as before. Rack/HUD actions do
-not zoom. Keyboard activation remains immediate. Touch drag cancels a pending tap;
+Owner's October 30 refinement supersedes navigation-first input. Each board click
+classifies its intent before changing selection: an active selected tile or a
+movable staged tile takes the immediate tile-action path at every scale and never
+enters zoom handling. Only navigation taps with no selected tile use the deferred
+gate: single tap advances one scale, double tap retreats one scale. Rapid tile
+select/place/move gestures cannot become double-tap zoom. Rack/HUD actions do not
+zoom; draft/selection/dialog changes retire pending navigation. Keyboard activation
+remains immediate. Touch drag cancels a pending tap;
 the actual cell geometry owns hit testing, and resize preserves the visible center.
 Directional third-tile placement, blanks, undo, recall, draft recovery and opponent
 reveal camera restoration are retained. Only an accepted own word automatically
 returns to full. No extra zoom buttons or second board were introduced.
+
+The presence animation now targets the entire `.delayed-turn-status` containing
+Playing now. Its background, border color and soft shadow cycle over three seconds;
+text, padding, border width and geometry remain stable. Reduced motion keeps the
+whole container statically tinted. Publication timing, identity, privacy, expiry
+and gameplay clocks are unchanged. The isolated `/pulse` browser proof measures
+changing container colors and border, stable bounds and unanimated text, then
+verifies the reduced-motion state.
+
+Refinement validation: 123 focused tests pass, including the shared view in both
+sync/async modes at all three scales. Application `tsc --noEmit` passes. Actual
+Chromium mouse/touch checks cover phone/desktop placement, staged selection/move,
+rapid taps, deselection, directional autoplace, undo/recall, drag suppression,
+navigation/pan and accepted-word reset. The same source runs at the existing
+15403 Words URLs and 15407/pulse; browser handoff commands were isolated on 15409.
+Evidence: `tile-precedence-tests.log`, `tile-precedence-typecheck.log`,
+`tile-precedence-browser.json`, `isolated-pulse.json` (colors/border/bounds) and
+`owner-preview-entry.json`. One browser attempt timed out during concurrent local
+validation; the unchanged serial rerun passed. No hosted Realtime or physical-device
+acceptance is claimed; no publication or customer mutation occurred.
 
 `QuintzeeView` resolves `QuintzeeBonuses` at its existing final score count window
 (immediately for reduced motion), using the revealed authoritative result. Achieved

@@ -1,5 +1,11 @@
 # Async presence / Words zoom / Quintzee labels — LOCAL REVIEW ONLY — 2026-10-30
 
+Owner refinement: the gentle pulse now covers the entire opponent-turn status
+container with stable geometry. Shared Words gives tile placement/selection/movement
+priority at every scale; only no-selection navigation taps zoom. Focused 123-case
+regression passes; local browser/typecheck evidence is recorded in the checkpoint.
+Timing/authority/privacy remain unchanged, and publication stays held.
+
 Initial pulse review now uses isolated **http://127.0.0.1:15407/pulse**, with both
 viewers on one visible page and no submission needed. The former shared demo had
 retained Blair's turn after Alex's CAT submission (revision 11), explaining Take

@@ -41,6 +41,6 @@
 @media(prefers-reduced-motion:reduce){.async-finale[data-phase=fade] .async-boxing{transition:none}}
 
 .delayed-playing{display:inline-block;margin-inline-start:.5rem;color:#9ce8d7;font-size:.85em}
-.delayed-turn-status:has(.delayed-playing) strong{animation:delayed-playing-pulse 3s ease-in-out infinite;border-radius:4px}
-@keyframes delayed-playing-pulse{0%,100%{background:transparent}50%{background:#276456;box-shadow:0 0 10px #7be1cc40}}
-@media(prefers-reduced-motion:reduce){.delayed-turn-status:has(.delayed-playing) strong{animation:none;background:#20483e}}
+.delayed-turn-status:has(.delayed-playing){animation:delayed-playing-pulse 3s ease-in-out infinite}
+@keyframes delayed-playing-pulse{0%,100%{background:#253d35;border-color:#608e79;box-shadow:0 0 0 #7be1cc00}50%{background:#34594b;border-color:#91c5ad;box-shadow:0 0 10px #7be1cc30}}
+@media(prefers-reduced-motion:reduce){.delayed-turn-status:has(.delayed-playing){animation:none;background:#28483b;border-color:#80b49a}}

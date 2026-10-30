@@ -9,7 +9,7 @@ try{
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/pulse');
  const alex=page.frameLocator('iframe[title="Alex active board"]'),blair=page.frameLocator('iframe[title="Blair waiting card"]');
- const pulse=blair.locator('.delayed-turn-status:has(.delayed-playing) strong');
+ const pulse=blair.locator('.delayed-turn-status:has(.delayed-playing)');
  await expect(alex.getByRole('button',{name:'C, 3 points'})).toBeEnabled();
  await expect(blair.locator('.delayed-playing')).toHaveText('Playing now');
  await expect(blair.getByRole('link',{name:'Take Turn'})).toHaveCount(0);
@@ -19,8 +19,8 @@ try{
  assert.deepEqual(identities.map(s=>[s.viewer,s.actor,s.canAct,s.hidden]),[['a','a',true,false],['b','a',false,false]]);
  checks.push('one visible page: Alex active, Blair waiting, exact viewer identities; initial pulse requires no actions');
  const samples=[];
- for(let i=0;i<9;i++){samples.push(await pulse.evaluate(e=>{const c=getComputedStyle(e);return {background:c.backgroundColor,shadow:c.boxShadow,animation:c.animationName,duration:c.animationDuration,time:e.getAnimations()[0]?.currentTime};}));await page.waitForTimeout(430);}
- assert(samples.every(s=>s.animation==='delayed-playing-pulse'&&s.duration==='3s'));assert(new Set(samples.map(s=>s.background)).size>4);assert(samples.at(-1).time>samples[0].time+3000);
+ for(let i=0;i<9;i++){samples.push(await pulse.evaluate(e=>{const c=getComputedStyle(e);return {bounds:JSON.stringify(e.getBoundingClientRect().toJSON()),border:c.borderColor,background:c.backgroundColor,shadow:c.boxShadow,animation:c.animationName,duration:c.animationDuration,time:e.getAnimations()[0]?.currentTime};}));await page.waitForTimeout(430);}
+ assert(samples.every(s=>s.animation==='delayed-playing-pulse'&&s.duration==='3s'));assert(new Set(samples.map(s=>s.background)).size>4);assert(samples.at(-1).time>samples[0].time+3000);assert.equal(new Set(samples.map(s=>s.bounds)).size,1);assert(new Set(samples.map(s=>s.border)).size>4);await expect(pulse.locator('strong')).toHaveCSS('animation-name','none');
  await page.screenshot({path:out+'/isolated-pulse-visible.png'});
  checks.push('real CSS pulse advances across a complete 3-second cycle; rendered background changes over time');
  const rejected=await context.request.post(base+'/preview/api',{headers:{'X-Preview-Viewer':'a'},data:{name:'delayed_words_action',args:{p_action:'pass'}}});assert.equal(rejected.status(),400);
