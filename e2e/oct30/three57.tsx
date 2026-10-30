@@ -1,0 +1,21 @@
+import React, { useState } from 'react';
+import { GameChatContextProvider } from '@/hooks/GameChatContext';
+import { MobileGameTable } from '@/components/MobileGameTable';
+import { PersistentTableShell } from '@/lib/canonicalShell/PersistentTableShell';
+import { ResponsiveGeometryProvider } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
+import { smokeDb } from './client';
+const viewer=Number(new URLSearchParams(location.search).get('viewer')??0);
+const roster=['Hap','Lance','mcru81'].map((name,i)=>({id:`p${i}`,user_id:`u${i}`,position:i+1,chips:20,chip_transfer_cursor:0,game_id:'357-session',status:'active',is_bot:false,sitting_out:false,legs:0,profiles:{username:name}}));
+const cards=['A','K','Q','J','10','9','8'].map((rank,i)=>({rank,suit:['♠','♥','♦','♣'][i%4]}));
+export function Three57App(){
+ const [frame,setFrame]=useState({hand:1,round:1,kind:'opening',cursor:0}),[secret,setSecret]=useState(false);
+ if(!smokeDb.rows['357-init'])smokeDb.rows={...smokeDb.rows,'357-init':[],games:[{id:'357-session',pot:9,pot_transfer_cursor:0,current_game_uuid:'dealer',authority_revision:1}],players:roster,gameplay_transfer_batches:[]};
+ // The marker is not an empty-array truthiness issue: arrays are truthy.
+ const roundId=`h${frame.hand}r${frame.round}`;
+ const scope={gameId:'357-session',dealerGameId:'dealer',roundId,handNumber:frame.hand,roundNumber:frame.round,transferCursor:frame.cursor||null};
+ const players=roster.map(p=>({...p,current_decision:frame.kind==='tax'?'fold':secret?'stay':null,decision_locked:frame.kind==='tax'||secret}));
+ const publish=(reason:string,cursor:number)=>{const b={id:`batch-${cursor}`,game_id:'357-session',dealer_game_id:'dealer',cursor,reason,transfers:roster.map(p=>({id:`flight-${cursor}-${p.id}`,amount:1,from:{kind:'player',playerId:p.id},to:{kind:'pot'}})),opening_balances:{pot:9,'player:p0':20,'player:p1':20,'player:p2':20},closing_balances:{pot:12,'player:p0':19,'player:p1':19,'player:p2':19}};smokeDb.rows.gameplay_transfer_batches.push(b);smokeDb.emit('gameplay_transfer_batches','INSERT',b);};
+ (window as any).__357={tax:()=>{setFrame({...frame,kind:'tax',cursor:1});publish('bet',1);},ante:()=>{setFrame({hand:2,round:1,kind:'ante',cursor:2});publish('ante',2);},peerAdvance:()=>setFrame({...frame,round:2,kind:'playing'}),secret:()=>setSecret(true)};
+ const props:any={gameId:'357-session',players,currentUserId:`u${viewer}`,pot:9,currentRound:frame.round,allDecisionsIn:frame.kind==='tax'||secret,playerCards:players.map(p=>({player_id:p.id,cards:cards.slice(0,frame.round===1?3:5)})),timeLeft:30,lastRoundResult:frame.kind==='tax'?'All players folded':secret?'Hap wins with a pair':null,dealerPosition:1,legValue:1,legsToWin:3,potMaxEnabled:false,potMaxValue:0,pendingSessionEnd:false,awaitingNextRound:frame.kind==='tax'||secret,gameType:'3-5-7',anteAmount:1,gameStatus:'in_progress',roundStatus:frame.kind==='tax'||secret?'completed':'betting',holmDealerGameId:'dealer',horsesHandNumber:frame.hand,handContextId:roundId,three57EntryMode:frame.hand===1?'historical-entry':'live-transition',threeFiveSevenAuthoritativeRoundId:roundId,threeFiveSevenAuthoritativeRoundNumber:frame.round,threeFiveSevenViewRoundId:roundId,threeFiveSevenViewRoundNumber:frame.round,threeFiveSevenViewHandNumber:frame.hand,threeFiveSevenViewTransferCursor:frame.cursor,threeFiveSevenAllFoldPresentation:frame.kind==='tax'?scope:null,threeFiveSevenRolloverPresentation:frame.round===1&&frame.kind!=='tax'?{...scope,openingTransferRequired:frame.cursor>0}:null,dealReadiness357:{handContextId:`dealer#h${frame.hand}`,waveContextId:`dealer#h${frame.hand}#r${frame.round}`,roundId,roundNumber:frame.round,allowed:true},revealAtShowdown:true,onStay:()=>{},onFold:()=>{},isDealer:viewer===0};
+ return <GameChatContextProvider value={{chatBubbles:[],allMessages:[],sendMessage:async()=>{},isSending:false,getPositionForUserId:()=>undefined,latestRealtimeMessage:null,isChatHydrated:true,hydrationBaselineIds:new Set(),chatConversationKey:null} as any}><ResponsiveGeometryProvider><PersistentTableShell gameId="357-session" projectionMode="active-canonical" seats={players} gameType="3-5-7" anteAmount={1} viewerPosition={viewer+1} viewerUserId={`u${viewer}`}><MobileGameTable {...props}/></PersistentTableShell></ResponsiveGeometryProvider></GameChatContextProvider>;
+}

@@ -1,0 +1,39 @@
+import {chromium,expect} from '@playwright/test';
+import {writeFileSync as write} from 'node:fs';
+import assert from 'node:assert/strict';
+import {connect,localContext} from './database.mjs';
+const base='http://127.0.0.1:5188',phase=process.env.HOLM_PAUSE_PHASE??'dwell',holdMs=Number(process.env.HOLM_PAUSE_HOLD_MS??1000),missResume=process.env.MISS_RESUME==='1',evidenceTag=phase+(holdMs>1000?'-long':'')+(missResume?'-missed':'');
+assert(['dwell','flight','successor','inflight'].includes(phase));
+const f=await(await fetch(base+'/__holm_route/new',{method:'POST',body:'{}'})).json();
+if(!f.game)throw Error(JSON.stringify(f));
+const db=await connect(localContext().database),browser=await chromium.launch({channel:'msedge',headless:true});
+const pages=[],errors=[],pauseReceipts=[],navigationCounts=[0,0,0];
+const until=async(fn,label,ms=24000)=>{const end=Date.now()+ms;while(Date.now()<end){if(await fn())return;await new Promise(r=>setTimeout(r,80));}throw Error('Timed out: '+label);};
+const state=async()=>(await db.query('select * from public.games where id=$1',[f.game])).rows[0];
+const financial=async()=>({total:Number((await db.query('select sum(chips)+(select pot from public.games where id=$1) total from public.players where game_id=$1',[f.game])).rows[0].total),results:(await db.query('select id from public.game_results where game_id=$1 order by id',[f.game])).rows,batches:(await db.query('select id,cursor,transfers,unmatched_deltas from public.gameplay_transfer_batches where game_id=$1 order by cursor',[f.game])).rows});
+async function pause(paused){const g=await state();const r=await pages[0].evaluate(async args=>{const response=await fetch('/__holm_route/rpc',{method:'POST',headers:{Authorization:'Bearer '+sessionStorage.getItem('holm-route-token')},body:JSON.stringify({name:'set_game_paused',args})});return response.json();},{p_game_id:f.game,p_paused:paused,p_expected_dealer_game_id:g.current_game_uuid,p_expected_pause_version:g.pause_version});assert.equal(r.error,null,JSON.stringify(r));pauseReceipts.push({at:Date.now(),requested:paused,result:r.data});assert.equal((await state()).is_paused,paused);return r;}
+try{
+ for(let i=0;i<3;i++){const p=await browser.newPage({viewport:{width:393,height:852}});p.on('pageerror',e=>errors.push(e.message));p.on('request',request=>{if(request.isNavigationRequest()&&request.frame()===p.mainFrame())navigationCounts[i]++;});await p.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());await p.goto(base+'/game/'+f.game+'?token='+f.tokens[i],{waitUntil:'domcontentloaded'});await expect(p.locator('[data-holm-canonical-community-row]')).toBeVisible({timeout:30000});await p.evaluate(()=>{window.__samples=[];const tick=()=>{window.__samples.push({at:Date.now(),h2:!!document.querySelector('[data-holm-card-id*=":h2#community-"]'),flights:[...document.querySelectorAll('[data-chip-transport-intent]')].map(e=>({id:e.getAttribute('data-chip-transport-intent'),end:Number(e.getAttribute('data-chip-transport-completes-at'))}))});requestAnimationFrame(tick)};tick();});if(phase==='inflight')await p.evaluate(()=>{window.__oct30Transport.delayName='acknowledge_holm_prepared_hand_dealt';});pages.push(p);}
+ const before=await financial();
+ for(let turn=0;turn<3;turn++){const pos=(await db.query('select current_turn_position from public.rounds where id=$1',[f.round])).rows[0].current_turn_position;const i=pos-1;await pages[i].bringToFront();await expect(pages[i].getByRole('button',{name:i===0?'Fold':'Stay',exact:true})).toBeEnabled({timeout:15000});await pages[i].getByRole('button',{name:i===0?'Fold':'Stay',exact:true}).click();await until(async()=>(await db.query('select decision_locked from public.players where id=$1',[f.players[i]])).rows[0].decision_locked||(await financial()).results.length===1,'decision commit');}
+ await until(async()=>(await financial()).results.length===1,'settlement');
+ if(phase==='dwell')await pages[0].waitForFunction(()=>window.__holmAdmission?.admissionState.showdownPhase==='pot-to-winner'&&!window.__holmAdmission.admissionState.communityFullyRevealed,{timeout:10000});
+ if(phase==='flight')await expect(pages[0].locator('[data-chip-transport-intent]').first()).toBeVisible({timeout:12000});
+ if(phase==='inflight')await pages[0].waitForFunction(()=>window.__oct30Transport.rpcStarted,{timeout:20000});
+ if(phase==='successor')await expect(pages[0].locator('[data-card-transport-intent]').first()).toBeVisible({timeout:16000});
+ const boundary=await pages[0].evaluate(()=>({admission:window.__holmAdmission,flights:document.querySelectorAll('[data-chip-transport-intent]').length,cards:document.querySelectorAll('[data-card-transport-intent]').length,at:Date.now()}));
+ await pause(true);await pages[0].waitForTimeout(holdMs);assert.equal((await state()).is_paused,true);const pausedFinancial=await financial();assert.equal(pausedFinancial.total,before.total);assert.equal(pausedFinancial.results.length,1);
+ await pause(false);
+ await until(async()=>(await state()).total_hands===2,'refresh-free successor');
+ for(const p of pages)await expect(p.locator('[data-holm-card-id*=":h2#community-"]').first()).toBeVisible({timeout:15000});
+ const round=(await db.query("select id,current_turn_position,status from public.rounds where game_id=$1 and hand_number=2",[f.game])).rows[0];
+ await until(async()=>(await db.query('select status from public.rounds where id=$1',[round.id])).rows[0].status==='betting','acknowledged actionable successor');
+ const active=(await db.query('select current_turn_position from public.rounds where id=$1',[round.id])).rows[0].current_turn_position;
+ assert.notEqual(active,1,'next actor must be non-host in this fixture');await expect(pages[active-1].getByRole('button',{name:'Stay',exact:true})).toBeEnabled({timeout:15000});
+ // A second pause/resume must not borrow or lose the outgoing hand's receipt.
+ await pause(true);await pages[0].waitForTimeout(250);if(missResume)await pages[active-1].evaluate(()=>{window.__oct30Transport.dropEvents=true;});await pause(false);if(missResume){await pages[0].waitForTimeout(250);await pages[active-1].evaluate(()=>{window.__oct30Transport.dropEvents=false;});}
+ await expect(pages[active-1].getByRole('button',{name:'Stay',exact:true})).toBeEnabled({timeout:15000});
+ const after=await financial();assert.equal(after.total,before.total);assert.equal(after.results.length,1);assert.equal(after.batches.length,2);assert(after.batches.every(b=>Object.keys(b.unmatched_deltas).length===0));
+ const flightEvidence=[];for(let i=0;i<3;i++){const samples=await pages[i].evaluate(()=>window.__samples),flights=samples.flatMap(s=>s.flights),next=samples.find(s=>s.h2);assert.equal(new Set(flights.map(x=>x.id)).size,2);assert(next);assert(next.at+1>=Math.max(...flights.map(x=>x.end)));flightEvidence.push({viewer:i,nextAt:next.at,lastFlightEnd:Math.max(...flights.map(x=>x.end)),flightIds:[...new Set(flights.map(x=>x.id))]});}
+ assert.deepEqual(navigationCounts,[1,1,1]);assert.deepEqual(errors,[]);write('../oct30-pause-'+evidenceTag+'.json',JSON.stringify({baseline:'bc68fff196ef4f6a554b6ebafcdc652c857cc9d4',fixture:f.game,phase,holdMs,missResume,boundary,pauseReceipts,before,after,flightEvidence,navigationCounts,errors},null,2));console.log('PASS',phase,'two pause/resume cycles; no reload; one settlement; complete flights; actionable next hand');
+}catch(e){write('../oct30-pause-'+phase+'-failure.json',JSON.stringify({error:String(e),state:await state(),financial:await financial(),pauseReceipts,errors},null,2));for(let i=0;i<pages.length;i++){write('../oct30-pause-'+phase+'-body-'+i+'.txt',await pages[i].locator('body').innerText());write('../oct30-pause-'+phase+'-admission-'+i+'.json',JSON.stringify(await pages[i].evaluate(()=>window.__holmAdmission??null),null,2));}throw e;}finally{await browser.close();await db.end();}

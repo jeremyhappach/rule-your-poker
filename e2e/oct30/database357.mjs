@@ -1,0 +1,3 @@
+import pg from 'file:///C:/Users/jerem/source/repos/rule-your-poker/qualification.local/tri-towers/tools/node_modules/pg/lib/index.js';
+export const localContext=()=>({database:'incident357_resume_20261030'});
+export async function connect(database){if(database!==localContext().database)throw Error('Task-owned database only');const c=new pg.Client({host:'127.0.0.1',port:55439,user:'tri_test',database});await c.connect();return c;}

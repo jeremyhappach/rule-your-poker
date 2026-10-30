@@ -269,6 +269,9 @@ import {
 import { HolmAnchoredSlot } from "./HolmAnchoredSlot";
 import { HolmLonePlayerFan } from "./HolmLonePlayerFan";
 import { recordFoldPresentation, recordHolmLedger } from "@/lib/holm/holmPresentationLedger";
+import { useHolmShowdownDelay } from '@/lib/holm/useHolmShowdownDelay';
+import { formatThreeFiveSevenShowdownAnnouncement } from '@/lib/threeFiveSeven/showdownAnnouncement';
+import { isThreeFiveSevenFinancialDealReady } from '@/lib/threeFiveSeven/financialDealBarrier';
 import {
   HolmDealOrchestrator,
   HolmDealRuntimeMaybe,
@@ -2282,9 +2285,15 @@ export const MobileGameTable = ({
       threeFiveSevenRolloverPresentation,
       threeFiveSevenRolloverCursorState,
     );
-  const anteDealDispatchAllowed = threeFiveSevenRolloverAdmissionRequired
+  const threeFiveSevenFinancialDealReady = !__is357GameType(gameType)
+    || isThreeFiveSevenFinancialDealReady(
+      threeFiveSevenViewRoundId,
+      retainedThreeFiveSevenAllFoldPresentation, threeFiveSevenAllFoldCursorState,
+      retainedThreeFiveSevenRolloverPresentation, threeFiveSevenRolloverCursorState,
+    );
+  const anteDealDispatchAllowed = threeFiveSevenFinancialDealReady && (threeFiveSevenRolloverAdmissionRequired
     ? threeFiveSevenRolloverDealDispatchAllowed
-    : !isPlayerToPotAnteTrigger && antePresentationAdmission.released;
+    : !isPlayerToPotAnteTrigger && antePresentationAdmission.released);
   const holmDealDispatchAllowed = holmInitialAnteCursor == null
     || holmInitialAnteCursorState === 'settled'
     || holmInitialAnteCursorState === 'reconciled';
@@ -3155,7 +3164,9 @@ export const MobileGameTable = ({
   
   // HOLM: Gate announcement display until the canonical community row reports
   // that card 4 has visibly completed its flip for this hand.
-  const [holmCommunityFullyRevealed, setHolmCommunityFullyRevealed] = useState(false);
+  const [holmCommunityRevealCompletedHand, setHolmCommunityRevealCompletedHand] = useState<string | null>(null);
+  const holmCommunityFullyRevealed = gameType !== 'holm-game'
+    || (!!handContextId && holmCommunityRevealCompletedHand === handContextId);
   const [holmRabbitHuntPostRevealDwellCompleteHandKey, setHolmRabbitHuntPostRevealDwellCompleteHandKey] =
     useState<string | null>(null);
   const holmPresentationHandKey = holmPresentationIdentity
@@ -3200,7 +3211,6 @@ export const MobileGameTable = ({
   const [soloChuckyAdmissionHand, setSoloChuckyAdmissionHand] = useState<string | null>(
     () => chuckyActive && handContextId ? handContextId : null,
   );
-  const [multiShowdownDelayCompleteHand, setMultiShowdownDelayCompleteHand] = useState<string | null>(null);
   const chuckyLossPresentationKey = buildHolmChuckyLossPresentationKey({
     handContextId: handContextId ?? null,
     triggerId: chuckyLossTriggerId ?? null,
@@ -3264,13 +3274,12 @@ export const MobileGameTable = ({
       (communityCardsRevealed ?? 0) >= 4;
     holmShowdownPresentationHandRef.current = nextHandContextId;
     setHolmCommunityRevealAdmission(isHydratingExistingReveal ? (communityCardsRevealed || 4) : 2);
-    setHolmCommunityFullyRevealed(false);
+
     setHolmRabbitHuntPostRevealDwellCompleteHandKey(null);
     setSoloTabledCardsLandedHand(null);
     setSoloCommunityDelayCompleteHand(null);
     setSoloAnnouncementEmittedHand(null);
     setSoloChuckyAdmissionHand(isHydratingExistingReveal && chuckyActive ? nextHandContextId : null);
-    setMultiShowdownDelayCompleteHand(null);
   }, [gameType, handContextId, communityCardsRevealed, chuckyActive]);
 
   useEffect(() => {
@@ -3287,7 +3296,7 @@ export const MobileGameTable = ({
 
   const handleHolmCommunityFullReveal = useCallback((completedHandContextId: string) => {
     if (gameType !== 'holm-game' || completedHandContextId !== handContextId) return;
-    setHolmCommunityFullyRevealed(true);
+    setHolmCommunityRevealCompletedHand(completedHandContextId);
   }, [gameType, handContextId]);
   // Spotlight is a pure projection of currentTurnPosition — no sticky cache,
   // no visited-set, no independent turn ownership. See spotlight render site.
@@ -4300,6 +4309,7 @@ export const MobileGameTable = ({
       ? `${threeFiveSevenHandContextId}#r${currentRound}`
       : null;
   const threeFiveSevenDealPresentationReady =
+    threeFiveSevenFinancialDealReady &&
     !currentRoundNotReadyForPresentation &&
     isThreeFiveSevenDealPresentationReady(
       {
@@ -4437,8 +4447,7 @@ export const MobileGameTable = ({
     // Showdown mode lock (prevents cards from snapping back after announcement clears)
     setShowdownModeLocked(false);
     
-    // Community reveal gate (prevents announcement before card 4 flip animation)
-    setHolmCommunityFullyRevealed(false);
+    // Community completion is scoped by hand identity and needs no reset.
     
     // (Spotlight has no per-hand cache to reset — it derives from currentTurnPosition.)
     void to;
@@ -4592,7 +4601,8 @@ export const MobileGameTable = ({
       soloVsChuckyTableLocked ||
       cachedChuckyActive ||
       chuckyActive ||
-      requiredRevealCount > 0
+      // A predealt but unopened legacy deck is not an active Chucky reveal.
+      Math.max(chuckyCardsRevealed ?? 0, visualRevealCount) > 0
     );
   const chuckyFlipPresentationHandContextId =
     handContextId ?? chuckyStageStickyRef.current?.handContextId ?? null;
@@ -5246,7 +5256,6 @@ export const MobileGameTable = ({
     setSoloCommunityDelayCompleteHand(null);
     setSoloAnnouncementEmittedHand(null);
     setSoloChuckyAdmissionHand(null);
-    setMultiShowdownDelayCompleteHand(null);
     setChuckyLossAnnouncementPaintedKey(null);
 
     if (!wasSolo) return;
@@ -7944,38 +7953,24 @@ export const MobileGameTable = ({
     onHolmContinuationPresentationComplete,
   ]);
 
-  const multiShowdownExposureHandRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isHolmMultiPlayerShowdown || !hasExposedPlayers || !handContextId) return;
-    if (multiShowdownExposureHandRef.current === handContextId) return;
-    multiShowdownExposureHandRef.current = handContextId;
-
-    let cancelled = false;
-    let timer: number | null = null;
-    const frame = window.requestAnimationFrame(() => {
-      timer = window.setTimeout(() => {
-        if (!cancelled) setMultiShowdownDelayCompleteHand(handContextId);
-      }, holmShowdownTiming.multiShowdown);
-    });
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(frame);
-      if (timer !== null) window.clearTimeout(timer);
-    };
-  }, [isHolmMultiPlayerShowdown, hasExposedPlayers, handContextId, holmShowdownTiming.multiShowdown]);
+  const multiShowdownDelayComplete = useHolmShowdownDelay(
+    handContextId,
+    isHolmMultiPlayerShowdown && hasExposedPlayers,
+    holmShowdownTiming.multiShowdown,
+  );
 
   useEffect(() => {
     if (
       !isHolmMultiPlayerShowdown ||
       !handContextId ||
-      multiShowdownDelayCompleteHand !== handContextId ||
+      !multiShowdownDelayComplete ||
       (communityCardsRevealed ?? 0) < 4
     ) return;
     setHolmCommunityRevealAdmission(4);
   }, [
     isHolmMultiPlayerShowdown,
     handContextId,
-    multiShowdownDelayCompleteHand,
+    multiShowdownDelayComplete,
     communityCardsRevealed,
   ]);
 
@@ -8052,36 +8047,12 @@ export const MobileGameTable = ({
 
 
 
-  // Format 3-5-7 showdown announcement based on reveal settings and whether current player stayed
+  // Format one privacy-safe 3-5-7 announcement for every viewer
   // New format from server: "WinnerName won showdown|||WINNER:id|||LOSERS:ids|||AMOUNT:x|||HANDNAME:description"
   const format357ShowdownAnnouncement = useMemo(() => {
-    if (!lastRoundResult || gameType === 'holm-game') return lastRoundResult?.split('|||')[0] || '';
-    
-    // Check if this is a 3-5-7 showdown result (contains HANDNAME field)
-    const parts = lastRoundResult.split('|||');
-    const handNamePart = parts.find(p => p.startsWith('HANDNAME:'));
-    
-    // If no HANDNAME field, this is not a showdown result - return as-is
-    if (!handNamePart) return parts[0] || '';
-    
-    const basePart = parts[0] || ''; // e.g., "Hap won showdown"
-    const handName = handNamePart.replace('HANDNAME:', '');
-    const winnerName = basePart.replace(' won showdown', '');
-    
-    // Case 1: reveal_at_showdown is OFF - everyone sees "(no reveal)"
-    if (!revealAtShowdown) {
-      return `${winnerName} won (no reveal)`;
-    }
-    
-    // Case 2: reveal_at_showdown is ON
-    // - If current player stayed, they see the detailed hand description
-    // - If current player didn't stay, they see "(secret reveal)"
-    if (currentPlayerStayed) {
-      return `${winnerName} won with ${handName}`;
-    } else {
-      return `${winnerName} won showdown (secret reveal)`;
-    }
-  }, [lastRoundResult, gameType, revealAtShowdown, currentPlayerStayed]);
+    if (!__is357GameType(gameType)) return lastRoundResult?.split('|||')[0] || '';
+    return formatThreeFiveSevenShowdownAnnouncement(lastRoundResult, revealAtShowdown, currentRound);
+  }, [lastRoundResult, gameType, revealAtShowdown, currentRound]);
 
   const hasDedicatedThreeFiveSevenResultAnnouncement =
     __is357GameType(gameType)
@@ -9064,6 +9035,16 @@ export const MobileGameTable = ({
     
     // If awaiting next round but result still showing (announcement phase), keep cards visible
     if (awaitingNextRound) {
+      // A remounted completed hand has no retained row yet. Hydrate only the
+      // authoritative cards for this exact hand; the row still owns reveal completion.
+      if (gameType === 'holm-game' && handContextId && communityCards?.length
+        && (!approvedCommunityCards?.length || approvedHandContextId !== handContextId)) {
+        setApprovedRoundForDisplay(currentRound);
+        setApprovedCommunityCards([...communityCards]);
+        setApprovedHandContextId(handContextId);
+        setShowCommunityCards(true);
+      }
+
       console.log('🔥 [MOBILE_COMMUNITY] Awaiting next round with result showing - keeping cards visible');
       setIsDelayingCommunityCards(false);
       if (communityCardsDelayRef.current) {
@@ -9196,18 +9177,8 @@ export const MobileGameTable = ({
     return () => clearTimeout(recoveryTimeout);
   }, [gameType, currentRound, communityCards, showCommunityCards, isDelayingCommunityCards, isDealerConfigPhase, awaitingNextRound, handContextId, communityCardsRevealed, approvedRoundForDisplay]);
 
-  // The row itself owns the live flip queue. This only clears the parent gate
-  // when an authoritative hand is not yet fully revealed; completion comes
-  // from the row callback instead of a guessed timeout.
-  useEffect(() => {
-    if (gameType !== 'holm-game') {
-      setHolmCommunityFullyRevealed(true);
-      return;
-    }
-    if ((communityCardsRevealed ?? 0) < 4) {
-      setHolmCommunityFullyRevealed(false);
-    }
-  }, [gameType, communityCardsRevealed]);
+  // Full reveal is an exact-hand receipt. Parent mount/reset effects must not
+  // erase a completion already emitted by the child community row.
 
   // Cache Chucky cards when available, clear only when buck passes or new game starts.
   // NOTE: cachedChuckyCardsRevealed is the LOCAL rendered count, advanced by the

@@ -1361,6 +1361,8 @@ const Game = () => {
   // Keyed by `${gameId}:${dealerGameId ?? ''}`. Cleared when the effect's identity changes.
   const botAnteInFlightKeyRef = useRef<string | null>(null);
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
+  const pauseGenerationRef = useRef(0);
+  const [pauseHandoffRetryTick, setPauseHandoffRetryTick] = useState(0);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
   const [dealReadiness357, setDealReadiness357] =
@@ -2619,6 +2621,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     useState<ThreeFiveSevenAllFoldPresentation | null>(null);
   const advancingThreeFiveSevenAllFoldRef = useRef(new Set<string>());
   const advancingThreeFiveSevenLegAwardRef = useRef(new Set<string>());
+  const pendingThreeFiveSevenAllFoldRef = useRef<ThreeFiveSevenAllFoldPresentation | null>(null);
+  const pendingThreeFiveSevenLegAwardRef = useRef<ThreeFiveSevenLegAwardPresentation | null>(null);
   const threeFiveSevenAcceptedIdentityRef = useRef<{
     dealerGameId: string;
     handNumber: number;
@@ -5123,6 +5127,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Update pause ref and clear timer when paused
   useEffect(() => {
     isPausedRef.current = game?.is_paused;
+    pauseGenerationRef.current += 1;
     // If just paused, immediately clear the timer interval
     if (game?.is_paused && timerIntervalRef.current) {
       console.log('[TIMER COUNTDOWN] Pause detected - clearing interval immediately');
@@ -5131,9 +5136,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.is_paused]);
 
-  // Pause state is installed from the games UPDATE subscription. Foreground,
-  // reconnect, and channel-error recovery already take bounded authoritative
-  // snapshots; a healthy subscribed table does not need a second polling owner.
+  // A non-host can miss the one resume UPDATE without losing its channel.
+  // While these card games appear paused, read only the pause/identity row;
+  // use the existing serialized snapshot owner when authority has moved on.
+  useEffect(() => {
+    if (!gameId || !game?.is_paused || (game.game_type !== 'holm-game' && !is357GameType)) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const check = async () => {
+      try {
+        const { data, error } = await supabase.from('games')
+          .select('is_paused,current_game_uuid').eq('id', gameId).maybeSingle();
+        if (!cancelled && !error && data
+          && (!data.is_paused || data.current_game_uuid !== game.current_game_uuid)) {
+          await fetchGameData('realtime_fallback');
+        }
+      } catch (error) {
+        console.warn('[PAUSE RECOVERY] Pause-state read failed', error);
+      } finally {
+        if (!cancelled) timer = setTimeout(check, 5000);
+      }
+    };
+    timer = setTimeout(check, 5000);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [gameId, game?.is_paused, game?.game_type, game?.current_game_uuid, is357GameType]);
 
   // Simple state tracking refs - no aggressive polling
   const lastSyncedRoundRef = useRef<string | null>(null);
@@ -8508,7 +8534,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const handleHolmDealPresentationComplete = useCallback((handContextId: string) => {
     const prepared = holmLocallyPreparedSuccessorRef.current;
-    if (!gameId || !prepared || prepared.handContextId !== handContextId) return;
+    if (!gameId || !prepared || prepared.handContextId !== handContextId || isPausedRef.current) return;
 
     const acknowledgementKey = [
       gameId,
@@ -8523,6 +8549,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ) return;
 
     holmPreparedAckInFlightRef.current = acknowledgementKey;
+    const requestPauseGeneration = pauseGenerationRef.current;
     void (async () => {
       let lastError: unknown = null;
       for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -8540,7 +8567,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             prepared.successorRoundId,
             prepared.handNumber,
           );
-          holmPreparedAckCompletedRef.current.add(acknowledgementKey);
+          // A paused acknowledgement records the cards, but does not activate
+          // the successor. Keep the exact hand eligible for the resume drain.
+          if (result.outcome !== 'acknowledged-paused') {
+            holmPreparedAckCompletedRef.current.add(acknowledgementKey);
+          }
           console.log('[HOLM PRESENTATION] Exact prepared deal acknowledged', {
             ...prepared,
             outcome: result.outcome,
@@ -8562,6 +8593,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (holmPreparedAckInFlightRef.current === acknowledgementKey) {
         holmPreparedAckInFlightRef.current = null;
       }
+      if (!isPausedRef.current && !holmPreparedAckCompletedRef.current.has(acknowledgementKey)
+        && requestPauseGeneration !== pauseGenerationRef.current) {
+        setHolmPreparedAcknowledgementTick((tick) => tick + 1);
+      }
     });
   }, [gameId]);
 
@@ -8574,6 +8609,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!prepared || !isHolmHandReady(prepared.handContextId)) return;
     handleHolmDealPresentationComplete(prepared.handContextId);
   }, [
+    game?.is_paused,
     game?.current_game_uuid,
     handContextKey,
     handleHolmDealPresentationComplete,
@@ -12628,10 +12664,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleThreeFiveSevenAllFoldPresentationComplete = async (
     presentation: ThreeFiveSevenAllFoldPresentation,
   ) => {
-    if (!gameId || presentation.gameId !== gameId) return;
+    if (!gameId || presentation.gameId !== gameId
+      || game?.current_game_uuid !== presentation.dealerGameId
+      || currentRound?.id !== presentation.roundId) return;
+    pendingThreeFiveSevenAllFoldRef.current = presentation;
+    if (isPausedRef.current) return;
     const key = getThreeFiveSevenAllFoldPresentationKey(presentation);
     if (advancingThreeFiveSevenAllFoldRef.current.has(key)) return;
     advancingThreeFiveSevenAllFoldRef.current.add(key);
+    const requestPauseGeneration = pauseGenerationRef.current;
     try {
       const advanceResult = await proceedToNextRound(gameId, {
         dealerGameId: presentation.dealerGameId,
@@ -12639,6 +12680,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         handNumber: presentation.handNumber,
         roundNumber: presentation.roundNumber,
       });
+      if (advanceResult?.outcome === 'paused') {
+        advancingThreeFiveSevenAllFoldRef.current.delete(key);
+        if (!isPausedRef.current && requestPauseGeneration !== pauseGenerationRef.current) {
+          setPauseHandoffRetryTick((tick) => tick + 1);
+        }
+        return;
+      }
       if (presentation.roundNumber === 3) {
         const rollover = parseThreeFiveSevenRolloverAdvanceResult(gameId, advanceResult);
         if (!rollover) {
@@ -12647,8 +12695,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setDirectThreeFiveSevenRolloverPresentation(rollover);
       }
       await fetchGameData('manual');
+      if (pendingThreeFiveSevenAllFoldRef.current === presentation) {
+        pendingThreeFiveSevenAllFoldRef.current = null;
+      }
     } catch (error: any) {
       advancingThreeFiveSevenAllFoldRef.current.delete(key);
+      if (!isPausedRef.current && requestPauseGeneration !== pauseGenerationRef.current) {
+        setPauseHandoffRetryTick((tick) => tick + 1);
+      }
       console.error('[357 ALL FOLD] Exact presentation handoff failed', error);
       toast({
         title: 'Could not start the next round',
@@ -12674,8 +12728,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     const key = getThreeFiveSevenLegAwardPresentationKey(presentation);
+    pendingThreeFiveSevenLegAwardRef.current = presentation;
+    if (isPausedRef.current) return;
     if (advancingThreeFiveSevenLegAwardRef.current.has(key)) return;
     advancingThreeFiveSevenLegAwardRef.current.add(key);
+    const requestPauseGeneration = pauseGenerationRef.current;
     try {
       const advanceResult = await proceedToNextRound(gameId, {
         dealerGameId: presentation.dealerGameId,
@@ -12683,6 +12740,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         handNumber: presentation.handNumber,
         roundNumber: presentation.roundNumber,
       });
+      if (advanceResult?.outcome === 'paused') {
+        advancingThreeFiveSevenLegAwardRef.current.delete(key);
+        if (!isPausedRef.current && requestPauseGeneration !== pauseGenerationRef.current) {
+          setPauseHandoffRetryTick((tick) => tick + 1);
+        }
+        return;
+      }
       if (presentation.roundNumber === 3) {
         const rollover = parseThreeFiveSevenRolloverAdvanceResult(gameId, advanceResult);
         if (!rollover) {
@@ -12691,8 +12755,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         setDirectThreeFiveSevenRolloverPresentation(rollover);
       }
       await fetchGameData('manual');
+      if (pendingThreeFiveSevenLegAwardRef.current === presentation) {
+        pendingThreeFiveSevenLegAwardRef.current = null;
+      }
     } catch (error: any) {
       advancingThreeFiveSevenLegAwardRef.current.delete(key);
+      if (!isPausedRef.current && requestPauseGeneration !== pauseGenerationRef.current) {
+        setPauseHandoffRetryTick((tick) => tick + 1);
+      }
       console.error('[357 LEG AWARD] Exact presentation handoff failed', error);
       toast({
         title: 'Could not start the next round',
@@ -12701,6 +12771,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
     }
   };
+
+  // Visual completion can occur during a pause. Retain its exact receipt;
+  // resuming retries authority, not the animation or financial settlement.
+  useEffect(() => {
+    if (game?.is_paused || !is357GameType) return;
+    const allFold = pendingThreeFiveSevenAllFoldRef.current;
+    const legAward = pendingThreeFiveSevenLegAwardRef.current;
+    if (allFold) void handleThreeFiveSevenAllFoldPresentationComplete(allFold);
+    if (legAward) void handleThreeFiveSevenLegAwardPresentationComplete(legAward);
+  }, [game?.is_paused, game?.current_game_uuid, currentRound?.id, pauseHandoffRetryTick]);
 
   // DEBUG: Manual proceed to next round (when debugHolmPaused is true)
   const handleDebugProceed = async () => {
