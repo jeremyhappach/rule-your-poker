@@ -1,0 +1,8 @@
+/* Preview navigation only. Production styles and game geometry are untouched. */
+.preview-secondary{min-height:100%;padding:2rem;background:#12202d;color:#f2f6f7;font:1rem/1.5 system-ui,sans-serif}
+.preview-secondary h1{font-size:1.6rem;font-weight:700;margin-bottom:1rem}
+.preview-secondary p{max-width:42rem;margin-bottom:1rem}
+.preview-secondary nav{display:flex;gap:1rem;flex-wrap:wrap;margin-top:1.5rem}
+.preview-secondary a{color:#9eead6;text-decoration:underline}
+.preview-bell-row{display:flex;align-items:center;gap:1rem;max-width:42rem}
+.preview-bell-row .delayed-bell{flex:none;width:52px;height:44px;justify-content:center}

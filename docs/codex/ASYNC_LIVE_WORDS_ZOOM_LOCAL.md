@@ -11,19 +11,36 @@ customer repair, new credentials or money-mode expansion occurred.
 Run `node dev/async-combined/live-preview.mjs` from this checkout. The running
 loopback preview is **http://127.0.0.1:15403/** on JeremyLaptop.
 
-- Full, medium and closest Words links start a synthetic playable Words board.
-- Open Blair's match home in a second tab, then play as Alex. Only that child
-  pulses. Submit a fixture word to see the other client's card update without
-  refresh or navigation; the opponent score stays masked.
+- Root opens the playable Words board directly. Exact full/medium/closest URLs
+  are `/delayed/match/play/words?viewer=a&zoom=0&fresh=1` (use zoom 1 or 2).
+- Open Alex's fresh board first, then `/delayed/match?viewer=b` in a **separate
+  browser window**. Keep both visible side by side. Only the first child pulses.
+  Backgrounding Alex's board intentionally stops presence. At closest scale,
+  choose C and place on PT; choose A and place immediately right; choose T and
+  Submit Word. Blair's first card changes to Your turn without refresh; the
+  opponent score stays masked. Fresh links reset this shared synthetic match.
 - Quintzee offers upper-only, fill-only, both and neither, for own results and
   opponent replay. Reload to repeat the scripted final count-up.
-- The main-lobby fixture demonstrates the bell before entering an async route.
+- `/scenarios` holds secondary checks. `/scenarios/bell?viewer=b` is explicitly
+  a notification test screen, with a bounded 52×44 bell, not the product lobby.
 
 The actual game views, canonical shells, delayed routes and notification provider
 run with synthetic HTTP/SSE transport. The preview accepts fixture Words commands;
 it is **not a rules, database settlement or hosted Realtime proof**. No production
 account, session, credential or financial state is connected. The `/start` links
 reset only this process's fixture match.
+
+October 30 preview follow-up: laptop/phone entry, all three exact links and
+single/double tap checks pass with screenshots inspected. Headed Edge confirms
+two-window pulse on the exact child and submission/handoff without refresh.
+The automated browser kept background tabs visible, so the hidden/visible hook
+check explicitly simulates `document.hidden`; native tab occlusion is not proven.
+The earlier owner's failed pulse check has no confirmed historical cause. The
+server is reachable now; the previous same-window tab instructions were unsuitable
+for a visible-board-only signal and are corrected. Evidence:
+`owner-preview-entry.json`, `owner-pulse.json`, `owner-words-*.png` and
+`owner-pulse-{visible,handoff}.png`. Only preview files/documentation changed;
+product code and publication hold are unchanged.
 
 ## Ownership and behavior
 

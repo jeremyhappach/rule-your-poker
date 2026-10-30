@@ -1,5 +1,11 @@
 # Async presence / Words zoom / Quintzee labels — LOCAL REVIEW ONLY — 2026-10-30
 
+Preview-only follow-up: root now opens Words directly; secondary fixture navigation
+is at `/scenarios`. Laptop/phone entry and gestures pass. Headed two-window
+Alex/Blair pulse and handoff pass using local HTTP/SSE; use two visible windows.
+Native tab occlusion and hosted private Realtime remain unproven. No product code
+or publication change. Details and exact routes are in the local checkpoint below.
+
 The owner-authorized local candidate adds exact-child playing presence and live cards, shared full/medium/close Words scales, final Quintzee bonus labels, and hides the notification bell within async routes while retaining its provider. Local preview: http://127.0.0.1:15403/. Validation passes 3,296 tests / 465 files, typecheck/build, local rollback RLS proof, two-client/gesture/result browser checks and compiled-App bell routing. Private Realtime needs a new scoped policy candidate, prepared only; real hosted Realtime remains unqualified. No push, deployment, hosted migration, customer repair or credentials changed. Owner visual review and permission/release qualification remain held. Production baseline remains 57edaabb1 / receipt 41066282891-2. See [implementation, preview and proof limits](ASYNC_LIVE_WORDS_ZOOM_LOCAL.md).
 
 # My Async Matches P0 — publication verified — 2026-10-30
