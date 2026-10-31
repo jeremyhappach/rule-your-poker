@@ -9,6 +9,12 @@ try{
   const context=await browser.newContext({viewport:{width,height:844}}),errors=[],external=[],prefs=new Map(),rpcCalls=[];
   let denied=false,removed=false,tableAvailable=true,settings={asyncDefault:false,newTable:false,quietEnabled:false,quietStart:'22:00',quietEnd:'07:00',quietZone:'UTC'};
   await context.routeWebSocket('**',ws=>ws.close());
+  await context.addInitScript(()=>{
+   const attempted=()=>{sessionStorage.setItem('unexpected-push-device-call','true');throw Error('Enrollment must stay disabled during settings smoke');};
+   if('Notification'in window)Notification.requestPermission=attempted;
+   if('serviceWorker'in navigator)navigator.serviceWorker.register=attempted;
+   if('PushManager'in window)PushManager.prototype.subscribe=attempted;
+  });
   const user={id:a,aud:'authenticated',role:'authenticated',email:'push-fixture@example.invalid',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-01-01T00:00:00Z'};
   const token=['eyJhbGciOiJIUzI1NiJ9',Buffer.from(JSON.stringify({sub:a,aud:'authenticated',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url'),'fixture'].join('.');
   await context.addInitScript(({user,token})=>{if(!localStorage.getItem('fixture-signed-out'))localStorage.setItem('sb-127-auth-token',JSON.stringify({access_token:token,refresh_token:'fixture',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user}));},{user,token});
@@ -35,11 +41,15 @@ try{
   });
   page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(15000);
   await page.goto(base+'/delayed/'+match,{waitUntil:'domcontentloaded'});
+  await page.getByText('Phone alerts are not active yet.',{exact:false}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Enable on this device',exact:true}).count(),0);
   const checkbox=page.getByRole('checkbox',{name:'Enable push notifications for this match',exact:true});await checkbox.waitFor();assert.equal(await checkbox.isChecked(),false);await checkbox.click();
   await page.waitForFunction(()=>document.querySelector('input[type=checkbox]')?.checked&&!document.querySelector('input[type=checkbox]').disabled);await page.reload();await checkbox.waitFor();await page.waitForFunction(()=>document.querySelector('input[type=checkbox]')?.checked);assert.equal(await checkbox.isChecked(),true);
   assert.equal(await page.locator('.delayed-bell').count(),0);
   await page.screenshot({path:out+'/match-'+width+'.png',fullPage:true});
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.getByTitle('Profile Settings').click();
+  await page.getByText('Phone alerts are not active yet.',{exact:false}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Enable on this device',exact:true}).count(),0);
   const global=page.getByRole('checkbox',{name:'Enable push notifications by default for new async matches',exact:true});await global.waitFor();assert.equal(await global.isChecked(),false);await global.click();await page.getByText('Preferences saved.',{exact:true}).waitFor();assert.equal(settings.asyncDefault,true);assert.equal(prefs.get(match),true);
   const newTable=page.getByRole('checkbox',{name:'Notify me when a new real-money table opens',exact:true});assert.equal(await newTable.isChecked(),false);await newTable.click();await page.waitForFunction(()=>[...document.querySelectorAll('input[type=checkbox]')].filter(x=>x.checked).length>=2);assert.equal(settings.newTable,true);
   await page.getByLabel('Enable quiet hours',{exact:true}).check();await page.getByLabel('Start',{exact:true}).fill('22:00');await page.getByLabel('End',{exact:true}).fill('07:00');await page.getByLabel('Time zone (IANA)',{exact:true}).fill('America/Chicago');await page.getByRole('button',{name:'Save quiet hours',exact:true}).click();await page.getByText('Preferences saved.',{exact:true}).waitFor();assert.equal(settings.quietEnabled,true);assert.equal(settings.quietZone,'America/Chicago');
@@ -53,7 +63,9 @@ try{
   await page.goto(base+'/');await page.evaluate(()=>localStorage.setItem('fixture-signed-out','yes'));await page.getByRole('button',{name:'Logout',exact:true}).click();await page.waitForURL('**/auth');
   await page.goto(base+'/delayed/'+match);await page.waitForURL('**/auth');assert.equal(await checkbox.count(),0);
   await page.goto(base+'/notifications/table/'+match);await page.waitForURL('**/auth');
-  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);checks.push({width,actualApp:true,matchPersistence:true,globalIndependent:true,quietHoursSavedAndDisplayed:true,newTableDefaultOff:true,tableWarningAndFreshRecheck:true,noSeatMutation:true,authorizedDeepLink:true,bellPreserved:true,logoutAndUnauthenticatedDeepLink:true});await context.close();
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem('unexpected-push-device-call')),null);
+  assert(!rpcCalls.includes('async_push_subscribe'));assert(!rpcCalls.includes('async_push_device'));
+  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);checks.push({width,actualApp:true,enrollmentFlagFalse:true,noDevicePermissionRegistrationOrSubscription:true,matchPersistence:true,globalIndependent:true,quietHoursSavedAndDisplayed:true,newTableDefaultOff:true,tableWarningAndFreshRecheck:true,noSeatMutation:true,authorizedDeepLink:true,bellPreserved:true,logoutAndUnauthenticatedDeepLink:true});await context.close();
  }
  const mock=await browser.newContext({viewport:{width:390,height:844}});await mock.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());page=await mock.newPage();
  await page.goto(base+'/mock');await page.getByText('LOCAL MOCK', {exact:false}).waitFor();

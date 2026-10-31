@@ -1,0 +1,10 @@
+{
+  "source": "https://raw.githubusercontent.com/moment/moment-timezone/0.6.6/data/packed/latest.json",
+  "iana": "2026f",
+  "sourceSha256": "3103c5c0eaa879615da630b74e2373ad9b571e0eae992e0b2a3db6e4475de2ce",
+  "canonicalZones": 344,
+  "names": 597,
+  "from": "2020-01-01T00:00:00.000Z",
+  "until": "2038-01-01T00:00:00.000Z",
+  "sqlSha256": "2168f9652fe5da27e37e8a59464bf93fd74b4da0978631dd334c4696e965eace"
+}

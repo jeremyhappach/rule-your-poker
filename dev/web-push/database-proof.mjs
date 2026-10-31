@@ -14,7 +14,8 @@ if(process.argv.includes('--inspect')){
  }finally{await root.end();}
  process.exit(0);
 }
-const sql=readFileSync('supabase/web-push/candidate.sql','utf8');
+const withTimezone=process.argv.includes('--with-timezone');
+const sql=readFileSync('supabase/web-push/candidate.sql','utf8')+(withTimezone?'\n'+readFileSync('supabase/web-push/timezone.sql','utf8'):'');
 try{
  await root.query('CREATE DATABASE '+database+' TEMPLATE '+template);
  db=await connect(database);peer=await connect(database);
@@ -90,7 +91,9 @@ try{
  assert.equal(await val('SELECT count(*)::int v FROM public.profiles WHERE id=ANY($1::uuid[])',[[a,b,outsider]]),0);
  checks.push('rollback removed all synthetic users and candidate schema');
  await raceAndSchedulerProof(db,peer,sql,checks);
- await notificationsProof(db,peer,checks);passed=true;
+ await notificationsProof(db,peer,checks);
+ if(withTimezone){const {timezoneProof}=await import('./timezone-proof.mjs');await timezoneProof(db,checks);}
+ passed=true;
  console.log(JSON.stringify({passed:true,checks},null,2));
 }finally{
  await peer?.end();await db?.end();await root.query('DROP DATABASE IF EXISTS '+database);

@@ -29,7 +29,7 @@ const controller=createDeviceController({environment,load:binding,
  exclusive:async(run:()=>Promise<unknown>)=>{if(!navigator.locks)throw Error('This browser cannot safely enable notifications on a shared device.');return navigator.locks.request('ptown-push-device',run);},
  save:(value:Binding|null)=>{if(value)localStorage.setItem(storageKey,JSON.stringify(value));else localStorage.removeItem(storageKey);window.dispatchEvent(new Event('ptown-push-device-change'));},worker,
  subscription:async()=> (await prepare())?.pushManager.getSubscription()??null,
- configured:()=>!!import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY,
+ configured:()=>pushEnabled&&!!import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY,
  gesture:()=>navigator.userActivation?.isActive===true,requestPermission:()=>Notification.requestPermission(),
  sessionUser:async()=>{const {data,error}=await supabase.auth.getSession();if(error)throw error;return data.session?.user.id??null;},
  subscribe:async()=>{const reg=await prepare();if(!reg)throw Error('Push setup unavailable.');

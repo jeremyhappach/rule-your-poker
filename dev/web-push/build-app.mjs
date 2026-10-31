@@ -4,7 +4,7 @@ const deps='C:/Users/jerem/source/repos/rule-your-poker/node_modules',require=cr
 const out='qualification.local/web-push/app';mkdirSync(out,{recursive:true});
 await build({entryPoints:['src/main.tsx'],bundle:true,splitting:true,format:'esm',jsx:'automatic',platform:'browser',outdir:out,entryNames:'app',nodePaths:[deps],alias:{'@':resolve('src')},
  loader:{'.png':'file','.jpg':'file','.jpeg':'file','.svg':'file','.gif':'file','.webp':'file','.mp3':'file','.wav':'file','.woff2':'file','.ico':'file'},external:['/mega-card-golf/*'],
- define:{'process.env.NODE_ENV':'"production"','import.meta.env':JSON.stringify({MODE:'production',PROD:true,DEV:false,VITE_SUPABASE_URL:'http://127.0.0.1:15414',VITE_SUPABASE_PUBLISHABLE_KEY:'local-synthetic-key',VITE_ASYNC_PUSH_ENABLED:'true'}),
+ define:{'process.env.NODE_ENV':'"production"','import.meta.env':JSON.stringify({MODE:'production',PROD:true,DEV:false,VITE_SUPABASE_URL:'http://127.0.0.1:15414',VITE_SUPABASE_PUBLISHABLE_KEY:'local-synthetic-key',VITE_ASYNC_PUSH_ENABLED:'false'}),
  __RUN21_APP_TEST_LANE__:'false',__BUILD_HASH__:JSON.stringify(sourceSha.slice(0,12)),__BUILD_TIMESTAMP__:JSON.stringify(builtAt),__APP_BUILD_SHA__:JSON.stringify(sourceSha),__APP_BUILD_TIMESTAMP__:JSON.stringify(builtAt),__APP_DEPLOYMENT_ID__:'"local-web-push-proof"'},logLevel:'warning'});
 // Apply the repository's actual Tailwind theme without writing/installing shared dependencies.
 const m={exports:{}};new Function('require','module','exports',ts.transpileModule(readFileSync('tailwind.config.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(require,m,m.exports);

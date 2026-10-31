@@ -55,8 +55,10 @@ export async function notificationsProof(db,peer,checks){
 
  // Versioned golden results are an activation gate, distinct from algorithm tests.
  const golden=JSON.parse(readFileSync('dev/web-push/timezone-golden.json','utf8'));
- const observations=[];for(const c of golden.cases){const actual=await q("SELECT to_char($1::timestamptz AT TIME ZONE $2,'YYYY-MM-DD HH24:MI') v",[c.instant,c.zone]);observations.push({...c,actual,pass:actual===c.expected});}
- writeFileSync('qualification.local/web-push/timezone-compatibility.json',JSON.stringify({requiredIana:golden.requiredIana,activationReady:observations.every(x=>x.pass),observations,productionUpgradePerformed:false},null,2));
+ const pinned=!!await q("SELECT to_regprocedure('private.push_local_time(text,timestamp with time zone)') IS NOT NULL v");
+ const observations=[];for(const c of golden.cases){const actual=await q(pinned?"SELECT to_char(private.push_local_time($2,$1::timestamptz),'YYYY-MM-DD HH24:MI') v":"SELECT to_char($1::timestamptz AT TIME ZONE $2,'YYYY-MM-DD HH24:MI') v",[c.instant,c.zone]);observations.push({...c,actual,pass:actual===c.expected});}
+ if(pinned)assert(observations.every(x=>x.pass),'Pinned authority must pass every current golden');
+ writeFileSync('qualification.local/web-push/timezone-compatibility.json',JSON.stringify({requiredIana:golden.requiredIana,pinnedAuthority:pinned,activationReady:observations.every(x=>x.pass),observations,productionUpgradePerformed:false},null,2));
  checks.push('IANA 2026f golden compatibility recorded separately; mismatches block activation and are not waived by DST algorithm tests');
 
  await role(db,b);await settings({quietEnabled:true,quietStart:'00:00',quietEnd:'00:00',quietZone:'UTC'});
