@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { observeLocalTerminal, useLocalTerminalPresentation, type LocalTerminalObservation, type LocalTerminalState } from './localTerminalPresentation';
+import { localTerminalTokenMatches, observeLocalTerminal, useLocalTerminalPresentation, type LocalTerminalObservation, type LocalTerminalState } from './localTerminalPresentation';
 import { isYahtzeeTerminalPayout, yahtzeeTerminalToken } from '../yahtzeeTerminalPresentation';
 import type { ChipPresentationBatch } from './ChipPresentationLedger';
 
@@ -16,6 +16,19 @@ beforeEach(() => { (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REA
 afterEach(() => { delete (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT; });
 
 describe('local terminal presentation', () => {
+  it.each(['horses', 'ship-captain-crew'])('retains live %s across peer advancement and accepts only its six-part completion', gameType => {
+    const diceScope = { ...scope, gameType };
+    const playing = { ...live, scope: diceScope };
+    const complete = { ...terminal, scope: diceScope };
+    expect(observeLocalTerminal(empty, complete).pending).toBeNull();
+    const held = observeLocalTerminal(observeLocalTerminal(empty, playing), complete);
+    expect(observeLocalTerminal(held, { ...playing, scope: null, live: false, snapshot: null }).pending?.scope).toEqual(diceScope);
+    expect(observeLocalTerminal(held, { ...playing, scope: { ...diceScope, dealerGameId: 'next', roundId: 'next-round' } }).pending?.scope).toEqual(diceScope);
+    const exact = [gameType, 'winseq', scope.gameId, scope.dealerGameId, scope.handNumber, scope.roundId].join('|');
+    expect(localTerminalTokenMatches(diceScope, exact)).toBe(true);
+    for (const stale of [exact + '|extra', exact.replace('|round', '|old'), exact.replace('|dealer-game|', '|other|'), exact.replace('|session|', '|other|'), exact.replace('|1|', '|2|')]) expect(localTerminalTokenMatches(diceScope, stale)).toBe(false);
+    expect(observeLocalTerminal(held, { ...playing, sessionId: 'other' }).pending).toBeNull();
+  });
   it('does not replay a cold terminal entry or an unrelated round', () => {
     expect(observeLocalTerminal(empty, terminal).pending).toBeNull();
     const observed = observeLocalTerminal(empty, live);
@@ -32,7 +45,11 @@ describe('local terminal presentation', () => {
     expect(observeLocalTerminal(held, { ...live, sessionId: 'another-session' }).pending).toBeNull();
   });
 
-  it('lets the faster browser release while the slower browser keeps its own table; rejects late callbacks and replay', () => {
+  it.each(['yahtzee', 'horses', 'ship-captain-crew'])('lets faster %s browser release while slower browser retains its exact table', gameType => {
+    const testScope = { ...scope, gameType };
+    const testToken = gameType === 'yahtzee' ? token : [gameType, 'winseq', scope.gameId, scope.dealerGameId, scope.handNumber, scope.roundId].join('|');
+    const playing = { ...live, scope: testScope };
+    const completed = { ...terminal, scope: testScope };
     const container = document.createElement('div');
     const root = createRoot(container);
     const clients: Record<string, ReturnType<typeof useLocalTerminalPresentation<string>>> = {};
@@ -42,22 +59,22 @@ describe('local terminal presentation', () => {
     }
     const render = (input: LocalTerminalObservation<string>) => act(() => root.render(<><Client id="fast" input={input} /><Client id="slow" input={input} /></>));
     try {
-      render(live);
-      render(terminal);
-      act(() => { expect(clients.fast.complete(token)).toEqual(scope); });
+      render(playing);
+      render(completed);
+      act(() => { expect(clients.fast.complete(testToken)).toEqual(testScope); });
       expect(clients.fast.pending).toBeNull();
-      expect(clients.slow.pending?.snapshot).toBe(terminal.snapshot);
-      render({ ...live, scope: null, live: false, snapshot: 'setup' });
-      act(() => { expect(clients.slow.complete(token.replace('|round', '|old-round'))).toBeNull(); });
-      expect(clients.slow.pending?.snapshot).toBe(terminal.snapshot);
-      act(() => { expect(clients.slow.complete(token)).toEqual(scope); });
-      act(() => { expect(clients.slow.complete(token)).toBeNull(); });
-      render(terminal);
+      expect(clients.slow.pending?.snapshot).toBe(completed.snapshot);
+      render({ ...playing, scope: null, live: false, snapshot: 'setup' });
+      act(() => { expect(clients.slow.complete(testToken.replace('|round', '|old-round'))).toBeNull(); });
+      expect(clients.slow.pending?.snapshot).toBe(completed.snapshot);
+      act(() => { expect(clients.slow.complete(testToken)).toEqual(testScope); });
+      act(() => { expect(clients.slow.complete(testToken)).toBeNull(); });
+      render(completed);
       expect(clients.fast.pending).toBeNull();
       expect(clients.slow.pending).toBeNull();
-      render({ ...live, scope: { ...scope, dealerGameId: 'next', roundId: 'next' } });
-      render({ ...terminal, scope: { ...scope, dealerGameId: 'next', roundId: 'next' } });
-      act(() => { expect(clients.slow.complete(token)).toBeNull(); });
+      render({ ...playing, scope: { ...scope, dealerGameId: 'next', roundId: 'next' } });
+      render({ ...completed, scope: { ...scope, dealerGameId: 'next', roundId: 'next' } });
+      act(() => { expect(clients.slow.complete(testToken)).toBeNull(); });
       expect(clients.slow.pending?.scope.roundId).toBe('next');
     } finally { act(() => root.unmount()); }
   });

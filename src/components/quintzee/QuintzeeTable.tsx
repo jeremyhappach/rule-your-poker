@@ -1,3 +1,4 @@
+import {useCompletionRetry} from '@/hooks/useCompletionRetry';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useQuintzee} from '@/hooks/useQuintzee';
 import {quintzeeTransport,quintzeeRpc,type QuintzeeProductionSnapshot} from '@/lib/quintzee/client';
@@ -20,14 +21,15 @@ function validBatch(batch:ChipPresentationBatch,v:QuintzeeProductionSnapshot){
 function Balance({id,seat,chips}:{id:string;seat?:number;chips?:number}){const value=usePresentationPlayerChipBalance(id,chips??0);return <small data-chip-center={seat} data-chip-reaction-target={seat}>{value} chips</small>;}
 export function QuintzeeTable(props:Props){
  const transport=useMemo(()=>quintzeeTransport(props.dealerGameId,props.userId,false),[props.dealerGameId,props.userId]),game=useQuintzee(props.dealerGameId,props.userId,transport);
- const v=game.snapshot as QuintzeeProductionSnapshot|null,chat=useGameChatContext(),announcements=useAnnouncements();
+ const v=(game.snapshot?.id===props.dealerGameId?game.snapshot:null) as QuintzeeProductionSnapshot|null,chat=useGameChatContext(),announcements=useAnnouncements();
  const batch=v?.financial?.batch,valid=!!batch&&!!v&&validBatch(batch,v);
  const admit=useCallback((b:ChipPresentationBatch)=>b.dealer_game_id!==v?.id||!!v&&!props.sessionEnded&&validBatch(b,v),[v,props.sessionEnded]);
  useChipTransferPresentationAdmission(admit);
  const cursor=useChipPresentationCursorState(valid?batch.cursor:null);
  const ready=!!v?.settlement&&(v.state.players.every(id=>(v.settlement![id]??0)===0)||valid&&['settled','reconciled'].includes(cursor));
- const [error,setError]=useState(''),closing=useRef(false),terminal=useRef(false),completed=useRef(false),callbacks=useRef(props);callbacks.current=props;
+ const [error,setError]=useState(''),closing=useCompletionRetry(props.dealerGameId+':'+props.userId),terminal=useRef(false),completed=useRef(false),callbacks=useRef(props);callbacks.current=props;
  const sawLive=useRef(false);if(v&&!v.settlement)sawLive.current=true;
+ useEffect(()=>{terminal.current=false;completed.current=false;sawLive.current=!!v&&!v.settlement;setError('');},[props.dealerGameId,props.userId]);
  useEffect(()=>{
   if(!v?.settlement||props.sessionEnded||terminal.current)return;
   terminal.current=true;callbacks.current.onTerminalActive(true);
@@ -38,12 +40,13 @@ export function QuintzeeTable(props:Props){
   }
  },[v,props.sessionEnded,announcements]);
  useEffect(()=>{
+  if(v?.pausedAt!=null)return;
   if(!v?.settlement||!ready||props.sessionEnded||completed.current||game.now<(v.terminal?.deadline??0))return;
   if(v.closed){completed.current=true;callbacks.current.onTerminalComplete(`quintzee|winseq|${v.identity!.sessionId}|${v.id}|1|${v.financial?.resultId}|${v.identity!.roundId}`);callbacks.current.onTerminalActive(false);return;}
-  if(closing.current)return;closing.current=true;
-  void quintzeeRpc('quintzee_close',{p_dealer_game_id:v.id}).then(()=>game.reconnect()).catch(e=>setError((e as Error).message));
- },[v,ready,props.sessionEnded,game.now]);
+  const receipt=closing.begin();if(!receipt)return;
+  void quintzeeRpc('quintzee_close',{p_dealer_game_id:v.id}).then(()=>receipt.succeed(()=>{setError('');void game.reconnect();})).catch(e=>receipt.fail(()=>setError((e as Error).message)));
+ },[v,ready,props.sessionEnded,game.now,closing.revision]);
  if(!v)return <div role="status">{game.error||'Loading Quintzee…'}{game.error&&<button onClick={game.reconnect}>Reconnect</button>}</div>;
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v.state.results.map((r,i)=><p key={i}>{v.playerNames?.[r.playerId??'']} · Round {r.round} · {r.stageScore.toLocaleString()}</p>)}</div>:<QuintzeeRules/>;
- return <QuintzeeView snapshot={v} userId={props.userId} actor={v.viewerId??''} now={game.now} pending={game.pending} error={error||game.error} onIntent={game.act} onReconnect={()=>{closing.current=false;setError('');void game.reconnect();}} activeTab={props.activeTab} setActiveTab={props.setActiveTab} sessionEnded={props.sessionEnded} panel={panel} balance={id=>{const p=v.participants?.find(p=>p.id===id);return p?<Balance id={id} seat={p.seat} chips={p.chips}/>:null;}}/>;
+ return <QuintzeeView snapshot={v} userId={props.userId} actor={v.viewerId??''} now={game.now} pending={game.pending} error={error||game.error} onIntent={game.act} onReconnect={()=>{closing.reset();setError('');void game.reconnect();}} activeTab={props.activeTab} setActiveTab={props.setActiveTab} sessionEnded={props.sessionEnded} panel={panel} balance={id=>{const p=v.participants?.find(p=>p.id===id);return p?<Balance id={id} seat={p.seat} chips={p.chips}/>:null;}}/>;
 }

@@ -31,7 +31,11 @@ export function observeLocalTerminal<T>(previous: LocalTerminalState<T>, input: 
 
 /** A stale callback cannot release another round's retained presentation. */
 export function localTerminalTokenMatches(scope: LiveTerminalPresentationScope, token: string): boolean {
-  const [gameType, phase, gameId, dealerGameId, handNumber, , roundId] = token.split('|');
+  const parts = token.split('|');
+  const [gameType, phase, gameId, dealerGameId, handNumber] = parts;
+  const dice = scope.gameType === 'horses' || scope.gameType === 'ship-captain-crew';
+  if (dice && parts.length !== 6) return false;
+  const roundId = parts[dice ? 5 : 6];
   return gameType === scope.gameType && phase === 'winseq' && gameId === scope.gameId
     && dealerGameId === scope.dealerGameId && handNumber === String(scope.handNumber) && roundId === scope.roundId;
 }

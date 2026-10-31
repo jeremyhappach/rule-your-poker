@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
+import {useCompletionRetry} from '@/hooks/useCompletionRetry';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
@@ -6665,6 +6666,9 @@ export const CribbageMobileGameTable = ({
   // Counting presentation is deliberately not a state owner. PostgreSQL has already
   // resolved scores and persisted the successor release lease (or terminal state).
   // This callback releases creation of the next hand only after the visible count.
+  const countingRetry = useCompletionRetry(`${gameId}:${dealerGameId}:${currentRoundId}:${currentHandNumber}:${currentUserId}`);
+  const countingRetryPending = useRef(false);
+  useEffect(() => { countingRetryPending.current = false; }, [gameId,dealerGameId,currentRoundId,currentHandNumber,currentUserId]);
   const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
     void _winDetected;
     if (!cribbageState || !dealerGameId) return;
@@ -6700,12 +6704,15 @@ export const CribbageMobileGameTable = ({
     }
 
     if (startNextHandFiredRef.current === handKey) return;
+    const completionReceipt = countingRetry.begin();
+    if (!completionReceipt) return;
     startNextHandFiredRef.current = handKey;
 
     try {
       const { data, error } = await supabase.rpc('cribbage_complete_counting' as any, {
         _round_id: expectedIdentity?.roundId ?? currentRoundId,
       });
+      if (!completionReceipt.isCurrent()) return;
       if (error) throw error;
 
       const result = data as {
@@ -6720,6 +6727,7 @@ export const CribbageMobileGameTable = ({
         if (!terminalState?.winnerPlayerId) {
           throw new Error('Terminal counting handoff omitted winner state');
         }
+        completionReceipt.succeed(() => { countingRetryPending.current = false; });
         setCountingWinFrozen(true);
         const targetIndex = countingStateSnapshot?.countingTargetIndex ?? null;
         setTerminalPath(
@@ -6740,6 +6748,7 @@ export const CribbageMobileGameTable = ({
         if (!Number.isFinite(releaseAtMs)) {
           throw new Error('Counting handoff omitted its presentation release time');
         }
+        completionReceipt.defer();
 
         if (countingActivationRetryRef.current?.handKey === handKey) return;
         if (countingActivationRetryRef.current) {
@@ -6764,6 +6773,7 @@ export const CribbageMobileGameTable = ({
       if (result.outcome !== 'activated' && result.outcome !== 'already_active') {
         throw new Error(`Unexpected counting-handoff outcome: ${result.outcome}`);
       }
+      completionReceipt.succeed(() => { countingRetryPending.current = false; });
 
       // The release RPC creates the successor and advances games.total_hands in one
       // transaction. The browser must never create or write a successor deal.
@@ -6772,6 +6782,8 @@ export const CribbageMobileGameTable = ({
       setPostCountingTransitionActive(true);
       syncHandle.unfreezePresentation();
     } catch (error) {
+      completionReceipt.fail(() => { countingRetryPending.current = true; });
+      if (!completionReceipt.isCurrent()) return;
       if (countingActivationRetryRef.current?.handKey === handKey) {
         clearTimeout(countingActivationRetryRef.current.timer);
         countingActivationRetryRef.current = null;
@@ -6790,6 +6802,10 @@ export const CribbageMobileGameTable = ({
     triggerWinSequence,
     syncHandle,
   ]);
+
+  useEffect(() => {
+    if (countingRetryPending.current) void handleCountingComplete(false);
+  }, [countingRetry.revision,handleCountingComplete]);
 
   useEffect(() => {
     return () => {

@@ -27,16 +27,16 @@ it('retains the exact uncertain command and retries it without clearing the moun
  expect(hook.result.current.pending).toBe(true);expect(hook.result.current.snapshot).not.toBeNull();await act(async()=>hook.result.current.reconnect());
  expect(vi.mocked(f.transport.send).mock.calls[0]).toEqual(vi.mocked(f.transport.send).mock.calls[1]);expect(hook.result.current.pending).toBe(false);
 });
-it('recovers a brief browser outage without waiting for a new subscription handshake',async()=>{
+it('replaces an interrupted channel and requires a fresh acknowledgement before recovery',async()=>{
  const f=setup(),hook=renderHook(()=>useRacePoker('a','u',f.transport));await act(async()=>{});await act(async()=>f.status(true));
  const online=vi.spyOn(navigator,'onLine','get').mockReturnValue(false);act(()=>window.dispatchEvent(new Event('offline')));expect(hook.result.current.connected).toBe(false);
- online.mockReturnValue(true);await act(async()=>window.dispatchEvent(new Event('online')));expect(hook.result.current.connected).toBe(true);expect(f.transport.subscribe).toHaveBeenCalledTimes(1);
+ online.mockReturnValue(true);await act(async()=>window.dispatchEvent(new Event('online')));expect(hook.result.current.connected).toBe(false);expect(f.transport.subscribe).toHaveBeenCalledTimes(2);await act(async()=>f.status(true));expect(hook.result.current.connected).toBe(true);
 });
 
 it('marks the recovered snapshot itself silent when connection returns before its response',async()=>{
  const f=setup(),hook=renderHook(()=>useRacePoker('a','u',f.transport));await act(async()=>{});await act(async()=>f.status(true));
  act(()=>f.status(false));let finish!:(v:RacePokerSnapshot)=>void;vi.mocked(f.transport.load).mockImplementation(()=>new Promise(r=>finish=r));
- await act(async()=>f.status(true));const beforeResponse=hook.result.current.epoch;
+ await act(()=>vi.advanceTimersByTimeAsync(1000));await act(async()=>f.status(true));const beforeResponse=hook.result.current.epoch;
  await act(async()=>finish({...f.value,revision:2,board:{...f.value.board,phase:'stage_complete'}}));
  expect(hook.result.current.epoch).toBeGreaterThan(beforeResponse);expect(hook.result.current.snapshot?.board.phase).toBe('stage_complete');
 });

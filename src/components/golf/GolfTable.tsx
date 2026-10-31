@@ -1,3 +1,4 @@
+import {useCompletionRetry} from '@/hooks/useCompletionRetry';
 import {golfHoleCount,golfScorecardLabel} from '@/lib/golf/matchLength';
 import {golfScoreLabel} from '@/lib/golf/scoreLabel';
 import {useGolfCardPresentation} from './useGolfCardPresentation';
@@ -34,13 +35,13 @@ export function GolfTable(props:Props) {
  const [written,setWritten]=useState<{scope:string;epoch:number;ids:string[]}>({scope:'',epoch:0,ids:[]});
  const writtenScope=written.epoch===game.epoch&&written.ids.length===game.snapshot?.players.length?written.scope:null;
  const scoringPresentation=useGolfScoringPresentation(game.snapshot,game.epoch,game.now,presentation.busy,writtenScope);
- const v=scoringPresentation.snapshot,winnerReady=scoringPresentation.winnerReady;
+ const v=scoringPresentation.snapshot?.id===props.dealerGameId?scoringPresentation.snapshot:null,winnerReady=scoringPresentation.winnerReady;
  const ready=useGolfFinancial(game.snapshot,props.sessionEnded,winnerReady,props.dealerGameId),layer=useCanonicalFeltInteractionLayerElement(!props.sessionEnded);
  const [selected,setSelected]=useState<number[]>([]),[discard,setDiscard]=useState(false),[selectedStock,setSelectedStock]=useState(false),[error,setError]=useState('');
  const [inspectPlayer,setInspectPlayer]=useState<string|null>(null);
  const [scorecardOpen,setScorecardOpen]=useState(false);
  const [reclaiming,setReclaiming]=useState(false);
- const announced=useRef(''),closing=useRef(false),completed=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
+ const announced=useRef(''),closing=useCompletionRetry(props.dealerGameId+':'+props.userId),completed=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
  const chat=useGameChatContext(),announcements=useAnnouncements();
  const scoring=!!v&&!presentation.busy&&!scoringPresentation.waiting&&(v.phase==="hole_complete"||v.phase==="complete");
  const scoreFrame=v&&scoring?golfScoreFrame(v,scoringPresentation.now,scoringPresentation.seek):null;
@@ -59,6 +60,7 @@ export function GolfTable(props:Props) {
  const turnPresentation=!!v&&!awaitingScoring;
  const acting=turnPresentation&&!!v?.canAct&&v.scope===game.snapshot?.scope&&!game.pending&&game.connected&&!v.paused&&game.now<v.deadline&&!props.sessionEnded&&!presentation.busy&&!scoringPresentation.waiting;
  if(v&&!v.settled)sawLive.current=true;
+ useEffect(()=>{completed.current=false;sawLive.current=false;announced.current='';setError('');},[props.dealerGameId,props.userId]);
  useEffect(()=>{setSelected([]);setDiscard(false);setSelectedStock(false);},[v?.scope,v?.phase,v?.canAct,v?.phase==='opening'?null:v?.turnIndex,v?.phase==='opening'?null:v?.revision]);
  usePublishShellFelt({gameKind:'six-card-golf',anteAmount:v?.stake??0,publisherLabel:'GolfTable'});
  useShellTabBar({cardsIcon:"spade",activeTab:props.activeTab,setActiveTab:props.setActiveTab,cardsFlashing:acting?'green':null,isPaused:!!v?.paused});
@@ -79,15 +81,16 @@ export function GolfTable(props:Props) {
   }
  },[v,props.sessionEnded,announcements,winnerReady,game.epoch]);
  useEffect(()=>{
+  if(v?.paused)return;
   if(v?.paused||!v?.settled||!ready||!winnerReady||!scoringPresentation.terminalDone||props.sessionEnded||completed.current)return;
   if(v.finished) {
    completed.current=true;
    callbacks.current.onTerminalComplete('six-card-golf|winseq|'+v.identity.sessionId+'|'+v.id+'|1|'+v.financial.resultId+'|'+(callbacks.current.retentionRoundId??v.holes[0]?.roundId??v.scope));
    callbacks.current.onTerminalActive(false);return;
   }
-  if(closing.current)return;closing.current=true;
-  void golfRpc('golf_close',{p_dealer_game_id:v.id}).then(()=>game.reconnect()).catch(e=>{setError((e as Error).message);});
- },[v,ready,props.sessionEnded,winnerReady,scoringPresentation.terminalDone]);
+  const receipt=closing.begin();if(!receipt)return;
+  void golfRpc('golf_close',{p_dealer_game_id:v.id}).then(()=>receipt.succeed(()=>{setError('');void game.reconnect();})).catch(e=>receipt.fail(()=>setError((e as Error).message)));
+ },[v,ready,props.sessionEnded,winnerReady,scoringPresentation.terminalDone,closing.revision]);
  // Retire the final-turn plate before the first scoring paint, not one frame later.
  useLayoutEffect(()=>{if(scoring&&v)announcements.dismiss('golf-final:'+v.scope);},[scoring,v?.scope,announcements.dismiss]);
  const announcementRef=useRef(announcements);announcementRef.current=announcements;
@@ -160,7 +163,7 @@ export function GolfTable(props:Props) {
 
   </div>,layer)}
   <div aria-hidden data-canonical-shell-play-bottom-spacer="" style={{flex:'0 0 var(--play-bottom-safe-area, 0px)',pointerEvents:'none'}}/>
-  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane"><div className="golf-helper" role="status"><strong>{helper}</strong></div><div className="golf-hand-row"><div className="golf-hole-label">{v&&<><GolfHoleFlag hole={v.hole}/><small className="golf-match-length">{golfHoleCount(v.rules.holes)} holes</small></>}</div><div className="golf-hand-slot">{localTableau}</div>{v&&<GolfLeaderboard snapshot={scoreView!} onOpen={()=>setScorecardOpen(true)}/>}</div>{self&&v?.playerControls?.[self.id]?.autoPlay&&!v.settled&&<label className="golf-autoplay"><input type="checkbox" aria-label="Auto-play" checked disabled={reclaiming||!game.connected} onChange={e=>{if(!e.target.checked)void reclaim();}}/>Auto-play · uncheck to rejoin</label>}{(error||game.error)&&<button onClick={()=>{setError('');closing.current=false;game.reconnect();}}>{error||game.error} · Reconnect</button>}</div>):<div className="golf-panel">{panel}</div>} identity={self?<CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={self.chips} active={actor?.id===self.id&&turnPresentation&&!v?.paused}/>:<span>Observer</span>}/>
+  <ShellHudGrid timer={<ShellTimerRail/>} pane={props.activeTab==='cards'?(props.sessionEnded?<span/>:<div className="golf-pane"><div className="golf-helper" role="status"><strong>{helper}</strong></div><div className="golf-hand-row"><div className="golf-hole-label">{v&&<><GolfHoleFlag hole={v.hole}/><small className="golf-match-length">{golfHoleCount(v.rules.holes)} holes</small></>}</div><div className="golf-hand-slot">{localTableau}</div>{v&&<GolfLeaderboard snapshot={scoreView!} onOpen={()=>setScorecardOpen(true)}/>}</div>{self&&v?.playerControls?.[self.id]?.autoPlay&&!v.settled&&<label className="golf-autoplay"><input type="checkbox" aria-label="Auto-play" checked disabled={reclaiming||!game.connected} onChange={e=>{if(!e.target.checked)void reclaim();}}/>Auto-play · uncheck to rejoin</label>}{(error||game.error)&&<button onClick={()=>{setError('');closing.reset();game.reconnect();}}>{error||game.error} · Reconnect</button>}</div>):<div className="golf-panel">{panel}</div>} identity={self?<CanonicalPlayerIdentityRow playerId={self.id} name={self.name} chips={self.chips} active={actor?.id===self.id&&turnPresentation&&!v?.paused}/>:<span>Observer</span>}/>
 
  </>;
 }

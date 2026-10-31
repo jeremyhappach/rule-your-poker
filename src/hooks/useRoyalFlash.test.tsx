@@ -42,8 +42,8 @@ it('retains the exact uncertain command and retries it without clearing the moun
 it('keeps deadline, pause and phase boundaries authoritative',()=>{
  const b=fixture().board;expect(royalPlayWindow(b,3499).playable).toBe(false);expect(royalPlayWindow(b,3500).playable).toBe(true);expect(royalPlayWindow(b,23500).playable).toBe(false);expect(royalPlayWindow(b,3500,false).playable).toBe(false);expect(royalPlayWindow({...b,phase:'stage_complete'},3600).playable).toBe(false);
 });
-it('recovers a brief browser outage without waiting for a new subscription handshake',async()=>{
+it('replaces an interrupted channel and requires a fresh acknowledgement before recovery',async()=>{
  const f=setup(),hook=renderHook(()=>useRoyalFlash('a','u',f.transport));await act(async()=>{});await act(async()=>f.status(true));
  const online=vi.spyOn(navigator,'onLine','get').mockReturnValue(false);act(()=>window.dispatchEvent(new Event('offline')));expect(hook.result.current.connected).toBe(false);
- online.mockReturnValue(true);await act(async()=>window.dispatchEvent(new Event('online')));expect(hook.result.current.connected).toBe(true);expect(f.transport.subscribe).toHaveBeenCalledTimes(1);
+ online.mockReturnValue(true);await act(async()=>window.dispatchEvent(new Event('online')));expect(hook.result.current.connected).toBe(false);expect(f.transport.subscribe).toHaveBeenCalledTimes(2);await act(async()=>f.status(true));expect(hook.result.current.connected).toBe(true);
 });

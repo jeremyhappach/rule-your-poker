@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
+import {subscribeAuthoritativeRecoverySnapshot} from '@/lib/realtimeAuthoritativeCatchup';
 import {acceptQuintzeeSnapshot,type QuintzeeIntent,type QuintzeeSnapshot} from '@/lib/quintzee/model';
 export interface QuintzeeCommand {requestId:string;revision:number;scope:string;intent:QuintzeeIntent}
 export interface QuintzeeTransport {load:()=>Promise<QuintzeeSnapshot>;send:(command:QuintzeeCommand)=>Promise<QuintzeeSnapshot>;subscribe:(refresh:()=>void)=>()=>void}
@@ -43,8 +44,10 @@ export function useQuintzee(id:string,actor:string,transport:QuintzeeTransport){
  useEffect(()=>{
   alive.current=true;current.current=null;setSnapshot(null);void reconnect();
   const dispose=transport.subscribe(()=>void reconnect()),refresh=()=>void reconnect();
+  const stopRecovery=subscribeAuthoritativeRecoverySnapshot(refresh);
+  const pausedCheck=setInterval(()=>{if(current.current?.pausedAt!=null&&!document.hidden&&navigator.onLine)refresh();},5000);
   window.addEventListener('online',refresh);window.addEventListener('focus',refresh);
-  return()=>{alive.current=false;dispose();window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
+  return()=>{alive.current=false;stopRecovery();clearInterval(pausedCheck);dispose();window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
  },[reconnect,transport]);
  useEffect(()=>{
   let frame:number,last=0;

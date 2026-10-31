@@ -1,4 +1,5 @@
 import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
+import {useCompletionRetry} from '@/hooks/useCompletionRetry';
 /**
  * YahtzeeGameTable – mirrors MobileGameTable's visual layout for dice games.
  *
@@ -21,7 +22,7 @@ import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import { DiceTraceControl } from "./DiceTraceControl";
-import { isYahtzeeTerminalPayout, yahtzeeTerminalToken, type YahtzeePayoutScope } from '@/lib/yahtzeeTerminalPresentation';
+import { isYahtzeeTerminalPayout, liveYahtzeePayoutScope, yahtzeeTerminalToken, type YahtzeePayoutScope } from '@/lib/yahtzeeTerminalPresentation';
 import { useChipTransferPresentationAdmission } from "@/lib/canonicalShell/ChipTransportProvider";
 import type { ChipPresentationBatch } from "@/lib/canonicalShell/ChipPresentationLedger";
 import confetti from "canvas-confetti";
@@ -426,6 +427,7 @@ export function YahtzeeGameTable({
   const settlementInFlightKeyRef = useRef<string | null>(null);
   const settlementCompletedKeyRef = useRef<string | null>(null);
   const settlementRetryKeyRef = useRef<string | null>(null);
+  const settlementRetry = useCompletionRetry(`${gameId}:${dealerGameId}:${currentRoundId}:${handNumber}:${currentUserId}`);
   const settlementRequestRef = useRef<(
     source: string,
     terminalWriteAcknowledged?: boolean,
@@ -434,7 +436,9 @@ export function YahtzeeGameTable({
     source: string,
     terminalWriteAcknowledged = false,
   ): void => {
-    if (!terminalWriteAcknowledged && authoritativeYahtzeeState?.gamePhase !== 'complete') return;
+    // Identity comes from the incoming row props. The sync projection can still
+    // contain the prior completed round for one render after those props change.
+    if (!terminalWriteAcknowledged && yahtzeeState?.gamePhase !== 'complete') return;
     if (!gameId || !dealerGameId || !currentRoundId || !Number.isInteger(handNumber)) return;
 
     const key = `${gameId}:${dealerGameId}:${currentRoundId}:${handNumber}`;
@@ -444,6 +448,8 @@ export function YahtzeeGameTable({
       return;
     }
 
+    const completionReceipt = settlementRetry.begin();
+    if (!completionReceipt) return;
     settlementInFlightKeyRef.current = key;
     void settleYahtzeeGame({
       gameId,
@@ -451,6 +457,8 @@ export function YahtzeeGameTable({
       dealerGameId,
       handNumber: handNumber as number,
     }).then((result) => {
+      if (!completionReceipt.isCurrent()) return;
+      completionReceipt.succeed(() => {});
       settlementCompletedKeyRef.current = key;
       console.log('[YAHTZEE SETTLE] Authoritative settlement acknowledged', {
         source,
@@ -460,15 +468,16 @@ export function YahtzeeGameTable({
         handNumber,
       });
     }).catch((error) => {
-      // Do not invent a client fallback. A later persisted snapshot,
-      // reconnect/focus, or online event can replay the same identity.
-      console.error('[YAHTZEE SETTLE] Authoritative settlement attempt failed', {
+      // Retry the same server-owned settlement identity; never replay scoring
+      // or presentation. A late failure must wake recovery after resume too.
+      completionReceipt.fail(() => console.error('[YAHTZEE SETTLE] Authoritative settlement attempt failed', {
         source,
         roundId: currentRoundId,
         handNumber,
         error,
-      });
+      }));
     }).finally(() => {
+      if (!completionReceipt.isCurrent()) return;
       if (settlementInFlightKeyRef.current === key) {
         settlementInFlightKeyRef.current = null;
       }
@@ -483,7 +492,7 @@ export function YahtzeeGameTable({
       }
     });
   }, [
-    authoritativeYahtzeeState?.gamePhase,
+    yahtzeeState?.gamePhase,
     gameId,
     dealerGameId,
     currentRoundId,
@@ -492,9 +501,9 @@ export function YahtzeeGameTable({
   settlementRequestRef.current = requestYahtzeeSettlement;
 
   useEffect(() => {
-    if (authoritativeYahtzeeState?.gamePhase !== 'complete') return;
+    if (yahtzeeState?.gamePhase !== 'complete') return;
     requestYahtzeeSettlement('persisted-terminal-state');
-  }, [authoritativeYahtzeeState?.gamePhase, requestYahtzeeSettlement]);
+  }, [yahtzeeState?.gamePhase, requestYahtzeeSettlement, settlementRetry.revision]);
 
   useEffect(() => {
     const retryVisibleTerminalSettlement = () => {
@@ -594,6 +603,7 @@ export function YahtzeeGameTable({
   // Chip transfer animation
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
   const terminalPayoutScopeRef = useRef<YahtzeePayoutScope | null>(null);
+  const terminalBatchRef = useRef<{id: string; cursor: number} | null>(null);
   const canAdmitYahtzeeTerminalTransfer = useCallback((batch: ChipPresentationBatch) => {
     const movesPlayerToPlayer = batch.reason === 'transfer' && batch.transfers.some(
       (transfer) => transfer.from.kind === 'player' && transfer.to.kind === 'player',
@@ -614,6 +624,16 @@ export function YahtzeeGameTable({
     terminalPresentationActiveKeyRef.current = identity;
     onTerminalPresentationActiveChange?.(true);
   }, [onTerminalPresentationActiveChange]);
+  useLayoutEffect(() => {
+    // A peer's payout may finish while this scorer is awaiting its reply or
+    // still displaying the final category. Reserve the exact live payout now;
+    // canAdmitYahtzeeTerminalTransfer still waits for the visual sequence.
+    const scope = liveYahtzeePayoutScope({ gameId, dealerGameId, roundId: currentRoundId, handNumber },
+      yahtzeeState, terminalPresentationLive);
+    if (!scope || terminalPresentationCompletedKeyRef.current === yahtzeeTerminalToken(scope)) return;
+    terminalPayoutScopeRef.current = scope;
+    beginTerminalPresentation(yahtzeeTerminalToken(scope));
+  }, [gameId, dealerGameId, currentRoundId, handNumber, yahtzeeState, terminalPresentationLive, beginTerminalPresentation]);
   const handleTerminalChipAnimationEnd = useCallback(() => {
     setChipTransferTriggerId(null);
     const identity = terminalPresentationActiveKeyRef.current;
@@ -627,13 +647,27 @@ export function YahtzeeGameTable({
     onTerminalPresentationActiveChange?.(false);
   }, [onTerminalPresentationActiveChange, onTerminalPresentationComplete]);
 
+  const retainTerminalBatch = useCallback((batch: ChipPresentationBatch) => {
+    const scope = terminalPayoutScopeRef.current;
+    const captured = terminalBatchRef.current;
+    return !!scope && terminalPresentationActiveKeyRef.current === yahtzeeTerminalToken(scope)
+      && isYahtzeeTerminalPayout(batch, scope)
+      && (!captured || (captured.id === batch.id && captured.cursor === batch.cursor));
+  }, []);
+  const handleTerminalBatchStarted = useCallback((batch: ChipPresentationBatch) => {
+    if (!retainTerminalBatch(batch)) return;
+    if (terminalBatchRef.current?.id === batch.id && terminalBatchRef.current.cursor === batch.cursor) return;
+    terminalBatchRef.current = { id: batch.id, cursor: batch.cursor };
+  }, [retainTerminalBatch]);
   const handleTerminalBatchSettled = useCallback((batch: ChipPresentationBatch) => {
     const scope = terminalPayoutScopeRef.current;
+    const captured = terminalBatchRef.current;
     if (!scope || !chipTransferTriggerId || !isYahtzeeTerminalPayout(batch, scope)
+      || captured?.id !== batch.id || captured.cursor !== batch.cursor
       || terminalPresentationActiveKeyRef.current !== yahtzeeTerminalToken(scope)) return;
     handleTerminalChipAnimationEnd();
   }, [chipTransferTriggerId, handleTerminalChipAnimationEnd]);
-  useChipTransferPresentationAdmission(canAdmitYahtzeeTerminalTransfer, handleTerminalBatchSettled);
+  useChipTransferPresentationAdmission(canAdmitYahtzeeTerminalTransfer, handleTerminalBatchSettled, handleTerminalBatchStarted, retainTerminalBatch);
 
   useEffect(() => {
     return () => {
@@ -654,6 +688,7 @@ export function YahtzeeGameTable({
   useEffect(() => {
     completionLatchRoundIdRef.current = null;
     terminalPayoutScopeRef.current = null;
+    terminalBatchRef.current = null;
     prevTurnRef.current = null;
     actionInFlightRef.current = false;
     holdIntentRef.current = null;
@@ -1652,6 +1687,7 @@ export function YahtzeeGameTable({
    */
   useEffect(() => {
     if (!viewState || viewState.gamePhase !== 'complete') return;
+    if (yahtzeeState?.gamePhase !== 'complete') return;
     if (!terminalPresentationLive) return;
     if (!currentRoundId) return;
     if (!dealerGameId || !Number.isInteger(handNumber)) return;
@@ -1809,6 +1845,7 @@ export function YahtzeeGameTable({
   }, [
     viewState?.gamePhase,
     viewState?.playerStates,
+    yahtzeeState?.gamePhase,
     currentRoundId,
     dealerGameId,
     handNumber,

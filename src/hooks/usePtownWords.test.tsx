@@ -15,7 +15,7 @@ it('allows a seated waiting player to request pause without admitting gameplay o
 afterEach(()=>{cleanup();sessionStorage.clear();vi.restoreAllMocks();});
 it('reconnect retries the exact cancellation while waiting and accepts a host pause that won the race',async()=>{
  Object.defineProperty(document,'hidden',{configurable:true,value:false});const request={id:'request-one',playerId:'me',hostUserId:'host',pauseVersion:0},sent:Command[]=[];
- const transport:WordsTransport={load:async()=>({...snapshot,canAct:false,pauseRequest:request}),subscribe:(_refresh,status)=>{status(true);return()=>{};},send:async command=>{sent.push(command);if(sent.length===1)throw Error('Connection uncertain. Reconnect to retry.');return {...snapshot,revision:2,canAct:false,paused:true};}};
+ let authority={...snapshot,canAct:false,pauseRequest:request} as WordsSnapshot;const transport:WordsTransport={load:async()=>authority,subscribe:(_refresh,status)=>{status(true);return()=>{};},send:async command=>{sent.push(command);if(sent.length===1)throw Error('Connection uncertain. Reconnect to retry.');authority={...snapshot,revision:2,canAct:false,paused:true};return authority;}};
  const {result}=renderHook(()=>usePtownWords('match','user',transport));await waitFor(()=>expect(result.current.connected&&!!result.current.snapshot).toBe(true));
  await act(async()=>{expect(await result.current.act({type:'cancel_pause_request',items:[{requestId:request.id}]})).toBe(false);});expect(result.current.pending).toBe(true);
  await act(async()=>{expect(await result.current.reconnect()).toBe(true);});expect(sent[1]).toEqual(sent[0]);expect(result.current.snapshot?.paused).toBe(true);expect(result.current.snapshot?.pauseRequest).toBeUndefined();expect(result.current.pending).toBe(false);
@@ -24,7 +24,7 @@ it('reconnect retries the exact cancellation while waiting and accepts a host pa
 it('retries the identical durable command after a committed move loses its reply',async()=>{
  Object.defineProperty(document,'hidden',{configurable:true,value:false});
  const sent:Command[]=[];
- const transport:WordsTransport={load:async()=>snapshot,subscribe:(_refresh,status)=>{status(true);return()=>{};},send:async command=>{sent.push(command);if(sent.length===1)throw Error('Connection uncertain. Reconnect to retry.');return {...snapshot,revision:1,canAct:false};}};
+ let authority=snapshot;const transport:WordsTransport={load:async()=>authority,subscribe:(_refresh,status)=>{status(true);return()=>{};},send:async command=>{sent.push(command);if(sent.length===1)throw Error('Connection uncertain. Reconnect to retry.');authority={...snapshot,revision:1,canAct:false};return authority;}};
  const {result}=renderHook(()=>usePtownWords('match','user',transport));
  await waitFor(()=>expect(result.current.connected&&!!result.current.snapshot).toBe(true));
  await act(async()=>{expect(await result.current.act({type:'pass'})).toBe(false);});

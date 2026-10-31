@@ -1,4 +1,5 @@
 import {turnBudget} from '@/lib/canasta/config';
+import {subscribeAuthoritativeRecoverySnapshot} from '@/lib/realtimeAuthoritativeCatchup';
 import {pickupGroups} from '@/lib/canasta/guidance';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {HandEditor,type EditorView} from './HandEditor';
@@ -23,7 +24,9 @@ export function CanastaGame({transport,identity,onSnapshot,panel,ended=false,hel
   const receive=useCallback((s:Snapshot)=>{if(!mounted.current)return;const next=acceptSnapshot(current.current,s);if(next===current.current)return;current.current=next;serverOffset.current=next.serverAt-Date.now();setNow(next.serverAt);setSnapshot(next);observe.current(next);},[]);
   const refresh=useCallback(async()=>{try{receive(await transport.load());setError('');}catch(e){setError(e instanceof Error?e.message:'Connection uncertain');}},[receive,transport]);
   useEffect(()=>{mounted.current=true;let live=true;const refreshLive=()=>{if(live)void refresh();};const stop=transport.subscribe(refreshLive);refreshLive();
-    return()=>{live=false;mounted.current=false;stop();};},[transport,refresh]);
+    const stopRecovery=subscribeAuthoritativeRecoverySnapshot(refreshLive);
+    const pausedCheck=setInterval(()=>{if(current.current?.state.pause&&!document.hidden&&navigator.onLine)refreshLive();},5000);
+    return()=>{live=false;mounted.current=false;stopRecovery();clearInterval(pausedCheck);stop();};},[transport,refresh]);
   useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()+serverOffset.current),250);return()=>clearInterval(timer);},[]);
   const s=snapshot?.state,h=s?.hand,p=h&&s?.viewer?h.players[s.viewer]:null;
   const turnKey=h?`${s!.id}:${h.id}:${h.turn}:${h.generation}`:'';

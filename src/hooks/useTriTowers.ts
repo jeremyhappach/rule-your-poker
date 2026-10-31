@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState,useCallback} from 'react';
+import {subscribeAuthoritativeRecoverySnapshot} from '@/lib/realtimeAuthoritativeCatchup';
 import {supabase} from '@/integrations/supabase/client';
 import {acceptSnapshot,submit,triTowersRpc} from '@/lib/triTowers/client';
 import type {Intent,Projection,Command} from '@/lib/triTowers/model';
@@ -44,9 +45,11 @@ export function useTriTowers(dealerGameId:string){
     void refresh(retry>0);
     const resume=()=>{interrupt();bufferRef.current.interrupt();void bufferRef.current.recover().then(()=>{if(!alive)return;if(!subscribed){transportRetries.current=0;setRetry(n=>n+1);}else void refresh(true);});};const visibility=()=>{if(!document.hidden)resume();else interrupt();};
     window.addEventListener('online',resume);window.addEventListener('focus',resume);window.addEventListener('offline',interrupt);document.addEventListener('visibilitychange',visibility);
+    const stopRecovery=subscribeAuthoritativeRecoverySnapshot(resume);
+    const pausedCheck=setInterval(()=>{if(latest.current?.paused&&!document.hidden&&navigator.onLine)resume();},5000);
     // Display only; no polling, legal actions or progression on this clock.
     const timer=setInterval(()=>setNow(clock.current.server+performance.now()-clock.current.local),100);
-    return()=>{alive=false;clearInterval(timer);window.removeEventListener('online',resume);window.removeEventListener('focus',resume);window.removeEventListener('offline',interrupt);document.removeEventListener('visibilitychange',visibility);void supabase.removeChannel(channel);};
+    return()=>{alive=false;stopRecovery();clearInterval(pausedCheck);clearInterval(timer);window.removeEventListener('online',resume);window.removeEventListener('focus',resume);window.removeEventListener('offline',interrupt);document.removeEventListener('visibilitychange',visibility);void supabase.removeChannel(channel);};
   },[dealerGameId,accept,retry,interrupt]);
   // Bounded authoritative catch-up at a persisted boundary. The server recovery
   // worker may run just after that boundary, so a first unchanged read is not

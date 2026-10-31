@@ -95,6 +95,7 @@ interface ChipTransportContextValue {
     admission: ChipPresentationAdmission | null,
     onBatchSettled?: ChipPresentationBatchSettled | null,
     onBatchStarted?: ChipPresentationBatchStarted | null,
+    retainOnDealerAdvance?: ((batch: ChipPresentationBatch) => boolean) | null,
   ) => void;
   /** Diagnostics scoping. */
   gameId?: string | null;
@@ -307,6 +308,8 @@ export function ChipTransportProvider({
   ), []);
   const presentationBatchSettledRef = useRef<ChipPresentationBatchSettled | null>(null);
   const presentationBatchStartedRef = useRef<ChipPresentationBatchStarted | null>(null);
+  const retainTerminalBatchRef = useRef<((batch: ChipPresentationBatch) => boolean) | null>(null);
+  const retainTerminalBatch = useCallback((batch: ChipPresentationBatch) => retainTerminalBatchRef.current?.(batch) === true, []);
   const onPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
     presentationBatchSettledRef.current?.(batch);
   }, []);
@@ -317,15 +320,18 @@ export function ChipTransportProvider({
     admission: ChipPresentationAdmission | null,
     onBatchSettled: ChipPresentationBatchSettled | null = null,
     onBatchStarted: ChipPresentationBatchStarted | null = null,
+    retainOnDealerAdvance: ((batch: ChipPresentationBatch) => boolean) | null = null,
   ) => {
     if (
       presentationAdmissionRef.current === admission &&
       presentationBatchSettledRef.current === onBatchSettled &&
-      presentationBatchStartedRef.current === onBatchStarted
+      presentationBatchStartedRef.current === onBatchStarted &&
+      retainTerminalBatchRef.current === retainOnDealerAdvance
     ) return;
     presentationAdmissionRef.current = admission;
     presentationBatchSettledRef.current = onBatchSettled;
     presentationBatchStartedRef.current = onBatchStarted;
+    retainTerminalBatchRef.current = retainOnDealerAdvance;
     setPresentationAdmissionVersion((version) => version + 1);
   }, []);
   // Holm initial antes and 3-5-7 new-hand rollovers both gate the card deal on
@@ -352,6 +358,7 @@ export function ChipTransportProvider({
     abandonPresentationBalanceDeltas,
     requiresDurablePresentationCursor,
     (gameType === 'horses' || gameType === 'ship-captain-crew') && presentationAdmissionRef.current !== null,
+    retainTerminalBatch,
   );
 
   const value = useMemo<ChipTransportContextValue>(
@@ -455,15 +462,16 @@ export function useChipTransferPresentationAdmission(
   admission: ChipPresentationAdmission,
   onBatchSettled?: ChipPresentationBatchSettled,
   onBatchStarted?: ChipPresentationBatchStarted,
+  retainOnDealerAdvance?: (batch: ChipPresentationBatch) => boolean,
 ): void {
   const ctx = useContext(ChipTransportContext);
   const setAdmission = ctx?.__setPresentationAdmission;
 
   useLayoutEffect(() => {
     if (!setAdmission) return;
-    setAdmission(admission, onBatchSettled ?? null, onBatchStarted ?? null);
-    return () => setAdmission(null, null, null);
-  }, [admission, onBatchSettled, onBatchStarted, setAdmission]);
+    setAdmission(admission, onBatchSettled ?? null, onBatchStarted ?? null, retainOnDealerAdvance ?? null);
+    return () => setAdmission(null, null, null, null);
+  }, [admission, onBatchSettled, onBatchStarted, retainOnDealerAdvance, setAdmission]);
 }
 
 /** Internal hook used only by ChipTransportRuntime. */

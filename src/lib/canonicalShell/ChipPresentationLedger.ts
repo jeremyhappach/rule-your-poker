@@ -277,6 +277,7 @@ export function useChipPresentationLedger(
   onBalanceDeltasAbandoned: ChipPresentationBalanceDeltaAbandonHandler = () => {},
   waitForEndpointReadiness = false,
   retainCurrentPotAwardOnDealerAdvance = false,
+  retainTerminalBatchOnDealerAdvance?: (batch: ChipPresentationBatch) => boolean,
 ): ChipPresentationLedger {
   const [visibleBalances, setVisibleBalances] = useState<Map<EndpointKey, number>>(new Map());
   const [cursorStates, setCursorStates] = useState<Map<number, ChipPresentationCursorState>>(new Map());
@@ -300,10 +301,15 @@ export function useChipPresentationLedger(
   canStartBatchRef.current = canStartBatch;
   const retainCurrentPotAwardRef = useRef(retainCurrentPotAwardOnDealerAdvance);
   retainCurrentPotAwardRef.current = retainCurrentPotAwardOnDealerAdvance;
+  const retainTerminalBatchRef = useRef(retainTerminalBatchOnDealerAdvance);
+  retainTerminalBatchRef.current = retainTerminalBatchOnDealerAdvance;
   const retainsCurrentPotAward = useCallback((batch: ChipPresentationBatch) =>
-    retainCurrentPotAwardRef.current && !!batch.source_round_id &&
-    batch.transfers.some(transfer => transfer.from.kind === 'pot' && transfer.to.kind === 'player') &&
-    canStartBatchRef.current(batch) !== 'reconcile', []);
+    batch.game_id === gameId && canStartBatchRef.current(batch) !== 'reconcile' && (
+      retainTerminalBatchRef.current?.(batch) === true || (
+        retainCurrentPotAwardRef.current && !!batch.source_round_id &&
+        batch.transfers.some(transfer => transfer.from.kind === 'pot' && transfer.to.kind === 'player')
+      )
+    ), [gameId]);
   const waitForEndpointReadinessRef = useRef(waitForEndpointReadiness);
   waitForEndpointReadinessRef.current = waitForEndpointReadiness;
   const onBatchSettledRef = useRef(onBatchSettled);

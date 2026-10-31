@@ -1,3 +1,4 @@
+import {useYahtzeePostgameRecovery} from '@/hooks/useYahtzeePostgameRecovery';
 import {PtownWordsTable} from '@/components/ptownWords/PtownWordsTable';
 import {CanastaTable} from '@/components/canasta/CanastaTable';
 import { CanonicalTableHeader } from '@/lib/canonicalShell/CanonicalTableHeader';
@@ -3504,6 +3505,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [recoveryScheduler, safetyPollsDisabled]);
   const lastKnownGameTypeRef = useRef<string | null>(null);
   const acceptedSessionRevisionRef = useRef<{ gameId: string; revision: number } | null>(null);
+  // A games row has its own revision. Guard every realtime side effect,
+  // including routing and card-cache writes, before publishing anything.
+  const acceptedGamesRowRef = useRef<{ gameId: string | undefined; row: any }>({ gameId, row: null });
+  if (acceptedGamesRowRef.current.gameId !== gameId) {
+    acceptedGamesRowRef.current = { gameId, row: null };
+  }
+  if (game?.id === gameId) {
+    acceptedGamesRowRef.current.row = acceptedGamesRowRef.current.row
+      ? mergeAuthoritativeGameState(acceptedGamesRowRef.current.row, game)
+      : game;
+  }
   const lastKnownRoundRef = useRef<number | null>(null);
   
   // Track max community cards revealed - never decrease during showdowns
@@ -3550,6 +3562,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     try {
       const roundId = newRound?.id as string | undefined;
       if (!roundId) return;
+      const liveGame = lastGameRef.current;
+      if (newRound.game_id !== liveGame?.id || newRound.dealer_game_id !== liveGame?.current_game_uuid) return;
 
       // Validate horses_state has expected structure before applying patch
       if (newRound.horses_state) {
@@ -3563,6 +3577,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       setGame((prev) => {
         if (!prev) return prev;
+        if (newRound.game_id !== prev.id || newRound.dealer_game_id !== prev.current_game_uuid) return prev;
         const rounds = prev.rounds ?? [];
         const idx = rounds.findIndex((r) => r.id === roundId);
         if (newRound.farkle_state) {
@@ -3989,6 +4004,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           identity: () => ({ gameId, dealerGameId: (game as any)?.current_game_uuid ?? null, roundId: currentRound?.id ?? null }),
            handler: (payload: any) => {
            const newData = payload.new as any;
+           if (!newData || newData.id !== gameId) return;
+           const acceptedRow = acceptedGamesRowRef.current.row;
+           const admittedRow = acceptedRow ? mergeAuthoritativeGameState(acceptedRow, newData) : newData;
+           if (acceptedRow && admittedRow === acceptedRow) return;
+           // Synchronous admission also covers reordered events before React
+           // renders. Active rows still only request their exact frame below.
+           acceptedGamesRowRef.current.row = admittedRow;
            const oldData = payload.old as any;
            const previousGinRouting = gameRealtimeRoutingRef.current;
            // Dealer-draw admission follows accepted game state in
@@ -5137,10 +5159,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.is_paused]);
 
   // A non-host can miss the one resume UPDATE without losing its channel.
-  // While these card games appear paused, read only the pause/identity row;
-  // use the existing serialized snapshot owner when authority has moved on.
+  // While the session appears paused, read only its pause/identity row. The
+  // serialized owner then dispatches recovery to each adapter's private snapshot
+  // owner; restoring the shell alone cannot repair a separately paused adapter.
   useEffect(() => {
-    if (!gameId || !game?.is_paused || (game.game_type !== 'holm-game' && !is357GameType)) return;
+    if (!gameId || !game?.is_paused) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     const check = async () => {
@@ -5159,7 +5182,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
     timer = setTimeout(check, 5000);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [gameId, game?.is_paused, game?.game_type, game?.current_game_uuid, is357GameType]);
+  }, [gameId, game?.is_paused, game?.current_game_uuid]);
 
   // Simple state tracking refs - no aggressive polling
   const lastSyncedRoundRef = useRef<string | null>(null);
@@ -6119,6 +6142,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       isRealMoney: game.real_money === true } : null,
   });
   const heldYahtzee = yahtzeeTerminal.pending?.snapshot ?? null;
+  // Keep only a terminal round this mount observed live. Peer authority may
+  // advance independently; its new identity cannot retire our pending award.
+  const diceGameType = game?.game_type === 'horses' || game?.game_type === 'ship-captain-crew'
+    ? game.game_type : null;
+  const diceRoundState = currentRound?.horses_state as HorsesStateFromDB | null;
+  const diceTerminal = useLocalTerminalPresentation({
+    sessionId: gameId ?? null,
+    scope: diceGameType && currentRound?.id && currentRound.dealer_game_id
+      ? { gameId: gameId!, gameType: diceGameType, dealerGameId: currentRound.dealer_game_id,
+          roundId: currentRound.id, handNumber: currentRound.hand_number } : null,
+    live: !!diceGameType && game?.status === 'in_progress'
+      && currentRound?.dealer_game_id === game.current_game_uuid && diceRoundState?.gamePhase === 'playing',
+    terminal: !!diceGameType && diceRoundState?.gamePhase === 'complete'
+      && !!horsesSccTerminalWinner(diceRoundState, diceGameType),
+    snapshot: game && currentRound && diceGameType ? { gameType: diceGameType, round: currentRound, players,
+      anteAmount: game.ante_amount ?? 1, dealerPosition: game.dealer_position ?? 1,
+      currentRound: game.current_round, lastRoundResult: game.last_round_result,
+      isRealMoney: game.real_money === true } : null,
+  });
+  const heldDice = diceTerminal.pending?.snapshot ?? null;
   const farkleRoundState = currentRound?.farkle_state ?? null;
   const farkleTerminal = useLocalTerminalPresentation({
     sessionId: gameId ?? null,
@@ -6229,7 +6272,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (
       terminalPresentationActive ||
       holmLastHandPresentationPending ||
-      liveTerminalPresentationPending || heldYahtzee || heldFarkle || heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21
+      liveTerminalPresentationPending || heldYahtzee || heldFarkle || heldDice || heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21
     ) return;
     setSessionEndedTableAdmitted(true);
   }, [
@@ -6240,7 +6283,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     liveTerminalPresentationPending,
     heldYahtzee,
     heldFarkle,
-    heldCanasta, heldGolf, heldRacePoker, heldBattle31, heldQuintzee, heldWords, heldBoxdrop, heldTripFlip, heldTakeTwo, heldRoyal, heldEleven, heldRun21,
+    heldDice, heldCanasta, heldGolf, heldRacePoker, heldBattle31, heldQuintzee, heldWords, heldBoxdrop, heldTripFlip, heldTakeTwo, heldRoyal, heldEleven, heldRun21,
   ]);
 
   // Redirect to lobby when session ends.
@@ -6256,7 +6299,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (
       terminalPresentationActive ||
       holmLastHandPresentationPending ||
-      liveTerminalPresentationPending || heldYahtzee || heldFarkle || heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21
+      liveTerminalPresentationPending || heldYahtzee || heldFarkle || heldDice || heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21
     ) return;
     // Transient Session Ended table: this client stayed through the live
     // terminal presentation, so navigation is now user-owned (Back to Lobby).
@@ -6287,7 +6330,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     })();
     return () => { cancelled = true; };
-  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, liveTerminalPresentationPending, sessionEndedTableAdmitted, heldYahtzee, heldFarkle, heldCanasta, heldGolf, heldRacePoker, heldBattle31, heldQuintzee, heldWords, heldBoxdrop, heldTripFlip, heldTakeTwo, heldRoyal, heldEleven, heldRun21]);
+  }, [game?.status, gameId, navigate, terminalPresentationActive, holmLastHandPresentationPending, liveTerminalPresentationPending, sessionEndedTableAdmitted, heldYahtzee, heldFarkle, heldDice, heldCanasta, heldGolf, heldRacePoker, heldBattle31, heldQuintzee, heldWords, heldBoxdrop, heldTripFlip, heldTakeTwo, heldRoyal, heldEleven, heldRun21]);
 
   const { acceptCompletion: accept357TerminalCompletion, canAdvance: canAdvance357Postgame } =
     useThreeFiveSevenTerminalCompletion({
@@ -11321,16 +11364,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.status, game?.game_type, game?.last_round_result, players, holmWinPotPresentationKey, holmTerminalRevealPresentationKey, holmTerminalRevealCompleteKey]);
 
   // UUID-scoped persisted result supplies both destination and award amount.
-  const horsesTerminalRoundId = terminalRoundForHold?.id ?? liveTerminalPresentationScopeRef.current?.roundId;
-  const horsesTerminalIdentity = game && gameId && game.current_game_uuid && horsesTerminalRoundId &&
-    (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')
-    ? [game.game_type, 'winseq', gameId, game.current_game_uuid, game.total_hands, horsesTerminalRoundId].join('|')
+  const horsesTerminalRound = heldDice?.round ?? terminalRoundForHold;
+  const horsesTerminalRoundId = horsesTerminalRound?.id ?? liveTerminalPresentationScopeRef.current?.roundId;
+  const horsesTerminalDealerGameId = heldDice?.round.dealer_game_id ?? game?.current_game_uuid;
+  const horsesTerminalGameType = heldDice?.gameType ?? game?.game_type;
+  const horsesTerminalHand = heldDice?.round.hand_number ?? game?.total_hands;
+  const horsesTerminalIdentity = game && gameId && horsesTerminalDealerGameId && horsesTerminalRoundId &&
+    (horsesTerminalGameType === 'horses' || horsesTerminalGameType === 'ship-captain-crew')
+    ? [horsesTerminalGameType, 'winseq', gameId, horsesTerminalDealerGameId, horsesTerminalHand, horsesTerminalRoundId].join('|')
     : null;
   const horsesTerminalIdentityRef = useRef(horsesTerminalIdentity);
   horsesTerminalIdentityRef.current = horsesTerminalIdentity;
-  const horsesTerminalEligible = game?.status === 'game_over' || liveTerminalPresentationPending;
-  const horsesTerminalWinnerId = horsesSccTerminalWinner((terminalRoundForHold as any)?.horses_state ?? null, game?.game_type ?? '');
-  const horsesTerminalSeatsKey = players.map(player => `${player.id}:${player.position}`).join('|');
+  const horsesTerminalEligible = !!heldDice || game?.status === 'game_over' || liveTerminalPresentationPending;
+  const horsesTerminalWinnerId = horsesSccTerminalWinner((horsesTerminalRound as any)?.horses_state ?? null, horsesTerminalGameType ?? '');
+  const horsesTerminalPlayers = heldDice?.players ?? players;
+  const horsesTerminalSeatsKey = horsesTerminalPlayers.map(player => `${player.id}:${player.position}`).join('|');
   useEffect(() => {
     if (horsesWinPotTriggerId && horsesWinPotTriggerId !== horsesTerminalIdentity) {
       setHorsesWinPotTriggerId(null);
@@ -11339,13 +11387,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [horsesTerminalIdentity, horsesWinPotTriggerId]);
   useEffect(() => {
-    if (!horsesTerminalIdentity || !horsesTerminalEligible || !game?.last_round_result) return;
+    if (!horsesTerminalIdentity || !horsesTerminalEligible || (!heldDice && !game?.last_round_result)) return;
     if (horsesWinProcessedRef.current === horsesTerminalIdentity || horsesWinPotTriggerId) return;
     const identity = horsesTerminalIdentity;
     let cancelled = false;
     const trigger = (winnerId: string | null, pot: number) => {
       if (cancelled || horsesTerminalIdentityRef.current !== identity) return false;
-      const winner = players.find(player => player.id === winnerId);
+      const winner = horsesTerminalPlayers.find(player => player.id === winnerId);
       if (!winner || !(pot > 0)) return false;
       horsesWinProcessedRef.current = identity;
       setHorsesWinPotAmount(pot);
@@ -11362,20 +11410,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const { data, error } = await supabase.from('game_results')
           .select('winner_player_id, pot_won, game_type')
           .eq('game_id', gameId!)
-          .eq('dealer_game_id', game!.current_game_uuid!)
-          .eq('hand_number', game!.total_hands!)
+          .eq('dealer_game_id', horsesTerminalDealerGameId!)
+          .eq('hand_number', horsesTerminalHand!)
           .abortSignal(signal).maybeSingle();
         if (error) throw error;
         return data;
       });
       if (cancelled || horsesTerminalIdentityRef.current !== identity) return;
-      if (!data || data.game_type !== game!.game_type) return;
+      if (!data || data.game_type !== horsesTerminalGameType) return;
       trigger(data.winner_player_id, data.pot_won);
     })().catch(error => {
       if (!cancelled) console.error('[HORSES WIN] Authoritative result lookup failed', error);
     });
     return () => { cancelled = true; };
-  }, [horsesTerminalIdentity, horsesTerminalEligible, horsesTerminalWinnerId, horsesTerminalSeatsKey, game?.last_round_result, horsesWinPotTriggerId, gameId]);
+  }, [horsesTerminalIdentity, horsesTerminalEligible, horsesTerminalWinnerId, horsesTerminalSeatsKey, horsesTerminalDealerGameId, horsesTerminalHand, horsesTerminalGameType, heldDice, game?.last_round_result, horsesWinPotTriggerId, gameId]);
 
   // Cache pot value for 3-5-7 win animation (pot gets reset before game_over)
   const cachedPotFor357WinRef = useRef<number>(0);
@@ -12175,6 +12223,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     void advanceFarklePostgame(scope).then(() => fetchGameData()).catch(() => { void fetchGameData(); });
   }, [farkleTerminal.complete, markTerminalPresentationComplete, fetchGameData]);
 
+  const retryYahtzeePostgame = useYahtzeePostgameRecovery(gameId, game?.is_paused === true, fetchGameData);
   const handleYahtzeeTerminalPresentationComplete = useCallback((terminalIdentity: string) => {
     const completedScope = yahtzeeTerminal.complete(terminalIdentity);
     if (!completedScope) return;
@@ -12189,14 +12238,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     gameOverTransitionRef.current = false;
     // Submit the captured source identity, never a newer game's identity.
     // PostgreSQL already dedupes callers; no peer-completion barrier is added.
-    void advanceYahtzeePostgame(completedScope).then(() => fetchGameData()).catch(error => {
-      console.error('[YAHTZEE] Post-presentation handoff failed', error);
-      if (terminalStatusFactsRef.current.lastRoundResult === facts.lastRoundResult) {
-        yahtzeeGameOverProcessedRef.current = null;
-      }
-      void fetchGameData();
-    });
-  }, [markTerminalPresentationComplete, yahtzeeTerminal.complete, fetchGameData]);
+    retryYahtzeePostgame(completedScope);
+  }, [markTerminalPresentationComplete, yahtzeeTerminal.complete, retryYahtzeePostgame]);
 
   useEffect(() => {
     if (game?.game_type !== 'yahtzee' || game?.status !== 'game_over') {
@@ -13111,7 +13154,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // gate that would otherwise release the gameplay surface at
   // either terminal status consults it. No status rewrite, no timer, no
   // duplicate surface.
-  const _terminalPresentationHold = !!heldCanasta || !!heldGolf || !!heldRacePoker || !!heldBattle31 || !!heldQuintzee || !!heldWords || !!heldBoxdrop || !!heldTripFlip || !!heldTakeTwo || !!heldRoyal || !!heldEleven || !!heldRun21 || !!heldFarkle || !!heldYahtzee || shouldHoldTerminalSeatOwnership(
+  const _terminalPresentationHold = !!heldDice || !!heldCanasta || !!heldGolf || !!heldRacePoker || !!heldBattle31 || !!heldQuintzee || !!heldWords || !!heldBoxdrop || !!heldTripFlip || !!heldTakeTwo || !!heldRoyal || !!heldEleven || !!heldRun21 || !!heldFarkle || !!heldYahtzee || shouldHoldTerminalSeatOwnership(
     game.status,
     terminalPresentationActive,
     holmLastHandPresentationPending,
@@ -13125,7 +13168,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // the canonical terminal presentation to have already completed and this
   // predicate is only reachable after that completion token landed.
   const _sessionEndedTableActive =
-    sessionEndedTableAdmitted && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldYahtzee && !heldFarkle &&
+    sessionEndedTableAdmitted && !heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldYahtzee && !heldFarkle &&
     (game.status as string) === 'session_ended' &&
     !terminalPresentationActive &&
     !holmLastHandPresentationPending &&
@@ -13168,7 +13211,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const sessionHostUserId = currentHost ?? sessionHostPlayer?.user_id ?? null;
   const sessionHostName = sessionHostPlayer?.profiles?.username ?? 'the session host';
   const isCreator = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
-  const isWaitingTableStatus = !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && (game.status === 'waiting' || game.status === 'waiting_for_players');
+  const isWaitingTableStatus = !heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && (game.status === 'waiting' || game.status === 'waiting_for_players');
   const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
@@ -13189,7 +13232,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const enableOuterShell =
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
   const presentationMode = enableOuterShell
-    ? resolvePresentationMode(presentationCatalog, heldCanasta ? 'canasta' : heldGolf ? 'six-card-golf' : heldRacePoker ? 'race-poker' : heldBattle31 ? 'battle-31' : heldQuintzee ? 'quintzee' : heldWords ? 'ptown-words' : heldBoxdrop ? 'boxdrop' : heldTripFlip ? 'trip-flip' : heldTakeTwo ? 'take-two' : heldRoyal ? 'royal-flash' : heldEleven ? 'eleven-up' : heldRun21 ? 'run21' : game.game_type, heldCanasta?.dealerGameId ?? heldGolf?.dealerGameId ?? heldRacePoker?.dealerGameId ?? heldBattle31?.dealerGameId ?? heldQuintzee?.dealerGameId ?? heldWords?.dealerGameId ?? heldBoxdrop?.dealerGameId ?? heldTripFlip?.dealerGameId ?? heldTakeTwo?.dealerGameId ?? heldRoyal?.dealerGameId ?? heldEleven?.dealerGameId ?? heldRun21?.dealerGameId ?? game.current_game_uuid, heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21 ? 'game_over' : game.status, _sessionEndedTableActive)
+    ? resolvePresentationMode(presentationCatalog, heldDice ? heldDice.gameType : heldCanasta ? 'canasta' : heldGolf ? 'six-card-golf' : heldRacePoker ? 'race-poker' : heldBattle31 ? 'battle-31' : heldQuintzee ? 'quintzee' : heldWords ? 'ptown-words' : heldBoxdrop ? 'boxdrop' : heldTripFlip ? 'trip-flip' : heldTakeTwo ? 'take-two' : heldRoyal ? 'royal-flash' : heldEleven ? 'eleven-up' : heldRun21 ? 'run21' : game.game_type, heldCanasta?.dealerGameId ?? heldGolf?.dealerGameId ?? heldRacePoker?.dealerGameId ?? heldBattle31?.dealerGameId ?? heldQuintzee?.dealerGameId ?? heldWords?.dealerGameId ?? heldBoxdrop?.dealerGameId ?? heldTripFlip?.dealerGameId ?? heldTakeTwo?.dealerGameId ?? heldRoyal?.dealerGameId ?? heldEleven?.dealerGameId ?? heldRun21?.dealerGameId ?? game.current_game_uuid, heldDice || heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21 ? 'game_over' : game.status, _sessionEndedTableActive)
     : 'table';
   const isFullscreenPresentation = presentationMode === 'fullscreen';
 
@@ -13210,9 +13253,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // canonical-route by default — every game family currently selectable
   // in the setup modal is a canonical-shell family, so this is safe.
   const _routeShellGameType =
-    heldCanasta ? 'canasta' : heldGolf ? 'six-card-golf' : heldRacePoker ? 'race-poker' : heldBattle31 ? 'battle-31' : heldQuintzee ? 'quintzee' : heldWords ? 'ptown-words' : heldBoxdrop ? 'boxdrop' : heldTripFlip ? 'trip-flip' : heldTakeTwo ? 'take-two' : heldRoyal ? 'royal-flash' : heldEleven ? 'eleven-up' : heldRun21 ? 'run21' : heldFarkle ? 'farkle' : heldYahtzee ? 'yahtzee' : game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+    heldDice ? heldDice.gameType : heldCanasta ? 'canasta' : heldGolf ? 'six-card-golf' : heldRacePoker ? 'race-poker' : heldBattle31 ? 'battle-31' : heldQuintzee ? 'quintzee' : heldWords ? 'ptown-words' : heldBoxdrop ? 'boxdrop' : heldTripFlip ? 'trip-flip' : heldTakeTwo ? 'take-two' : heldRoyal ? 'royal-flash' : heldEleven ? 'eleven-up' : heldRun21 ? 'run21' : heldFarkle ? 'farkle' : heldYahtzee ? 'yahtzee' : game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
   const _routeShellAnteAmount =
-    heldCanasta?.anteAmount ?? heldGolf?.anteAmount ?? heldRacePoker?.anteAmount ?? heldBattle31?.anteAmount ?? heldQuintzee?.anteAmount ?? heldWords?.anteAmount ?? heldBoxdrop?.anteAmount ?? heldTripFlip?.anteAmount ?? heldTakeTwo?.anteAmount ?? heldRoyal?.anteAmount ?? heldEleven?.anteAmount ?? heldRun21?.anteAmount ?? heldFarkle?.anteAmount ?? heldYahtzee?.anteAmount ?? game.ante_amount ?? previousGameConfig?.ante_amount ?? 0;
+    heldDice?.anteAmount ?? heldCanasta?.anteAmount ?? heldGolf?.anteAmount ?? heldRacePoker?.anteAmount ?? heldBattle31?.anteAmount ?? heldQuintzee?.anteAmount ?? heldWords?.anteAmount ?? heldBoxdrop?.anteAmount ?? heldTripFlip?.anteAmount ?? heldTakeTwo?.anteAmount ?? heldRoyal?.anteAmount ?? heldEleven?.anteAmount ?? heldRun21?.anteAmount ?? heldFarkle?.anteAmount ?? heldYahtzee?.anteAmount ?? game.ante_amount ?? previousGameConfig?.ante_amount ?? 0;
   const _isConfiguringContext =
     game.status === 'game_selection' ||
     game.status === 'configuring' ||
@@ -13710,7 +13753,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               </>
             )}
-            {(!heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && !is357TerminalPresentationCurrent && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
+            {(!heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && !is357TerminalPresentationCurrent && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
               game.status === 'game_selection' ||
               game.status === 'configuring' ||
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
@@ -14036,7 +14079,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return null;
             })()}
             gameId={gameId ?? null}
-            readinessScope={!heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
+            readinessScope={!heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
             persistentChildrenKey={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (gameId ?? null) : null}
             // ORDINARY-WIN CONTINUITY (Defect A owner). This flag makes the
             // slot controller render NeutralInterstitial *exclusively* —
@@ -14069,7 +14112,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             neutralParticipants={players as any}
             neutralCurrentUserId={user?.id ?? null}
             neutralParticipantGameType={game.game_type ?? null}
-            preGameOverlay={!heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && (_isPokerShellPersistent || _isCanonicalShellPersistent) ? (
+            preGameOverlay={!heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && (_isPokerShellPersistent || _isCanonicalShellPersistent) ? (
               <>
                 {/* HighCardDealerSelection overlay — bootstrap dealer
                     selection for any persistent shell (poker-variant
@@ -14157,7 +14200,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
             neutralAnteAmount={game.ante_amount || 1}
             readyToMount={(() => {
-              if (heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21 || heldYahtzee || heldFarkle) return true;
+              if (heldDice || heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21 || heldYahtzee || heldFarkle) return true;
               // Phase 7 readiness gate (narrow scope): only answer
               // "is the intended gameplay surface ready to paint a
               // stable first frame?". Default true for statuses where
@@ -14201,14 +14244,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
           >
             {(() => {
-          const isInProgress = !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'in_progress';
-          const renderGameType = heldCanasta ? 'canasta' : heldGolf ? 'six-card-golf' : heldRacePoker ? 'race-poker' : heldBattle31 ? 'battle-31' : heldQuintzee ? 'quintzee' : heldWords ? 'ptown-words' : heldBoxdrop ? 'boxdrop' : heldTripFlip ? 'trip-flip' : heldTakeTwo ? 'take-two' : heldRoyal ? 'royal-flash' : heldEleven ? 'eleven-up' : heldRun21 ? 'run21' : heldFarkle ? 'farkle' : heldYahtzee ? 'yahtzee' : game.game_type;
+          const isInProgress = !heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'in_progress';
+          const renderGameType = heldDice ? heldDice.gameType : heldCanasta ? 'canasta' : heldGolf ? 'six-card-golf' : heldRacePoker ? 'race-poker' : heldBattle31 ? 'battle-31' : heldQuintzee ? 'quintzee' : heldWords ? 'ptown-words' : heldBoxdrop ? 'boxdrop' : heldTripFlip ? 'trip-flip' : heldTakeTwo ? 'take-two' : heldRoyal ? 'royal-flash' : heldEleven ? 'eleven-up' : heldRun21 ? 'run21' : heldFarkle ? 'farkle' : heldYahtzee ? 'yahtzee' : game.game_type;
           const isYahtzeeGameOver =
             !!heldYahtzee || (renderGameType === 'yahtzee' &&
             (game.status === 'game_over' || _terminalPresentationHold));
-          const isAnteDecision = !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'ante_decision';
-          const isCribbageDealerSelection = !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'cribbage_dealer_selection';
-          const isGinRummyDealerSelection = !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'dealer_selection' && renderGameType === 'gin-rummy';
+          const isAnteDecision = !heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'ante_decision';
+          const isCribbageDealerSelection = !heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'cribbage_dealer_selection';
+          const isGinRummyDealerSelection = !heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && game.status === 'dealer_selection' && renderGameType === 'gin-rummy';
           // LAST-HAND terminal presentation hold: on a final-hand win the
           // authoritative status goes straight to `session_ended` (never
           // through `game_over`), which previously dropped the cribbage
@@ -14735,25 +14778,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // from mounting a second MobileGameTable under the active dice table.
           const isDiceGameOver = (game.status === 'game_over' || _terminalPresentationHold) && (renderGameType === 'horses' || renderGameType === 'ship-captain-crew');
           if ((isInProgress || isAnteDecision || isDiceGameOver || !!horsesWinPotTriggerId) && (renderGameType === 'horses' || renderGameType === 'ship-captain-crew')) {
-            const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
+            const diceRenderRound = heldDice?.round ?? currentRound;
+            const horsesState = diceRenderRound?.horses_state as HorsesStateFromDB | null;
             const isDiceTerminalPresentation = isDiceGameOver || (!!horsesWinPotTriggerId && !isInProgress && !isAnteDecision);
 
             return (
               <MobileGameTable sessionEndedPhase={_sessionEndedTableActive}
                 key={gameId ?? 'unknown-game'}
                 instanceLabel="cribbage-or-special"
-                currentRoundNotReadyForPresentation={currentRoundNotReadyForPresentation}
+                currentRoundNotReadyForPresentation={heldDice ? false : currentRoundNotReadyForPresentation}
                 gameId={gameId}
-                players={players}
+                players={heldDice?.players ?? players}
                 currentUserId={user?.id}
                 pot={potForDisplay}
-                currentRound={game.current_round ?? 0}
+                currentRound={heldDice?.currentRound ?? game.current_round ?? 0}
                 allDecisionsIn={isDiceTerminalPresentation}
                 playerCards={[]}
                 timeLeft={isInProgress ? timeLeft : (isAnteDecision ? anteTimeLeft : null)}
                 maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
                 lastRoundResult={(isInProgress || isDiceTerminalPresentation) ? ((game as any).last_round_result || null) : null}
-                dealerPosition={game.dealer_position}
+                dealerPosition={heldDice?.dealerPosition ?? game.dealer_position ?? 1}
                 legValue={game.leg_value ?? 0}
                 legsToWin={game.legs_to_win || 3}
                 potMaxEnabled={game.pot_max_enabled ?? true}
@@ -14761,11 +14805,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pendingSessionEnd={game.pending_session_end || false}
                 awaitingNextRound={game.awaiting_next_round || false}
                 gameType={renderGameType}
-                roundStatus={currentRound?.status}
+                roundStatus={diceRenderRound?.status}
                 isPaused={game.is_paused || false}
-                anteAmount={game.ante_amount || 1}
+                anteAmount={heldDice?.anteAmount ?? game.ante_amount ?? 1}
                 pussyTaxValue={game.pussy_tax_value || 1}
-                gameStatus={game.status}
+                gameStatus={heldDice ? 'game_over' : game.status}
                 anteAnimationTriggerId={anteAnimationTriggerId}
                 anteAnimationExpectedPot={anteAnimationExpectedPot}
                 preAnteChips={preAnteChips}
@@ -14787,10 +14831,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onFold={() => {}}
                 onSelectSeat={handleSelectSeat}
                 // Horses-specific state
-                horsesRoundId={currentRound?.id || null}
+                horsesRoundId={diceRenderRound?.id || null}
                 horsesState={horsesState}
-                horsesDealerGameId={(game as any).current_game_uuid ?? null}
-                horsesHandNumber={currentRound?.hand_number ?? null}
+                horsesDealerGameId={heldDice?.round.dealer_game_id ?? game.current_game_uuid ?? null}
+                horsesHandNumber={diceRenderRound?.hand_number ?? null}
                 isGameOver={isDiceTerminalPresentation}
                 isDealer={isDiceTerminalPresentation ? (isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false) : undefined}
                 onNextGame={isDiceTerminalPresentation ? handleDealerConfirmGameOver : undefined}
@@ -14800,10 +14844,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 horsesWinWinnerPosition={horsesWinWinnerPosition}
                 onHorsesWinPotAnimationComplete={() => {
                   if (!horsesWinPotTriggerId || horsesWinPotTriggerId !== horsesTerminalIdentityRef.current) return;
+                  const completed = diceTerminal.complete(horsesWinPotTriggerId);
                   markTerminalPresentationComplete(horsesWinPotTriggerId);
                   setHorsesWinPotTriggerId(null);
                   cachedPotForHorsesWinRef.current = 0;
-                  if (terminalStatusFactsRef.current.status !== 'session_ended') handleGameOverComplete();
+                  if (terminalStatusFactsRef.current.status !== 'session_ended' && (!completed || game.current_game_uuid === completed.dealerGameId)) handleGameOverComplete();
                 }}
                 // Lifted mobile state
                 activeTab={mobileActiveTab}
@@ -15315,8 +15360,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isShellSeatRosterMember = (p: { status?: string | null }) =>
     p.status !== 'observer' && p.status !== 'left';
   // Stable-identity shell seat roster (see hook-rule note below).
-  const shellPresentationPlayers = heldCanasta?.players ?? heldGolf?.players ?? heldRacePoker?.players ?? heldBattle31?.players ?? heldQuintzee?.players ?? heldWords?.players ?? heldBoxdrop?.players ?? heldTripFlip?.players ?? heldTakeTwo?.players ?? heldRoyal?.players ?? heldEleven?.players ?? heldRun21?.players ?? heldFarkle?.players ?? heldYahtzee?.players ?? players;
-  const shellPresentationViewer = heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21 || heldYahtzee || heldFarkle
+  const shellPresentationPlayers = heldDice?.players ?? heldCanasta?.players ?? heldGolf?.players ?? heldRacePoker?.players ?? heldBattle31?.players ?? heldQuintzee?.players ?? heldWords?.players ?? heldBoxdrop?.players ?? heldTripFlip?.players ?? heldTakeTwo?.players ?? heldRoyal?.players ?? heldEleven?.players ?? heldRun21?.players ?? heldFarkle?.players ?? heldYahtzee?.players ?? players;
+  const shellPresentationViewer = heldDice || heldCanasta || heldGolf || heldRacePoker || heldBattle31 || heldQuintzee || heldWords || heldBoxdrop || heldTripFlip || heldTakeTwo || heldRoyal || heldEleven || heldRun21 || heldYahtzee || heldFarkle
     ? shellPresentationPlayers.find(player => player.user_id === user?.id) : currentPlayer;
   const _shellSeatRosterKey = shellAnchorEligible
     ? shellPresentationPlayers

@@ -84,6 +84,30 @@ afterEach(() => {
 });
 
 describe('ChipPresentationLedger lifecycle callbacks', () => {
+  it.each(['queued', 'running'] as const)('retains only the captured null-round Yahtzee payout across peer advancement (%s)', async (stage) => {
+    const { isYahtzeeTerminalPayout } = await import('../yahtzeeTerminalPresentation');
+    const scope = { gameId: 'session', dealerGameId: 'dealer', roundId: 'round', handNumber: 1, winnerId: 'winner', loserIds: ['loser'] };
+    realtime.rows.players = [{id:'loser',position:1,chips:10,chip_transfer_cursor:0},{id:'winner',position:2,chips:10,chip_transfer_cursor:0}];
+    realtime.rows.games = {pot:0,pot_transfer_cursor:0,current_game_uuid:'dealer',authority_revision:1};
+    const flights: import('./ChipPresentationLedger').LedgerDispatchOptions[] = [];
+    const transport = {dispatch:vi.fn((_intent,options)=>{flights.push(options);return true;}),cancel:vi.fn()};
+    const settled = vi.fn(); let ready = stage === 'running'; let ledger: ReturnType<typeof useChipPresentationLedger>;
+    function Harness() { ledger = useChipPresentationLedger('session',transport,()=>ready,Number(ready),settled,undefined,undefined,undefined,true,false,b=>isYahtzeeTerminalPayout(b,scope)); return null; }
+    const payout: ChipPresentationBatch = {id:'payout',game_id:'session',dealer_game_id:'dealer',source_round_id:null,cursor:1,reason:'transfer',opening_balances:{'player:loser':10,'player:winner':10},closing_balances:{'player:loser':3,'player:winner':17},transfers:[{id:'flight',amount:7,from:{kind:'player',playerId:'loser'},to:{kind:'player',playerId:'winner'}}]};
+    await act(async()=>{root.render(<Harness/>);});
+    await act(async()=>{realtime.batchInsert?.({new:payout});});
+    await act(async()=>{realtime.gameUpdate?.({new:{pot:0,pot_transfer_cursor:0,current_game_uuid:null,authority_revision:2}});});
+    expect(ledger!.cursorState(1)).toBe(stage); expect(transport.cancel).not.toHaveBeenCalled();
+    ready=true; await act(async()=>{root.render(<Harness/>);});
+    await act(async()=>{realtime.gameUpdate?.({new:{pot:0,pot_transfer_cursor:0,current_game_uuid:'successor',authority_revision:3}});});
+    expect(ledger!.cursorState(1)).toBe('running'); expect(settled).not.toHaveBeenCalled();
+    await act(async()=>{realtime.batchInsert?.({new:{...payout,id:'foreign',game_id:'another-session',cursor:2}});});
+    expect(transport.dispatch).toHaveBeenCalledTimes(1);
+    await act(async()=>{flights[0].onSettled?.();flights[0].onSettled?.();realtime.batchInsert?.({new:payout});});
+    expect(settled).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({id:'payout'}));
+    expect(ledger!.cursorState(1)).toBe('settled');
+  });
+
   it('retains the exact dice award through peer next-game selection and ignores stale completion',async()=>{
     realtime.rows.games={pot:4,pot_transfer_cursor:0,current_game_uuid:'dealer',authority_revision:1};
     const flights: import('./ChipPresentationLedger').LedgerDispatchOptions[]=[];

@@ -1,4 +1,5 @@
 import {useRun21Action} from './useRun21Action';
+import {subscribeAuthoritativeRecoverySnapshot} from '@/lib/realtimeAuthoritativeCatchup';
 import {run21SnapshotTiming,run21RoundTiming,run21Timing} from '@/lib/run21/diagnostics';
 import {UncertainRun21Action} from '@/lib/run21/actionPresentation';
 import {useCallback,useEffect,useRef,useState} from 'react';
@@ -90,9 +91,10 @@ export function useRun21Local(gameId:string,dealerGameId:string,authoritativeCom
   },[gameId,dealerGameId,accept,retry]);
   useEffect(()=>{
     const silence=()=>{celebrations.current.silence();refreshPresentation(n=>n+1);};
+    const stopRecovery=subscribeAuthoritativeRecoverySnapshot(()=>{setConnected(false);silence();setRetry(n=>n+1);});
     const hidden=()=>{if(document.hidden)silence();};
     window.addEventListener('offline',silence);document.addEventListener('visibilitychange',hidden);
-    return()=>{window.removeEventListener('offline',silence);document.removeEventListener('visibilitychange',hidden);};
+    return()=>{stopRecovery();window.removeEventListener('offline',silence);document.removeEventListener('visibilitychange',hidden);};
   },[dealerGameId]);
   useEffect(()=>{
     if(!authoritativeComplete)return;

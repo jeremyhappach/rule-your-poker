@@ -2,6 +2,7 @@
 // Circular felt, opponent chip, tabs (cards, chat, lobby, history)
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import {useCompletionRetry} from '@/hooks/useCompletionRetry';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
@@ -2062,6 +2063,9 @@ export const GinRummyGameTable = ({
   // Hand-rotation path uses handCompletionInProgress as before.
   const handCompletionInProgress = useRef(false);
   const matchEndKeyRef = useRef<string | null>(null);
+  const successorRetry = useCompletionRetry(`${gameId}:${dealerGameId}:${roundId}:${handNumber}:${currentUserId}`);
+  const announcedHandResult = useRef<string | null>(null);
+  useEffect(() => { handCompletionInProgress.current = false; }, [gameId,dealerGameId,roundId,handNumber]);
 
   useEffect(() => {
     if (!viewState || viewState.phase !== 'complete') return;
@@ -2073,6 +2077,8 @@ export const GinRummyGameTable = ({
       ? `${dealerGameId}:${viewState.winnerPlayerId}`
       : null;
     if (matchKey && matchEndKeyRef.current === matchKey) return;
+    const successorReceipt = !viewState.winnerPlayerId ? successorRetry.begin() : null;
+    if (!viewState.winnerPlayerId && !successorReceipt) return;
 
     handCompletionInProgress.current = true;
     if (matchKey) matchEndKeyRef.current = matchKey;
@@ -2117,6 +2123,8 @@ export const GinRummyGameTable = ({
         const handResultScope = { dealerGameId: gameId, roundId: currentRoundId ?? null };
         // Supersede the interim plate emitted at knock/gin moment so the
         // final scored hand_result takes over the same rail slot.
+        if (announcedHandResult.current !== handResultId) {
+        announcedHandResult.current = handResultId;
         announcements.dismiss(interimId);
         announcements.clearAmbient('waiting_for_player');
         if (viewState.knockResult) {
@@ -2149,6 +2157,7 @@ export const GinRummyGameTable = ({
           });
         }
 
+        }
         // Match-win path
         if (viewState.winnerPlayerId) {
           // Gate match-win sequence on the hand-result actually leaving
@@ -2296,21 +2305,24 @@ export const GinRummyGameTable = ({
         const isGin = viewState.knockResult?.isGin;
         const delay = !viewState.knockResult ? 1500 : isGin ? 5000 : 3000;
         await new Promise(resolve => setTimeout(resolve, delay));
+        if (!ginIdentityEqual(committedIdentityRef.current, {dealerGameId,roundId,handNumber})) return;
         if (!roundId) {
           throw new Error('Gin successor identity is incomplete; no next hand was started.');
         }
         const result = await startNextGinRummyHand(roundId);
+        successorReceipt?.succeed(() => {});
         if (result.success) {
           console.log('[GIN-RUMMY] Next hand started:', result.handNumber);
         }
       } catch (err) {
+        successorReceipt?.fail(() => {});
         console.error('[GIN-RUMMY] Hand completion error:', err);
         if (viewState.winnerPlayerId) {
           matchEndKeyRef.current = null;
           onTerminalPresentationActiveChange?.(false);
         }
       } finally {
-        handCompletionInProgress.current = false;
+        if (ginIdentityEqual(committedIdentityRef.current, {dealerGameId,roundId,handNumber})) handCompletionInProgress.current = false;
       }
     };
 
@@ -2324,6 +2336,7 @@ export const GinRummyGameTable = ({
     handNumber,
     onTerminalPresentationActiveChange,
     onTerminalPresentationComplete,
+    successorRetry.revision,
   ]);
 
 

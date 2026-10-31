@@ -1,3 +1,7 @@
+# Pause/resume recovery — approved, publication pending — 2026-10-31
+
+Bounded client recovery package locally qualified; no schema/admission/security changes. Local financial rollback/conservation/idempotency proofs PASS; broader all-game audit remains incomplete. Owner accepted disclosed coverage gaps. See [release scope and evidence](../../e2e/pauseAudit/RELEASE.md). Production publication and exact-SHA receipt verification pending.
+
 # Combined async polish / finale gate — qualified, publication in progress — 2026-10-30
 
 Owner approved the combined package and separately approved its exact Presence

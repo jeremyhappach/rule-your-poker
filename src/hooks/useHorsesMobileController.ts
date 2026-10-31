@@ -1,4 +1,5 @@
 import { useDiceResultPresentation } from './useDiceResultPresentation';
+import {useCompletionRetry} from './useCompletionRetry';
 import {useNoQualifyPresentation} from './useNoQualifyPresentation';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -451,9 +452,10 @@ export function useHorsesMobileController({
     // sync framework's progress comparator can discriminate cross-hand
     // updates instead of canceling the handNumber dim via a shared closure.
     const stampedHand = (propHandNumber ?? authIdentity?.handNumber ?? monotonicHandNumber) as number;
-    const stampedState: HorsesStateFromDB & { __syncHandNumber?: number } = {
+    const stampedState: HorsesStateFromDB & { __syncHandNumber?: number; __syncRoundId?: string } = {
       ...incomingHorsesState,
       __syncHandNumber: stampedHand,
+      __syncRoundId: currentRoundId!,
     };
     const result = syncHandle.receiveAuthoritativeUpdate(stampedState);
     const afterTurn = incomingHorsesState.currentTurnPlayerId ?? null;
@@ -560,7 +562,8 @@ export function useHorsesMobileController({
 
   // Shadow the parameter: all downstream code reads from presentation state.
   // eslint-disable-next-line no-param-reassign
-  horsesState = dealerGameScopeChanged ? null : syncHandle.presentationState;
+  const presentedRoundId = (syncHandle.presentationState as (HorsesStateFromDB & { __syncRoundId?: string }) | null)?.__syncRoundId;
+  horsesState = dealerGameScopeChanged || presentedRoundId !== currentRoundId ? null : syncHandle.presentationState;
 
   // SYNC COMPLIANCE: single presentation-derived identity for effect gating / stale guards / keys.
   // Equals raw currentRoundId only when presentation has actually advanced to that round's state.
@@ -964,7 +967,7 @@ export function useHorsesMobileController({
         if (actionRoundRef.current !== roundId) return null;
         if ((receipt.state.actionSequence ?? 0) < (latestActionStateRef.current?.state.actionSequence ?? 0)) return null;
         latestActionStateRef.current = { roundId, state: receipt.state };
-        syncHandle.receiveAuthoritativeUpdate({ ...receipt.state, __syncHandNumber: monotonicHandNumber } as HorsesStateFromDB);
+        syncHandle.receiveAuthoritativeUpdate({ ...receipt.state, __syncHandNumber: monotonicHandNumber, __syncRoundId: roundId } as HorsesStateFromDB);
         return receipt.outcome !== 'rejected' ? receipt.state : null;
       };
       const pending = actionQueueRef.current.then(run).catch((error) => {
@@ -1906,6 +1909,7 @@ export function useHorsesMobileController({
     processedWinRoundRef.current = null;
   }, [currentRoundId]);
 
+  const completedRoundRetry = useCompletionRetry(`${gameId}:${dealerGameId}:${currentRoundId}:${monotonicHandNumber}:${currentUserId}`);
   useEffect(() => {
     if (!enabled) return;
     if (!gameId || !currentRoundId) return;
@@ -1934,6 +1938,8 @@ export function useHorsesMobileController({
 
     const myPlayerId = myPlayer?.id;
     if (!myPlayerId) return;
+    const completionReceipt = completedRoundRetry.begin();
+    if (!completionReceipt) return;
 
     // Snapshot the originating round identity. If currentRoundId advances by the time
     // the async work runs, abort — the win belonged to a prior round.
@@ -1962,6 +1968,8 @@ export function useHorsesMobileController({
           dealerGameId: identity.current_game_uuid,
           handNumber: identity.total_hands,
         });
+        if (!completionReceipt.isCurrent()) return;
+        completionReceipt.succeed(() => {});
         if (currentRoundIdRef.current !== originatingRoundId) return;
 
         if (completion.transition === "tie_rollover"
@@ -2004,8 +2012,10 @@ export function useHorsesMobileController({
           },
         });
       } catch (completionError) {
-        if (processedWinRoundRef.current === originatingRoundId) processedWinRoundRef.current = null;
-        console.error("[HORSES/SCC] Authoritative completed-round handoff failed:", completionError);
+        completionReceipt.fail(() => {
+          if (processedWinRoundRef.current === originatingRoundId) processedWinRoundRef.current = null;
+          console.error("[HORSES/SCC] Authoritative completed-round handoff failed:", completionError);
+        });
       }
     };
 
@@ -2016,6 +2026,7 @@ export function useHorsesMobileController({
     currentRoundId,
     // P0 #2: depend on AUTHORITATIVE state, not presentation-derived winningPlayerIds.
     incomingHorsesState,
+    completedRoundRetry.revision,
     dealerGameId,
     monotonicHandNumber,
     currentUserId,

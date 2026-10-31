@@ -1,3 +1,4 @@
+import {createAuthoritativeSubscription,scheduleAuthoritativeBoundary,retireAcknowledgedCommand} from '@/lib/authoritativeSubscription';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {acceptBattle31Snapshot,battle31PlayWindow,type Battle31Intent,type Battle31Snapshot} from '@/lib/battle31/model';
 export interface Battle31Command {requestId:string;revision:number;scope:string;intent:Battle31Intent}
@@ -5,8 +6,8 @@ export interface Battle31Transport {load:()=>Promise<Battle31Snapshot>;send:(com
 /** One immutable pending command. Display clocks never advance authoritative play. */
 export function useBattle31(id:string,userId:string,transport:Battle31Transport){
  const [snapshot,setSnapshot]=useState<Battle31Snapshot|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[now,setNow]=useState(0),[epoch,setEpoch]=useState(0),[connected,setConnected]=useState<boolean|null>(null);
- const [online,setOnline]=useState(()=>navigator.onLine);
  const latest=useRef<Battle31Snapshot|null>(null),flight=useRef(false),mounted=useRef(false),generation=useRef(0),scope=useRef(id),clock=useRef({server:0,local:0});scope.current=id;
+ const recoveryRef=useRef<ReturnType<typeof createAuthoritativeSubscription>|null>(null);
  const key=`ptown:battle31:1:${userId}:${id}`;
  const accept=useCallback((v:Battle31Snapshot,token:number)=>{if(!mounted.current||scope.current!==id||token!==generation.current)return;const next=acceptBattle31Snapshot(latest.current,v,id);if(next!==v)return;latest.current=next;setSnapshot(next);clock.current={server:v.serverAt,local:performance.now()};setNow(v.serverAt);setError('');},[id]);
  const resolve=useCallback(async()=>{
@@ -15,11 +16,11 @@ export function useBattle31(id:string,userId:string,transport:Battle31Transport)
   flight.current=true;
   try{
    if(saved){setPending(true);const command=JSON.parse(saved) as Battle31Command;
-    try{accept(await transport.send(command),token);sessionStorage.removeItem(key);}
+    try{accept(await transport.send(command),token);if(token===generation.current)retireAcknowledgedCommand(key,saved);}
     catch(e){
      // Definitive server rejection retires this intent. Network uncertainty keeps
      // exactly the same UUID/payload across reload; never mint a replacement.
-     if(/stale|inactive|phase|illegal|deadline|wrong_turn|forbidden|not_controller|invalid_command|invalid_action|database_rejected/.test((e as Error).message)){sessionStorage.removeItem(key);accept(await transport.load(),token);}
+     if(/stale|inactive|phase|illegal|deadline|wrong_turn|forbidden|not_controller|invalid_command|invalid_action|database_rejected/.test((e as Error).message)){if(token===generation.current)retireAcknowledgedCommand(key,saved);accept(await transport.load(),token);}
      else throw e;
     }
    }else accept(await transport.load(),token);
@@ -27,26 +28,21 @@ export function useBattle31(id:string,userId:string,transport:Battle31Transport)
  },[key,transport,accept]);
  useEffect(()=>{
   mounted.current=true;const token=++generation.current;flight.current=false;latest.current=null;setSnapshot(null);setConnected(null);setError('');setPending(false);
-  let refreshing=false,dirty=false;
-  const refresh=async()=>{dirty=true;if(refreshing)return;refreshing=true;try{while(dirty&&mounted.current&&token===generation.current){dirty=false;accept(await transport.load(),token);}}catch(e){if(mounted.current&&token===generation.current)setError((e as Error).message);}finally{refreshing=false;}};
-  const unsubscribe=transport.subscribe(()=>void refresh(),online=>{if(token!==generation.current)return;setConnected(online);if(online&&latest.current)void resolve();else if(!online)setEpoch(n=>n+1);});void resolve();
-  const recovery=()=>{setEpoch(n=>n+1);setOnline(navigator.onLine);if(!document.hidden&&navigator.onLine)void resolve();};
-  window.addEventListener('online',recovery);window.addEventListener('offline',recovery);window.addEventListener('focus',recovery);document.addEventListener('visibilitychange',recovery);
+  const recovery=createAuthoritativeSubscription({isPaused:()=>!!latest.current?.paused,subscribe:transport.subscribe,load:transport.load,apply:(v,recovering)=>{accept(v,token);if(latest.current!==v)return false;if(recovering)setEpoch(n=>n+1);return true;},connected:setConnected,error:e=>setError((e as Error).message),interrupt:()=>setEpoch(n=>n+1),recoverPending:async()=>{if(sessionStorage.getItem(key))await resolve();}});recoveryRef.current=recovery;
   let timer:ReturnType<typeof setTimeout>,frame:number;
   const tick=()=>{setNow(clock.current.server+performance.now()-clock.current.local);if(latest.current?.board.phase==='round_result'&&!document.hidden)frame=requestAnimationFrame(tick);else timer=setTimeout(tick,100);};tick();
-  return()=>{mounted.current=false;generation.current++;unsubscribe();clearTimeout(timer);cancelAnimationFrame(frame);window.removeEventListener('online',recovery);window.removeEventListener('offline',recovery);window.removeEventListener('focus',recovery);document.removeEventListener('visibilitychange',recovery);};
+  return()=>{mounted.current=false;generation.current++;recovery.dispose();clearTimeout(timer);cancelAnimationFrame(frame);};
  },[transport,accept,resolve]);
- // One request at the persisted boundary, never a polling loop or local advance.
+ // Bounded authoritative reads at the persisted boundary; never local advance.
  useEffect(()=>{
   if(!snapshot||snapshot.paused||snapshot.finished||snapshot.board.phase==='complete')return;
   const deadline=snapshot.board.deadline,at=clock.current.server+performance.now()-clock.current.local;
-  const timer=setTimeout(()=>void resolve(),Math.max(0,deadline-at));
-  return()=>clearTimeout(timer);
- },[snapshot?.scope,snapshot?.board.deadline,snapshot?.paused,snapshot?.finished,resolve]);
+  return scheduleAuthoritativeBoundary(deadline-at,()=>recoveryRef.current?.refresh());
+ },[snapshot?.scope,snapshot?.board.deadline,snapshot?.board.phase,snapshot?.paused,snapshot?.finished,resolve]);
  const act=async(intent:Battle31Intent,expected?:{scope:string;revision:number})=>{
   const control=intent.type==='autoplay_on'||intent.type==='autoplay_off';
   const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;
-  if(!v||!connected||flight.current||sessionStorage.getItem(key)||document.hidden||!navigator.onLine)return;
+  if(!v||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||document.hidden||!navigator.onLine)return;
   if(expected&&(v.scope!==expected.scope||v.revision!==expected.revision))return;
   if(intent.type==='swap'&&(!v.board.hands[v.players.findIndex(p=>p.id===v.viewerId)]?.includes(intent.items[0])||!v.board.center.includes(intent.items[1])))return;
   // Reclaim remains available off turn and while paused; it never resumes play.
@@ -54,5 +50,5 @@ export function useBattle31(id:string,userId:string,transport:Battle31Transport)
   const command:Battle31Command={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
   sessionStorage.setItem(key,JSON.stringify(command));await resolve();
  };
- return {snapshot:snapshot?.id===id?snapshot:null,error:error||(!online||connected===false?'Connection interrupted. Reconnecting…':''),connected:online&&connected===true,pending,now,epoch,act,reconnect:()=>{setOnline(navigator.onLine);setEpoch(n=>n+1);void resolve();}};
+ return {snapshot:snapshot?.id===id?snapshot:null,error:error||(connected===false?'Connection interrupted. Reconnecting…':''),connected:connected===true,pending,now,epoch,act,reconnect:()=>{void recoveryRef.current?.recover();}};
 }

@@ -50,7 +50,7 @@ describe('first dealer-game live-entry gauntlet', () => {
     expect(ginDealSource).toContain("if (deal.phase !== 'PRE_DEAL')");
 
     for (const gameType of ['horses', 'ship-captain-crew', 'yahtzee']) {
-      expect(gameSource).toContain(`game.game_type === '${gameType}'`);
+      expect(gameSource.split('game?.game_type').join('game.game_type')).toContain(`game.game_type === '${gameType}'`);
     }
   });
 });
