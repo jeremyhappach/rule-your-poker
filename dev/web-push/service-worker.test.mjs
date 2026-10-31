@@ -45,3 +45,11 @@ test('expired table pushes never claim the table is open; malformed targets cann
  assert.equal(f.shown[0].body,'Open Ptown to check available tables.');assert.equal(f.shown[0].silent,true);
  await f.fire('notificationclick',{notification:{data:{binding:'binding-a',kind:'table_open',tableId:'https://evil.invalid'},close:()=>{}}});assert.equal(f.navigation.length,0);
 });
+test('invitation uses guarded match landing, suppresses duplicate alerts and shares the match tag with a later turn',async()=>{
+ const f=fixture();await f.bind({binding:'binding-a'});const invite={...payload,kind:'invite'};
+ await f.fire('push',{data:{json:()=>invite}});assert.equal(f.shown[0].body,'You have a new async match invitation.');
+ await f.fire('push',{data:{json:()=>invite}});assert.equal(f.shown.length,1);assert.equal(f.shown[0].silent,true);
+ await f.fire('notificationclick',{notification:{data:f.shown[0].data,close:()=>{}}});assert.deepEqual(f.navigation,['/delayed/'+payload.matchId]);
+ await f.fire('push',{data:{json:()=>({...payload,eventId:'44444444-4444-4444-8444-444444444444'})}});assert.equal(f.shown.length,1);assert.equal(f.shown[0].body,'An async match is ready for your turn.');
+ await f.fire('push',{data:{json:()=>({...invite,expiresAt:Date.now()-1})}});assert.equal(f.shown[0].body,'Open Ptown to check your async matches.');assert.equal(f.shown[0].silent,true);
+});

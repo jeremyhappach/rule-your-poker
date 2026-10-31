@@ -91,12 +91,13 @@ try{
  assert.equal(await val('SELECT count(*)::int v FROM public.profiles WHERE id=ANY($1::uuid[])',[[a,b,outsider]]),0);
  checks.push('rollback removed all synthetic users and candidate schema');
  await raceAndSchedulerProof(db,peer,sql,checks);
- await notificationsProof(db,peer,checks);
  if(withTimezone){const {timezoneProof}=await import('./timezone-proof.mjs');await timezoneProof(db,checks);}
+ if(process.argv.includes('--with-invitations')){const {invitationsProof}=await import('./invitations-proof.mjs');await invitationsProof(db,peer,checks);}
+ await notificationsProof(db,peer,checks);
  passed=true;
  console.log(JSON.stringify({passed:true,checks},null,2));
 }finally{
  await peer?.end();await db?.end();await root.query('DROP DATABASE IF EXISTS '+database);
  const cleanupVerified=(await root.query('SELECT FROM pg_database WHERE datname=$1',[database])).rowCount===0;await root.end();
- mkdirSync('qualification.local/web-push',{recursive:true});writeFileSync('qualification.local/web-push/database-proof-resumed.json',JSON.stringify({passed,cleanupVerified,template,database,sqlSha256:createHash('sha256').update(sql).digest('hex'),checks,limitations:['local auth.sessions shape','no hosted qualification or delivery','timezone compatibility is a separate activation blocker']},null,2));
+ mkdirSync('qualification.local/web-push',{recursive:true});writeFileSync('qualification.local/web-push/database-proof-resumed.json',JSON.stringify({passed,cleanupVerified,template,database,sqlSha256:createHash('sha256').update(sql).digest('hex'),invitationsSha256:process.argv.includes('--with-invitations')?createHash('sha256').update(readFileSync('supabase/web-push/invitations.sql')).digest('hex'):null,checks,limitations:['local auth.sessions shape','no hosted qualification or physical invitation delivery']},null,2));
 }

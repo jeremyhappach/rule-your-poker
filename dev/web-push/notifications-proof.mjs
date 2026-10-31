@@ -26,7 +26,8 @@ export async function notificationsProof(db,peer,checks){
  const denied=async(sql,p=[])=>{await db.query('SAVEPOINT rejected');await assert.rejects(db.query(sql,p));await db.query('ROLLBACK TO SAVEPOINT rejected');};
  for(const id of[a,b,off]){await db.query('INSERT INTO auth.users(id) VALUES($1)',[id]);await db.query('INSERT INTO public.profiles(id,username,is_active) VALUES($1,$2,true) ON CONFLICT(id) DO UPDATE SET is_active=true',[id,'Notifications fixture '+id]);}
  await db.query('INSERT INTO auth.sessions(id,user_id) VALUES($1,$2),($3,$4)',[sidA,a,sidB,b]);
- await role(db,b);assert.deepEqual(await settings(null),{asyncDefault:false,newTable:false,quietEnabled:false,quietStart:'22:00',quietEnd:'07:00',quietZone:'UTC'});
+ const invitations=await q("SELECT EXISTS(SELECT FROM information_schema.columns WHERE table_schema='private' AND table_name='push_defaults' AND column_name='invitations_enabled') v");
+ await role(db,b);assert.deepEqual(await settings(null),{...(invitations?{invitations:false}:{}),asyncDefault:false,newTable:false,quietEnabled:false,quietStart:'22:00',quietEnd:'07:00',quietZone:'UTC'});
  await settings({asyncDefault:true});
  const sub=await q('SELECT public.async_push_subscribe($1,$2,$3) v',['https://web.push.apple.com/notifications-'+b,'B'.repeat(87),'A'.repeat(22)]);
  await db.query('RESET ROLE');await db.query("INSERT INTO private.delayed_matches(id,organizer,opponent,real_money,offer,offer_hash,status,accepted_at) VALUES($1,$2,$3,false,'{}','notifications-proof','active',now())",[match,a,b]);
@@ -39,8 +40,9 @@ export async function notificationsProof(db,peer,checks){
  await db.query('RESET ROLE');await db.query('SET ROLE anon');await denied('SELECT public.notification_preferences()');await denied('SELECT public.notification_table($1)',[randomUUID()]);
  await db.query('RESET ROLE');await db.query('SET ROLE service_role');await denied('SELECT public.notification_preferences()');await denied('SELECT * FROM private.push_defaults');await denied('SELECT private.push_table_allowed($1,$2)',[randomUUID(),b]);
  await db.query('ROLLBACK');await db.query('RESET ROLE');
- const at=(start,end,zone,instant)=>q(`SELECT private.push_quiet_at(ROW($1,false,false,true,$2::time,$3::time,$4)::private.push_defaults,$5::timestamptz) v`,[b,start,end,zone,instant]);
- const transition=(start,end,zone,instant,quiet)=>q(`SELECT private.push_quiet_transition(ROW($1,false,false,true,$2::time,$3::time,$4)::private.push_defaults,$5::timestamptz,$6) v`,[b,start,end,zone,instant,quiet]);
+ const record="jsonb_populate_record(NULL::private.push_defaults,jsonb_build_object('user_id',$1::uuid,'enabled',false,'new_table_enabled',false,'quiet_enabled',true,'quiet_start',$2::time,'quiet_end',$3::time,'quiet_zone',$4::text))";
+ const at=(start,end,zone,instant)=>q(`SELECT private.push_quiet_at(${record},$5::timestamptz) v`,[b,start,end,zone,instant]);
+ const transition=(start,end,zone,instant,quiet)=>q(`SELECT private.push_quiet_transition(${record},$5::timestamptz,$6) v`,[b,start,end,zone,instant,quiet]);
  for(const [instant,expected]of[['2026-01-01T21:59:59Z',false],['2026-01-01T22:00Z',true],['2026-01-02T06:59:59Z',true],['2026-01-02T07:00Z',false]])assert.equal(await at('22:00','07:00','UTC',instant),expected);
  assert.equal(await at('09:00','17:00','UTC','2026-01-01T12:00Z'),true);assert.equal(await at('09:00','17:00','UTC','2026-01-01T17:00Z'),false);
  assert.equal(await at('07:00','07:00','UTC','2026-01-01T18:00Z'),true);

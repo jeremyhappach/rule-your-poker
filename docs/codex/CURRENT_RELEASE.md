@@ -1,4 +1,12 @@
-# Notifications operational completion — pinned timezone correction qualified — 2026-10-31
+# Notifications live; invitations and compact accordion local - 2026-10-31
+
+Notifications are active on `ea6bba1e5912479445dec4f1c40101086837984b`, with
+verified credentials/scheduler/runtime and owner-confirmed iPhone new-turn delivery.
+The missing separate invitation preference and compact per-match Notifications
+accordion are a local correction, not deployed. See
+[scope, evidence and migration boundary](NOTIFICATIONS_INVITATIONS_ACCORDION.md).
+
+# Prior checkpoint: Notifications operational completion - pinned timezone correction qualified - 2026-10-31
 
 Working alerts are the goal; settings-only publication is not a completed feature.
 The settings UI is separated safely from enrollment, and pinned IANA 2026f quiet
