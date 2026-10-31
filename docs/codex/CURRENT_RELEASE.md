@@ -2,9 +2,9 @@
 
 Working alerts are the goal; settings-only publication is not a completed feature.
 The settings UI is separated safely from enrollment, and pinned IANA 2026f quiet
-time conversion passes local SQL/race/DST qualification without a DB upgrade.
-Credentials via the reviewed owner helper, the bounded timezone migration,
-publication and explicit device/test activation remain. See the
+time conversion passes local SQL/race/DST qualification and installed production
+preflight without a DB upgrade (migration `20261031204622`). Credentials via the
+reviewed owner helper, publication and explicit device/test activation remain. See the
 [operational checkpoint](NOTIFICATIONS_OPERATIONAL_SETUP.md) for exact scope,
 hashes, completed checks and minimum next steps. Delivery remains disabled.
 

@@ -27,7 +27,12 @@ SQL hash and coverage are recorded under `dev/web-push/tzdata/`.
 
 Reviewed migration SHA-256:
 `2168f9652fe5da27e37e8a59464bf93fd74b4da0978631dd334c4696e965eace`.
-This follow-up migration was locally qualified, not yet installed at this commit.
+Git/LF-equivalent hash:
+`be698a4f6aecf444d4ec6611607e7b333c9d21b075ace6eeb635b9e7818cfb20`.
+Installed as migration `20261031204622` (`notifications_pinned_iana_2026f`).
+Hosted verification passed all five golden conversions, 344 rules/597 names,
+RLS/revoked direct access and private helper permissions. The complete read-only
+timezone/visibility activation preflight passed. No database upgrade occurred.
 
 ## Completed checks
 
@@ -56,8 +61,7 @@ Evidence: `qualification.local/notifications/ui-smoke-source.json`,
    Supabase Vault. Private signing key and CRON_SECRET are Secret; public keys
    are Config. Clipboard browser qualification is incomplete and disclosed;
    further dummy fixtures are not a release prerequisite. Never print the values.
-2. Apply the reviewed timezone migration after its production scope is cleared,
-   verify converter/version/ACL and the preserved visibility activation gate.
+2. Timezone migration and converter/version/ACL/visibility verification are done.
 3. Complete the existing approved named Supabase scheduler and serialized release;
    verify exact commit, READY, both aliases/manifests and publisher receipt.
 4. Obtain an explicit device/test-delivery activation scope, then enroll that device

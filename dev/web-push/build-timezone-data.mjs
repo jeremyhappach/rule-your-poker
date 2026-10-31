@@ -1,7 +1,8 @@
 import {readFileSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
-const path='dev/web-push/tzdata/2026f-packed.json',bytes=readFileSync(path);
+// Git may check text out with CRLF on Windows; verify the pinned canonical LF bytes.
+const path='dev/web-push/tzdata/2026f-packed.json',bytes=Buffer.from(readFileSync(path,'utf8').replace(/\r\n/g,'\n'));
 assert.equal(createHash('sha256').update(bytes).digest('hex'),'3103c5c0eaa879615da630b74e2373ad9b571e0eae992e0b2a3db6e4475de2ce');
 const data=JSON.parse(bytes);assert.equal(data.version,'2026f');
 const from=Date.parse('2020-01-01T00:00:00Z'),until=Date.parse('2038-01-01T00:00:00Z');
