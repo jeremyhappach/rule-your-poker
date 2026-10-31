@@ -7,6 +7,18 @@ Worker qualification: 139 tests, typecheck/build and 18 synthetic browser cases.
 # Pause/resume recovery — approved, publication pending — 2026-10-31
 
 Bounded client recovery package locally qualified; no schema/admission/security changes. Local financial rollback/conservation/idempotency proofs PASS; broader all-game audit remains incomplete. Owner accepted disclosed coverage gaps. See [release scope and evidence](../../e2e/pauseAudit/RELEASE.md). Production publication and exact-SHA receipt verification pending.
+# Local Web Push — qualified locally, production setup held — 2026-10-31
+
+The isolated `codex/async-web-push-local` candidate passes 26 local tests, final
+SQL rollback/race/scheduled-mock proof with verified cleanup, full typecheck,
+actual-App phone/desktop browser checks and five labeled permission mocks. Final
+SQL SHA-256 starts `61b9aa199189`. No publication, hosted migration, credentials,
+subscriptions or live pushes. Production setup requires explicit approval;
+the existing Hobby plan needs the proposed Supabase scheduler, not Vercel minute
+cron. Exact evidence, integration/physical gates and the setup packet:
+[Web Push checkpoint](WEB_PUSH_LOCAL_CHECKPOINT.md).
+This local note does not supersede coordinator-reported production
+`b64a2d75be9cd2997dfe25a2feef38ea14f8231f` / receipt `41151251116-2`.
 
 # Combined async polish / finale gate — qualified, publication in progress — 2026-10-30
 

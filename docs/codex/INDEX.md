@@ -9,6 +9,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 | File | Read when |
 |---|---|
 | `TRI_TOWERS_AUDIO_NET_LOCAL.md` | Local immediate upcards, progressive tower audio, compact Current Net, final browser proof and serialized release handoff |
+| `WEB_PUSH_LOCAL_CHECKPOINT.md` | Locally qualified Web Push, final SQL/race/browser evidence, integration/physical gates and separate production setup approvals |
 | `ASYNC_PRESENCE_FINALE_RELEASE.md` | Approved combined polish release, per-viewer finale gate, installed Presence policies and authenticated hosted qualification |
 | `ASYNC_LIVE_WORDS_ZOOM_LOCAL.md` | Local presence/live cards, three Words scales, Quintzee final bonuses, async bell visibility, preview and held Realtime permission candidate |
 | `ASYNC_MATCH_LIST_P0_LOCAL.md` | My Async Matches blank-screen correction, real-App proof, verified publication receipt and pending owner smoke |

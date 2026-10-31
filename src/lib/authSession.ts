@@ -10,6 +10,11 @@ export function isConfirmedSessionInvalidation(error: unknown): boolean {
 type LogoutAuth = Pick<SupabaseClient['auth'], 'signOut' | 'getUser' | 'getSession'>;
 
 export async function signOutLocal(auth: LogoutAuth, onSessionInvalidated?: (invalidated: boolean) => void): Promise<void> {
+  // Opt-in push cleanup must precede local session removal on shared devices.
+  if (import.meta.env.VITE_ASYNC_PUSH_ENABLED === 'true') {
+    const push = await import('./webPush/browser');
+    await push.setAccount(null);
+  }
   const { error } = await auth.signOut({ scope: 'local' });
   if (error) {
     if (!isConfirmedSessionInvalidation(error)) throw error;

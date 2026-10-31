@@ -1,0 +1,10 @@
+import{mkdirSync,readFileSync,copyFileSync,writeFileSync}from'node:fs';import{createHash}from'node:crypto';
+const source='qualification.local/web-push',out='dev/web-push/evidence';mkdirSync(out,{recursive:true});
+const sqlHash=createHash('sha256').update(readFileSync('supabase/web-push/candidate.sql')).digest('hex');
+const database=JSON.parse(readFileSync(source+'/database-proof-resumed.json')),browser=JSON.parse(readFileSync(source+'/browser-proof.json'));
+if(!database.passed||!database.cleanupVerified||database.sqlSha256!==sqlHash||!browser.passed)throw Error('Exact-source qualification evidence missing');
+copyFileSync(source+'/database-proof-resumed.json',out+'/database.json');copyFileSync(source+'/browser-proof.json',out+'/browser.json');
+for(const file of ['match-390.png','settings-390.png','mock-permissions-390.png'])copyFileSync(source+'/'+file,out+'/'+file);
+const files=['api/web-push.ts','server/webPush/worker.mjs','server/webPush/scheduled.mjs','server/webPush/transport.mjs','src/lib/webPush/controller.mjs','src/lib/webPush/browser.ts','src/lib/webPush/device.mjs','public/ptown-push-sw.js','supabase/web-push/candidate.sql','supabase/web-push/scheduler-proposal.sql'];
+writeFileSync(out+'/source-hashes.json',JSON.stringify({capturedAt:new Date().toISOString(),localOnly:true,files:Object.fromEntries(files.map(path=>[path,createHash('sha256').update(readFileSync(path)).digest('hex')]))},null,2));
+console.log('Preserved exact-source database/browser evidence and local screenshots.');

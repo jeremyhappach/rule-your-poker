@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "width": 390,
+      "actualApp": true,
+      "matchPersistence": true,
+      "globalIndependent": true,
+      "authorizedDeepLink": true,
+      "bellPreserved": true,
+      "logoutAndUnauthenticatedDeepLink": true
+    },
+    {
+      "width": 1280,
+      "actualApp": true,
+      "matchPersistence": true,
+      "globalIndependent": true,
+      "authorizedDeepLink": true,
+      "bellPreserved": true,
+      "logoutAndUnauthenticatedDeepLink": true
+    },
+    {
+      "mockPermissionScenarios": 5,
+      "newMatchSeed": true,
+      "existingOverride": true,
+      "perViewer": true,
+      "reload": true,
+      "realPermissionPrompt": false
+    }
+  ],
+  "realPermissionOrDelivery": false
+}

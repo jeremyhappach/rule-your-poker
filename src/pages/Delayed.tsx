@@ -1,5 +1,7 @@
 import {PlayingNow} from '@/components/delayed/PlayingNow';
 import {CurrentNet} from '@/components/delayed/CurrentNet';
+import {PushPreferences} from '@/components/delayed/PushPreferences';
+import {pushEnabled} from '@/lib/webPush/browser';
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {turnEntryHint} from '@/lib/delayed/notifications';
 import {AsyncInvite} from '@/components/delayed/AsyncInvite';
@@ -72,6 +74,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   {mayViewFinale(home)?<Link className="delayed-primary" to={'/delayed/'+id+'?finale=1'}>{home.finaleViewed?'Replay match finale':'View match results'}</Link>:home.receipt&&!home.removedAt&&<p role="status">View the remaining game results below before the match finale.</p>}
   <div className="delayed-match-facts"><span>Maximum loss <strong>{home.exposure}</strong> per player</span><span><strong>36h</strong> per turn · Last Call <strong>24h</strong></span></div>
   <p className="delayed-match-policy">A missed deadline forfeits this game only. {home.realMoney?'One net settlement after all games finish.':'Play money settles once at the end; real balances are unaffected.'}</p>
+  {pushEnabled&&!historical&&<PushPreferences key={userId+id} userId={userId} matchId={id}/>}
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
   <ol className="delayed-lineup">{home.lineup.map(c=>{const ours=c.actor===userId,remaining=Date.parse(c.expiresAt??'')-now;

@@ -1,3 +1,11 @@
+## Async Web Push — local candidate only
+
+- `src/lib/webPush/` and `src/components/delayed/PushPreferences.tsx`: explicit device opt-in, account binding and separate global/new-match versus viewer/match preferences.
+- `src/components/delayed/PushLifecycle.tsx`: resolved-auth lifecycle and per-device foreground suppression lease; no gameplay ownership.
+- `supabase/web-push/candidate.sql`: uninstalled private preferences, subscriptions, aggregate events and durable delivery receipts. `scheduler-proposal.sql` is separately unapproved.
+- `server/webPush/`, `api/web-push.ts`, `public/ptown-push-sw.js`: gated scheduled sender, standard encrypted Web Push and authorized match navigation; no cron installed or live credentials.
+- `dev/web-push/` and `docs/codex/WEB_PUSH_LOCAL_CHECKPOINT.md`: local qualification, preserved evidence and production/physical gates.
+
 ## Async result review
 
 - `supabase/migrations/20261030192550_async_presence_finale_reviews.sql`: installed scoped Presence authorization and parent-locked per-viewer finale eligibility.

@@ -15,6 +15,9 @@
   ],
   "buildCommand": "npm run typecheck && vite build",
   "functions": {
+    "api/web-push.ts": {
+      "maxDuration": 60
+    },
     "api/run21.ts": {
       "maxDuration": 300
     }

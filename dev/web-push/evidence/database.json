@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "cleanupVerified": true,
+  "template": "async_reviews_1793308358890",
+  "database": "web_push_fe00_1793456191846",
+  "sqlSha256": "61b9aa19918942a634aa371cb757d4a0da224b037d178a666219381f16ee2778",
+  "checks": [
+    "existing matches conservatively opt out",
+    "global snapshot only at admission; per-viewer overrides; unauthorized match and worker denied",
+    "two children one match episode; repeat updates deduplicate",
+    "expired session, incident hold and terminal match status suppress sends",
+    "exact provider hosts required; expired active gameplay is not actionable",
+    "delivery preference recheck and receipt idempotency",
+    "per-device fanout and leased retries; stale lease cannot finish; no early Last Call",
+    "24h reminder only while pending; stale turn suppressed",
+    "visible-device suppression; expired endpoint disabled",
+    "logout/device disable invalidates old binding",
+    "rollback removed all synthetic users and candidate schema",
+    "two independent DB callers never claim same delivery; receipt race applies once",
+    "new child turn while another waits creates one match transition; concurrent refresh writes create none",
+    "crash lease recovery fences old worker; separately committed preference change stops authorized send",
+    "account rebinding rotates ownership; session revocation stops old-account delivery",
+    "authenticated local scheduled endpoint sends turn + due Last Call without browsers; no repeats; deleted match suppressed",
+    "independent races and local scheduled HTTP sender passed"
+  ],
+  "limitations": [
+    "local auth.sessions shape",
+    "no hosted qualification or delivery"
+  ]
+}

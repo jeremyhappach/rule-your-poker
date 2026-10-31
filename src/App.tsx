@@ -1,5 +1,6 @@
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {NotificationProvider} from '@/components/delayed/NotificationBell';
+import {PushLifecycle} from '@/components/delayed/PushLifecycle';
 import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -199,7 +200,7 @@ const App = () => {
           
           <Toaster />
           <Sonner />
-          <BrowserRouter><NotificationProvider>
+          <BrowserRouter><PushLifecycle/><NotificationProvider>
             <ReleaseVersionGate>
               <AppNetworkSim>
               <WartimeAdminGateMount />

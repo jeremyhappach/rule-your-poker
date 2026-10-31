@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { PushPreferences } from '@/components/delayed/PushPreferences';
+import { pushEnabled } from '@/lib/webPush/browser';
 import { supabase } from '@/integrations/supabase/client';
 import { platformAudio } from '@/lib/audio/platformAudio';
 import { Label } from '@/components/ui/label';
@@ -105,6 +107,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
 
   return (
     <div className="space-y-6">
+      {pushEnabled && <PushPreferences key={userId} userId={userId} />}
       <div className="flex items-center gap-2 pb-2 border-b">
         <Palette className="h-4 w-4" />
         <h3 className="font-semibold">Visual Preferences</h3>
