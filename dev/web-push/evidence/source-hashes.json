@@ -1,16 +1,24 @@
 {
-  "capturedAt": "2026-10-31T14:28:46.231Z",
+  "capturedAt": "2026-10-31T18:39:11.465Z",
   "localOnly": true,
   "files": {
     "api/web-push.ts": "79e2496e55245becfc561ac086e4b92b4d692077a3c0d1783b806519e68a1b82",
-    "server/webPush/worker.mjs": "6cf26e588e89c8cc0492e0b8ef1ec6a7c6ee6c8234fe80a5dda545623291ad23",
+    "src/App.tsx": "52598d7f0731b23a89e2f6138ee1678c6dae93b9eedbead2dfd0cd587fad96a2",
+    "src/components/delayed/PushPreferences.tsx": "e67012d6151e4e89be420491a7f3929cf70dc20700d57621128eb92a64d5b913",
+    "src/pages/NotificationTable.tsx": "0e41cbb8ce2010f661b85b0d5097edabd6b25723f20b873f523493fe709e454c",
+    "server/webPush/worker.mjs": "b167dbb550a3ebac669db24150d09b7483ad32939caa8575453fdd64b386acef",
     "server/webPush/scheduled.mjs": "ddefeeb6d114af3975eab64d56655ff8f8e8b771aad5fba5f5bc54756a7c262e",
-    "server/webPush/transport.mjs": "af5ec334d11b47530d1da60470e143abe12d16c561e428ed4de2e6fc7cb469ff",
+    "server/webPush/transport.mjs": "eb3505e3cefb186a9a841af6383eb280d2236925e128f0c60a70d99f1529f6e3",
     "src/lib/webPush/controller.mjs": "575d8cdf4c44fc5e47853ffba0401f980595b8a935a1ea8c30d40febf358fb80",
     "src/lib/webPush/browser.ts": "4e71c27a4849ab8655bb29766b9e8e8f867f353124035c38cff6e02e56872b1e",
     "src/lib/webPush/device.mjs": "6cf6d92244fbe0a21d98e3ca8eaea061c401a36afd79e7e0e099233892dc1ef7",
-    "public/ptown-push-sw.js": "e4591d3a7ec17e797854d9bab27281fd8af7e78183a87e22613ff53cb0da7469",
-    "supabase/web-push/candidate.sql": "61b9aa19918942a634aa371cb757d4a0da224b037d178a666219381f16ee2778",
-    "supabase/web-push/scheduler-proposal.sql": "9bc5a1f99f9b7474aa62c73795c86ccb9cbf5486ca81f085b9b3999de28a56ea"
+    "public/ptown-push-sw.js": "5bbb1e5387c29ab2bf5bee22c5f661a1e6a603f73f3c8a0f513117eeff7cb2f4",
+    "supabase/web-push/candidate.sql": "bd1c3a1fae8980d34d670a33aa29b09ddc75076fb770c067f1fa99e9dc26d811",
+    "supabase/web-push/activation-preflight.sql": "a94aaa4598a68662368302be82b606466e6d432cd63416efcaa4a081cfebf4fb",
+    "supabase/web-push/scheduler-proposal.sql": "9bc5a1f99f9b7474aa62c73795c86ccb9cbf5486ca81f085b9b3999de28a56ea",
+    "dev/web-push/timezone-golden.json": "4c650706da522ca4505491163ced09b1b1a55753f16f8042413bbf8923e0f423",
+    "dev/web-push/notifications-proof.mjs": "de5ae5ffba73c1009b6bfb315af332df58588400465b04e4e7c01adb6badb339",
+    "dev/web-push/database-proof.mjs": "fede3faaa0def7915b661adab5d44bf930a6b04dfa0697d5391a1e58e0bbc48a",
+    "dev/web-push/browser-proof.mjs": "ee880612af35eb1449b270134f83302857ea624774908aabb8cf1502e7e90488"
   }
 }

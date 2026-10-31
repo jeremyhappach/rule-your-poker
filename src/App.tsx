@@ -17,6 +17,7 @@ const Arcade = () => <Suspense fallback={<p role="status">Loading Arcade…</p>}
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Game from "./pages/Game";
+import NotificationTable from './pages/NotificationTable';
 import HandEvalTest from "./pages/HandEvalTest";
 import HandEvalDebug from "./pages/HandEvalDebug";
 import DicePreview from "./pages/DicePreview";
@@ -213,6 +214,7 @@ const App = () => {
                 <Route path="/delayed/:matchId" element={<Delayed />} />
                 <Route path="/delayed/:matchId/play/:childId" element={<ReleaseProtectedGameRoute checkingFallback={<AsyncTurnEntry/>}><RouteErrorBoundary title="Async Words screen crashed"><Delayed /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/notifications/table/:sessionId" element={<NotificationTable />} />
                 <Route
                   path="/game/:gameId"
                   element={

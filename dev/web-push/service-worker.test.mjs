@@ -30,3 +30,18 @@ test('worker serializes simultaneous duplicate events and rejects foreign bindin
  await f.fire('push',{data:{json:()=>payload}});assert.equal(f.shown.length,0);await f.bind({binding:'binding-a'});
  await Promise.all([f.fire('push',{data:{json:()=>payload}}),f.fire('push',{data:{json:()=>payload}})]);assert.equal(f.shown.length,1);
 });
+test('real-money table alerts are generic, deduplicated and click through the guarded landing route',async()=>{
+ const f=fixture();await f.bind({binding:'binding-a'});
+ const p={...payload,kind:'table_open',matchId:null,tableId:'33333333-3333-4333-8333-333333333333',name:'RESTRICTED NAME'};
+ await f.fire('push',{data:{json:()=>p}});await f.fire('push',{data:{json:()=>p}});
+ assert.equal(f.shown.length,1);assert.equal(f.shown[0].silent,true);assert(!JSON.stringify(f.shown).includes('RESTRICTED'));
+ await f.fire('notificationclick',{notification:{data:f.shown[0].data,close:()=>{}}});
+ assert.deepEqual(f.navigation,['/notifications/table/'+p.tableId]);
+ await f.bind({binding:'other'});await f.fire('notificationclick',{notification:{data:f.shown[0].data,close:()=>{}}});assert.equal(f.navigation.length,1);
+});
+test('expired table pushes never claim the table is open; malformed targets cannot navigate',async()=>{
+ const f=fixture();await f.bind({binding:'binding-a'});
+ await f.fire('push',{data:{json:()=>({...payload,kind:'table_open',tableId:payload.matchId,expiresAt:Date.now()-1})}});
+ assert.equal(f.shown[0].body,'Open Ptown to check available tables.');assert.equal(f.shown[0].silent,true);
+ await f.fire('notificationclick',{notification:{data:{binding:'binding-a',kind:'table_open',tableId:'https://evil.invalid'},close:()=>{}}});assert.equal(f.navigation.length,0);
+});

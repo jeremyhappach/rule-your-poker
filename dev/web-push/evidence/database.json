@@ -2,8 +2,8 @@
   "passed": true,
   "cleanupVerified": true,
   "template": "async_reviews_1793308358890",
-  "database": "web_push_fe00_1793456191846",
-  "sqlSha256": "61b9aa19918942a634aa371cb757d4a0da224b037d178a666219381f16ee2778",
+  "database": "web_push_fe00_1793471709001",
+  "sqlSha256": "bd1c3a1fae8980d34d670a33aa29b09ddc75076fb770c067f1fa99e9dc26d811",
   "checks": [
     "existing matches conservatively opt out",
     "global snapshot only at admission; per-viewer overrides; unauthorized match and worker denied",
@@ -21,10 +21,23 @@
     "crash lease recovery fences old worker; separately committed preference change stops authorized send",
     "account rebinding rotates ownership; session revocation stops old-account delivery",
     "authenticated local scheduled endpoint sends turn + due Last Call without browsers; no repeats; deleted match suppressed",
-    "independent races and local scheduled HTTP sender passed"
+    "independent races and local scheduled HTTP sender passed",
+    "new notification settings preserve existing personal match overrides and leave every new-table opt-in off by default",
+    "quiet start/end boundaries, overnight/daytime, equal-times all-day, zone changes, spring gap and both fall folds pass",
+    "IANA 2026f golden compatibility recorded separately; mismatches block activation and are not waived by DST algorithm tests",
+    "quiet-hours queue emits only one current Last Call per match after window end; stale epochs and turn backlog disappear",
+    "multiple still-actionable quiet-time transitions coalesce to one morning reminder under competing workers",
+    "quiet preference race defers claimed work without consuming it; deadline expiry still suppresses the reminder",
+    "actual create_session first opening fans out once to opted-in eligible nonhosts; creation retry and updates never reannounce; opt-out cancels a claimed table alert",
+    "fake-to-real changes and later opt-ins do not retroactively announce an existing table",
+    "landing denies closed/ending/full tables, inactive accounts, maintenance and concealed visibility without any seat or financial mutation",
+    "quiet-time new tables are dropped with no morning backlog; five-minute expiry and close-after-claim authorization races pass",
+    "new-table delivery uses the same account/session/device binding fence as async delivery",
+    "expanded Notifications database qualification passed"
   ],
   "limitations": [
     "local auth.sessions shape",
-    "no hosted qualification or delivery"
+    "no hosted qualification or delivery",
+    "timezone compatibility is a separate activation blocker"
   ]
 }

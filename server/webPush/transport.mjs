@@ -24,12 +24,17 @@ export function pushRequest(job,credentials,now=Date.now()){
  const key=createPrivateKey({format:'jwk',key:{kty:'EC',crv:'P-256',x:b64(pub.subarray(1,33)),y:b64(pub.subarray(33)),d:credentials.privateKey}});
  const token=jwt+'.'+b64(sign('sha256',Buffer.from(jwt),{key,dsaEncoding:'ieee-p1363'}));
  return {url:endpoint.href,options:{method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),headers:{
-  Authorization:'vapid t='+token+', k='+credentials.publicKey,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream',TTL:'60',Urgency:'normal',
+  Authorization:'vapid t='+token+', k='+credentials.publicKey,'Content-Encoding':'aes128gcm','Content-Type':'application/octet-stream',TTL:String(Math.max(0,Math.min(60,Math.floor((job.payload.expiresAt-now)/1000)))),Urgency:'normal',
   Topic:createHash('sha256').update(String(job.payload.eventId)).digest('base64url').slice(0,32),
  },body:encryptPayload(job,job.payload)}};
 }
 /** No ambient fetch: local runners must inject a fake sender. Live wiring is a separate release gate. */
 export function createTransport(credentials,sendHttp){
  if(typeof sendHttp!=='function')throw Error('Explicit transport required');
- return job=>{const request=pushRequest(job,credentials);return sendHttp(request.url,request.options);};
+ return job=>{
+  if(!Number.isFinite(job.payload?.expiresAt)||job.payload.expiresAt<=Date.now())return {skipped:true};
+  const request=pushRequest(job,credentials);
+  if(job.payload.expiresAt<=Date.now())return {skipped:true};
+  return sendHttp(request.url,request.options);
+ };
 }

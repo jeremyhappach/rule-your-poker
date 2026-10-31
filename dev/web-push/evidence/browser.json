@@ -6,6 +6,10 @@
       "actualApp": true,
       "matchPersistence": true,
       "globalIndependent": true,
+      "quietHoursSavedAndDisplayed": true,
+      "newTableDefaultOff": true,
+      "tableWarningAndFreshRecheck": true,
+      "noSeatMutation": true,
       "authorizedDeepLink": true,
       "bellPreserved": true,
       "logoutAndUnauthenticatedDeepLink": true
@@ -15,6 +19,10 @@
       "actualApp": true,
       "matchPersistence": true,
       "globalIndependent": true,
+      "quietHoursSavedAndDisplayed": true,
+      "newTableDefaultOff": true,
+      "tableWarningAndFreshRecheck": true,
+      "noSeatMutation": true,
       "authorizedDeepLink": true,
       "bellPreserved": true,
       "logoutAndUnauthenticatedDeepLink": true

@@ -1,3 +1,18 @@
+# Expanded Notifications — local qualification, activation held — 2026-10-31
+
+The owner-approved expansion adds personal quiet hours and a separate default-OFF
+new real-money table alert. The older Push-only commit must not deploy alone.
+29 Node tests, expanded SQL/race/creation/eligibility proofs with verified cleanup,
+full typecheck and actual-App phone/desktop browser checks pass. Final candidate
+SQL hash starts `bd1c3a1fae89`. IANA 2026f golden checks expose stale runtime data;
+timezone compatibility explicitly blocks activation, alongside hosted/physical
+qualification. Dormant setup is owner-approved but was not performed here.
+No push, deployment, hosted mutation, credential, subscription or live delivery.
+Exact security delta, source hashes and release gates:
+[Notifications checkpoint](WEB_PUSH_LOCAL_CHECKPOINT.md).
+Audit chat remains sole publisher; coordinator-reported production is
+`042695ead71bcfc7321f87dc8bb8911e083344b7`. This local note does not supersede it.
+
 # Tri-Towers polish integrated with recovery — approved, qualification pending — 2026-10-31
 
 Owner explicitly approved publication of Tri candidate `022e59e4251b86008c266e85ec7ff03ef2ba5f1b` after combined checks. This isolated integration preserves released recovery `b64a2d75be9cd2997dfe25a2feef38ea14f8231f` and adds only immediate confirmed upcards, progressive tower trills and compact Current Net rows. No migration, admission, scoring, credential or financial-authority change; unfinished Web Push, Host Succession and transition-audit harness are excluded.
@@ -7,18 +22,6 @@ Worker qualification: 139 tests, typecheck/build and 18 synthetic browser cases.
 # Pause/resume recovery — approved, publication pending — 2026-10-31
 
 Bounded client recovery package locally qualified; no schema/admission/security changes. Local financial rollback/conservation/idempotency proofs PASS; broader all-game audit remains incomplete. Owner accepted disclosed coverage gaps. See [release scope and evidence](../../e2e/pauseAudit/RELEASE.md). Production publication and exact-SHA receipt verification pending.
-# Local Web Push — qualified locally, production setup held — 2026-10-31
-
-The isolated `codex/async-web-push-local` candidate passes 26 local tests, final
-SQL rollback/race/scheduled-mock proof with verified cleanup, full typecheck,
-actual-App phone/desktop browser checks and five labeled permission mocks. Final
-SQL SHA-256 starts `61b9aa199189`. No publication, hosted migration, credentials,
-subscriptions or live pushes. Production setup requires explicit approval;
-the existing Hobby plan needs the proposed Supabase scheduler, not Vercel minute
-cron. Exact evidence, integration/physical gates and the setup packet:
-[Web Push checkpoint](WEB_PUSH_LOCAL_CHECKPOINT.md).
-This local note does not supersede coordinator-reported production
-`b64a2d75be9cd2997dfe25a2feef38ea14f8231f` / receipt `41151251116-2`.
 
 # Combined async polish / finale gate — qualified, publication in progress — 2026-10-30
 

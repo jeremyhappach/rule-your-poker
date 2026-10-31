@@ -10,7 +10,7 @@ test('scheduled endpoint is closed by default and rejects missing/wrong auth and
  assert.equal((await invoke({...config,run:async()=>{throw Error('must not expose details');}},'GET','Bearer '+secret)).body.error,'push:worker_failed');
 });
 test('between-job budget stops batch and configured duration covers worst in-flight job',async()=>{
- let time=0,claims=0;const rpc=async name=>{if(name==='async_push_claim'){claims++;return {eventId:'e',subscriptionId:'s',lease:'l'};}if(name==='async_push_authorize')return {};return true;};
+ let time=0,claims=0;const rpc=async name=>{if(name==='async_push_claim'){claims++;return {eventId:'e',subscriptionId:'s',lease:'l'};}if(name==='async_push_authorize')return {payload:{expiresAt:Date.now()+60000}};return true;};
  const result=await scheduledBatch(rpc,async()=>{time+=6000;return {status:201};},{now:()=>time});assert.equal(result.processed,2);assert.equal(claims,2);
  const duration=JSON.parse(readFileSync('vercel.json')).functions['api/web-push.ts'].maxDuration;
  assert(duration*1000>10000+10000+10000+15000+10000);

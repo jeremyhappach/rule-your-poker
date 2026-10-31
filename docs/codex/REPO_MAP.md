@@ -1,9 +1,10 @@
-## Async Web Push — local candidate only
+## Notifications — expanded local candidate, activation held
 
-- `src/lib/webPush/` and `src/components/delayed/PushPreferences.tsx`: explicit device opt-in, account binding and separate global/new-match versus viewer/match preferences.
+- `src/lib/webPush/` and `src/components/delayed/PushPreferences.tsx`: explicit device opt-in/account binding, personal quiet hours, new-table opt-in and separate new-match defaults versus viewer/match overrides.
 - `src/components/delayed/PushLifecycle.tsx`: resolved-auth lifecycle and per-device foreground suppression lease; no gameplay ownership.
-- `supabase/web-push/candidate.sql`: uninstalled private preferences, subscriptions, aggregate events and durable delivery receipts. `scheduler-proposal.sql` is separately unapproved.
-- `server/webPush/`, `api/web-push.ts`, `public/ptown-push-sw.js`: gated scheduled sender, standard encrypted Web Push and authorized match navigation; no cron installed or live credentials.
+- `supabase/web-push/candidate.sql`: uninstalled private preferences, subscriptions, aggregate events, first-table-opening receipts and durable delivery. `scheduler-proposal.sql` has approved dormant setup scope; no execution here. `activation-preflight.sql` checks timezone goldens and reviewed visibility policies before activation.
+- `server/webPush/`, `api/web-push.ts`, `public/ptown-push-sw.js`: gated scheduled sender, encrypted Web Push, quiet/expiry guards and bound navigation; no cron installed or live credentials here.
+- `src/pages/NotificationTable.tsx`: authenticated, read-only table-alert landing, existing real-money warning and fresh authorization before observer navigation.
 - `dev/web-push/` and `docs/codex/WEB_PUSH_LOCAL_CHECKPOINT.md`: local qualification, preserved evidence and production/physical gates.
 
 ## Async result review

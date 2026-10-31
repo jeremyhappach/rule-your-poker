@@ -1,197 +1,203 @@
-# Web Push — locally qualified, production setup held — 2026-10-31
+# Notifications package — local qualification, activation held — 2026-10-31
 
-**Local qualification complete. Production setup and publication remain held.**
-The owner resumed scoped work at 14:14:37 UTC. No hosted migration, production
-credential, device enrollment or live notification has occurred. This candidate
-is ready for local commit/integration review, with the explicit production and
-physical-device gates below. Continue in the existing checkout; no second writer.
+This expanded package supersedes Push-only commit `866d0a25e254ee7cfc5b3093282a4b48af54c2bd`.
+**Do not publish the old Push package by itself.** Personal Notifications, quiet
+hours and new real-money table alerts belong in the same reviewed integration.
+Implementation and local behavior qualification are complete. Current timezone
+data compatibility, hosted Auth and physical-device delivery remain release gates.
 
-- Worktree: `C:/Users/jerem/.codex/worktrees/fe00/rule-your-poker`
-- Branch: `codex/async-web-push-local`
-- Base: `2cbca79af6896e8e08e7db22c66de0b27183d562`
-- Coordinator-reported production/main: `b64a2d75be9cd2997dfe25a2feef38ea14f8231f`,
-  accepted receipt `41151251116-2`. This checkout has not integrated that commit.
-- Sole release owner: transition task `01a18430-0c6a-72cd-91cf-053e7998f001`.
-- No pending approval is shown in this task's last observed tool results. The
-  observed unit/typecheck/build/database/browser processes have exited. No
-  persistent preview server was started. No task runner submits approval requests.
+- Checkout: `C:/Users/jerem/.codex/worktrees/fe00/rule-your-poker`
+- Branch: `codex/async-web-push-local`; original base `2cbca79af6896e8e08e7db22c66de0b27183d562`.
+- Coordinator-reported production: `042695ead71bcfc7321f87dc8bb8911e083344b7`.
+  No integration into that base was attempted here.
+- Sole integrator/publisher: audit chat `01a18430-0c6a-72cd-91cf-053e7998f001`.
+- No push, hosted mutation, secret creation, subscription, OS permission grant,
+  live notification, customer session mutation, wager or production deployment.
 
-## Implemented candidate
+## Behavior and ownership
 
-`src/components/delayed/PushPreferences.tsx` supplies the exact per-viewer checkbox
-“Enable push notifications for this match” and a separate Player Settings default.
-`src/lib/webPush/` separates preferences from device/browser permission, requires
-an explicit gesture, describes denied/revoked/unsupported/Home Screen states,
-and binds enrollment to the current authenticated account. `PushLifecycle.tsx`
-waits for resolved auth rather than treating initial loading as logout.
-The in-app notification bell is unchanged.
+Lobby Settings contains a personal **Notifications** section, rendered by
+`src/components/delayed/PushPreferences.tsx`. Device permission, explicit enable,
+denied/revoked/unsupported/iOS Home Screen states remain separate from preferences.
+The async default seeds only newly admitted matches; existing per-viewer overrides
+persist. Match controls retain “Enable push notifications for this match”.
 
-`supabase/web-push/candidate.sql` is a local candidate, not a registered migration.
-New matches snapshot each participant's default at creation. Existing matches
-start opted out; changing the global default never rewrites match overrides.
-There is no separate global master mute in V1; that remains an owner decision.
-No invitation/completion push is generated.
+Quiet hours are one personal enabled/start/end/IANA-zone setting, applied at
+delivery to **all** opted-in async matches, including existing matches. Times have
+minute precision; start is included and end excluded. Overnight windows work;
+equal times explicitly mean silence all day. Travel does not silently change the
+saved zone. UTC instants are converted with PostgreSQL IANA rules, so both folded
+hours and skipped local times are handled without a fixed-offset approximation.
+The next boundary is found among actual UTC minutes. Match helper text shows the
+saved window and zone, and explains that deadlines/Last Call timing never change.
+In-app indicators and gameplay timing are untouched.
 
-Deferred triggers inspect the final match state, aggregate all newly available
-child/segment identities into one match event per recipient/committed transition,
-and avoid new events for ordinary revisions or removal of available turns. A new
-turn is recognized even while another child in the match still waits. A single
-24-hour reminder belongs to that event and requires one of its original turn
-identities to remain pending. Eligibility rechecks participant, preference,
-session/expiry, subscription binding, active fake-money match, hold/removal,
-turn identity and deadlines. None of the existing gameplay or financial functions
-is replaced. The final trigger candidate passes the local rollback/race proof.
+While quiet, async work is deferred to the next nonquiet boundary. At window end,
+only the newest still-actionable due reminder per match/device can be claimed;
+other due reminders are coalesced away. This also covers worker downtime through
+the entire window and multiple simultaneous actionable child transitions. Last
+Call retains its existing authoritative 24-hour requirement and original child/
+segment identities. A stale/expired child cannot create a morning backlog.
+Preference changes wake deferred work; opting out cancels pending/claimed work.
 
-One logical event fans out once to each device enabled at the transition. New
-devices/preferences do not retrospectively flood old events. Per-device delivery
-leases and CAS receipts support retries and competing workers. HTTP push services
-cannot provide transactional exactly-once acceptance with the database: a worker
-crash after provider acceptance but before its receipt may retransmit. Stable
-provider Topic and browser match tag collapse retries; `renotify:false` is used.
-Persisted event receipts mark retransmissions `silent:true`. Safari still requires
-visible handling; after dismissal, a retransmission may recreate a quiet card.
-An expired payload produces only a silent neutral invitation to check the app,
-never a claim that a turn is still actionable. Browser support for silent delivery
-and alert behavior require physical testing; exactly-once OS alerts are not claimed.
-Delivery under DND/offline/denial is not guaranteed.
+**New real-money table alerts are a separate default-OFF opt-in.** A deferred
+notification-only trigger observes the session's first waiting/joining boundary.
+`private.push_table_openings` records the session UUID once; creation retry,
+reconnect, hand/dealer changes, fake-to-real edits and later opt-ins cannot replay
+that opening. Historical sessions are seeded as already observed at installation.
+The original/current host is excluded. A real, active human host is required.
 
-Foreground suppression is per device: while a visible page is on the relevant
-match or its child route, a 45-second server lease renews every 30 seconds. The
-sender skips that device's event at claim/authorization. Other devices can receive
-it. A lost background signal can suppress for at most the remaining lease. There
-is no client-driven event generation or gameplay polling. Received valid retries
-still show/replace the notification because Safari requires user-visible pushes.
-Stale account bindings are discarded for privacy. Payloads contain only event,
-match, binding, kind and expiry identifiers; no racks, results or opponent scores.
-Clicks enter the authenticated match landing projection and revalidate membership.
+Recipients must be active authenticated humans with the opt-in and an enabled,
+session-bound device. Fanout and send authorization explicitly honor current
+Run21 actor visibility and 3-5-7 concealment, maintenance, room capacity and
+terminal/pending-end state. No session names, host identities, cards, scores or
+other restricted details enter the payload. Table alerts expire after five minutes
+and are dropped if quiet hours overlap their pending interval: no morning backlog.
 
-`server/webPush/{worker,transport,scheduled}.mjs` and `api/web-push.ts` implement a
-bounded scheduled sender, standard AES128GCM payload encryption and ES256 VAPID.
-The endpoint defaults closed. No cron entry was added. The local HTTP proof uses
-the same handler/SQL worker and temporary in-memory keys with an injected mock
-transport; it never contacts an external push service.
+Clicks use `/notifications/table/:sessionId`, a read-only landing route. It checks
+fresh availability, presents the existing real-money warning and checks again on
+acknowledgement before opening the ordinary table as an observer. It never calls
+seat/admission/financial mutations. Signed-out clicks follow existing auth routing;
+post-login destination preservation is not changed by this package.
 
-## Final local evidence
+The existing delivery lease, receipt CAS, private outbox, per-device fanout,
+foreground match suppression and account/browser-lock binding fences remain.
+Claim and authorization check current preferences/window. Payload expiry and
+provider TTL are capped by the next quiet start and actual turn/table expiry;
+the worker/transport check expiry again immediately before network send.
+Settings changed after provider acceptance cannot retract an already accepted
+external push. Exactly-once OS alerts are not claimed: receipt-loss retries use
+stable tags/Topic, no renotify, and silent duplicate handling. Expired received
+pushes show only a silent generic invitation to check the app. Physical behavior
+under suspension, DND and offline delivery is not established locally.
 
-1. The old exec session `52647` was observed exiting 0 on resumption. A separate
-   read-only check confirmed `web_push_fe00_1793402041595` absent and no matching
-   database runner. Its original proof JSON was preserved.
-2. `node --test dev/web-push/{unit,controller,service-worker,scheduled}.test.mjs`: 26 tests
-   passed. Permission gesture/denial, partial enrollment, account switch during
-   registration, logout/revocation, subscription loss, worker retries/privacy,
-   click binding, expiry, encryption/decryption and VAPID signature checks are
-   included. Tests also cover overlapping new-account enrollment, shared browser
-   locks, delayed old-tab cleanup, failed remote revoke recovery, scheduler auth
-   and the configured batch-duration bound.
-3. `node dev/web-push/typecheck.mjs`: full application plus new API TypeScript
-   passed with existing dependencies accessed read-only, without a junction or
-   installation. The final source, including lifecycle/cleanup changes, passes.
-4. `qualification.local/web-push/database-proof-resumed.json`: PASS and
-   `cleanupVerified:true` for SQL SHA-256
-   `61b9aa19918942a634aa371cb757d4a0da224b037d178a666219381f16ee2778`.
-   Includes rollback assertions, independent DB claims/receipt races, late new
-   turns, crash lease fencing, independently committed preference changes,
-   account rebinding/session removal, local scheduled HTTP turn/Last Call sends,
-   no duplicate receipt delivery, deleted-match suppression and owned DB removal.
-   Final-source additions also pass exact-host/lookalike rejection, expired active
-   gameplay, session expiry, incident hold and terminal-match suppression. The
-   coordinator independently confirmed deployed auth.sessions id/user_id/not_after
-   column shapes, but this is still local scaffolding, not hosted Auth proof.
-5. `dev/web-push/evidence/` preserves the final SQL proof, browser results,
-   phone screenshots and exact source hashes. Earlier f39b6f proof coverage is
-   superseded by the final 61b9aa proof, not silently reused.
-6. Actual App/route/theme bundle and separately labeled mock settings bundle built
-   using read-only existing packages. This is an esbuild-based local App proof,
-   not the repository's production Vite release build. Corrected automatic JSX
-   and server-confirmed checkbox assertions pass. The final browser matrix passes
-   at 390/1280 widths: real Settings/default, match persistence, authorized/denied/
-   deleted links, unchanged bell, logout and unauthenticated route rejection.
-   Five labeled permission/device mocks also pass, including Home Screen guidance,
-   new-match seeding, existing overrides, per-viewer isolation and reload.
-   Phone screenshots were visually inspected. No real OS permission was granted.
-7. One read-only independent reviewer inspected the final implementation. Its
-   cross-tab cleanup race was corrected under the shared browser lock and covered
-   by a regression test. Duplicate/expired push handling was tightened as described
-   above. Final source review and diff hygiene precede the local commit.
+## Exact security delta from the prior grant packet
 
-## Remaining release qualification
+Existing authenticated RPC grants are unchanged:
+`async_push_preference(uuid,boolean)`, `async_push_subscribe(text,text,text)`,
+`async_push_device(uuid,uuid,boolean,uuid)`.
+Existing service-only grants remain exactly `async_push_claim()`,
+`async_push_authorize(uuid,uuid,uuid)`, `async_push_receipt(uuid,uuid,uuid,text)`.
 
-- Integrate with the release owner's current main, preserving recovery and f199
-  CurrentNet edits. Run the repository's actual Vite release build and relevant
-  combined-source checks in its supported dependency environment. This checkout
-  used read-only packages without retrying the denied dependency junction.
-- Separately approve and perform hosted schema/Auth lifecycle, scheduler and
-  named-device qualification. The local proofs cannot establish APNs/FCM receipt,
-  physical suspension, OS permission UX or hosted token-revocation timing.
-- Reauthentication rejects an unauthenticated match route; this candidate does
-  not alter the application's existing post-login destination behavior. Clicks
-  from a valid signed-in account land on the exact authorized match.
-- Confirm per-device foreground suppression and quiet retransmission behavior on
-  physical iPhone/Android. A transport acceptance/receipt crash can still produce
-  a repeated quiet card; external delivery is not transactional exactly-once.
+New authenticated EXECUTE grants:
 
-## Concrete production setup packet — separate approvals required
+- `notification_preferences(jsonb)`: read/patch only `auth.uid()`'s async default,
+  table opt-in and quiet settings. No target user argument; strict key/type/time/
+  IANA-zone validation. It cannot change another viewer's match override.
+- `notification_table(uuid)`: returns only `{sessionId, realMoney:true}` for a
+  currently eligible visible/open/nonfull real-money table, otherwise NULL or an
+  authorization rejection. No seating, admission or financial mutation.
 
-No action in this section is approved or performed. Coordinator identity evidence:
-Vercel project `ptown-poker`, ID `prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds`, team
-`team_nQciG8fmHnUCogRJ7jaWawHq`, Vite. Supabase project
-`xvhmbuppghwmwpwrkzao`, `https://xvhmbuppghwmwpwrkzao.supabase.co`.
+New private RLS table: `push_table_openings`; expanded private `push_defaults`
+columns and `push_events` table-kind/target constraints. There are **eight** private
+notification tables. All direct table privileges remain revoked for PUBLIC,
+anon, authenticated and service_role. New private helpers are `push_quiet_at`,
+`push_quiet_transition`, `push_table_allowed` and `push_table_changed`; their direct
+EXECUTE is revoked for those roles. The new deferred trigger on `public.games`
+writes notification tables only. SECURITY DEFINER functions use empty search paths.
+No existing games policy, gameplay function, session creation function, canonical
+seat function, ledger, settlement or customer balance owner is changed.
 
-- Runtime/endpoint: Node.js Vercel Function `GET /api/web-push`. Candidate config
-  sets `maxDuration:60`. A batch starts jobs only within 10 seconds, maximum 20
-  jobs. A final in-flight job can add claim RPC 10s + authorization RPC 10s + push
-  transport 15s + receipt RPC 10s, giving about 55s plus small processing overhead.
-  The bound is locally tested; no unbounded loop or in-memory retry queue is used.
-- Existing plan is **Hobby**, confirmed read-only by the coordinator. Vercel's
-  daily-only cron is insufficient. No upgrade, purchase or Vercel cron is proposed.
-  The separately approved alternative would use existing Supabase pg_cron 1.6.4,
-  pg_net 0.20.4 and Vault 0.3.1: job `ptown-async-push-delivery`, `* * * * *`, GET
-  `https://ptown-poker.vercel.app/api/web-push`, timeout 60000ms. An inert proposal
-  is in `supabase/web-push/scheduler-proposal.sql`; it has not been executed.
-- Authentication: production environment + `WEB_PUSH_DELIVERY_ENABLED=true` +
-  constant-time `Authorization: Bearer <CRON_SECRET>` validation. Secret minimum
-  32 characters. Disabled endpoint returns 503, unauthorized enabled endpoint 401.
-- Reuse existing production `RUN21_SUPABASE_URL` and
-  `RUN21_SUPABASE_SERVICE_ROLE_KEY`. No new service-role key is requested. Worker
-  calls only `async_push_claim`, `async_push_authorize`, `async_push_receipt`.
-- New server configuration: `WEB_PUSH_VAPID_PRIVATE_KEY` (secret),
-  `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_SUBJECT`, `CRON_SECRET` (secret),
-  `WEB_PUSH_DELIVERY_ENABLED=false` initially. Public client variables:
-  `VITE_WEB_PUSH_PUBLIC_KEY` and `VITE_ASYNC_PUSH_ENABLED=false` initially.
-- Proposed Vault secret `ptown_async_push_cron_secret` must match Vercel
-  `CRON_SECRET`; its creation and scheduled privileged requests require separate
-  approval. pg_net temporarily stores bearer headers in its privileged request
-  queue; Vault does not eliminate that database-level access to the token.
-- Proposed owner-reviewable VAPID contact: `https://holm357.com`; an owner-approved
-  `mailto:` or different HTTPS contact is also possible. No contact is approved
-  yet. Generate/persist no production key or secret before specific approval.
-- External push destinations are exactly `https://fcm.googleapis.com`,
-  `https://updates.push.services.mozilla.com`, `https://web.push.apple.com`.
-  Redirects are rejected. Private signing material is server-only.
-- SQL access surface: seven private RLS tables (`push_defaults`,
-  `push_match_preferences`, `push_subscriptions`, `push_presence`, `push_episodes`,
-  `push_events`, `push_deliveries`), direct access revoked for public/client/service
-  roles. Authenticated EXECUTE: `async_push_preference(uuid,boolean)`,
-  `async_push_subscribe(text,text,text)`, `async_push_device(uuid,uuid,boolean,uuid)`.
-  Service-role EXECUTE: `async_push_claim()`,
-  `async_push_authorize(uuid,uuid,uuid)`,
-  `async_push_receipt(uuid,uuid,uuid,text)`. Private helper execute is revoked;
-  SECURITY DEFINER search paths are empty. Final digest, deployed definition drift,
-  real Auth session behavior and hosted rollback qualification must be reviewed
-  before approving installation. All seven tables/six public RPCs were reported
-  absent by the coordinator's production read-only catalog query.
-- Physical qualification requires named synthetic accounts/devices and explicitly
-  authorized real test delivery: iPhone/iPad Home Screen app, supported Android,
-  direct OS permission gesture, background/closed app, DND/offline, revoked
-  permission, multiple devices, logout/account switch, deep link/re-auth, Last Call.
-  No app-store account, SMS or customer enrollment is required or authorized.
+The recipient expansion is intentional: eligible opted-in users may receive a
+new-table alert before becoming participants. That is the owner-discussed design;
+the prior async-only audience was limited to existing match participants. The
+publisher must review this exact delta before applying the final schema. No broad
+service-role/table grant or recipient expansion beyond these checks is proposed.
 
-Release ordering remains recovery, then qualified Web Push, with Tri-Towers polish
-independently qualified rather than held for credential setup. Integrate only via
-the designated release owner. In `Delayed.tsx`, this task owns two Push imports and
-the checkbox insertion after match policy; f199 owns CurrentNet imports/rendering.
-No CurrentNet or Tri-Towers lifecycle/artifact changes were made here.
+## Local qualification and exact artifacts
 
-References: [WebKit iOS Home Screen requirements](https://webkit.org/blog/13878/),
-[WebKit user-visible Web Push](https://webkit.org/blog/16535/),
-[Vercel cron management/authentication](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
+- 29 Node tests pass: old device/account/crypto/scheduler cases plus guarded table
+  clicks, generic table content, stale table pushes and send-time expiry guards.
+- Full application/API TypeScript passes using existing packages read-only.
+  No dependency installation, relocation or denied junction retry.
+- Expanded final SQL proof passes rollback, claims/receipt races, seed/override
+  isolation, quiet boundaries, overnight/equal times, spring gap, both fall folds,
+  half-hour DST and quarter-hour zones, competing morning reminders, Last Call/
+  deadline expiry, independently committed settings races, actual canonical
+  `create_session` retry, new-table opt-outs, host exclusion, full/closed/maintenance/
+  inactive/concealed eligibility and account rebinding. Owned disposable database
+  removal is verified. Real-money fixtures have zero chips and no wagers.
+- The older local DB fixture lacks Auth sessions and current create_session. The
+  runner explicitly supplies the known Auth shape and unchanged repository
+  session-creation/randomness definitions confirmed against production. It does
+  not substitute a notification-only creation stub. The concealment-negative case
+  forces the existing visibility helper false in a rollback-contained test; actual
+  hosted concealed-round and Auth lifecycle checks remain required.
+- Actual App and separately labeled permission mock bundles build with real
+  routes/theme through esbuild/Tailwind. This is **not** the production Vite build.
+- Browser proof passes at 390/1280 widths: settings saves, match overrides/helper,
+  separate default-off table opt-in, fresh warning-confirmation check, no seat RPC,
+  authorized/denied/deleted/unauthenticated links, logout and unchanged bell.
+  Five labeled device mocks pass. No real permission prompt or push enrollment.
+- Final UI race guards prevent regressive preference loads and stale account/
+  route navigation. Phone screenshots were inspected.
+
+Evidence: `dev/web-push/evidence/{database,browser,timezone-compatibility,source-hashes}.json`
+and four phone PNGs. The hash inventory includes the final SQL, service worker,
+sender, settings, guarded landing route and test inputs. Old 26-test evidence and
+the old `61b9aa...` SQL hash do not qualify this version.
+
+Final candidate SQL SHA-256:
+`bd1c3a1fae8980d34d670a33aa29b09ddc75076fb770c067f1fa99e9dc26d811`.
+Scheduler proposal SHA-256 (unchanged):
+`9bc5a1f99f9b7474aa62c73795c86ccb9cbf5486ca81f085b9b3999de28a56ea`.
+Activation preflight SHA-256:
+`a94aaa4598a68662368302be82b606466e6d432cd63416efcaa4a081cfebf4fb`.
+
+## Timezone compatibility blocks activation
+
+`dev/web-push/timezone-golden.json` pins expected conversions to IANA **2026f**,
+including 2026 changes in Vancouver, Edmonton, Casablanca, Winnipeg and Havana.
+Local PostgreSQL passes Vancouver but fails the latter four golden cases. The
+coordinator's hosted observations also show stale data. An available IANA name or
+passing ordinary DST tests does not establish current-rule compatibility.
+
+`supabase/web-push/activation-preflight.sql` is a read-only fail-closed release
+check for these goldens and the reviewed restrictive games visibility policies.
+**Do not enable either delivery/client flag until timezone data is reconciled and
+the hosted preflight passes.** This file is a release gate, not an automatic DB
+upgrade or a runtime replacement for timezone data. No zones are silently mapped
+to offsets or excluded; no upgrade or new data dependency was installed here.
+
+References: [Supabase stale timezone data](https://supabase.com/changelog/tzdata-local-time-vancouver-edmonton-casablanca),
+[IANA 2026c](https://www.iana.org/time-zones/releases/2026c),
+[IANA 2026e](https://www.iana.org/time-zones/releases/2026e),
+[IANA 2026f](https://www.iana.org/time-zones/releases/2026f).
+
+## Approved dormant setup and remaining publisher work
+
+The owner approved dormant setup; this implementation chat did not perform it.
+Vercel `ptown-poker` (`prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds`, team
+`team_nQciG8fmHnUCogRJ7jaWawHq`), Supabase `xvhmbuppghwmwpwrkzao`.
+
+- Generate one VAPID P256 pair and 32-byte scheduler token. Private material only
+  in Vercel Production `WEB_PUSH_VAPID_PRIVATE_KEY` / `CRON_SECRET` and the matching
+  Vault token `ptown_async_push_cron_secret`. Never logs, chat or Git.
+- Public key: `WEB_PUSH_VAPID_PUBLIC_KEY` / `VITE_WEB_PUSH_PUBLIC_KEY`.
+  Approved contact `WEB_PUSH_VAPID_SUBJECT=https://holm357.com`.
+  `WEB_PUSH_DELIVERY_ENABLED=false` and `VITE_ASYNC_PUSH_ENABLED=false` initially.
+- Reuse existing `RUN21_SUPABASE_URL` / `RUN21_SUPABASE_SERVICE_ROLE_KEY`.
+  No new account, plan or service-role key. No new service grants.
+- Review/apply final private schema and exact delta above, then dormant Node
+  `GET /api/web-push`. No registered migration was installed from this checkout.
+- Existing Supabase Cron facility: proposed job `ptown-async-push-delivery`,
+  `* * * * *`, pg_net GET `https://ptown-poker.vercel.app/api/web-push`, timeout
+  60000, Vault Bearer token. The coordinator reports job/secret absent. The inert
+  `scheduler-proposal.sql` is unchanged. pg_net temporarily holds request headers
+  in its privileged queue; Vault does not hide them from all DB administrators.
+- Provider origins remain exactly Apple, Google and Mozilla's existing allowlist;
+  redirects rejected, encrypted generic identifiers only. Endpoint authentication,
+  60-second budget and dormant flags remain unchanged.
+
+Publisher must integrate both commits from this branch with current main,
+preserving recovery/finale/CurrentNet work, run actual Vite and combined-source
+validation, inspect installed drift, qualify hosted restricted grants/Auth and
+resolve timezone compatibility. Device enrollment, real test sends, public opt-in
+activation and flags ON remain **separately unapproved**. Named iPhone Home Screen
+and Android tests, DND/offline/suspension, revocation, multiple devices, account
+switch, quiet hours, Last Call and links remain required. Owner smoke is acceptance.
+
+Effective access: ordinary workspace edits, Node tests and read-only dependency
+builds work; local DB sockets and Edge required scoped approvals. Git worktree
+metadata is outside the writable root and requires a scoped local-commit approval.
+No broader “Full Access” assumption or pending-request duplication was used.

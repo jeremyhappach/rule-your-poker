@@ -1,0 +1,42 @@
+{
+  "requiredIana": "2026f",
+  "activationReady": false,
+  "observations": [
+    {
+      "zone": "America/Vancouver",
+      "instant": "2026-11-01T12:00:00Z",
+      "expected": "2026-11-01 05:00",
+      "actual": "2026-11-01 05:00",
+      "pass": true
+    },
+    {
+      "zone": "America/Edmonton",
+      "instant": "2026-11-01T12:00:00Z",
+      "expected": "2026-11-01 06:00",
+      "actual": "2026-11-01 05:00",
+      "pass": false
+    },
+    {
+      "zone": "Africa/Casablanca",
+      "instant": "2026-11-01T12:00:00Z",
+      "expected": "2026-11-01 12:00",
+      "actual": "2026-11-01 13:00",
+      "pass": false
+    },
+    {
+      "zone": "America/Winnipeg",
+      "instant": "2026-11-01T12:00:00Z",
+      "expected": "2026-11-01 07:00",
+      "actual": "2026-11-01 06:00",
+      "pass": false
+    },
+    {
+      "zone": "America/Havana",
+      "instant": "2026-11-01T12:00:00Z",
+      "expected": "2026-11-01 08:00",
+      "actual": "2026-11-01 07:00",
+      "pass": false
+    }
+  ],
+  "productionUpgradePerformed": false
+}

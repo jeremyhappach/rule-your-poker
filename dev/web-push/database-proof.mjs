@@ -2,9 +2,10 @@ import {connect} from '../async-words/local.mjs';
 import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {randomUUID,createHash} from 'node:crypto';
 import {raceAndSchedulerProof} from './races.mjs';
+import {installCreationFixture,notificationsProof} from './notifications-proof.mjs';
 import assert from 'node:assert/strict';
 const database='web_push_fe00_'+Date.now(),template='async_reviews_1793308358890';
-const root=await connect('template1');let db,peer;const checks=[];
+const root=await connect('template1');let db,peer,passed=false;const checks=[];
 if(process.argv.includes('--inspect')){
  try{
   const old='web_push_fe00_1793402041595';
@@ -20,6 +21,7 @@ try{
  // Auth sessions are absent in the old local fixture. This is explicit auth-shape scaffolding, not production proof.
  await db.query('CREATE TABLE IF NOT EXISTS auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL,not_after timestamptz)');
  await db.query('ALTER TABLE auth.sessions ADD COLUMN IF NOT EXISTS not_after timestamptz');
+ await installCreationFixture(db);
  const a=randomUUID(),b=randomUUID(),outsider=randomUUID(),sid=randomUUID(),match=randomUUID(),oldMatch=randomUUID(),c1=randomUUID(),c2=randomUUID();
  const val=async(q,p=[])=>(await db.query(q,p)).rows[0]?.v;
  const user=async id=>{await db.query('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[id,JSON.stringify({sub:id,session_id:sid})]);await db.query('SET ROLE authenticated');};
@@ -60,8 +62,8 @@ try{
  }
  await service();checks.push('expired session, incident hold and terminal match status suppress sends');
  checks.push('exact provider hosts required; expired active gameplay is not actionable');
- await user(a);await val('SELECT public.async_push_preference($1,false) v',[match]);await service();assert.equal(await val('SELECT public.async_push_authorize($1,$2,$3) v',args),null);
- await user(a);await val('SELECT public.async_push_preference($1,true) v',[match]);await service();
+ await db.query('SAVEPOINT opt_out');await user(a);await val('SELECT public.async_push_preference($1,false) v',[match]);await service();assert.equal(await val('SELECT public.async_push_authorize($1,$2,$3) v',args),null);
+ await db.query('ROLLBACK TO SAVEPOINT opt_out');await service();
  assert.equal(await val("SELECT public.async_push_receipt($1,$2,$3,'retry') v",args),true);
  assert.equal(await val("SELECT public.async_push_receipt($1,$2,$3,'sent') v",args),false);checks.push('delivery preference recheck and receipt idempotency');
  await db.query('RESET ROLE');await db.query("UPDATE private.push_deliveries SET retry_at=now()-interval '1 second' WHERE event_id=$1 AND subscription_id=$2",args.slice(0,2));
@@ -77,6 +79,7 @@ try{
  await service();const reminder=await val('SELECT public.async_push_claim() v');assert(reminder);
  const remindArgs=[reminder.eventId,reminder.subscriptionId,reminder.lease];assert.equal((await val('SELECT public.async_push_authorize($1,$2,$3) v',remindArgs)).payload.kind,'last_call');
  await db.query('RESET ROLE');await db.query('UPDATE private.delayed_children SET actor=$2 WHERE match_id=$1',[match,b]);await service();assert.equal(await val('SELECT public.async_push_authorize($1,$2,$3) v',remindArgs),null);checks.push('24h reminder only while pending; stale turn suppressed');
+ await val("SELECT public.async_push_receipt($1,$2,$3,'skipped') v",remindArgs);
  await db.query('RESET ROLE');await db.query('UPDATE private.delayed_children SET actor=$2,segment=segment+1 WHERE match_id=$1',[match,a]);await user(a);
  await val('SELECT public.async_push_device($1,$2,false,$3)',[sub.id,sub.binding,match]);await service();
  const next=await val('SELECT public.async_push_claim() v');if(next){assert.notEqual(next.subscriptionId,sub.id);await val("SELECT public.async_push_receipt($1,$2,$3,'gone') v",[next.eventId,next.subscriptionId,next.lease]);}
@@ -87,9 +90,10 @@ try{
  assert.equal(await val('SELECT count(*)::int v FROM public.profiles WHERE id=ANY($1::uuid[])',[[a,b,outsider]]),0);
  checks.push('rollback removed all synthetic users and candidate schema');
  await raceAndSchedulerProof(db,peer,sql,checks);
+ await notificationsProof(db,peer,checks);passed=true;
  console.log(JSON.stringify({passed:true,checks},null,2));
 }finally{
  await peer?.end();await db?.end();await root.query('DROP DATABASE IF EXISTS '+database);
  const cleanupVerified=(await root.query('SELECT FROM pg_database WHERE datname=$1',[database])).rowCount===0;await root.end();
- mkdirSync('qualification.local/web-push',{recursive:true});writeFileSync('qualification.local/web-push/database-proof-resumed.json',JSON.stringify({passed:checks.includes('independent races and local scheduled HTTP sender passed'),cleanupVerified,template,database,sqlSha256:createHash('sha256').update(sql).digest('hex'),checks,limitations:['local auth.sessions shape','no hosted qualification or delivery']},null,2));
+ mkdirSync('qualification.local/web-push',{recursive:true});writeFileSync('qualification.local/web-push/database-proof-resumed.json',JSON.stringify({passed,cleanupVerified,template,database,sqlSha256:createHash('sha256').update(sql).digest('hex'),checks,limitations:['local auth.sessions shape','no hosted qualification or delivery','timezone compatibility is a separate activation blocker']},null,2));
 }

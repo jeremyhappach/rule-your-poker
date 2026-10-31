@@ -4,7 +4,12 @@ import {deviceStatus} from '../../src/lib/webPush/device.mjs';
 import type {delayedRpc} from '../../src/lib/delayed/client';
 let viewer='alex',permission='default',subscribed=false,mode='supported';
 const get=()=>JSON.parse(localStorage.getItem('push-local-preview')??'{}');
-const rpc:typeof delayedRpc=async(_name,args={})=>{const all=get(),key=viewer+':'+(args.p_match??'default');if(args.p_enabled!==undefined){all[key]=args.p_enabled;localStorage.setItem('push-local-preview',JSON.stringify(all));}return (all[key]??false) as any;};
+const rpc:typeof delayedRpc=async(name,args={})=>{const all=get(),key=viewer+':'+(args.p_match??'default');
+ if(name==='notification_preferences'){
+  const p={asyncDefault:all[viewer+':default']??false,newTable:false,quietEnabled:false,quietStart:'22:00',quietEnd:'07:00',quietZone:'UTC',...all[viewer+':settings'],...args.p_patch as object};
+  all[viewer+':default']=p.asyncDefault;all[viewer+':settings']=p;localStorage.setItem('push-local-preview',JSON.stringify(all));return p as any;
+ }
+ if(args.p_enabled!==undefined){all[key]=args.p_enabled;localStorage.setItem('push-local-preview',JSON.stringify(all));}return (all[key]??false) as any;};
 const device={prepare:()=>{},status:()=>deviceStatus({ios:mode==='iphone-tab',standalone:false,secure:true,supported:mode!=='unsupported',permission},subscribed),
  enableDevice:async()=>{permission=mode==='denied'?'denied':'granted';subscribed=permission==='granted';window.dispatchEvent(new Event('ptown-push-device-change'));return device.status();},disableDevice:async()=>{subscribed=false;window.dispatchEvent(new Event('ptown-push-device-change'));}};
 function Preview(){const [version,update]=useState(0),[match,setMatch]=useState(()=>localStorage.getItem('push-local-preview-match')??'existing');

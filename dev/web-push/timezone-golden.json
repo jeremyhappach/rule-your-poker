@@ -1,0 +1,11 @@
+{
+  "requiredIana": "2026f",
+  "sources": ["https://www.iana.org/time-zones/releases/2026b", "https://www.iana.org/time-zones/releases/2026c", "https://www.iana.org/time-zones/releases/2026e", "https://www.iana.org/time-zones/releases/2026f"],
+  "cases": [
+    {"zone":"America/Vancouver","instant":"2026-11-01T12:00:00Z","expected":"2026-11-01 05:00"},
+    {"zone":"America/Edmonton","instant":"2026-11-01T12:00:00Z","expected":"2026-11-01 06:00"},
+    {"zone":"Africa/Casablanca","instant":"2026-11-01T12:00:00Z","expected":"2026-11-01 12:00"},
+    {"zone":"America/Winnipeg","instant":"2026-11-01T12:00:00Z","expected":"2026-11-01 07:00"},
+    {"zone":"America/Havana","instant":"2026-11-01T12:00:00Z","expected":"2026-11-01 08:00"}
+  ]
+}
