@@ -8,6 +8,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `NOTIFICATIONS_DORMANT_INTEGRATION.md` | Integrated Notifications qualification, installed dormant schema/flags, secret provisioning blocker and publication/activation gates |
 | `TRI_TOWERS_AUDIO_NET_LOCAL.md` | Local immediate upcards, progressive tower audio, compact Current Net, final browser proof and serialized release handoff |
 | `WEB_PUSH_LOCAL_CHECKPOINT.md` | Expanded Notifications, quiet hours/new-table alerts, exact security delta, local evidence and timezone/physical activation gates |
 | `ASYNC_PRESENCE_FINALE_RELEASE.md` | Approved combined polish release, per-viewer finale gate, installed Presence policies and authenticated hosted qualification |

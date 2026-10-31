@@ -1,4 +1,4 @@
-# Expanded Notifications — local qualification, activation held — 2026-10-31
+# Expanded Notifications — integrated; dormant setup partially installed — 2026-10-31
 
 The owner-approved expansion adds personal quiet hours and a separate default-OFF
 new real-money table alert. The older Push-only commit must not deploy alone.
@@ -6,8 +6,13 @@ new real-money table alert. The older Push-only commit must not deploy alone.
 full typecheck and actual-App phone/desktop browser checks pass. Final candidate
 SQL hash starts `bd1c3a1fae89`. IANA 2026f golden checks expose stale runtime data;
 timezone compatibility explicitly blocks activation, alongside hosted/physical
-qualification. Dormant setup is owner-approved but was not performed here.
-No push, deployment, hosted mutation, credential, subscription or live delivery.
+qualification. The approved notification-only migration and false Production
+feature flags are installed and permissions verified. Integrated qualification
+passes 3,374 source tests, 241 harness tests, 29 notification tests, TypeScript,
+production Vite build, local App browser and isolated SQL/race checks.
+Secret-safe provisioning, scheduler and publication remain pending. No push,
+deployment, generated credential, subscription or live delivery occurred.
+[Exact integration and installed-state checkpoint](NOTIFICATIONS_DORMANT_INTEGRATION.md).
 Exact security delta, source hashes and release gates:
 [Notifications checkpoint](WEB_PUSH_LOCAL_CHECKPOINT.md).
 Audit chat remains sole publisher; coordinator-reported production is
