@@ -1,0 +1,6 @@
+.async-current-net{display:grid;gap:.3rem;border:1px solid #55746e;background:#17342f;border-radius:.65rem;padding:.65rem .8rem;font-size:1rem;min-width:0}
+.async-current-net-heading,.async-current-net-player{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:baseline;gap:.65rem}
+.async-current-net-heading{display:flex;font-size:.85rem;color:#d4e3df;white-space:nowrap}
+.async-current-net-heading>span:last-child,.async-current-net-player>strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.async-current-net-player>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.async-current-net-player>strong{color:#9ef0d1}

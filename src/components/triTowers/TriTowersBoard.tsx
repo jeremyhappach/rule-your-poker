@@ -8,7 +8,7 @@ import {TriAllClear} from './TriAllClear';
 import {triDealProgress} from '@/lib/triTowers/roundTimeline';
 import type {TriIntentBuffer} from '@/lib/triTowers/intentBuffer';
 import {triInputTiming,triTiming,triPaintTiming} from '@/lib/triTowers/diagnostics';
-import {useTriCardFlight} from './useTriCardFlight';
+import {useTriTowerClearAudio} from './useTriTowerClearAudio';
 import type {TriTowersStageResult} from './TriTowersStageResult';
 import tower from '@/assets/cartoon/tower.webp';
 import './triTowersScene.css';
@@ -29,7 +29,8 @@ export function TriTowersBoard({replay=false,view:v,canAct,onIntent,result,round
  useLayoutEffect(()=>{setAnimated(fresh);previous.current={roundKey,cleared:v.removed.filter(i=>i<3)};},[roundKey,v.removed]);
  const modern=['tri-towers/3','tri-towers/4','tri-towers/5'].includes(v.rules.version);
  const motion=useTriRoundPresentation({replay,scope:roundKey,phase:v.phase,connected,paused,result,now,deadline:v.deadline,userId,active:presentationActive,modern,liveEntry,recoveryEpoch,celebrationMs:v.rules.clearCelebrationMs??0});
- const {flight,node}=useTriCardFlight(root,v,roundKey,recoveryEpoch,modern&&connected&&presentationActive&&!paused,motion.reduced,userId);
+ useTriTowerClearAudio({scope:roundKey,userId,removed:v.removed,phase:v.phase,recoveryEpoch,
+  active:modern&&connected&&presentationActive&&!paused,reduced:motion.reduced,replay});
  useLayoutEffect(()=>{if(!presentationActive||!connected||paused)input?.interrupt();},[input,presentationActive,connected,paused]);
  const remaining=Math.max(0,v.deadline-now),full=modern?v.rules.stageMs:v.phase==='intro'?v.rules.roundIntroMs??2500:v.phase==='ready'?v.rules.readyMs:v.phase==='stage_complete'?v.rules.holdMs:v.rules.stageMs;
  const displayRemaining=modern&&v.phase==='stage_complete'?motion.drainRemaining:remaining,dots=dotClock(displayRemaining,full);
@@ -56,13 +57,12 @@ export function TriTowersBoard({replay=false,view:v,canAct,onIntent,result,round
   </div>}
   <div className="tri-deck-row">
    <div className="tri-run"><strong>CURRENT RUN</strong><output aria-label="Current removal streak">{v.run}</output></div>
-   <div className="tri-waste" aria-label={`Waste ${cardName(v.waste)}`}><div className="tri-upcard-flip" style={{visibility:flip===0||flight?.card===v.waste?'hidden':'visible',transform:`scaleX(${Math.abs(1-flip*2)})`}}><TowerCard card={flip<.5?null:v.waste}/></div></div>
+   <div className="tri-waste" aria-label={`Waste ${cardName(v.waste)}`}><div className="tri-upcard-flip" style={{visibility:flip===0?'hidden':'visible',transform:`scaleX(${Math.abs(1-flip*2)})`}}><TowerCard card={flip<.5?null:v.waste}/></div></div>
    <button className="tri-stock" style={{opacity:deal('stock')}} data-empty={v.stockRemaining===0} disabled={!canAct||!(v.phase==='playing'||v2&&v.phase==='ready')||v.stockRemaining===0} onClick={()=>onIntent({type:'draw'})} aria-label={`Draw stock, ${v.stockRemaining} stock cards remaining`}><TowerCard card={null} badge={<span className="tri-stock-count" aria-hidden="true">{v.stockRemaining}</span>}/></button>
   </div>
   {modern&&result&&(!motion.admitted||result.reason!=='cleared'||motion.elapsed>=(v.rules.clearCelebrationMs??0))&&<div className="tri-round-summary" role="status"><strong>{result.reason==='cleared'?'All towers cleared':result.reason==='ready_timeout'?'Round not started':result.reason==='timeout'?'Time expired':'Round complete'}</strong><span>{result.timeBonus>0&&`Time +${result.timeBonus.toLocaleString()}`}{result.timeBonus>0&&!!result.stockBonus?' · ':''}{!!result.stockBonus&&`Stock +${result.stockBonus.toLocaleString()}`}</span></div>}
   {modern&&motion.admitted&&result?.reason==='cleared'&&motion.elapsed<(v.rules.clearCelebrationMs??4000)&&<TriAllClear root={root} elapsed={motion.elapsed} opacity={motion.timeline.crest} reduced={motion.reduced}/>}
   {v.phase==='intro'&&<div className="tri-deal-title"><TriRoundIntro key={roundKey} remaining={remaining} roundLabel={roundLabel} turnLabel={turnLabel} paused={paused}/></div>}
-  {flight&&<div ref={node} className="tri-card-flight" aria-hidden="true" style={{left:flight.from.left-flight.board.left,top:flight.from.top-flight.board.top,width:flight.from.width,height:flight.from.height}}><TowerCard card={flight.card} tableau/></div>}
   {input?.message&&<div className="tri-input-status" role="status">{input.message}{input.uncertain&&<button onClick={()=>void input.recover()}>Resolve play</button>}</div>}
  </div>;
 }

@@ -1,4 +1,5 @@
 import {PlayingNow} from '@/components/delayed/PlayingNow';
+import {CurrentNet} from '@/components/delayed/CurrentNet';
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {turnEntryHint} from '@/lib/delayed/notifications';
 import {AsyncInvite} from '@/components/delayed/AsyncInvite';
@@ -67,7 +68,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
  const now=Math.max(home.serverAt,tick+offset.current);
  return <section className="delayed-match-home"><Link className="delayed-back" to="/delayed">← All matches</Link><div className="delayed-match-heading"><small>{home.status==='invited'?'MATCH INVITATION':'HEAD-TO-HEAD'}</small><h2>{home.players.map(p=>p.name).join(' vs. ')}</h2>
   <p className="delayed-match-meta">{home.realMoney?'Real money':'Play money'} · {home.status} · {home.completed}/{home.lineup.length} complete</p></div>
-  {home.acceptedAt&&<div className="delayed-net"><span>Current Net</span>{home.players.map(p=><strong key={p.id}>{p.name} {money(p.id===userId?home.net:-home.net)}</strong>)}<span>Unsettled: ${home.unsettled??home.lineup.filter(c=>!c.terminal).reduce((s,c)=>s+c.stake,0)}</span></div>}
+  {home.acceptedAt&&<CurrentNet home={home} userId={userId}/>}
   {mayViewFinale(home)?<Link className="delayed-primary" to={'/delayed/'+id+'?finale=1'}>{home.finaleViewed?'Replay match finale':'View match results'}</Link>:home.receipt&&!home.removedAt&&<p role="status">View the remaining game results below before the match finale.</p>}
   <div className="delayed-match-facts"><span>Maximum loss <strong>{home.exposure}</strong> per player</span><span><strong>36h</strong> per turn · Last Call <strong>24h</strong></span></div>
   <p className="delayed-match-policy">A missed deadline forfeits this game only. {home.realMoney?'One net settlement after all games finish.':'Play money settles once at the end; real balances are unaffected.'}</p>

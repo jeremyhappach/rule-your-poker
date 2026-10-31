@@ -1,0 +1,41 @@
+{
+  "generatedAtUtc": "2026-10-31T13:44:27.7178682Z",
+  "branch": "codex/tri-towers-audio-net-polish",
+  "base": "2cbca79af6896e8e08e7db22c66de0b27183d562",
+  "recoveryBaselineReviewed": "b64a2d75be9cd2997dfe25a2feef38ea14f8231f",
+  "tests": {
+    "passed": 139,
+    "files": 17
+  },
+  "typecheck": "PASS (installed TypeScript)",
+  "build": "PASS (local artifact only)",
+  "componentBrowserScenarios": 14,
+  "compiledAppBrowserScenarios": 4,
+  "audioEvidence": "Programmatic Web Audio scheduling; physical audition pending",
+  "publication": "NOT AUTHORIZED FOR THIS WORKER",
+  "sha256": {
+    "src/components/triTowers/TriTowersBoard.tsx": "6c89cdf9dea90bd941d9f42a7413a56a8075f432ef0cc0b05a67d07cdaec4eaa",
+    "src/components/triTowers/useTriTowerClearAudio.ts": "aaed68297a0a2d663c5a8b781190d5fd0095fc38328c74ede1045a999356e8c4",
+    "src/lib/triTowers/towerClearCue.ts": "741e2119d4830e5783fb39bf36a57cfec190889e3f17316b65cb6f6658355f8f",
+    "src/components/delayed/CurrentNet.tsx": "88566e1b5a6ff31709bc1d4af6b255c40c77be05c63bca0c7a63a8281480b9be",
+    "src/components/delayed/currentNet.css": "2215d87c05c02d60745d9ad53dbeb2d35c7c256129f5b24d303c778e887f8734",
+    "src/pages/Delayed.tsx": "037c507dba2a7630865cb3149f1f3816d53d6bc2c127d1a0beef9055acdddf37",
+    "src/components/triTowers/roundPresentation.test.tsx": "81ac303f08ac4a879726fa64e32d898f2d379d9309d41cebbc5317ae71c24298",
+    "src/components/triTowers/towerClearAudio.test.tsx": "94525d51423162a98fa4ad516bd0fb4f3dd6c179a0f024fcce0245a4aa13a672",
+    "src/components/delayed/CurrentNet.test.tsx": "4672b22d1d4db5e3da50fcf7ecdbf3989a2616e7ab1dd87032628be71a5bb25e",
+    "dev/tri-towers/polish-tests.mjs": "cf46427cd76ffa10765e045224e6f423700ea046dc5eb77c307fd5b48e44d1e3",
+    "dev/tri-towers/polish-browser.mjs": "ecffa35c6fb5ffed50d085fd85aee9381a9dd6122754029c00f627fc8af82a31",
+    "dev/tri-towers/polish-app-browser.mjs": "e79dbf5ddad9e0205e4b9a3a217f7028983ead6cbbbfe6b513561a8ef2a69849",
+    "dev/tri-towers/polish-preview.mjs": "03b959b9f5ef8e67f233de72f1dfecc290b5a9713b0d7049ce31e4ebd11f6612",
+    "dev/tri-towers/polish-audio.ts": "9aa8b1706e10d7a6230af0c5c85082681923934dcd180c50e89d3850b81dbb65",
+    "dev/tri-towers/polish.tsx": "76fb4618e6cb8a9579ed5587c62bf9d58a8a7e44176424c06baa8f64bc7ad35d",
+    "dev/tri-towers/polish.html": "35e7372adfe79370b0b5a8542c7c3ec75562ce9ebaf8457ecfd804fb387d5d2b"
+  },
+  "proofSha256": {
+    "tests.log": "0ba0321355146f72d3cc0fd75a362ac8a90fd3d46c08eb3bd1765db3ccf0f7f4",
+    "typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.log": "987341f5019492421c24dcc98967c822663bb1f42541d805ee0c92cde89a9db3",
+    "browser-results.json": "dd38caa5b88d9c7aeb276fe23ae05c1febb37a62de90222d19eac234f10f7d3e",
+    "app-browser-results.json": "2b1891434edad1c05e93a962dcdb24cd135ad4483ed26970082a9040c95661ce"
+  }
+}

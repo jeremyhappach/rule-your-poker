@@ -1,3 +1,9 @@
+# Tri-Towers polish integrated with recovery — approved, qualification pending — 2026-10-31
+
+Owner explicitly approved publication of Tri candidate `022e59e4251b86008c266e85ec7ff03ef2ba5f1b` after combined checks. This isolated integration preserves released recovery `b64a2d75be9cd2997dfe25a2feef38ea14f8231f` and adds only immediate confirmed upcards, progressive tower trills and compact Current Net rows. No migration, admission, scoring, credential or financial-authority change; unfinished Web Push, Host Succession and transition-audit harness are excluded.
+
+Worker qualification: 139 tests, typecheck/build and 18 synthetic browser cases. The release owner must pass combined source/harness/focused checks and rebuild using current production public configuration before publication. Physical-device audio listening remains pending. See [candidate scope and evidence](TRI_TOWERS_AUDIO_NET_LOCAL.md). Production is unchanged until exact-SHA deployment and publisher-receipt verification complete.
+
 # Pause/resume recovery — approved, publication pending — 2026-10-31
 
 Bounded client recovery package locally qualified; no schema/admission/security changes. Local financial rollback/conservation/idempotency proofs PASS; broader all-game audit remains incomplete. Owner accepted disclosed coverage gaps. See [release scope and evidence](../../e2e/pauseAudit/RELEASE.md). Production publication and exact-SHA receipt verification pending.
