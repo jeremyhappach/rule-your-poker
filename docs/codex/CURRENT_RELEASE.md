@@ -1,3 +1,21 @@
+# Official Ptown Poker app icon — 2026-11-01 — qualified, iPhone smoke pending
+
+Replaces the Lovable favicon/social metadata with Jeremy's official bridge and
+metallic spade artwork. Opaque full-bleed Apple Touch (180), PWA (192/512), PNG
+favicons (16/32) and ICO (16/32/48) use versioned URLs. Installed name and short
+name are `Ptown Poker`. Manifest ID/start URL/scope/standalone display and all
+push/service-worker/subscription, gameplay and financial code are unchanged.
+
+Asset dimensions/opacity, ICO frame structure, HTML/manifest references,
+canonical-source hash, unchanged push files, installed Chrome image decoding,
+TypeScript and production Vite build pass. Built files match the source assets.
+No dependencies, database writes, push enrollment changes or cache resets.
+Release checkpoint: `release-app-icon-20261101`; exact commit/production READY
+verification belongs to the delivery report. Owner iPhone installation and
+existing-notification smoke remain pending. Preserve the existing installation
+while checking Safari → Share → Add to Home Screen. See
+[artwork provenance, regeneration and smoke steps](../../assets/branding/README.md).
+
 # Notifications live; invitations and compact accordion local - 2026-10-31
 
 Notifications are active on `ea6bba1e5912479445dec4f1c40101086837984b`, with
