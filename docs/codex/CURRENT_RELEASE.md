@@ -1,3 +1,28 @@
+# Event-specific push titles — 2026-11-01 — qualified; publication authorized
+
+The sole OS notification creation path, `public/ptown-push-sw.js`, now uses
+`Your Turn!`, `New Match Invitation`, `Last Call!` and `New Table Available`.
+Bodies remain concise and generic; table alerts no longer mention money mode.
+The existing payload does not authorize opponent/game display fields, so none
+are added. Expired deliveries retain silent neutral `Match Update` / `Table
+Update` wording instead of claiming a current turn or available table.
+
+Audit covered the scheduled API, worker, encrypted transport, browser enrollment
+and all notification constructors. Deep links, tags, receipts, binding checks,
+permissions, subscriptions, delivery and manifest/app/Home Screen identity are
+unchanged. No database or audio changes. The P0 correction `d0cf59ebb` was already
+live with owner-confirmed real-money notification delivery; this is its small
+presentation follow-up based on verified production `149ee9e01`.
+
+All 31 notification tests, application TypeScript and production Vite build pass.
+Chrome 156 executed the actual service worker with synthetic local push events:
+native `showNotification` accepted all four current titles, four expired variants
+and silent duplicates. Headless OS cards were unavailable; this proves the
+browser API content, not physical iPhone appearance. No real push was sent.
+After publication, reopen the installed app to receive the normal worker update,
+then background it and check a genuine notification's title and destination.
+Exact production SHA/READY verification belongs to the delivery report.
+
 # Approved async branding — 2026-11-01 — qualified; production publication approved
 
 Compact branded headers now cover the five current async games. The shared map

@@ -21,8 +21,9 @@ self.addEventListener('push',event=>event.waitUntil(serial(async()=>{
  const duplicate=receipts.includes(p.eventId),expired=!Number.isFinite(p.expiresAt)||p.expiresAt<=Date.now();
  // Valid retransmissions replace the same visible card without renotify. Safari
  // requires user-visible handling for each received push, including retries.
- await self.registration.showNotification('Ptown Poker',{
-  body:expired?(table?'Open Ptown to check available tables.':'Open Ptown to check your async matches.'):table?'A new real-money table is open for joining.':p.kind==='invite'?'You have a new async match invitation.':p.kind==='last_call'?'Last Call: an async turn is still waiting.':'An async match is ready for your turn.',
+ const title=expired?(table?'Table Update':'Match Update'):{invite:'New Match Invitation',turn:'Your Turn!',last_call:'Last Call!',table_open:'New Table Available'}[p.kind];
+ await self.registration.showNotification(title,{
+  body:expired?(table?'Open the app to check available tables.':'Open the app to check your async matches.'):table?'A new table is open for joining.':p.kind==='invite'?'You have a new async match invitation.':p.kind==='last_call'?'An async turn is still waiting. Check its deadline.':'An async match is ready for your turn.',
   tag:table?'ptown-table-'+p.tableId:'ptown-match-'+p.matchId,renotify:false,silent:duplicate||expired,
   data:{matchId:p.matchId,tableId:p.tableId,kind:p.kind,binding:p.binding,eventId:p.eventId},
  });

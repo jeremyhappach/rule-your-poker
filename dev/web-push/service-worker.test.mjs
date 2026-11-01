@@ -10,6 +10,24 @@ function fixture(){
  return {fire,bind,shown,navigation};
 }
 const payload={eventId:'11111111-1111-4111-8111-111111111111',matchId:'22222222-2222-4222-8222-222222222222',binding:'binding-a',kind:'turn',expiresAt:Date.now()+60000};
+
+test('all push kinds render event titles and ignore unauthorized display fields',async()=>{
+ for(const [kind,title,body] of [
+  ['turn','Your Turn!','An async match is ready for your turn.'],
+  ['invite','New Match Invitation','You have a new async match invitation.'],
+  ['last_call','Last Call!','An async turn is still waiting. Check its deadline.'],
+  ['table_open','New Table Available','A new table is open for joining.'],
+ ]){
+  const f=fixture();await f.bind({binding:'binding-a'});
+  await f.fire('push',{data:{json:()=>({...payload,kind,tableId:payload.matchId,title:'SECRET',body:'SECRET',opponentName:'SECRET',gameName:'SECRET',stake:900,balance:900,rack:'SECRET',score:900})}});
+  assert.equal(f.shown.length,1);assert.equal(f.shown[0].title,title);assert.equal(f.shown[0].body,body);
+  assert.equal(f.shown[0].silent,false);assert.equal(f.shown[0].renotify,false);
+  assert.equal(f.shown[0].tag,(kind==='table_open'?'ptown-table-':'ptown-match-')+payload.matchId);
+  assert(!/SECRET|900|poker|ptown|money/i.test(JSON.stringify({title:f.shown[0].title,body:f.shown[0].body})));
+  await f.fire('push',{data:{json:()=>({...payload,kind,tableId:payload.matchId,expiresAt:Date.now()-1})}});
+  assert.equal(f.shown[0].title,kind==='table_open'?'Table Update':'Match Update');assert.equal(f.shown[0].silent,true);
+ }
+});
 test('worker persists receipt across duplicate delivery and never displays private game data',async()=>{
  const f=fixture();await f.bind({binding:'binding-a'});await f.fire('push',{data:{json:()=>({...payload,rack:'SECRET',score:900})}});await f.fire('push',{data:{json:()=>payload}});
  assert.equal(f.shown.length,1);assert.equal(f.shown[0].silent,true);assert(!JSON.stringify(f.shown).includes('SECRET'));assert(!JSON.stringify(f.shown).includes('900'));
@@ -17,7 +35,7 @@ test('worker persists receipt across duplicate delivery and never displays priva
 });
 test('expired delivery stays user-visible without claiming an actionable turn or alerting',async()=>{
  const f=fixture();await f.bind({binding:'binding-a'});await f.fire('push',{data:{json:()=>({...payload,expiresAt:Date.now()-1})}});
- assert.equal(f.shown[0].body,'Open Ptown to check your async matches.');assert.equal(f.shown[0].silent,true);
+ assert.equal(f.shown[0].body,'Open the app to check your async matches.');assert.equal(f.shown[0].silent,true);
 });
 test('logout and account switching reject queued old-account pushes and clicks',async()=>{
  const f=fixture();await f.bind({binding:'binding-a'});await f.bind(null);await f.fire('push',{data:{json:()=>payload}});assert.equal(f.shown.length,0);
@@ -42,7 +60,7 @@ test('real-money table alerts are generic, deduplicated and click through the gu
 test('expired table pushes never claim the table is open; malformed targets cannot navigate',async()=>{
  const f=fixture();await f.bind({binding:'binding-a'});
  await f.fire('push',{data:{json:()=>({...payload,kind:'table_open',tableId:payload.matchId,expiresAt:Date.now()-1})}});
- assert.equal(f.shown[0].body,'Open Ptown to check available tables.');assert.equal(f.shown[0].silent,true);
+ assert.equal(f.shown[0].body,'Open the app to check available tables.');assert.equal(f.shown[0].silent,true);
  await f.fire('notificationclick',{notification:{data:{binding:'binding-a',kind:'table_open',tableId:'https://evil.invalid'},close:()=>{}}});assert.equal(f.navigation.length,0);
 });
 test('invitation uses guarded match landing, suppresses duplicate alerts and shares the match tag with a later turn',async()=>{
@@ -51,5 +69,5 @@ test('invitation uses guarded match landing, suppresses duplicate alerts and sha
  await f.fire('push',{data:{json:()=>invite}});assert.equal(f.shown.length,1);assert.equal(f.shown[0].silent,true);
  await f.fire('notificationclick',{notification:{data:f.shown[0].data,close:()=>{}}});assert.deepEqual(f.navigation,['/delayed/'+payload.matchId]);
  await f.fire('push',{data:{json:()=>({...payload,eventId:'44444444-4444-4444-8444-444444444444'})}});assert.equal(f.shown.length,1);assert.equal(f.shown[0].body,'An async match is ready for your turn.');
- await f.fire('push',{data:{json:()=>({...invite,expiresAt:Date.now()-1})}});assert.equal(f.shown[0].body,'Open Ptown to check your async matches.');assert.equal(f.shown[0].silent,true);
+ await f.fire('push',{data:{json:()=>({...invite,expiresAt:Date.now()-1})}});assert.equal(f.shown[0].body,'Open the app to check your async matches.');assert.equal(f.shown[0].silent,true);
 });
