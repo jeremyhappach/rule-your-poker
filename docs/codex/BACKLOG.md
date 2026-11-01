@@ -1,3 +1,13 @@
+## Implemented locally — Silent async notifications — November 1, 2026
+
+Jeremy reported the main-lobby notification tone firing on departure and asked
+for a distinct mellow bell. His follow-up explicitly supersedes both requests:
+remove the in-app async notification tone; retain the visible bell and push
+notifications. The provider's queued cue and heard-receipt effect are removed.
+Waiting-table player-join sound and global Sounds preference remain unchanged.
+Local qualification covers silent entry/exit, notification revisions and bell
+updates. Publication remains subject to the existing notification-smoke hold.
+
 ## Implemented locally — Async match score disclosure — October 29, 2026
 
 The approved consolidated brief supersedes the original paired-round-label proposal below. The local candidate shows own points immediately and opponent totals only for individually acknowledged attempts, with pending markers. See ASYNC_RESULTS_LOCAL_CHECKPOINT.md for qualification. Publication and owner device acceptance remain held; the production observation below is preserved.

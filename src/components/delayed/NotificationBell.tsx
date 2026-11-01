@@ -1,8 +1,6 @@
 import {startTransition,createContext,useContext,useCallback,useEffect,useRef,useState,type ReactNode} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
-import {platformAudio} from '@/lib/audio/platformAudio';
-import {doorbellCue} from '@/lib/audio/platformCues';
-import {pendingNoticeKeys,turnDestination,turnEntryHint} from '@/lib/delayed/notifications';
+import {turnDestination,turnEntryHint} from '@/lib/delayed/notifications';
 import type {Home} from '@/lib/delayed/client';
 import {Bell} from 'lucide-react';
 import {supabase} from '@/integrations/supabase/client';
@@ -14,16 +12,7 @@ type Notice={id:string;match_id:string;kind:string;actionable:boolean;revision:n
 const NotificationContext=createContext<{userId:string;items:Notice[];count:number;error:string;refresh:()=>Promise<void>;setError:(s:string)=>void}|null>(null);
 export function NotificationProvider({children}:{children:ReactNode}){
  const [userId,setUserId]=useState<string|null>(null),[items,setItems]=useState<Notice[]>([]),[count,setCount]=useState(0),[error,setError]=useState('');
- const generation=useRef(0),soundReceipt=useRef<{signature:string;fresh:string[]}|null>(null);
- const location=useLocation(),inLobby=location.pathname==='/'||location.pathname==='/delayed';
- const soundKeys=JSON.stringify(pendingNoticeKeys(items));
- useEffect(()=>{
-  if(!userId||!inLobby||document.hidden)return;const key='ptown:notice-heard:'+userId;
-  let heard:string[]=[];try{heard=JSON.parse(sessionStorage.getItem(key)??'[]');}catch{}
-  const signature=userId+':'+soundKeys,keys=JSON.parse(soundKeys) as string[],fresh=soundReceipt.current?.signature===signature?soundReceipt.current.fresh:keys.filter(k=>!heard.includes(k));soundReceipt.current={signature,fresh};if(!fresh.length)return;
-  try{sessionStorage.setItem(key,JSON.stringify([...new Set([...heard,...fresh])].slice(-500)));}catch{}
-  return platformAudio.request({userId,id:'notification:'+fresh.join('|'),expiresAt:performance.now()+10000,cue:doorbellCue});
- },[userId,inLobby,soundKeys]);
+ const generation=useRef(0);
  useEffect(()=>{let alive=true;void supabase.auth.getSession().then(({data})=>{if(alive)setUserId(data.session?.user.id??null);});
   const {data}=supabase.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT')clearPrivateDrafts();setUserId(session?.user.id??null);});
   return()=>{alive=false;data.subscription.unsubscribe();};},[]);
