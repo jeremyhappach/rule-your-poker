@@ -1,3 +1,20 @@
+# Real-money async push correction — 2026-11-01 — installed; publication and owner smoke pending
+
+Three legacy play-money-only guards prevented real-money invitations, turns and
+Last Call delivery. Migration `20261101172147` removes those exclusions from
+the existing notification owners and baselines current real-money waiting turns
+without sending historical alerts. Per-child/segment identity, opt-ins, deadlines,
+holds, quiet hours, device/auth binding, retries and generic payloads are preserved.
+
+Local delivery/concurrency qualification, 30 Node tests, application TypeScript,
+production build and candidate/installed production rollback proofs pass. The
+installed proof covers 13 notification groups and 26 canonical financial groups;
+synthetic profiles remaining: zero. No existing match/financial rows changed.
+The reported match's two old waiting turns remain unannounced by design; test
+the next genuine transition. See [scope, evidence and smoke](REAL_MONEY_ASYNC_PUSH.md).
+Audio had already published at `d140a89f9` before this request; this correction
+preserves that verified baseline and includes no unfinished audio work.
+
 # Gameplay audio reliability and controls — 2026-11-01 — owner device smoke pending
 
 The main lobby keeps its bell; active canonical, fullscreen, Arcade and async

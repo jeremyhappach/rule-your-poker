@@ -93,7 +93,8 @@ try{
  await raceAndSchedulerProof(db,peer,sql,checks);
  if(withTimezone){const {timezoneProof}=await import('./timezone-proof.mjs');await timezoneProof(db,checks);}
  if(process.argv.includes('--with-invitations')){const {invitationsProof}=await import('./invitations-proof.mjs');await invitationsProof(db,peer,checks);}
- await notificationsProof(db,peer,checks);
+ if(process.argv.includes('--with-real-money')){const {realMoneyProof}=await import('./real-money-proof.mjs');await realMoneyProof(db,peer,checks);}
+ else await notificationsProof(db,peer,checks);
  passed=true;
  console.log(JSON.stringify({passed:true,checks},null,2));
 }finally{
