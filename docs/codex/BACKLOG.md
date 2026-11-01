@@ -1,3 +1,14 @@
+## Implemented locally — Repeated shared gameplay audio dropout — November 1, 2026
+
+Jeremy reported two complete audio losses across async/Arcade; silent-mode changes
+and, on recurrence, gameplay mute/unmute did not recover audio. Restarting the
+installed app did. He recalls starting a new Arcade game while the app was open.
+He approved the shared-engine recovery correction rather than waiting for another
+failure. Native contexts now retire at mute, background/interruption and final
+gameplay exit; fresh engines retain the shared preference and cue receipts.
+See `AUDIO_ENGINE_RECOVERY.md` for the source boundary and qualification.
+No deployment causation is claimed; owner iPhone smoke remains pending.
+
 ## Implemented locally — Silent async notifications — November 1, 2026
 
 Jeremy reported the main-lobby notification tone firing on departure and asked

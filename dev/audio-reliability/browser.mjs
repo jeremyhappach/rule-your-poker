@@ -24,11 +24,11 @@ export async function verifyApp(browser,out){
   await context.addInitScript(({user,token,authStorageKey})=>{
    const session=JSON.stringify({access_token:token,refresh_token:'synthetic',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user});
    localStorage.setItem(authStorageKey,session);
-   window.polishAppAudio=[];window.cardSources=[];window.stoppedSources=0;window.audioContexts=[];const Real=window.AudioContext;
-   window.AudioContext=class extends Real{constructor(){super();window.audioContexts.push(this);}createBufferSource(){const node=super.createBufferSource(),start=node.start.bind(node),stop=node.stop.bind(node);node.start=(at=0)=>{window.cardSources.push(at);start(at);};node.stop=(...args)=>{window.stoppedSources++;stop(...args);};return node;}createOscillator(){const osc=super.createOscillator(),start=osc.start.bind(osc);osc.start=(at=0)=>{window.polishAppAudio.push(at);start(at);};return osc;}};
+   window.polishAppAudio=[];window.cardSources=[];window.stoppedSources=0;window.audioContexts=[];window.silentContext=null;window.blockedOutputs=0;window.connectedOutputs=0;const Real=window.AudioContext;
+   window.AudioContext=class extends Real{constructor(){super();window.audioContexts.push(this);}createGain(){const node=super.createGain(),connect=node.connect.bind(node);node.connect=(destination,...args)=>{if(destination===this.destination){if(window.silentContext===this){window.blockedOutputs++;return destination;}window.connectedOutputs++;}return connect(destination,...args);};return node;}createBufferSource(){const node=super.createBufferSource(),start=node.start.bind(node),stop=node.stop.bind(node);node.start=(at=0)=>{window.cardSources.push(at);start(at);};node.stop=(...args)=>{window.stoppedSources++;stop(...args);};return node;}createOscillator(){const osc=super.createOscillator(),start=osc.start.bind(osc);osc.start=(at=0)=>{window.polishAppAudio.push(at);start(at);};return osc;}};
   },{user,token,authStorageKey});
   const rules={...JSON.parse(readFileSync('src/lib/triTowers/rules-v2.json','utf8')),version:'tri-towers/5',roundIntroMs:2500,clearCelebrationMs:3000};
-  let board={rules,phase:'playing',cards:Array.from({length:28},(_,i)=>i<3?5+i:null),removed:Array.from({length:25},(_,i)=>i+3),waste:4,stockRemaining:12,run:5,highRun:5,score:20000,deadline:Date.now()+120000};
+  let board={rules,phase:'playing',cards:Array.from({length:28},(_,i)=>i>=18&&i<=22?i-13:null),removed:Array.from({length:28},(_,i)=>i).filter(i=>i<18||i>22),waste:4,stockRemaining:12,run:5,highRun:5,score:20000,deadline:Date.now()+120000};
   let revision=1,end=null;const receipts=new Map();
   const expiresAt=new Date(Date.now()+129600000).toISOString(),players=[{id:'me',name:'Alexandria Very Long Player Name'},{id:'other',name:'BlairWithAnExtremelyLongUnbrokenName'}];
   const snapshot=()=>({id:'tri',matchId:'polish',game:'tri-towers',config:rules,revision,segment:end?2:1,actor:end?'other':'me',round:1,board:end?null:board,totals:{me:end?.score??0,other:0},terminal:false,held:false,expiresAt,serverAt:Date.now(),ownResults:end?[{round:1,score:end.score,at:end.completedAt,result:end,board:{...board,result:end}}]:[],winner:null,result:null});
@@ -68,31 +68,49 @@ export async function verifyApp(browser,out){
    assert.equal(await page.locator('.async-current-net-player').first().textContent(),'Alexandria Very Long Player Name−$1,234,567.89');
    assert.equal(await page.locator('.delayed-scoreboard strong[data-pending]').textContent(),'—');
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:`${out}/app-net-${width}-${viewer}.png`});
-   await page.getByRole('link',{name:'Resume turn',exact:true}).click();await page.locator('[data-tri-card="0"]').waitFor();
+   await page.getByRole('link',{name:'Resume turn',exact:true}).click();await page.locator('[data-tri-card="18"]').waitFor();
    const speaker=page.getByRole('button',{name:'Mute sounds',exact:true});await speaker.waitFor();assert.equal(await speaker.count(),1);
    assert.equal(await page.getByRole('button',{name:/Notifications/}).count(),0);
    const box=await speaker.boundingBox();assert(box&&box.x>=0&&box.x+box.width<=width&&box.y>=0&&box.y+box.height<=height);
-   await page.locator('[data-tri-card="0"]').click();await page.getByLabel('Waste 6 of spades',{exact:true}).waitFor();
-   await page.waitForFunction(()=>window.cardSources.length>=2); // One gesture primer plus one real swoosh.
+   // This fixture joins an already-playing board, without the normal intro.
+   // Let the navigation gesture finish native audio activation before testing cues.
+   await page.waitForFunction(()=>window.audioContexts.at(-1)?.state==='running');
+   const initialOutputs=await page.evaluate(()=>window.connectedOutputs);
+   await page.locator('[data-tri-card="18"]').click();await page.getByLabel('Waste 6 of spades',{exact:true}).waitFor();
+   await page.waitForFunction(before=>window.connectedOutputs>before,initialOutputs);
+   // Fault injection only in this local fixture: a native running context whose
+   // output graph is silent. The app must recover without reloading the page.
+   await page.evaluate(()=>{window.silentContext=window.audioContexts.at(-1);});
+   await page.locator('[data-tri-card="19"]').click();await page.getByLabel('Waste 7 of spades',{exact:true}).waitFor();
+   await page.waitForFunction(()=>window.blockedOutputs>0);
+   assert.equal(await page.evaluate(()=>window.silentContext.state),'running');
    const first=await page.evaluate(()=>window.cardSources.length);
    await speaker.click();await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();await page.waitForFunction(()=>!document.querySelector('button[title="Unmute sounds"]').disabled);
-   await page.locator('[data-tri-card="1"]').click();await page.getByLabel('Waste 7 of spades',{exact:true}).waitFor();
+   await page.waitForFunction(()=>window.silentContext.state==='closed');
+   await page.locator('[data-tri-card="20"]').click();await page.getByLabel('Waste 8 of spades',{exact:true}).waitFor();
    assert.equal(await page.evaluate(()=>window.cardSources.length),first);
+   await page.getByRole('button',{name:'Unmute sounds',exact:true}).click();await speaker.waitFor();
+   await page.waitForFunction(()=>window.audioContexts.at(-1)!==window.silentContext&&window.audioContexts.at(-1).state==='running');
+   const outputs=await page.evaluate(()=>window.connectedOutputs);
+   await page.locator('[data-tri-card="21"]').click();await page.getByLabel('Waste 9 of spades',{exact:true}).waitFor();
+   await page.waitForFunction(before=>window.connectedOutputs>before,outputs);
+   await speaker.click();await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();await page.waitForFunction(()=>!document.querySelector('button[title="Unmute sounds"]').disabled);
    // Reload proves the existing server preference persists and the observed board does not replay.
-   await page.reload();await page.locator('[data-tri-card="2"]').waitFor();await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();
+   await page.reload();await page.locator('[data-tri-card="22"]').waitFor();await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();
    await page.getByRole('button',{name:'Unmute sounds',exact:true}).click();await page.getByRole('button',{name:'Mute sounds',exact:true}).waitFor();
    const unmuted=await page.evaluate(()=>window.cardSources.length);await page.waitForTimeout(150);assert.equal(await page.evaluate(()=>window.cardSources.length),unmuted);
-   // Exercise a real browser suspended context followed by focus recovery, without replacing the game.
-   await page.evaluate(async()=>{await window.audioContexts[0].suspend();window.dispatchEvent(new Event('focus'));});
-   await page.waitForFunction(()=>window.audioContexts[0].state==='running');
-   await page.locator('[data-tri-card="2"]').click();await page.getByLabel('All three towers cleared').waitFor();
+   // Native close/recreate on page lifecycle recovery, while retaining the game.
+   await page.evaluate(()=>{window.beforeHide=window.audioContexts.at(-1);window.dispatchEvent(new Event('pagehide'));window.dispatchEvent(new Event('pageshow'));window.dispatchEvent(new Event('focus'));});
+   await page.waitForFunction(()=>window.beforeHide.state==='closed'&&window.audioContexts.at(-1)!==window.beforeHide&&window.audioContexts.at(-1).state==='running');
+   await page.locator('[data-tri-card="22"]').click();await page.getByLabel('All three towers cleared').waitFor();
    await page.waitForFunction(count=>window.cardSources.length>count,unmuted);
    await page.screenshot({path:out+'/game-'+width+'x'+height+'.png'});
-   assert.deepEqual(preferenceWrites,[false,true]);assert.equal(await page.evaluate(()=>window.audioContexts.length),1);
+   assert.deepEqual(preferenceWrites,[false,true,false,true]);assert.equal(await page.evaluate(()=>window.audioContexts.filter(c=>c.state!=='closed').length),1);
    await page.waitForURL('**/delayed/polish',{timeout:13000});
    assert.equal(await page.getByRole('button',{name:/Mute sounds|Unmute sounds|Notifications/}).count(),0);
-   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);checks.push({width,height,viewer,preferenceWrites,actualCompiledApp:true,layout,commands:commands.map(c=>c.op),audioSources:await page.evaluate(()=>window.polishAppAudio.length),passed:true});
-  }catch(error){console.log('Full App failure',JSON.stringify({width,viewer,errors,external,commands,body:(await page.locator('body').innerText()).slice(0,2000)}));throw error;}finally{await context.close();}
+   await page.waitForFunction(()=>window.audioContexts.every(c=>c.state==='closed'));
+   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);checks.push({width,height,viewer,preferenceWrites,actualCompiledApp:true,runningSilentFaultRecovered:true,pageLifecycleRecovered:true,finalGameplayExitClosed:true,layout,commands:commands.map(c=>c.op),audioSources:await page.evaluate(()=>window.polishAppAudio.length),passed:true});
+  }catch(error){console.log('Full App failure',JSON.stringify({width,viewer,errors,external,commands,audio:await page.evaluate(()=>({sources:window.cardSources,outputs:window.connectedOutputs,blocked:window.blockedOutputs,contexts:window.audioContexts.map(c=>({state:c.state,time:c.currentTime}))})),body:(await page.locator('body').innerText()).slice(0,2000)}));throw error;}finally{await context.close();}
  }
  writeFileSync(out+'/app-browser-results.json',JSON.stringify({passed:true,configuredAuthority:authorities[0],syntheticAuthorityOnly:true,checks},null,2));console.log('Full App checks passed:',checks.length);
  }finally{await new Promise(r=>server.close(r));}

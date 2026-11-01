@@ -54,6 +54,8 @@ export class AudioManager {
   private saveOwner: object | null = null;
   private snapshot: {userId: string | null; enabled: boolean | null; saving: boolean} = {userId: null, enabled: null, saving: false};
   private resuming: AudioContext | null = null;
+  private pageAway = false;
+  private sessionInterrupted = false;
 
   constructor(private env: AudioEnvironment) {}
 
@@ -64,15 +66,19 @@ export class AudioManager {
     this.listeners.forEach(listener => listener());
   }
   private updateSession() {
-    if (this.gameplayOwners.size && this.enabled === true && !this.env.document().hidden) this.env.playbackSession?.activate();
+    if (this.gameplayOwners.size && this.enabled === true && !this.pageAway && !this.sessionInterrupted && !this.env.document().hidden) this.env.playbackSession?.activate();
     else this.env.playbackSession?.release();
   }
   acquireGameplay = () => {
     const owner = {};
     this.gameplayOwners.add(owner); this.updateSession(); this.unlock();
     return () => {
-      this.gameplayOwners.delete(owner); this.updateSession();
-      if (!this.gameplayOwners.size) { this.stopActive(); this.clearPending(true); }
+      this.gameplayOwners.delete(owner);
+      // A header handoff / React effect rehearsal may reacquire synchronously.
+      // A real exit retires the engine so the next game cannot inherit a silent one.
+      queueMicrotask(() => {
+        if (!this.gameplayOwners.size) { this.retireContext(); this.updateSession(); }
+      });
     };
   };
 
@@ -101,34 +107,42 @@ export class AudioManager {
     // Touch/pointer release matters on Safari; capture runs before route-changing handlers.
     const gestures = ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown'];
     const gesture = (event: Event) => { if (event.isTrusted) this.unlock(true); };
-    const visibility = () => {
+    const leave = () => {
+      this.pageAway = true;
+      this.retireContext();
       this.updateSession();
-      if (doc.hidden) { this.stopActive(); this.clearPending(true); }
-      else this.unlock();
     };
-    const foreground = () => { if (!doc.hidden) this.unlock(); };
+    const foreground = () => {
+      if (doc.hidden) return;
+      this.pageAway = false;
+      this.unlock();
+    };
+    const visibility = () => {
+      if (doc.hidden) leave();
+      else foreground();
+    };
     const unobserve = this.env.playbackSession?.observe?.(() => {
-      this.stopActive(); this.clearPending(true);
-    }, foreground);
+      this.sessionInterrupted = true;
+      this.retireContext();
+      this.updateSession();
+    }, () => { this.sessionInterrupted = false; foreground(); });
     gestures.forEach(name => doc.addEventListener(name, gesture, { capture: true, passive: true }));
     doc.addEventListener('visibilitychange', visibility);
     doc.defaultView?.addEventListener('focus', foreground);
     doc.defaultView?.addEventListener('pageshow', foreground);
+    doc.defaultView?.addEventListener('pagehide', leave);
+    doc.defaultView?.addEventListener('app:page-resumed', foreground);
     this.uninstall = () => {
       gestures.forEach(name => doc.removeEventListener(name, gesture, true));
       doc.removeEventListener('visibilitychange', visibility);
       doc.defaultView?.removeEventListener('focus', foreground);
       doc.defaultView?.removeEventListener('pageshow', foreground);
+      doc.defaultView?.removeEventListener('pagehide', leave);
+      doc.defaultView?.removeEventListener('app:page-resumed', foreground);
       unobserve?.();
       this.env.playbackSession?.release();
-      this.stopActive();
-      this.clearPending();
+      this.retireContext();
       this.preferenceVersion++;
-      if (this.context) {
-        this.context.removeEventListener('statechange', this.stateChanged);
-        void this.context.close().catch(() => {});
-        this.context = null;
-      }
       this.uninstall = null;
     };
     return this.uninstall;
@@ -149,7 +163,7 @@ export class AudioManager {
     void Promise.resolve().then(() => this.env.loadPreference(userId)).then(enabled => {
       if (this.preferenceVersion !== version) return;
       this.enabled = enabled;
-      if (enabled === false) { this.stopActive(); this.clearPending(true); }
+      if (enabled === false) this.retireContext();
       this.publish(); this.updateSession();
       this.flush();
     }).catch(() => {});
@@ -158,8 +172,13 @@ export class AudioManager {
   setPreference(userId: string, enabled: boolean) {
     if (userId !== this.userId) return;
     this.preferenceVersion++; // A late initial fetch cannot overwrite a successful preference save.
+    // Explicit unmute is also a recovery request if the OS omitted its session
+    // recovery notification. A genuine interruption still blocks native playback.
+    if (enabled && this.enabled === false) this.sessionInterrupted = false;
     this.enabled = enabled;
-    if (!enabled) { this.stopActive(); this.clearPending(true); }
+    // Mute also closes a running-but-silent engine. Unmute creates and primes a
+    // fresh one in the user's gesture instead of trusting the old state flag.
+    if (!enabled) this.retireContext();
     this.publish(); this.updateSession();
     if (enabled) this.unlock();
   }
@@ -168,6 +187,7 @@ export class AudioManager {
   unlock = (trustedGesture = false) => {
     try {
       this.updateSession();
+      if (this.enabled === false || this.pageAway || this.sessionInterrupted || this.env.document().hidden) return;
       if (!this.context || this.context.state === 'closed') {
         this.context?.removeEventListener('statechange', this.stateChanged);
         this.context = this.env.createContext();
@@ -208,7 +228,7 @@ export class AudioManager {
   request(event: AudioEvent) {
     const key = `ptown-audio:${event.userId}:${event.id}`;
     if (event.userId !== this.userId || this.hasPlayed(key) || event.expiresAt <= this.env.now()) return () => {};
-    if (this.enabled === false || this.env.document().hidden) { this.remember(key); return () => {}; }
+    if (this.enabled === false || this.pageAway || this.sessionInterrupted || this.env.document().hidden) { this.remember(key); return () => {}; }
     const token = {};
     let entry = this.pending.get(key);
     if (!entry) {
@@ -228,7 +248,7 @@ export class AudioManager {
   follow(event: AudioTimeline) {
     const key = `ptown-audio:${event.userId}:${event.id}`;
     if (event.userId !== this.userId || event.expiresAt <= this.env.now()) return () => {};
-    if (this.enabled === false || this.env.document().hidden) { this.remember(key); return () => {}; }
+    if (this.enabled === false || this.pageAway || this.sessionInterrupted || this.env.document().hidden) { this.remember(key); return () => {}; }
     let entry = this.timelines.get(key);
     if (!entry) {
       if (this.hasPlayed(key)) return () => {};
@@ -263,7 +283,7 @@ export class AudioManager {
     if (this.context?.state !== 'running') {
       this.stopActive(false);
       // Initial autoplay suspension may wait for a gesture; an actual interruption may not replay.
-      if ((this.context?.state as string) === 'interrupted') { this.stopActive(); this.clearPending(true); }
+      if ((this.context?.state as string) === 'interrupted') this.retireContext();
     }
     else this.flush();
   };
@@ -290,7 +310,7 @@ export class AudioManager {
 
   private schedule(cue: AudioCue, expiresAt: number, scheduled?: (stop: () => void) => void) {
     const ctx = this.context;
-    if (!ctx || ctx.state !== 'running' || this.enabled !== true || this.env.document().hidden) return false;
+    if (!ctx || ctx.state !== 'running' || this.enabled !== true || this.pageAway || this.sessionInterrupted || this.env.document().hidden) return false;
     if (expiresAt - this.env.now() < cue.durationMs) return false;
     const nodes: AudioNode[] = [];
     const track: TrackAudioNode = node => { nodes.push(node); return node; };
@@ -324,6 +344,20 @@ export class AudioManager {
   private hasPlayed(key: string) {
     if (this.played.has(key)) return true;
     try { return this.env.storage().getItem(key) === '1'; } catch { return false; }
+  }
+  /** Dispose the complete old graph, including misleadingly 'running' contexts.
+   * Receipts survive replacement; old resume promises/listeners cannot revive it. */
+  private retireContext() {
+    this.stopActive();
+    this.clearPending(true);
+    const context = this.context;
+    this.context = null;
+    this.primedContext = null;
+    this.resuming = null;
+    if (!context) return;
+    context.removeEventListener('statechange', this.stateChanged);
+    try { void context.close().catch(() => {}); }
+    catch { /* A broken browser context must not prevent creating its replacement. */ }
   }
   private stopActive(includeWaiting = true) {
     for (const [key, entry] of this.timelines) if (includeWaiting || entry.stop) this.retireTimeline(key);

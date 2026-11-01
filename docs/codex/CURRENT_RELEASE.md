@@ -1,3 +1,17 @@
+# Shared audio-engine recovery — 2026-11-01 — qualified; publication authorized
+
+Repeated complete audio loss survived phone silent-mode and gameplay mute toggles
+but cleared after app restart. The shared manager now retires the native context
+at mute, background/interruption and final gameplay exit. Unmute/foreground/game
+entry obtain a fresh engine; stale work and old callbacks cannot replay into it.
+One shared owner, existing Sounds preference, approved cues, silent async notices
+and push delivery are preserved. No schema, rules or financial changes.
+3,441 source tests and 241 harness tests pass; the final refinements pass 68
+focused tests, application TypeScript, production build and four compiled-App
+browser scenarios, including a running-but-silent engine and native replacement.
+See [failure boundary, preservation and qualification](AUDIO_ENGINE_RECOVERY.md).
+Checkpoint: `release-audio-engine-recovery-20261101`. Owner phone smoke is pending.
+
 # Event-specific push titles — 2026-11-01 — qualified; publication authorized
 
 The sole OS notification creation path, `public/ptown-push-sw.js`, now uses

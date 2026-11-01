@@ -93,7 +93,7 @@ it('mute consumes queued effects and timelines while suspended, including same-i
   h.manager.request(event('new')); expect(h.starts()).toHaveLength(8);
 });
 
-it('unmute resumes the current context immediately and foreground recovery does not replay old effects', async () => {
+it('unmute obtains a context immediately and foreground recovery does not replay old effects', async () => {
   await ready(); h.manager.request(event()); h.manager.setPreference('user', false);
   h.ctx.state = 'suspended'; h.ctx.resume.mockClear(); h.manager.setPreference('user', true);
   expect(h.ctx.resume).toHaveBeenCalledTimes(1); await ready();
@@ -115,7 +115,10 @@ it('owns playback only during audible foreground gameplay and releases after the
   const playbackSession = {activate:vi.fn(), release:vi.fn()}; h.env.playbackSession = playbackSession;
   await ready(); const one = h.manager.acquireGameplay(), two = h.manager.acquireGameplay();
   expect(playbackSession.activate).toHaveBeenCalled(); playbackSession.release.mockClear(); one();
-  expect(playbackSession.release).not.toHaveBeenCalled(); two(); expect(playbackSession.release).toHaveBeenCalledTimes(1);
+  expect(playbackSession.release).not.toHaveBeenCalled(); two();
+  const handoff=h.manager.acquireGameplay(); await ready();
+  expect(playbackSession.release).not.toHaveBeenCalled();
+  handoff(); await ready(); expect(playbackSession.release).toHaveBeenCalledTimes(1);
   h.manager.acquireGameplay(); h.manager.setPreference('user', false); expect(playbackSession.release).toHaveBeenCalledTimes(2);
 });
 

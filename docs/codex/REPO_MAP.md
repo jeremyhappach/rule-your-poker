@@ -294,8 +294,10 @@ authenticates requests, `server/arcade/service.ts` coordinates CAS/receipts, and
 owner-only revision notifications. `supabase/functions/arcade-recovery/index.ts`
 recovers due runs. Proofs live in `dev/arcade`; policy in `ARCADE_PHASE_ONE.md`.
 
-Application audio: `src/lib/audio/audioManager.ts` owns the single reusable Web
-Audio context and observable Sounds preference; `GameplaySoundButton` and
+Application audio: `src/lib/audio/audioManager.ts` owns one current Web Audio
+context and observable Sounds preference. Native contexts are retired on mute,
+background/interruption and final gameplay exit; receipts survive replacement.
+See `AUDIO_ENGINE_RECOVERY.md`. `GameplaySoundButton` and
 `VisualPreferences` save through its existing profile adapter. `playbackSession.ts`
 scopes supported iOS playback mode to enabled foreground gameplay. The shared
 `useTriCardAudio` dispatches confirmed TriTowers removal/draw cues independently

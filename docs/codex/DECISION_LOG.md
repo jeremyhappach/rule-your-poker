@@ -1,3 +1,12 @@
+## 2026-11-01 — Native audio contexts may be replaced under one shared owner
+
+The shared AudioManager remains the only owner, but a native context is no longer
+kept for the entire page lifetime. Mute, background/interruption and final gameplay
+exit retire its graph; unmute and renewed foreground gameplay use a fresh context.
+This handles a native engine that reports running while silent. Receipts and
+preferences outlive the context, so recovery cannot replay stale cues. No polling,
+silent loop or per-game recovery owner. See `AUDIO_ENGINE_RECOVERY.md`.
+
 ## 2026-11-01 — Gameplay sound preference and playback session
 
 The existing AudioManager exposes the existing profiles.play_sounds preference to
