@@ -14,6 +14,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `ASYNC_UX_NAVIGATION_MONEY_RELEASE.md` | Final async navigation/money UX gates, guarded stale-incident recovery, current hosted financial proof, browser-to-SQL and publication checkpoint |
 | `ASYNC_REAL_MONEY_RELEASE.md` | Five-game real-money async qualification/activation, recent-opponent default and combined Notifications UI release |
 | `NOTIFICATIONS_INVITATIONS_ACCORDION.md` | Live turn-push baseline, missing invitation correction, collapsed match controls and local qualification/release boundary |
 | `NOTIFICATIONS_OPERATIONAL_SETUP.md` | Working-alert completion, pinned timezone correction, owner key setup and final release/activation scope |

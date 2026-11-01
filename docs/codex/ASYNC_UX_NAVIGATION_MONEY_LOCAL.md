@@ -1,6 +1,10 @@
 # Async navigation and real-money UX — local candidate, 2026-11-01
 
-Publication is **not authorized**. Jeremy explicitly requested isolated local
+Historical local checkpoint; superseded by Jeremy's authorized final qualification
+and release request. See [final gates and evidence](ASYNC_UX_NAVIGATION_MONEY_RELEASE.md).
+The restrictions and failures below describe the initial local-only phase.
+
+Publication was **not authorized** during that phase. Jeremy explicitly requested isolated local
 implementation, offline validation and a local commit while the production
 database restarts. Do not merge, push, deploy, migrate, query production or alter
 financial data for this task. Other worktrees and deployments remain independent.
