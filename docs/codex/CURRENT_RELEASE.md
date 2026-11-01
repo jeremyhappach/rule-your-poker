@@ -1,4 +1,17 @@
-# Lobby Notifications accordion — 2026-11-01 — local, ready for review
+# Five-game async real money and Settings — 2026-11-01 — qualified, publication authorized
+
+Financial gate PASS. Jeremy lifted the hold and authorized direct production
+publication of Notifications UI `e4684a466`, recent-opponent default sorting,
+and explicit real-money mode for Words, Run21, TriTowers, Quintzee and Box Drop.
+Migration `20261101152430` is installed closed; candidate/installed rollback
+proofs pass with zero hosted synthetic profiles. 26 financial groups, 14 service/
+race/shared-rule groups, 170 focused tests, typecheck, production build and mobile/
+desktop browser checks pass. Review corrected three hardcoded play-money labels.
+No customer wagers/balances, financial owners, credentials or grants changed.
+Exact-SHA publication and guarded activation remain in the authorized delivery.
+See [scope, evidence and activation](ASYNC_REAL_MONEY_RELEASE.md).
+
+# Lobby Notifications accordion — 2026-11-01 — included in combined release above
 
 Personal Settings now opens with Notifications collapsed. Its contents are ordered
 device Enabled/Disabled status and controls, notification choices, then quiet hours.
@@ -14,8 +27,7 @@ test or production mutation occurred. Screenshots and browser evidence:
 `dev/web-push/evidence/lobby-accordion/`.
 
 Branch `codex/lobby-notifications-accordion`; existing icon work is preserved.
-This is a local UI candidate only. Jeremy explicitly requires review and a new
-go-ahead before any integration, push or publication.
+The earlier publication hold was explicitly lifted for the combined release above.
 
 # Matte nighttime app icon — 2026-11-01 — replacement, iPhone smoke pending
 

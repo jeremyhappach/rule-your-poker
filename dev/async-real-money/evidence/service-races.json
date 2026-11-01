@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "database": "async_real_1793545929571",
+  "checks": [
+    "ptown-words: real command duplicate/receipt safety and actual adapter boundary",
+    "ptown-words: concurrent last children, +4/-4 canonical accounting and retry exactly once",
+    "run21: real command duplicate/receipt safety and actual adapter boundary",
+    "run21: concurrent last children, +4/-4 canonical accounting and retry exactly once",
+    "tri-towers: real command duplicate/receipt safety and actual adapter boundary",
+    "tri-towers: concurrent last children, +4/-4 canonical accounting and retry exactly once",
+    "quintzee: real command duplicate/receipt safety and actual adapter boundary",
+    "quintzee: concurrent last children, +4/-4 canonical accounting and retry exactly once",
+    "boxdrop: real command duplicate/receipt safety and actual adapter boundary",
+    "boxdrop: concurrent last children, +4/-4 canonical accounting and retry exactly once",
+    "run21: shared rules, hidden opponent board, normal score computation and tie continuation",
+    "tri-towers: shared rules, hidden opponent board, normal score computation and tie completion",
+    "quintzee: shared rules, hidden opponent board, normal score computation and tie completion",
+    "boxdrop: shared rules, hidden opponent board, normal score computation and tie completion"
+  ],
+  "scope": "isolated synthetic clone; current server adapters and real canonical financial functions"
+}

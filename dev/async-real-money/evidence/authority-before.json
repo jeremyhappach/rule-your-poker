@@ -1,0 +1,70 @@
+[
+  {
+    "signature": "settle_gameplay_chip_transfers(uuid,jsonb,text)",
+    "hash": "86c0feb55524f14ab9f58a06cdee2ef6"
+  },
+  {
+    "signature": "delayed_capabilities()",
+    "hash": "2873aa6df98851787becf8e23fd2a190"
+  },
+  {
+    "signature": "delayed_opponent_page(text,text,jsonb)",
+    "hash": "a1a686fe0fd9da534656e40d38ffbd9f"
+  },
+  {
+    "signature": "delayed_remove(uuid,uuid)",
+    "hash": "e661dfedb59d4f2d07ced6181da3b98c"
+  },
+  {
+    "signature": "delayed_respond(uuid,uuid,text,text)",
+    "hash": "cc93eae79be667ffa8c8547930053d89"
+  },
+  {
+    "signature": "delayed_words_snapshot(uuid)",
+    "hash": "92a60d0fab4034130d226880cd087a2d"
+  },
+  {
+    "signature": "finalize_gameplay_transfer_batch()",
+    "hash": "5d1c8703caee40ce7392d4eb6de1aaf9"
+  },
+  {
+    "signature": "record_session_results()",
+    "hash": "eb408dcb7dca842776909bd603183a60"
+  },
+  {
+    "signature": "delayed_commit(uuid,uuid,bigint,jsonb,text,bigint,boolean,uuid,jsonb)",
+    "hash": "7b2905adc4c1fe7f870ca34e511548b7"
+  },
+  {
+    "signature": "delayed_create(uuid,uuid,boolean,jsonb)",
+    "hash": "906587c891127a68bf2734cfe035a05f"
+  },
+  {
+    "signature": "delayed_load(uuid,uuid,uuid)",
+    "hash": "5bbd2de0f555eb64d28033b5e1f6a19d"
+  },
+  {
+    "signature": "private.delayed_child_record(private.delayed_children)",
+    "hash": "4017017af4ba4e4c9adef0ab0522da65"
+  },
+  {
+    "signature": "private.delayed_record_outcome(uuid,bigint,text,uuid,jsonb)",
+    "hash": "e9df9e0d3b92e2ca1c97135055841511"
+  },
+  {
+    "signature": "private.delayed_actor(uuid)",
+    "hash": "283f13fcaaf3ca05d3487202e52a83d5"
+  },
+  {
+    "signature": "private.delayed_expire(uuid,bigint,timestamp with time zone)",
+    "hash": "6109cda2ec60da55605a723367e29033"
+  },
+  {
+    "signature": "private.delayed_finalize(uuid)",
+    "hash": "3c319dee938f4242d6174b27bc3ff260"
+  },
+  {
+    "signature": "private.delayed_human(uuid)",
+    "hash": "69bf066a6d6b10d77f07a008f299a82e"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "signature": "private.boxdrop_board_deal(jsonb,bigint)",
+    "hash": "244d838300ec0f953d3206c28e8311ba"
+  },
+  {
+    "signature": "private.boxdrop_board_reduce(jsonb,text,integer[],bigint)",
+    "hash": "43837f3014c3ecf6f5df2dd1de70f815"
+  },
+  {
+    "signature": "private.boxdrop_rules()",
+    "hash": "acbfed51a27a6b964a1c6348f411a8af"
+  },
+  {
+    "signature": "delayed_board_core(text,text,jsonb,bigint,jsonb,text,integer[],bigint)",
+    "hash": "1efa77351e441c7f726fcdfbeb6f85db"
+  },
+  {
+    "signature": "delayed_tri_core(text,jsonb,bigint,jsonb,text,integer,bigint)",
+    "hash": "a50304983a016ee4a80a2c9da2fa5a4f"
+  },
+  {
+    "signature": "private.ptown_words_deal(jsonb,bigint)",
+    "hash": "b05cdd580147f0b8235296d1717387fb"
+  },
+  {
+    "signature": "private.ptown_words_reduce(jsonb,text,jsonb,bigint)",
+    "hash": "3f9fcba7523dca5c2bd8a927e84438f5"
+  },
+  {
+    "signature": "private.ptown_words_rules_for(text)",
+    "hash": "ec1cab41bea767a53999265188edb293"
+  },
+  {
+    "signature": "private.quintzee_board_deal(jsonb,bigint)",
+    "hash": "b944dab0ba0d4c99b92fbebc27415076"
+  },
+  {
+    "signature": "private.quintzee_board_reduce(jsonb,text,integer[],bigint)",
+    "hash": "96be4c75a7ab1d0d4222eb44d46cfffb"
+  },
+  {
+    "signature": "private.quintzee_default_rules()",
+    "hash": "06c9cc2cb7628343b69ce07e0e21116a"
+  },
+  {
+    "signature": "private.tri_towers_board_deal(jsonb,bigint)",
+    "hash": "0470de7b2c3c122237bea29e3cee3d03"
+  },
+  {
+    "signature": "private.tri_towers_board_reduce(jsonb,text,integer,bigint)",
+    "hash": "0841685c9350fae8cb483d9ecbbec593"
+  },
+  {
+    "signature": "private.tri_towers_rules()",
+    "hash": "20578b84e0754caf783d050cdaab8785"
+  }
+]

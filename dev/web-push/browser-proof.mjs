@@ -6,7 +6,7 @@ await new Promise(r=>server.listen(15414,'127.0.0.1',r));const browser=await chr
 const a='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',b='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',match='11111111-1111-4111-8111-111111111111';let page;
 try{
  for(const width of [390,1280]){
-  const context=await browser.newContext({viewport:{width,height:844}}),errors=[],external=[],prefs=new Map(),rpcCalls=[];
+  const context=await browser.newContext({viewport:{width,height:844}}),errors=[],external=[],prefs=new Map(),rpcCalls=[],opponentSort=[],createdInvites=[];
   let denied=false,removed=false,invited=false,tableAvailable=true,settings={invitations:false,asyncDefault:false,newTable:false,quietEnabled:false,quietStart:'22:00',quietEnd:'07:00',quietZone:'UTC'};
   await context.routeWebSocket('**',ws=>ws.close());
   await context.addInitScript(()=>{
@@ -26,6 +26,9 @@ try{
    if(path.startsWith('/rest/v1/rpc/')){
     const name=path.split('/').at(-1),args=req.postDataJSON();
     rpcCalls.push(name);
+    if(name==='delayed_capabilities')return send({enabled:true,fake_money_only:false,max_children:32,games:['ptown-words','run21','tri-towers','quintzee','boxdrop'].map(id=>({id,stake:5}))});
+    if(name==='delayed_opponent_page'){opponentSort.push(args.p_sort);return send({items:args.p_sort==='recent'?[{id:b,name:'Zoe',isHuman:true},{id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',name:'Amy',isHuman:true}]:[{id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',name:'Amy',isHuman:true},{id:b,name:'Zoe',isHuman:true}],hasMore:false,next:null});}
+    if(name==='delayed_create'){createdInvites.push(args);return send(match);}
     if(name==='notification_preferences'){settings={...settings,...args?.p_patch};return send(settings);}
     if(name==='notification_table')return send(tableAvailable?{sessionId:args.p_session,realMoney:true}:null);
     if(name==='async_push_preference'){const key=args.p_match??'default';if(args.p_enabled!==undefined)prefs.set(key,args.p_enabled);return send(prefs.get(key)??false);}
@@ -82,6 +85,15 @@ try{
   await start.fill('22:00');await end.fill('07:00');await page.getByRole('button',{name:'Save quiet hours',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('fieldset').disabled);assert.equal(settings.quietEnabled,true);
   await page.getByRole('heading',{name:'Notifications',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:out+'/settings-'+width+'.png',fullPage:true});
   await page.getByLabel('Start',{exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:out+'/quiet-hours-'+width+'.png',fullPage:true});
+  await page.goto(base+'/delayed/new');await page.getByRole('option',{name:'Zoe',exact:true}).waitFor({state:'attached'});assert.equal(opponentSort.at(-1),'recent');
+  assert.deepEqual(await page.getByLabel('Opponent',{exact:true}).locator('option').allTextContents(),['Choose a human player','Zoe','Amy']);
+  await page.getByRole('button',{name:'Sort by username',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[aria-label="Opponent"] option:nth-child(2)')?.textContent==='Amy');assert.equal(opponentSort.at(-1),'username');
+  assert.equal(await page.getByLabel('Money mode',{exact:true}).inputValue(),'play');await page.getByLabel('Money mode',{exact:true}).selectOption('real');
+  const allGames=['ptown-words','run21','tri-towers','quintzee','boxdrop'];for(let i=1;i<5;i++){await page.getByRole('button',{name:'Add game',exact:true}).click();await page.getByLabel('Game '+(i+1),{exact:true}).selectOption(allGames[i]);}
+  await page.getByLabel('Opponent',{exact:true}).selectOption(b);await page.getByRole('button',{name:'Review invitation',exact:true}).click();await page.getByText(/maximum real-money loss of/).waitFor();
+  assert.equal(createdInvites.length,0);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:out+'/async-real-invite-'+width+'.png',fullPage:true});
+  await page.getByRole('button',{name:'Send invitation',exact:true}).click();await page.waitForURL('**/delayed/'+match);assert.equal(createdInvites[0].p_real_money,true);assert.deepEqual(createdInvites[0].p_lineup,allGames.map(game=>({game,stake:5})));
+  checks.push({width,recentOpponentDefault:true,alphabeticalToggle:true,explicitRealMoneyChoice:true,fiveGameRealInvitation:true,noInvitationBeforeReview:true,noHorizontalOverflow:true});
   await page.goto(base+'/delayed/'+match);await details.waitFor();assert.equal(await details.getAttribute('aria-expanded'),'false');await details.click();await page.getByText(/Quiet hours: 22:00[–-]07:00 \(America\/Chicago\)/).waitFor();assert.equal(await checkbox.isChecked(),true);await page.screenshot({path:out+'/match-expanded-'+width+'.png',fullPage:true});
   await page.goto(base+'/notifications/table/'+match);await page.getByRole('heading',{name:'This is a Real Money Game!'}).waitFor();tableAvailable=false;await page.getByRole('button',{name:'I Acknowledge',exact:true}).click();await page.getByText(/This table is no longer available to join/).waitFor();assert(!page.url().includes('/game/'));
   tableAvailable=true;await page.reload();await page.getByRole('button',{name:'I Acknowledge',exact:true}).click();await page.waitForURL('**/game/'+match);assert(!rpcCalls.includes('session_take_seat'));

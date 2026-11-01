@@ -3,7 +3,7 @@ vi.mock('@/lib/delayed/playingPresence',async importOriginal=>({...await importO
 // @vitest-environment jsdom
 // Actual async shell: these cases reproduced the sibling defects before correction.
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-import {act,cleanup,fireEvent,render} from '@testing-library/react';
+import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
 import {TooltipProvider} from '@/components/ui/tooltip';
 import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
@@ -29,7 +29,7 @@ function finish(game:string,reason:string):any{
 }
 function words():any{return {identity:{sessionId:'match',dealerGameId:'child',roundId:'round'},revision:1,serverAt:1000,rules:{version:'ptown-words/2',dictionaryId:'enable2k/1',dictionarySha256:'hash',turnMs:129600000},players:[{id:'me',userId:'me',name:'You',seat:1,isBot:false},{id:'other',userId:'other',name:'Other',seat:2,isBot:false}],viewerId:'me',activePlayerId:'me',board:Array(225).fill(null),rack:[{id:1,face:'C',value:3},{id:2,face:'A',value:1}],scores:{me:0,other:0},turn:1,deadline:129600000,canAct:true,paused:false,phase:'playing',bagCount:86,rackCounts:{me:2,other:7},pausedAt:null,finished:false,settlement:null,financial:{balances:{me:0,other:0},resultId:null,batch:null},moves:[],event:{label:'Started',points:0}};}
 function wordFinish(){const v=words();return {...v,revision:2,serverAt:2000,turn:2,canAct:false,activePlayerId:'other',scores:{me:4,other:0},moves:[{turn:1,playerId:'me',action:'place',points:4,count:2,words:[{word:'CA',points:4}]}],movePresentation:{version:1,turn:1,playerId:'me',squares:[112,113],startedAt:2000,announceAt:2000,readyAt:5600,flipMs:100,focusMs:0,noticeMs:3600}};}
-function mount(wordsMode=false,autoStart=false){return render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/turn']}><Routes><Route path="/turn" element={wordsMode?<WordsTurn childId="child" matchId="match" userId="me"/>:<DelayedTurn childId="child" matchId="match" userId="me" autoStart={autoStart}/>}/><Route path="/delayed/match" element={<h1>Match destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);}
+function mount(wordsMode=false,autoStart=false,realMoney=false){return render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/turn']}><Routes><Route path="/turn" element={wordsMode?<WordsTurn childId="child" matchId="match" userId="me" realMoney={realMoney}/>:<DelayedTurn childId="child" matchId="match" userId="me" autoStart={autoStart} realMoney={realMoney}/>}/><Route path="/delayed/match" element={<h1>Match destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);}
 async function flush(){await act(async()=>{await Promise.resolve();await Promise.resolve();await Promise.resolve();});}
 async function receive(v:any){mock.snapshot=v;await act(async()=>{mock.change?.({new:{match_id:'match'}});await Promise.resolve();await Promise.resolve();});}
 async function tick(ms:number){await act(async()=>{vi.advanceTimersByTime(ms);});}
@@ -39,6 +39,11 @@ beforeEach(()=>{vi.useFakeTimers({toFake:['setInterval','clearInterval','setTime
  Object.defineProperty(window,'matchMedia',{configurable:true,value:()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}})});
  mock.request.mockImplementation(async()=>structuredClone(mock.snapshot));mock.words.mockImplementation(async()=>structuredClone(mock.snapshot));});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
+for(const game of ['ptown-words','quintzee','boxdrop'])for(const realMoney of [false,true])it(`${game} labels the authoritative ${realMoney?'real':'play'} money mode`,async()=>{
+ mock.snapshot=game==='ptown-words'?words():initial(game);mount(game==='ptown-words',false,realMoney);await flush();
+ expect(screen.getByText(`${realMoney?'Real money':'Play money'} · 36-hour turns`)).toBeTruthy();
+ expect(screen.queryByText(`${realMoney?'Play money':'Real money'} · 36-hour turns`)).toBeNull();
+});
 it('Quintzee presence waits for explicit Start and the actual playing phase',async()=>{
  mock.snapshot={...initial('quintzee'),board:null};mount(false,true);await flush();
  expect(presence.publish.mock.lastCall?.[0]).toBeNull();

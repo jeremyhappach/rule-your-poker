@@ -106,5 +106,5 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
  const child=home?.lineup.find(c=>c.id===childId);
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
- return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} autoStart/>}</ReviewGate>;
+ return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

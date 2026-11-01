@@ -1,0 +1,24 @@
+{
+  "candidateRollbackPassed": true,
+  "installed": {
+    "health": {
+      "enabled": true,
+      "last_tick": "2026-11-01T15:24:00.03366+00:00",
+      "singleton": true
+    },
+    "release": {
+      "singleton": true,
+      "real_qualified": false,
+      "admission_enabled": true
+    },
+    "migration": {
+      "name": "async_real_money_admission",
+      "version": "20261101152430"
+    },
+    "qualified": true,
+    "financial_case_groups": 26,
+    "synthetic_profiles_remaining": 0
+  },
+  "securityReview": "No new grants or public endpoints. Relevant advisor notices are existing authenticated SECURITY DEFINER RPC boundaries and private RLS without browser policies; actual denial checks pass.",
+  "independentReview": "Identified hardcoded play-money labels in Words/Quintzee/Boxdrop; corrected using authoritative match mode and six regression cases."
+}
