@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 const mock = vi.hoisted(() => ({ lease: null as unknown }));
 vi.mock('@/lib/sessionRecoveryLease', () => ({ getActiveRecoveryLease: () => mock.lease }));
-import { launchSplash } from '@/lib/launchSplash';
+import { launchSplash, SPLASH_OPENING_FRAME, SPLASH_POSTER } from '@/lib/launchSplash';
 import { FreshLaunchSplash } from './FreshLaunchSplash';
 
 let reduced = false, imageError = false, imageStalled = false;
@@ -36,8 +36,11 @@ it('shows after a slow boot, keeps lobby mounted, starts at frame zero and fades
   expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
   expect(document.querySelector('button')?.textContent).toBe('Real lobby');
   const video = document.querySelector('video')!;
+  expect(document.querySelector('img')?.getAttribute('src')).toBe(SPLASH_OPENING_FRAME);
+  expect(video.getAttribute('poster')).toBe(SPLASH_OPENING_FRAME);
   expect(video.muted).toBe(true); expect(video.playsInline).toBe(true); expect(video.currentTime).toBe(0);
   fireEvent.ended(video);
+  expect(document.querySelector('img')?.getAttribute('src')).toBe(SPLASH_POSTER);
   expect(splash()?.getAttribute('data-launch-splash')).toBe('fading');
   await flush(200); expect(splash()).toBeNull();
   expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
@@ -49,6 +52,7 @@ it('plays while lobby data loads past two seconds, holds final PNG and releases 
   fireEvent.ended(document.querySelector('video')!);
   expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
   expect(document.querySelector('video')).toBeNull();
+  expect(document.querySelector('img')?.getAttribute('src')).toBe(SPLASH_POSTER);
   await flush(1000);
   view.rerender(tree(true));
   expect(splash()?.getAttribute('data-launch-splash')).toBe('fading');
@@ -59,6 +63,19 @@ it('releases failed initialization within five seconds plus fade', async () => {
   await flush(5000); expect(splash()?.getAttribute('data-launch-splash')).toBe('fading');
   await flush(200); expect(splash()).toBeNull();
   expect(document.querySelector('button')?.textContent).toBe('Real lobby');
+});
+it('waits for the opening image even when the completed PNG is already loaded', async () => {
+  const pending = new Map<string, { onload?: () => void }>();
+  vi.stubGlobal('Image', class {
+    onload?: () => void;
+    set src(value: string) { pending.set(value, this); }
+  });
+  render(tree());
+  act(() => pending.get(SPLASH_POSTER)?.onload?.());
+  expect(splash()).toBeNull();
+  act(() => pending.get(SPLASH_OPENING_FRAME)?.onload?.());
+  expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
+  expect(document.querySelector('img')?.getAttribute('src')).toBe(SPLASH_OPENING_FRAME);
 });
 it('bounds stalled playback without waiting for ended', async () => {
   render(tree()); await flush(); await flush(3500);
@@ -85,6 +102,7 @@ it.each(['reduced', 'rejected', 'unsupported'])('falls back without forcing a pl
   if (mode === 'rejected') vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValue(new Error('NotAllowedError'));
   if (mode === 'unsupported') vi.mocked(HTMLMediaElement.prototype.canPlayType).mockReturnValue('');
   render(tree()); await flush(); expect(document.querySelector('video')).toBeNull();
+  expect(document.querySelector('img')?.getAttribute('src')).toBe(SPLASH_POSTER);
   await flush(200); expect(splash()).toBeNull();
 });
 it.each(['app:page-resumed', 'pagehide', 'popstate', 'keydown', 'pointerdown'])('dismisses immediately on %s', async event => {

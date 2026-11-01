@@ -5,6 +5,30 @@ Home Screen reopen went directly to the lobby. He approved this correction and
 explicitly rejected skipping branding because lobby loading takes two seconds.
 Original artwork approval remains unchanged.
 
+## First-frame flash follow-up
+
+Jeremy's next physical smoke on `b81e24a1f` confirmed playback, but the completed
+artwork flashed before the animation began. `FreshLaunchSplash` used the supplied
+completed PNG both underneath the video and as its startup poster. That image
+painted before the MP4 decoded its opening bridge scene; this was not a replay.
+
+The startup image and video poster now use the exact 720 x 1280 opening frame
+extracted from the approved MP4 (`public/launch-splash/approved-v1-opening.png`).
+Both opening and final images load before the overlay appears. Reduced motion
+loads only the supplied final PNG. Playback completion/failure still selects that
+supplied PNG. No video, supplied fallback, duration, eligibility, routing, auth,
+recovery, lobby readiness or viewport geometry changes.
+
+The focused suite adds delayed-opening-image coverage and verifies the
+opening-to-final transition. The compiled-App harness now holds all video bytes
+back and compares the actual first-paint screenshot with both images, then
+releases the same MP4 and proves full playback. It also checks a missing opening
+image cannot cover the lobby. TypeScript, production build, 39 focused tests and
+all 26 compiled-App scenarios pass. Qualification and publication checkpoint:
+`release-launch-splash-opening-frame-20261101`. Physical iPhone acceptance remains
+pending: force-close/reopen twice and confirm no completed-artwork flash before
+the animation, followed by the existing notification/recovery/resume smoke below.
+
 ## Exact failure boundary
 
 The splash's own admission code confused account history with current recovery.

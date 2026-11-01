@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useLocation } from 'react-router-dom';
 import { getActiveRecoveryLease } from '@/lib/sessionRecoveryLease';
 import { isSplashLobbyEntry, launchSplash, SPLASH_FADE_MS, SPLASH_MAX_VISIBLE_MS,
-  SPLASH_PLAYBACK_WATCHDOG_MS, SPLASH_POSTER, SPLASH_VIDEO } from '@/lib/launchSplash';
+  SPLASH_PLAYBACK_WATCHDOG_MS, SPLASH_POSTER, SPLASH_OPENING_FRAME, SPLASH_VIDEO } from '@/lib/launchSplash';
 import './FreshLaunchSplash.css';
 
 /** An optional sibling of the authenticated live lobby, never an initialization gate. */
@@ -39,19 +39,25 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
     window.addEventListener('pageshow', restored);
     // Bounds an unavailable image, not app/auth/lobby initialization.
     const assetTimeout = setTimeout(cancel, SPLASH_MAX_VISIBLE_MS);
-    const poster = new Image();
-    poster.onload = () => {
-      clearTimeout(assetTimeout);
-      if (!alive || cancelled.current) return;
-      if (document.hidden || getActiveRecoveryLease()) { cancel(); return; }
-      setPhase('showing');
-    };
-    poster.onerror = cancel;
-    poster.src = SPLASH_POSTER;
+    const sources = matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? [SPLASH_POSTER] : [SPLASH_OPENING_FRAME, SPLASH_POSTER];
+    let remaining = sources.length;
+    const posters = sources.map(src => {
+      const poster = new Image();
+      poster.onload = () => {
+        if (!alive || cancelled.current || --remaining > 0) return;
+        clearTimeout(assetTimeout);
+        if (document.hidden || getActiveRecoveryLease()) { cancel(); return; }
+        setPhase('showing');
+      };
+      poster.onerror = cancel;
+      poster.src = src;
+      return poster;
+    });
     const cleanup = () => {
       alive = false;
       clearTimeout(assetTimeout);
-      poster.onload = poster.onerror = null;
+      posters.forEach(poster => { poster.onload = poster.onerror = null; });
       events.forEach(event => window.removeEventListener(event, cancel));
       document.removeEventListener('visibilitychange', hidden);
       window.removeEventListener('pageshow', restored);
@@ -105,8 +111,8 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
   if (!routeIsLobby || owner.current !== userId || (phase !== 'showing' && phase !== 'fading')) return null;
   return <div className="fresh-launch-splash" data-launch-splash={phase} aria-hidden="true"
     style={{ opacity: phase === 'fading' ? 0 : 1 }}>
-    <img src={SPLASH_POSTER} alt="" className="fresh-launch-splash-art" />
-    {!still && <video ref={video} src={SPLASH_VIDEO} poster={SPLASH_POSTER}
+    <img src={still ? SPLASH_POSTER : SPLASH_OPENING_FRAME} alt="" className="fresh-launch-splash-art" />
+    {!still && <video ref={video} src={SPLASH_VIDEO} poster={SPLASH_OPENING_FRAME}
       className="fresh-launch-splash-art" autoPlay muted playsInline preload="auto"
       disablePictureInPicture tabIndex={-1} onEnded={finish} onError={finish} />}
   </div>;

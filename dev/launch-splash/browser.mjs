@@ -29,6 +29,8 @@ const user = { id: '11111111-1111-4111-8111-111111111111', aud: 'authenticated',
 const token = ['eyJhbGciOiJIUzI1NiJ9', Buffer.from(JSON.stringify({ sub: user.id, aud: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'synthetic'].join('.');
 const results = [];
 const cases = [
+  { name: 'first-frame-handoff', holdVideo: true, show: true },
+  { name: 'opening-image-unavailable', openingFail: true },
   { name: 'ios-cold', width: 390, height: 844, ios: true, show: true },
   { name: 'android-cold', width: 412, height: 915, show: true },
   { name: 'compact', width: 320, height: 568, show: true },
@@ -58,6 +60,9 @@ try {
     const context = await browser.newContext({ viewport: { width: c.width ?? 390, height: c.height ?? 844 }, reducedMotion: c.reduced ? 'reduce' : 'no-preference' });
     await context.routeWebSocket('**', ws => ws.close());
     const queries = [], errors = [];
+    let releaseVideo;
+    const videoGate = new Promise(resolve => { releaseVideo = resolve; });
+    let firstPaint;
     await context.addInitScript(({ c, user, token, key }) => {
       localStorage.setItem(key, JSON.stringify({ user, access_token: token, refresh_token: 'synthetic', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer' }));
       if (c.retained) sessionStorage.setItem('ptown:launch-document:v1', '1');
@@ -121,11 +126,43 @@ try {
       if (path.startsWith('/api/')) return send({});
       if (c.bootDelay && /^\/assets\/index-.*\.js$/.test(path)) await new Promise(r => setTimeout(r, 2600));
       if (c.mediaFail && path.endsWith('.mp4')) return route.abort();
+      if (c.openingFail && path.endsWith('approved-v1-opening.png')) return route.abort();
+      if (c.holdVideo && path.endsWith('.mp4')) await videoGate;
       return route.continue();
     });
     const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
     try {
       await page.goto(origin + (c.path ?? '/'), { waitUntil: 'domcontentloaded' });
+      if (c.holdVideo) {
+        const overlay = page.locator('[data-launch-splash="showing"]');
+        await overlay.waitFor();
+        assert.equal(await overlay.locator('video').evaluate(v => v.readyState), 0);
+        const screenshot = await overlay.screenshot({ path: `${out}/first-frame-before-video.png` });
+        firstPaint = await page.evaluate(async screenshot => {
+          const decode = async url => { const image = new Image(); image.src = url; await image.decode(); return image; };
+          const actual = await decode('data:image/png;base64,' + screenshot);
+          const canvas = document.createElement('canvas'); canvas.width = actual.width; canvas.height = actual.height;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(actual, 0, 0);
+          const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+          const difference = async url => {
+            const image = await decode(url);
+            const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
+            const width = image.width * scale, height = image.height * scale;
+            ctx.fillStyle = '#020b15'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+            const expected = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let delta = 0;
+            for (let i = 0; i < pixels.length; i++) delta += Math.abs(pixels[i] - expected[i]);
+            return delta / pixels.length;
+          };
+          return { openingDifference: await difference('/launch-splash/approved-v1-opening.png'),
+            completedDifference: await difference('/launch-splash/approved-v1.png') };
+        }, screenshot.toString('base64'));
+        assert(firstPaint.openingDifference < 2, JSON.stringify(firstPaint));
+        assert(firstPaint.completedDifference > firstPaint.openingDifference + 10, JSON.stringify(firstPaint));
+        releaseVideo();
+      }
       if (c.show && !c.fallback) {
         await page.locator('[data-launch-splash="showing"]').waitFor({ timeout: 3500 });
         const art = await page.locator('.fresh-launch-splash-art').first().evaluate(el => ({ fit: getComputedStyle(el).objectFit, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
@@ -174,9 +211,9 @@ try {
         await page.goto(origin + '/delayed/22222222-2222-4222-8222-222222222222'); await page.waitForTimeout(400);
         assert(!(await page.evaluate(() => window.splashEvidence)).some(e => e.phase !== 'none'));
       }
-      results.push({ name: c.name, evidence, media, membershipReads: queries.length, passed: true });
+      results.push({ name: c.name, evidence, media, firstPaint, membershipReads: queries.length, passed: true });
       console.log('PASS', c.name);
-    } finally { await context.close(); }
+    } finally { releaseVideo(); await context.close(); }
   }
   writeFileSync(out + '/results.json', JSON.stringify({ actualCompiledApp: true, syntheticHttpOnly: true, results }, null, 2));
 } finally { await browser.close(); await new Promise(r => server.close(r)); }

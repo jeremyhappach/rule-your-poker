@@ -3,6 +3,8 @@ export const SPLASH_FADE_MS = 200;
 export const SPLASH_PLAYBACK_WATCHDOG_MS = 3500;
 export const SPLASH_MAX_VISIBLE_MS = 5000;
 export const SPLASH_POSTER = '/launch-splash/approved-v1.png';
+// Exact first frame of the approved MP4; the supplied PNG is its completed artwork.
+export const SPLASH_OPENING_FRAME = '/launch-splash/approved-v1-opening.png';
 export const SPLASH_VIDEO = '/launch-splash/approved-v1.mp4';
 
 export interface LaunchEvidence {
@@ -74,4 +76,8 @@ if (typeof window !== 'undefined' && launchSplash.eligible) {
   window.addEventListener('pageshow', restored);
   const poster = new Image();
   poster.src = SPLASH_POSTER;
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const opening = new Image();
+    opening.src = SPLASH_OPENING_FRAME;
+  }
 }

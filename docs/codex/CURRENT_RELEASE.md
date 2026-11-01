@@ -1,3 +1,15 @@
+# Fresh-launch splash opening frame — 2026-11-01 — qualified; publication authorized
+
+Owner smoke now confirms playback on `b81e24a1f`, with a completed-artwork flash
+before the animation. The supplied final PNG was incorrectly used as the startup
+poster. The correction uses the approved MP4's exact opening frame for startup,
+retains the supplied PNG for fallback/final hold, and preserves all launch and
+loading behavior. TypeScript, build and 39 focused tests pass; first-paint pixel
+comparison passes with video bytes deliberately held back. All 26 compiled-App
+browser scenarios pass. Physical iPhone acceptance remains pending; see
+[correction and smoke](FRESH_LAUNCH_SPLASH_CORRECTION.md#first-frame-flash-follow-up).
+Checkpoint: `release-launch-splash-opening-frame-20261101`.
+
 # Fresh-launch splash correction — 2026-11-01 — qualified; publication authorized
 
 Jeremy's force-close/Home Screen smoke failed the initial release. Its account-wide
