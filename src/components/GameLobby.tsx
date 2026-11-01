@@ -276,10 +276,16 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad }: GameLobb
               </Button>
             )}
             <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex flex-col gap-2 flex-1 sm:flex-none">
+            <Button onClick={() => navigate('/delayed')} disabled={isBlocked} size="sm"
+              className="bg-slate-800/90 border border-amber-500/40 text-amber-100">
+              <Gamepad2 className="h-4 w-4 mr-2" />Async Mode
+            </Button>
             <Button onClick={() => navigate('/arcade')} disabled={isBlocked} size="sm"
               className="flex-1 sm:flex-none bg-slate-800/90 border border-amber-500/40 text-amber-100">
               <Gamepad2 className="h-4 w-4 mr-2" />Arcade Mode
             </Button>
+            </div>
             <Button 
               onClick={() => setShowCreateDialog(true)} 
               size="sm"
@@ -576,10 +582,10 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad }: GameLobb
           <DialogHeader>
             <DialogTitle>Create New Game</DialogTitle>
             <DialogDescription>
-              Start a live session or an asynchronous Words match
+              Start a live multiplayer session
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4"><Button variant="outline" onClick={()=>navigate('/delayed/new')}>Set Up Asynchronous Match</Button>
+          <div className="py-4 space-y-4">
             <p className="text-sm text-muted-foreground">
               Start a dealer call-it home game session. Players begin at $0 and can go into debt. The dealer will select the game type and configure rules once the game starts.
             </p>

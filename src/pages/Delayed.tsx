@@ -1,4 +1,6 @@
 import {PlayingNow} from '@/components/delayed/PlayingNow';
+import {AsyncSessionName} from '@/components/delayed/AsyncSessionName';
+import {RealMoneyWarningDialog} from '@/components/RealMoneyWarningDialog';
 import {AsyncGameHeader} from '@/components/delayed/AsyncGameHeader';
 import {CurrentNet} from '@/components/delayed/CurrentNet';
 import {PushPreferences} from '@/components/delayed/PushPreferences';
@@ -29,7 +31,7 @@ export default function Delayed(){
   {matchId==='new'?<AsyncInvite/>:matchId?<MatchHome key={matchId} id={matchId} userId={user.id}/>:<MatchList userId={user.id}/>}</main>;
 }
 function useUpdates(userId:string,refresh:()=>void){
- useEffect(()=>{const channel=supabase.channel('delayed-home:'+userId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},refresh)
+ useEffect(()=>{const channel=supabase.channel('delayed-home:'+userId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>{refresh();})
   .subscribe(status=>{if(status==='SUBSCRIBED')refresh();});const focus=()=>{if(!document.hidden)refresh();};
   window.addEventListener('online',focus);document.addEventListener('visibilitychange',focus);
   return()=>{void supabase.removeChannel(channel);window.removeEventListener('online',focus);document.removeEventListener('visibilitychange',focus);};
@@ -41,10 +43,10 @@ function MatchList({userId}:{userId:string}){
  const epoch=useRef(0);
  const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home[]>('delayed_list').then(v=>{if(generation!==epoch.current)return;setRows(v);setLoaded(true);setError('');}).catch(e=>{if(generation===epoch.current)setError(e.message);});},[]);
  useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
- return <><Link className="delayed-primary" to="/delayed/new">Set Up Asynchronous Match</Link>
+ return <><Link className="delayed-primary" to="/delayed/new">New Async Match</Link>
   {error&&<p role="alert">{error} <button onClick={refresh}>Retry</button></p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
   {loaded&&!rows.some(r=>r.status!=='settled')&&<p>No active async matches.</p>}
-  <ul className="delayed-lineup">{rows.filter(row=>row.status!=='settled').map(row=><li key={row.id} data-turn={row.status==='active'&&!row.held?(row.lineup.some(c=>!c.terminal&&c.actor===userId)?'own':'opponent'):undefined}><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong>vs. {row.players.find(p=>p.id!==userId)?.name}</strong> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></Link>
+  <ul className="delayed-lineup">{rows.filter(row=>row.status!=='settled').map(row=><li key={row.id} data-turn={row.status==='active'&&!row.held?(row.lineup.some(c=>!c.terminal&&c.actor===userId)?'own':'opponent'):undefined}><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {row.players.find(p=>p.id!==userId)?.name}</AsyncSessionName></strong> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></Link>
    <p>{row.status} · {row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>
    {row.status==='active'&&!row.held&&<strong>{row.lineup.some(c=>!c.terminal&&c.actor===userId)?'Your turn':(row.players.find(p=>p.id!==userId)?.name??'Opponent')+'’s turn'}</strong>}{row.acceptedAt&&<p>Current Net: {money(row.net)}</p>}</li>)}</ul>
   {rows.length>=30&&older&&<button disabled={loadingOlder} onClick={()=>{const last=rows.at(-1)!;setLoadingOlder(true);
@@ -55,24 +57,28 @@ function MatchList({userId}:{userId:string}){
 function MatchHome({id,userId}:{id:string;userId:string}){
  const [query]=useSearchParams(),historical=query.has('history');
  const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[tick,setTick]=useState(Date.now());
- const offset=useRef(0),epoch=useRef(0),request=useRef<{action:string;id:string}|null>(null);
- const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home>(historical?'delayed_history_detail':'delayed_home',{p_match:id}).then(value=>{
+ const [confirmOffer,setConfirmOffer]=useState<string|null>(null);
+ const offset=useRef(0),epoch=useRef(0),busy=useRef(false),request=useRef<{action:string;offerHash:string;id:string}|null>(null);
+ const refresh=useCallback(()=>{const generation=++epoch.current;return delayedRpc<Home>(historical?'delayed_history_detail':'delayed_home',{p_match:id}).then(value=>{
   if(generation!==epoch.current)return;offset.current=value.serverAt-Date.now();setHome(old=>old&&old.revision>value.revision?old:value);setError('');
  }).catch(e=>{if(generation===epoch.current)setError(e.message);});},[id,historical]);
  useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
  useEffect(()=>{const timer=setInterval(()=>setTick(Date.now()),1000);return()=>clearInterval(timer);},[]);
- async function respond(action:string){if(!home||pending)return;setPending(true);setError('');
-  if(request.current?.action!==action)request.current={action,id:crypto.randomUUID()};
-  try{await delayedRpc('delayed_respond',{p_match:id,p_request:request.current.id,p_offer_hash:home.offerHash,p_action:action});request.current=null;refresh();}
-  catch(e){setError(e instanceof Error?e.message:'Unable to respond.');}finally{setPending(false);}}
+ async function respond(action:string,confirmedOffer?:string){
+  if(!home||busy.current||historical||home.status!=='invited')return;
+  if(action==='accept'&&home.realMoney&&confirmedOffer!==home.offerHash)return;
+  busy.current=true;setPending(true);setConfirmOffer(null);setError('');
+  if(request.current?.action!==action||request.current?.offerHash!==home.offerHash)request.current={action,offerHash:home.offerHash,id:crypto.randomUUID()};
+  try{await delayedRpc('delayed_respond',{p_match:id,p_request:request.current.id,p_offer_hash:home.offerHash,p_action:action});await refresh();}
+  catch(e){setError(e instanceof Error?e.message:'Unable to respond.');}finally{busy.current=false;setPending(false);}}
  if(!home)return <p role={error?'alert':'status'}>{error||'Loading match…'}</p>;
  if(home.removedAt&&!historical)return <section className="delayed-match-home"><Link to="/delayed">← All matches</Link><h2>Match deleted</h2><p>The creator removed this play-money match for both players. Its history has been retained.</p></section>;
  const now=Math.max(home.serverAt,tick+offset.current);
- return <section className="delayed-match-home"><Link className="delayed-back" to="/delayed">← All matches</Link><div className="delayed-match-heading"><small>{home.status==='invited'?'MATCH INVITATION':'HEAD-TO-HEAD'}</small><h2>{home.players.map(p=>p.name).join(' vs. ')}</h2>
+ return <section className="delayed-match-home"><Link className="delayed-back" to="/delayed">← All matches</Link><div className="delayed-match-heading"><small>{home.status==='invited'?'MATCH INVITATION':'HEAD-TO-HEAD'}</small><h2><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></h2>
   <p className="delayed-match-meta">{home.realMoney?'Real money':'Play money'} · {home.status} · {home.completed}/{home.lineup.length} complete</p></div>
   {home.acceptedAt&&<CurrentNet home={home} userId={userId}/>}
   {mayViewFinale(home)?<Link className="delayed-primary" to={'/delayed/'+id+'?finale=1'}>{home.finaleViewed?'Replay match finale':'View match results'}</Link>:home.receipt&&!home.removedAt&&<p role="status">View the remaining game results below before the match finale.</p>}
-  <div className="delayed-match-facts"><span>Maximum loss <strong>{home.exposure}</strong> per player</span><span><strong>36h</strong> per turn · Last Call <strong>24h</strong></span></div>
+  <div className="delayed-match-facts"><span>Maximum loss <strong>{home.realMoney?'$':''}{home.exposure}</strong> per player</span><span><strong>36h</strong> per turn · Last Call <strong>24h</strong></span></div>
   <p className="delayed-match-policy">A missed deadline forfeits this game only. {home.realMoney?'One net settlement after all games finish.':'Play money settles once at the end; real balances are unaffected.'}</p>
   {!historical&&<PushPreferences key={userId+id} userId={userId} matchId={id}/>}
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
@@ -86,11 +92,17 @@ function MatchHome({id,userId}:{id:string;userId:string}){
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
       {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}</div>:<p>Waiting for acceptance</p>}</li>;})}</ol>
-  {home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
+  {!historical&&home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
    <p>The first player in each game is selected randomly.</p>
    <p>{home.opponent===userId?'Accept the lineup and stakes shown above to begin.':'Waiting for your opponent to accept this lineup and its stakes.'}</p><p className="delayed-match-policy">Expires {new Date(home.invitationExpiresAt).toLocaleString()}.</p>
-   {home.opponent===userId?<div className="delayed-actions"><button className="delayed-primary" disabled={pending} onClick={()=>void respond('accept')}>{pending?'Working…':'Accept lineup and stakes'}</button><button className="delayed-secondary" disabled={pending} onClick={()=>void respond('decline')}>Decline</button></div>:
+   {home.opponent===userId?<div className="delayed-actions"><button className="delayed-primary" disabled={pending} onClick={()=>home.realMoney?setConfirmOffer(home.offerHash):void respond('accept')}>{pending?'Working…':'Accept lineup and stakes'}</button><button className="delayed-secondary" disabled={pending} onClick={()=>void respond('decline')}>Decline</button></div>:
     <button className="delayed-secondary" disabled={pending} onClick={()=>void respond('cancel')}>Cancel invitation</button>}</section>}
+  <RealMoneyWarningDialog open={!historical&&home.status==='invited'&&home.opponent===userId&&home.realMoney&&confirmOffer===home.offerHash&&!pending} onCancel={()=>setConfirmOffer(null)} onConfirm={()=>void respond('accept',confirmOffer??undefined)}>
+   <p><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></p>
+   <p>{home.lineup.length} {home.lineup.length===1?'game':'games'} · Maximum loss per player: <strong>${home.exposure}</strong>. Per-game stakes are shown in the invitation.</p>
+   <p>No funds are reserved. One net amount is posted to both players’ actual balances after all games finish.</p>
+   <p>Last Call is at 24 hours. Missing a 36-hour turn deadline forfeits that game and its stake; other games continue.</p>
+  </RealMoneyWarningDialog>
   {!historical&&!home.realMoney&&home.organizer===userId&&<RemoveMatch id={id} refresh={refresh}/>}
   {home.receipt&&home.realMoney&&<p>Balances have been settled</p>}</section>;
 }
@@ -107,5 +119,5 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
  const child=home?.lineup.find(c=>c.id===childId);
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
- return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
+ return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

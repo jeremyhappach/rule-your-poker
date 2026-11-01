@@ -1,3 +1,16 @@
+# Async navigation and money UX — 2026-11-01 — local only; no release authorization
+
+Isolated `codex/async-ux-navigation-money` adds the permanent Async Mode lobby
+entry, direct invitation sending, fake/real toggle, real-money name markers and
+the shared live money warning before async acceptance. Unified sessions, child
+turns/results, financial RPCs and notification deep links are preserved.
+Production database access, integration, pushes and deployment are prohibited
+for this task. TypeScript, final production-mode bundle, 200 async tests, 40
+result-review tests, 241 harness tests and four fixture browser viewport flows
+pass. The broad repository command retains an unrelated stale maintenance-owner
+assertion; database and physical-device qualification remain deferred. See
+[scope, failure detail and local qualification](ASYNC_UX_NAVIGATION_MONEY_LOCAL.md).
+
 # Fresh-launch splash opening frame — 2026-11-01 — qualified; publication authorized
 
 Owner smoke now confirms playback on `b81e24a1f`, with a completed-artwork flash

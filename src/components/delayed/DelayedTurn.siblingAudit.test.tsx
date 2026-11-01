@@ -44,6 +44,7 @@ for(const game of ['ptown-words','quintzee','boxdrop'])for(const realMoney of [f
  mock.snapshot=game==='ptown-words'?words():initial(game);mount(game==='ptown-words',false,realMoney);await flush();
  expect(screen.getByText(`${realMoney?'Real money':'Play money'} · 36-hour turns`)).toBeTruthy();
  expect(screen.queryByText(`${realMoney?'Play money':'Real money'} · 36-hour turns`)).toBeNull();
+ expect(screen.queryByLabelText('Real money')!==null).toBe(realMoney);
 });
 it('Quintzee presence waits for explicit Start and the actual playing phase',async()=>{
  mock.snapshot={...initial('quintzee'),board:null};mount(false,true);await flush();

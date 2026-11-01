@@ -1,3 +1,4 @@
+import {AsyncSessionName} from './AsyncSessionName';
 import boxingWinner from '@/assets/async-finale/boxing-winner-cash-v1.jpg';
 import {AsyncTurnStage} from './AsyncTurnStage';
 import boxingDraw from '@/assets/async-finale/boxing-draw-v1.jpg';
@@ -70,7 +71,7 @@ function AttemptReview({event,events,home,onDone,childId,matchId,userId}:Identit
  if(prior===null)return <AsyncTurnStage matchId={matchId} title={error||'Showing '+(event.actorName??home.players.find(p=>p.id===event.actor)?.name??'')+"'s results"}>{error&&<button onClick={()=>{setError('');setBeginRetry(n=>n+1);}}>Retry</button>}</AsyncTurnStage>;
  if(elapsed+prior<intro)return <AsyncTurnStage matchId={matchId} title={'Showing '+(event.actorName??home.players.find(p=>p.id===event.actor)?.name??'')+"'s results"}/>;
  const shown=Math.max(0,elapsed+prior-intro);
- return <div className="async-result-review async-turn"><div className="delayed-turn-nav"><Link to={'/delayed/'+matchId}>Match home</Link><span>{event.actorName??'Opponent'} · Round {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
+ return <div className="async-result-review async-turn"><div className="delayed-turn-nav"><Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link><span>{event.actorName??'Opponent'} · Round {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
   {!active&&<p role="status">Return online to finish reviewing.</p>}{error&&<p role="alert">{error}<button onClick={()=>void acknowledge()}>Retry</button></p>}
   <SnapshotBoundary><SavedBoard key={event.id+':'+prior} event={event} scores={scores} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
  </div>;
@@ -109,7 +110,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
  const event=state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
  if(!overlay&&event)return <AttemptReview key={event.id} events={state.events} home={home} {...{childId,matchId,userId,event}} onDone={()=>{played.current=true;return load();}}/>;
- return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<Link to={'/delayed/'+matchId}>Match home</Link>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
+ return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
   {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>
   <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+' banked the $'+child.stake+' stake':'Tie · $0'}</strong>
  </div></FullscreenGameShell></div>;
@@ -124,7 +125,7 @@ export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home)return <AsyncTurnStage matchId={matchId} title="Loading match finale…"/>;
  const winner=home.net===0?null:home.net>0?userId:home.players.find(p=>p.id!==userId)!.id;
- return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<Link to={'/delayed/'+matchId}>Match home</Link>} panel={<p>Match results</p>} announcement={false}><div className="async-finale" data-phase={imageReady&&play.elapsed>=7500?'breakdown':imageReady&&play.elapsed>=7000?'fade':'ring'}>
+ return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link>} panel={<p>Match results</p>} announcement={false}><div className="async-finale" data-phase={imageReady&&play.elapsed>=7500?'breakdown':imageReady&&play.elapsed>=7000?'fade':'ring'}>
   {home.net>0&&!reduced&&<Confetti identity={'match:'+matchId+(home.finaleViewed?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<figure className="async-boxing" data-outcome={winner?'decisive':'draw'}>
    <div className="async-boxing-scene"><img src={winner?boxingWinner:boxingDraw} onLoad={()=>setImageReady(true)} onError={()=>setError('Unable to load the match artwork. The saved results remain available.')} alt={winner?home.players.find(p=>p.id===winner)?.name+' wins the match':'Match drawn'} decoding="async"/>
     {winner&&<span className="async-cash-label" aria-label={'Net winnings $'+Math.abs(home.net).toLocaleString()} style={{'--cash-chars':Math.max(4,('$'+Math.abs(home.net).toLocaleString()).length)} as CSSProperties}>{'$'+Math.abs(home.net).toLocaleString()}</span>}

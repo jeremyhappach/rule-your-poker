@@ -1,3 +1,4 @@
+import {AsyncSessionName} from './AsyncSessionName';
 import {playingTopic,roundGameplayRunning,usePlayingPresence} from '@/lib/delayed/playingPresence';
 import {admitTurnSnapshot} from '@/lib/delayed/turnSnapshot';
 import {ASYNC_SCORE_HOLD_MS,reviewSchedule} from '@/lib/delayed/reviewPresentation';
@@ -125,7 +126,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  useEffect(()=>{const hidden=()=>{if(document.hidden)retireMedal();};window.addEventListener('offline',retireMedal);document.addEventListener('visibilitychange',hidden);
   return()=>{window.removeEventListener('offline',retireMedal);document.removeEventListener('visibilitychange',hidden);};},[retireMedal]);
  const canAct=!!snapshot&&!snapshot.held&&!ended&&!pending&&!error&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<board.deadline;
- const home=<Link to={'/delayed/'+matchId}>Match home</Link>;
+ const home=<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={realMoney}>{participants.map(p=>p.name).join(' vs. ')||'Match home'}</AsyncSessionName></Link>;
  if(!snapshot||!board)return <AsyncTurnStage matchId={matchId} title="Your turn!">
   {autoStart&&!ended&&!error&&!snapshot?.held&&(!snapshot||now<Date.parse(snapshot.expiresAt))?null:<>
   {error&&<p role="alert">{error} <button onClick={()=>void refresh()}>Retry safely</button></p>}

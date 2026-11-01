@@ -24,6 +24,16 @@ afterEach(()=>{cleanup();vi.useRealTimers();});
 const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve();});
 const advance=async(ms:number)=>act(async()=>{await vi.advanceTimersByTimeAsync(ms);});
 const gate=()=> <ReviewGate home={mock.home} childId='child' matchId='match' userId='me'>{()=> <h1>Gameplay owner</h1>}</ReviewGate>;
+it.each([false,true])('finale marks the authoritative money mode (%s)',async realMoney=>{
+ mock.home.realMoney=realMoney;mount(<MatchFinale matchId="match" userId="me"/>);await flush();
+ expect(screen.queryByLabelText('Real money')!==null).toBe(realMoney);
+ expect(screen.getByRole('link',{name:'Match home'}).textContent).toContain('Hap vs. Other');
+});
+it('failed finale loading retains a working return link without an invented money mode',async()=>{
+ mock.rpc.mockRejectedValue(Error('Unavailable'));mount(<MatchFinale matchId="match" userId="me"/>);await flush();
+ expect(screen.getByRole('alert').textContent).toBe('Unable to load match result.');expect(screen.queryByLabelText('Real money')).toBeNull();
+ fireEvent.click(screen.getByRole('link',{name:'Match home'}));expect(screen.getByRole('heading',{name:'Match home destination'})).toBeTruthy();
+});
 it('shows pending result and automatically hands off only after ACK; no Continue',async()=>{mount(gate());await flush();expect(screen.queryByText('Gameplay owner')).toBeNull();expect(screen.queryByRole('button',{name:/continue/i})).toBeNull();await advance(13100);expect(screen.getByText('Your turn!')).toBeTruthy();await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);});
 it('resumes an already-started attempt immediately without covering its clock',async()=>{mock.state.started=true;mount(gate());await flush();expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_begin')).toBe(false);});
 it('another device starting ends the reveal and hands off to the existing owner',async()=>{mount(gate());await flush();mock.state.started=true;await act(async()=>mock.change());expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);});

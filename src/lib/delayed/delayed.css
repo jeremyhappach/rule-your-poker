@@ -44,3 +44,12 @@
 .delayed-turn-status:has(.delayed-playing){animation:delayed-playing-pulse 3s ease-in-out infinite}
 @keyframes delayed-playing-pulse{0%,100%{background:#443c1f;border-color:#b59a44;box-shadow:0 0 0 #e5c56600}50%{background:#62532a;border-color:#d7b75a;box-shadow:0 0 10px #e5c56630}}
 @media(prefers-reduced-motion:reduce){.delayed-turn-status:has(.delayed-playing){animation:none;background:#443c1f;border-color:#b59a44}}
+
+.delayed-invite .delayed-money-toggle{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:.6rem;flex-wrap:wrap}
+.delayed-money-switch{position:relative;display:inline-flex;align-items:center;width:2.75rem;height:2.75rem;flex-shrink:0}
+.delayed-money-switch input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0;z-index:1}
+.delayed-money-switch>span{width:2.75rem;height:1.5rem;background:#475569;border-radius:9999px;position:relative;pointer-events:none}
+.delayed-money-switch>span:after{content:'';position:absolute;top:.125rem;left:.125rem;width:1.25rem;height:1.25rem;background:white;border-radius:50%;transition:transform .15s}
+.delayed-money-switch input:checked+span{background:#16a34a}.delayed-money-switch input:checked+span:after{transform:translateX(1.25rem)}
+.delayed-money-switch input:focus-visible+span{outline:2px solid #fcd34d;outline-offset:3px}.delayed-money-switch input:disabled+span{opacity:.5}
+.delayed-turn-nav{flex-wrap:wrap}.delayed-turn-nav>a{min-width:0;overflow-wrap:anywhere}

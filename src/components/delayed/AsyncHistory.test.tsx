@@ -6,6 +6,12 @@ import {AsyncHistory} from './AsyncHistory';
 const rpc=vi.hoisted(()=>vi.fn());
 vi.mock('@/lib/delayed/client',()=>({delayedRpc:rpc}));
 afterEach(()=>{cleanup();vi.clearAllMocks();});
+it('marks real-money archived session names before their text',async()=>{
+ rpc.mockResolvedValue([{id:'match',opponent:'Other',completedAt:'2026-10-29T12:00:00Z',startedAt:'2026-10-28T12:00:00Z',count:5,net:5,realMoney:true}]);
+ render(<MemoryRouter><AsyncHistory viewerName="Hap"/></MemoryRouter>);
+ const marker=await screen.findByLabelText('Real money');expect(marker.parentElement?.textContent).toBe('$Hap vs Other');
+ expect(screen.getByText('Balances have been settled')).toBeTruthy();
+});
 it.each([false,true])('history route is shared and play-money receipt stays informational (balance=%s)',async balance=>{
  rpc.mockResolvedValue([{id:'match',opponent:'Other',completedAt:'2026-10-29T12:00:00Z',startedAt:'2026-10-28T12:00:00Z',count:5,net:5,realMoney:false}]);
  render(<MemoryRouter><AsyncHistory profileId='me' balance={balance} viewerName='Hap'/></MemoryRouter>);

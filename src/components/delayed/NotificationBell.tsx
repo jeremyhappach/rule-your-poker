@@ -64,6 +64,5 @@ function NotificationBellContent({context}:{context:NonNullable<React.ContextTyp
      {n.payload.earliestDeadline&&<small className="block">Earliest deadline: {new Date(n.payload.earliestDeadline).toLocaleString()}</small>}
      {!n.actionable&&<small className="block">For your records</small>}
     </Link>{n.kind==='turn'&&n.actionable&&<button className="block underline" onClick={()=>void openTurn(n)}>{n.payload.availableCount} available {n.payload.availableCount===1?'turn':'turns'}</button>}</li>)}</ul>}
-  <Link className="block mt-3 underline" to="/delayed">My Async matches</Link>
  </PopoverContent></Popover>;
 }

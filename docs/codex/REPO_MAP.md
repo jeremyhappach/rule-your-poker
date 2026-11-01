@@ -57,7 +57,8 @@ Saved async round score context: `src/lib/delayed/reviewPresentation.ts` project
 - `src/components/delayed/AsyncTurnEntry.tsx`: presentation-only entry continuity across App lazy loading, async release checking and auth/home loading; match/child-keyed hints come from `src/lib/delayed/notifications.ts`.
 - `src/components/delayed/NotificationBell.tsx`: persistent notification presentation and participant-checked inviter-name resolution through existing match projections.
 - `dev/async-combined/entry-app-browser.mjs`: full compiled App entry qualification with loopback-only synthetic transport; see `ASYNC_ENTRY_CONTINUITY_LOCAL.md`.
-- `src/components/delayed/AsyncInvite.tsx`: capability-driven lineup and review.
+- `src/components/delayed/AsyncInvite.tsx`: capability-driven lineup, money toggle and direct invitation sending.
+- `src/components/delayed/AsyncSessionName.tsx`: presentation-only real-money name marker across async cards, turns and results. `Delayed.tsx` reuses `RealMoneyWarningDialog` for offer-bound acceptance consent.
 - `src/components/delayed/DelayedTurn.tsx`: shared game presentation adapters.
 - `api/delayed.ts`, `server/delayed`: authenticated action boundary and shared-rule orchestration.
 - `supabase/delayed/combined-*.sql`: admission, deletion, commit, projections and coordinated recovery.

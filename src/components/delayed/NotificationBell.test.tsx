@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
-import {MemoryRouter,useNavigate} from 'react-router-dom';
+import {MemoryRouter,useNavigate,useLocation} from 'react-router-dom';
 const mocks=vi.hoisted(()=>({request:vi.fn(()=>()=>{}),items:[] as any[],changed:()=>{},rpc:vi.fn()}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{request:mocks.request}}));
 vi.mock('@/lib/delayed/client',()=>({delayedRpc:mocks.rpc}));
@@ -10,7 +10,7 @@ import {NotificationProvider,NotificationBell} from './NotificationBell';
 const notice={id:'n',match_id:'m',kind:'turn',revision:1,read_revision:0,actionable:true,payload:{availableCount:1,lastCall:false}};
 beforeEach(()=>{sessionStorage.clear();mocks.items=[];mocks.request.mockClear();mocks.rpc.mockImplementation(async()=>({items:mocks.items,actionable:mocks.items.length}));});afterEach(cleanup);
 function mount(path='/'){return render(<MemoryRouter initialEntries={[path]}><NotificationProvider><NotificationBell/></NotificationProvider></MemoryRouter>);}
-it('keeps match access in the empty bell',async()=>{mount();const bell=await screen.findByRole('button',{name:'Notifications'});fireEvent.click(bell);expect(await screen.findByRole('link',{name:'My Async matches'})).not.toBeNull();expect(mocks.request).not.toHaveBeenCalled();});
+it('keeps an empty bell without general async navigation',async()=>{mount();const bell=await screen.findByRole('button',{name:'Notifications'});fireEvent.click(bell);expect(await screen.findByText('No notifications.')).toBeTruthy();expect(screen.queryByRole('link',{name:'My Async matches'})).toBeNull();expect(mocks.request).not.toHaveBeenCalled();});
 it('keeps the pending bell visible and silent on entry, new revisions and read updates',async()=>{
  mocks.items=[notice];mount();const bell=await screen.findByRole('button',{name:/1 pending/});expect(bell.getAttribute('data-pending')).toBe('true');expect(bell.getAttribute('data-ring')).toBe('true');expect(mocks.request).not.toHaveBeenCalled();
  await act(async()=>mocks.changed());expect(mocks.request).not.toHaveBeenCalled();
@@ -41,4 +41,18 @@ it('never uses a mismatched match or a payload placeholder as invitation identit
 
 it.each(['/delayed','/delayed/m','/delayed/m/play/c','/delayed/m?review=c','/game/session','/arcade','/arcade/tri-towers','/arcade/tri-towers/run/run-id','/profile'])('hides on direct %s entry while keeping updates',async path=>{mocks.items=[notice];mount(path);expect(screen.queryByRole('button',{name:/Notifications/})).toBeNull();await act(async()=>{});const before=mocks.rpc.mock.calls.length;await act(async()=>mocks.changed());expect(mocks.rpc.mock.calls.length).toBeGreaterThan(before);expect(screen.queryByRole('button',{name:/Notifications/})).toBeNull();});
 function Navigation(){const navigate=useNavigate();return <><button onClick={()=>navigate('/delayed/m/play/c')}>Async</button><button onClick={()=>navigate('/')}>Main</button><NotificationBell/></>;}
+function Path(){const location=useLocation();return <output data-testid="path">{location.pathname+location.search}</output>;}
+it.each([['invitation','/delayed/m'],['results','/delayed/m'],['settled','/delayed/m?finale=1']])('preserves %s notification navigation',async(kind,destination)=>{
+ mocks.items=[{...notice,kind,payload:{completionCount:2}}];
+ render(<MemoryRouter><NotificationProvider><NotificationBell/><Path/></NotificationProvider></MemoryRouter>);
+ fireEvent.click(await screen.findByRole('button',{name:/1 pending/}));fireEvent.click(screen.getByRole('link'));
+ await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe(destination));
+});
+it.each([1,2])('resolves %s actionable child turns using the existing notification path',async count=>{
+ mocks.items=[{...notice,payload:{availableCount:count}}];
+ mocks.rpc.mockImplementation(async name=>name==='delayed_home'?{id:'m',status:'active',held:false,serverAt:Date.now(),players:[{id:'user',name:'Me'},{id:'other',name:'Other'}],lineup:Array.from({length:count},(_,i)=>({id:'c'+i,actor:'user',terminal:false,expiresAt:new Date(Date.now()+3600000).toISOString()}))}:{items:mocks.items,actionable:1});
+ render(<MemoryRouter><NotificationProvider><NotificationBell/><Path/></NotificationProvider></MemoryRouter>);
+ fireEvent.click(await screen.findByRole('button',{name:/1 pending/}));fireEvent.click(screen.getByRole('button',{name:count+' available '+(count===1?'turn':'turns')}));
+ await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe(count===1?'/delayed/m/play/c0':'/delayed/m'));
+});
 it('silently preserves updates when leaving and returning to the main lobby',async()=>{mocks.items=[notice];render(<MemoryRouter><NotificationProvider><Navigation/></NotificationProvider></MemoryRouter>);await screen.findByRole('button',{name:/1 pending/});fireEvent.click(screen.getByRole('button',{name:'Async'}));expect(screen.queryByRole('button',{name:/Notifications/})).toBeNull();expect(mocks.request).not.toHaveBeenCalled();mocks.items=[notice,{...notice,id:'second'}];await act(async()=>mocks.changed());fireEvent.click(screen.getByRole('button',{name:'Main'}));expect(await screen.findByRole('button',{name:/2 pending/})).toBeTruthy();expect(mocks.request).not.toHaveBeenCalled();});
