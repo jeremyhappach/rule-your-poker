@@ -1,3 +1,17 @@
+# Run21 / TriTowers card sounds — 2026-11-01 — approved pair; local qualification
+
+Jeremy approved the auditioned 150 ms soft swoosh for confirmed card play and
+130 ms double brush for pass/draw in both games. The shared cues preserve their
+exact audition waveforms, verified sample-for-sample in Edge at 44.1/48 kHz.
+Run21 now admits confirmed `pass_used`; TriTowers distinguishes stock draw from
+removal. Existing receipts, mute, interruption and recovery baselines remain.
+Other games, gameplay timing, authority, notifications and waiting-table joins
+are unchanged. 59 focused tests, application TypeScript and the production
+bundle pass. No dependency/schema changes.
+The existing real-money notification owner-smoke publication hold still applies.
+Runtime acceptance after release: play and pass/draw in both games and their
+Arcade/async/multiplayer surfaces; mute/unmute and reconnect without old sounds.
+
 # Real-money async push correction — 2026-11-01 — installed; publication and owner smoke pending
 
 Three legacy play-money-only guards prevented real-money invitations, turns and

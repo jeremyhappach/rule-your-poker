@@ -1,6 +1,11 @@
 # Run21 shared sounds — 2026-10-17
 
-Approved scope: reuse the owner-auditioned TriTowers 100 ms card swoosh and
+November 1 follow-up: the newly approved shared `audio/cardActionCues.ts` pair
+supersedes the original 100 ms swoosh and pass silence described below. Both
+Run21 and TriTowers use a 150 ms play swoosh and 130 ms pass/draw double brush.
+The original celebration timing and rule version remain unchanged.
+
+Original approved scope: reuse the owner-auditioned TriTowers 100 ms card swoosh and
 three-second harmony fanfare in Arcade and multiplayer Run21. The cue generators
 now live under `src/lib/audio`; TriTowers keeps forwarding exports and unchanged
 sound/behavior. No separate synthesis implementation or audio context was added.

@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {platformAudio} from '@/lib/audio/platformAudio';
-import {cardSwooshCueAt} from '@/lib/audio/cardSwoosh';
+import {cardPlayCue,cardPassCue} from '@/lib/audio/cardActionCues';
 import {PlacementAudio} from '@/lib/run21/placementAudio';
 import type {BoardFeedbackEvent} from '@/lib/run21/exact21Feedback';
 
@@ -8,13 +8,16 @@ export function useRun21PlacementAudio(userId:string,scope:string,events:BoardFe
   const [interruption,setInterruption]=useState(0);
   const receipts=useRef(new PlacementAudio()),stops=useRef(new Set<()=>void>());
   useEffect(()=>{
-    const key=receipts.current.accept(scope+':'+interruption,epoch,events??[],enabled&&!document.hidden&&navigator.onLine);
-    if(!key)return;
+    const action=receipts.current.accept(scope+':'+interruption,epoch,events??[],enabled&&!document.hidden&&navigator.onLine);
+    if(!action)return;
+    const cue=action.kind==='play'?cardPlayCue:cardPassCue;
     const startedAt=performance.now();
-    const stop=platformAudio.follow({userId,id:'run21-swoosh:'+key,startedAt,expiresAt:startedAt+100,cueAt:cardSwooshCueAt});
+    // Allow only 25 ms to admit the complete approved cue; never catch up late.
+    const lifetime=cue.durationMs+25;
+    const stop=platformAudio.follow({userId,id:'run21-swoosh:'+action.key,startedAt,expiresAt:startedAt+lifetime,cueAt:()=>cue});
     stops.current.add(stop);
-    setTimeout(()=>stops.current.delete(stop),120);
-    // A newer placement must not truncate the preceding 100 ms cue.
+    setTimeout(()=>stops.current.delete(stop),lifetime+20);
+    // A newer action must not truncate the preceding cue.
 
   },[scope,events,epoch,enabled,userId,interruption]);
   useEffect(()=>{

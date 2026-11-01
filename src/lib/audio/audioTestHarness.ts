@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { AudioManager } from './audioManager';
 
-const parameter = () => ({ setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() });
+const parameter = () => ({ setValueAtTime: vi.fn(), setValueCurveAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() });
 const fakeNode = (kind: string) => ({ kind, type: '', buffer: null, gain: parameter(), frequency: parameter(), Q: parameter(), playbackRate: parameter(),
   connect: vi.fn(), disconnect: vi.fn(), start: vi.fn(), stop: vi.fn(), setPeriodicWave: vi.fn(), onended: null });
 export function audioHarness(loadPreference: (userId: string) => Promise<boolean | null> = async () => true) {

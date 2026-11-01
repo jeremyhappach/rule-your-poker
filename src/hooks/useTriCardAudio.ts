@@ -1,6 +1,6 @@
 import {useEffect, useLayoutEffect, useRef} from 'react';
 import {platformAudio} from '@/lib/audio/platformAudio';
-import {cardSwooshCueAt} from '@/lib/audio/cardSwoosh';
+import {cardPlayCue, cardPassCue} from '@/lib/audio/cardActionCues';
 
 interface Props {
   userId: string; scope: string; epoch: number; active: boolean; replay: boolean;
@@ -21,10 +21,10 @@ export function useTriCardAudio({userId, scope, epoch, active, replay, view: v}:
       const played = removed.length === 1 && p.view.cards[removed[0]] === v.waste && v.stockRemaining === p.view.stockRemaining;
       const drew = removed.length === 0 && v.stockRemaining === p.view.stockRemaining - 1;
       if (played || drew) {
-        // A generous dispatch deadline is separate from the 98ms source lifetime;
-        // expiry/receipts still prevent catch-up after an interruption or remount.
+        const cue = played ? cardPlayCue : cardPassCue;
+        // Admit the complete cue within 25 ms; receipts still prevent catch-up.
         platformAudio.request({userId, id: `tri-card:${scope}:${v.removed.length}:${v.stockRemaining}:${v.waste}`,
-          expiresAt: performance.now() + 125, cue: cardSwooshCueAt(0, 100)});
+          expiresAt: performance.now() + cue.durationMs + 25, cue});
       }
     }
     prior.current = {userId, scope, epoch, active: enabled, replay, view: v};

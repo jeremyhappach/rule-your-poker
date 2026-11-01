@@ -3,6 +3,7 @@ import {act, cleanup, renderHook} from '@testing-library/react';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import {useTriCardAudio} from './useTriCardAudio';
 import {audioHarness} from '@/lib/audio/audioTestHarness';
+import {cardPlayCue,cardPassCue} from '@/lib/audio/cardActionCues';
 const audio = vi.hoisted(() => ({request:vi.fn()}));
 vi.mock('@/lib/audio/platformAudio', () => ({platformAudio:audio}));
 let h: ReturnType<typeof audioHarness>;
@@ -14,8 +15,10 @@ afterEach(() => {cleanup();h.dispose();vi.useRealTimers();vi.restoreAllMocks();a
 it('plays once for confirmed card removal and stock draw without any animation or DOM geometry', () => {
   const ui=renderHook(p=>useTriCardAudio(p),{initialProps:base}); expect(h.starts()).toHaveLength(0);
   const removed={...base,view:{...base.view,removed:[0],waste:5}}; ui.rerender(removed);
-  expect(h.starts()).toHaveLength(1); ui.rerender({...removed,view:{...removed.view}}); expect(h.starts()).toHaveLength(1);
-  ui.rerender({...removed,view:{...removed.view,waste:9,stockRemaining:23}}); expect(h.starts()).toHaveLength(2);
+  expect(h.starts()).toHaveLength(1); expect(audio.request.mock.lastCall?.[0].cue).toBe(cardPlayCue);
+  ui.rerender({...removed,view:{...removed.view}}); expect(h.starts()).toHaveLength(1);
+  ui.rerender({...removed,view:{...removed.view,waste:9,stockRemaining:23}}); expect(h.starts()).toHaveLength(3);
+  expect(audio.request.mock.lastCall?.[0].cue).toBe(cardPassCue);
 });
 it.each(['scope','epoch','inactive','replay','batch','regressive'] as const)('does not play stale/recovered deltas: %s', mode => {
   const ui=renderHook(p=>useTriCardAudio(p),{initialProps:base});
