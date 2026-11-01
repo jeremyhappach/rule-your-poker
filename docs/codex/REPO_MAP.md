@@ -1,3 +1,12 @@
+## Approved Arcade lobby
+
+`src/components/arcade/ArcadeTile.tsx` owns the shared compact banner/link and
+uses the existing `ArcadeInfo` dialog trigger. `src/lib/arcade/tileArtwork.ts`
+maps approved assets and their upload baseline; `public/arcade/approved-v1/`
+contains responsive derivatives. `ArcadeSwitchboard` and the game catalog retain
+membership, order and routing. Qualification: `dev/arcade-lobby/` and
+`docs/codex/ARCADE_APPROVED_LOBBY.md`.
+
 ## Notifications — expanded local candidate, activation held
 
 - `src/lib/webPush/` and `src/components/delayed/PushPreferences.tsx`: explicit device opt-in/account binding, personal quiet hours, new-table opt-in and separate new-match defaults versus viewer/match overrides.

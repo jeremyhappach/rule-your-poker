@@ -1,0 +1,18 @@
+{
+  "checks": 25,
+  "errors": [],
+  "games": [
+    "run21",
+    "tri-towers",
+    "eleven-up",
+    "boxdrop",
+    "trip-flip",
+    "take-two",
+    "royal-flash",
+    "mega-card-golf",
+    "quintzee"
+  ],
+  "viewports": 12,
+  "rulesRequests": 24,
+  "environment": "Installed Edge, touch emulation at 3x DPR; actual switchboard and Rules dialogs with local read-only adapters; no production writes; physical iPhone acceptance pending"
+}

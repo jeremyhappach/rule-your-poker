@@ -1,3 +1,17 @@
+# Approved Arcade lobby — 2026-11-01 — qualified; publication authorized
+
+The nine approved artwork banners replace the tall plain tiles using one
+catalog-driven ArcadeTile component. Existing order, entry routes, Rules dialogs,
+theme, header, navigation and two-column grid remain. Every tile has one real
+gold Rules control with a minimum 44×44 target, keyboard support and focus return.
+Responsive WebP assets preserve the supplied crops; newer admin uploads remain
+supported. No gameplay, leaderboard, financial, schema or dependency changes.
+
+TypeScript, 32 focused tests, production build and 25 browser groups across 12
+viewports pass. Physical-iPhone production acceptance remains pending.
+See [evidence and smoke checklist](ARCADE_APPROVED_LOBBY.md).
+Checkpoint: `arcade-approved-lobby-20261101`.
+
 # Card sounds and silent async notices — 2026-11-01 — qualified; publication authorized
 
 Jeremy approved the auditioned 150 ms soft swoosh for confirmed card play and

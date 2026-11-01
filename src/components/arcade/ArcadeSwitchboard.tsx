@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {ArrowLeft,Gamepad2} from 'lucide-react';
 import {useIsAdmin} from '@/hooks/useIsAdmin';
-import {ArcadeArtwork,ArcadeInfo} from './ArcadeInfo';
+import {ArcadeTile} from './ArcadeTile';
 import {loadArtwork,type Artwork,type ArcadeGame} from '@/lib/arcade/artwork';
 import {ARCADE_GAMES} from '@/lib/gameCatalog';
 import '@/lib/arcade/arcade.css';
@@ -21,10 +21,6 @@ export function ArcadeSwitchboard({userId}:{userId:string}){
   <header className="arcade-heading"><Gamepad2 size={36}/><div><h1>Arcade Mode</h1><NotificationBell/><p>Pick a game. Chase your personal best.</p></div></header>
   <div className="arcade-tiles">{games.map(g=>{
    const row=artwork.find(item=>item.game===g.id);
-   return <article key={g.id} className="arcade-tile">
-    <div className="arcade-tile-copy"><h2><Link className="arcade-card-link" to={'/arcade/'+g.id} aria-label={g.name+' leaderboard'}>{g.name}</Link></h2></div>
-    <ArcadeArtwork path={row?.object_path??null}/>
-    <ArcadeInfo game={g.id} name={g.name} admin={isAdmin} artwork={row} onArtwork={updated} onOpen={refresh}/>
-   </article>;
+   return <ArcadeTile key={g.id} game={g.id} name={g.name} admin={isAdmin} artwork={row} onArtwork={updated} onOpen={refresh}/>;
   })}</div>{error&&<p role="alert">{error} <button className="underline" onClick={refresh}>Retry artwork</button></p>}</main>;
 }
