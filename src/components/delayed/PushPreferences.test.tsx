@@ -50,7 +50,7 @@ describe('Notifications match accordion',()=>{
  });
 });
 it('global invitations and your-turn default save independently; there is no invitation match override',async()=>{
- const f=fixture();render(<PushPreferences {...f.props}/>);const invitations=screen.getByRole('checkbox',{name:'Match invitations'}),turn=screen.getByRole('checkbox',{name:'Your turn'});
+ const f=fixture();render(<PushPreferences {...f.props}/>);fireEvent.click(screen.getByRole('button',{name:'Notifications'}));const invitations=screen.getByRole('checkbox',{name:'Match invitations'}),turn=screen.getByRole('checkbox',{name:'Your turn'});
  await waitFor(()=>expect((invitations as HTMLInputElement).disabled).toBe(false));fireEvent.click(invitations);await waitFor(()=>expect(f.settings().invitations).toBe(true));expect(f.settings().asyncDefault).toBe(false);
  fireEvent.click(turn);await waitFor(()=>expect(f.settings().asyncDefault).toBe(true));expect(f.settings().invitations).toBe(true);
  cleanup();render(<PushPreferences {...f.props} matchId="m"/>);expect(screen.queryByRole('checkbox',{name:'Match invitations'})).toBeNull();

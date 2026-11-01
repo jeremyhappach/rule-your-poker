@@ -53,12 +53,33 @@ try{
   assert.equal(await page.locator('.delayed-bell').count(),0);
   await page.screenshot({path:out+'/match-'+width+'.png',fullPage:true});
   await page.goto(base+'/',{waitUntil:'domcontentloaded'});await page.getByTitle('Profile Settings').click();
+  const settingsToggle=page.getByRole('button',{name:'Notifications',exact:true});await settingsToggle.waitFor();assert.equal(await settingsToggle.getAttribute('aria-expanded'),'false');
+  assert.equal(await page.getByRole('checkbox',{name:'Match invitations',exact:true}).isVisible(),false);
+  await page.screenshot({path:out+'/settings-collapsed-'+width+'.png',fullPage:true,animations:'disabled'});
+  const beforeExpand=rpcCalls.length;await settingsToggle.focus();await page.keyboard.press('Enter');assert.equal(await settingsToggle.getAttribute('aria-expanded'),'true');assert.equal(rpcCalls.length,beforeExpand);
   await page.getByText('Phone alerts are not active yet.',{exact:false}).waitFor();
+  await page.getByRole('heading',{name:/This device.*Disabled/}).waitFor();
+  assert.equal(await page.getByLabel('Start',{exact:true}).isVisible(),false);assert.equal(await page.getByLabel('End',{exact:true}).isVisible(),false);
+  const order=await page.getByRole('region',{name:'Notifications',exact:true}).evaluate(el=>{
+   const device=el.querySelector('h4'),choices=el.querySelector('input[type=checkbox]'),quiet=el.querySelector('fieldset');
+   return !!(device.compareDocumentPosition(choices)&Node.DOCUMENT_POSITION_FOLLOWING)&&!!(choices.compareDocumentPosition(quiet)&Node.DOCUMENT_POSITION_FOLLOWING);
+  });assert(order);
   assert.equal(await page.getByRole('button',{name:'Enable on this device',exact:true}).count(),0);
   const invitations=page.getByRole('checkbox',{name:'Match invitations',exact:true});await invitations.waitFor();assert.equal(await invitations.isChecked(),false);await invitations.click();await page.getByText('Preferences saved.',{exact:true}).waitFor();assert.equal(settings.invitations,true);assert.equal(settings.asyncDefault,false);
   const global=page.getByRole('checkbox',{name:'Your turn',exact:true});await global.waitFor();assert.equal(await global.isChecked(),false);await global.click();await page.getByText('Preferences saved.',{exact:true}).waitFor();assert.equal(settings.asyncDefault,true);assert.equal(settings.invitations,true);assert.equal(prefs.get(match),true);
   const newTable=page.getByRole('checkbox',{name:'New real-money tables',exact:true});assert.equal(await newTable.isChecked(),false);await newTable.click();await page.waitForFunction(()=>[...document.querySelectorAll('input[type=checkbox]')].filter(x=>x.checked).length>=3);assert.equal(settings.newTable,true);
   await page.getByLabel('Enable quiet hours',{exact:true}).check();await page.getByLabel('Start',{exact:true}).fill('22:00');await page.getByLabel('End',{exact:true}).fill('07:00');await page.getByLabel('Time zone (IANA)',{exact:true}).fill('America/Chicago');await page.getByRole('button',{name:'Save quiet hours',exact:true}).click();await page.getByText('Preferences saved.',{exact:true}).waitFor();assert.equal(settings.quietEnabled,true);assert.equal(settings.quietZone,'America/Chicago');
+  const quietToggle=page.getByLabel('Enable quiet hours',{exact:true}),start=page.getByLabel('Start',{exact:true}),end=page.getByLabel('End',{exact:true});
+  await start.fill('21:30');await end.fill('08:15');const callsBeforeHide=rpcCalls.length;
+  await quietToggle.uncheck();assert.equal(await start.isVisible(),false);assert.equal(await end.isVisible(),false);assert.equal(rpcCalls.length,callsBeforeHide);
+  await quietToggle.check();assert.equal(await start.isVisible(),true);assert.equal(await start.inputValue(),'21:30');assert.equal(await end.inputValue(),'08:15');
+  await settingsToggle.click();assert.equal(await start.isVisible(),false);await settingsToggle.click();assert.equal(await start.inputValue(),'21:30');
+  await quietToggle.uncheck();await page.getByRole('button',{name:'Save quiet hours',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('fieldset').disabled);
+  assert.equal(settings.quietEnabled,false);assert.equal(settings.quietStart,'21:30');assert.equal(settings.quietEnd,'08:15');assert.equal(settings.quietZone,'America/Chicago');
+  await page.reload();await page.getByTitle('Profile Settings').click();assert.equal(await settingsToggle.getAttribute('aria-expanded'),'false');await settingsToggle.click();
+  await quietToggle.waitFor();assert.equal(await quietToggle.isChecked(),false);assert.equal(await start.isVisible(),false);await quietToggle.check();
+  assert.equal(await start.inputValue(),'21:30');assert.equal(await end.inputValue(),'08:15');assert.equal(await page.getByLabel('Time zone (IANA)',{exact:true}).inputValue(),'America/Chicago');
+  await start.fill('22:00');await end.fill('07:00');await page.getByRole('button',{name:'Save quiet hours',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('fieldset').disabled);assert.equal(settings.quietEnabled,true);
   await page.getByRole('heading',{name:'Notifications',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:out+'/settings-'+width+'.png',fullPage:true});
   await page.getByLabel('Start',{exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:out+'/quiet-hours-'+width+'.png',fullPage:true});
   await page.goto(base+'/delayed/'+match);await details.waitFor();assert.equal(await details.getAttribute('aria-expanded'),'false');await details.click();await page.getByText(/Quiet hours: 22:00[–-]07:00 \(America\/Chicago\)/).waitFor();assert.equal(await checkbox.isChecked(),true);await page.screenshot({path:out+'/match-expanded-'+width+'.png',fullPage:true});
@@ -73,21 +94,23 @@ try{
   await page.goto(base+'/notifications/table/'+match);await page.waitForURL('**/auth');
   assert.equal(await page.evaluate(()=>sessionStorage.getItem('unexpected-push-device-call')),null);
   assert(!rpcCalls.includes('async_push_subscribe'));assert(!rpcCalls.includes('async_push_device'));
-  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);checks.push({width,actualApp:true,enrollmentFlagFalse:true,noDevicePermissionRegistrationOrSubscription:true,matchPersistence:true,accordionClosedOnEntry:true,checkboxIndependentOfExpansion:true,keyboardExpansionWithoutMutation:true,invitationsIndependent:true,invitationLandingAcceptDecline:true,noAutomaticAccept:true,freshAcceptedState:true,globalIndependent:true,quietHoursSavedAndDisplayed:true,newTableDefaultOff:true,tableWarningAndFreshRecheck:true,noSeatMutation:true,authorizedDeepLink:true,bellPreserved:true,logoutAndUnauthenticatedDeepLink:true});await context.close();
+  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);checks.push({width,actualApp:true,enrollmentFlagFalse:true,noDevicePermissionRegistrationOrSubscription:true,globalAccordionClosedOnEntry:true,globalDeviceChoicesQuietOrder:true,quietFieldsImmediateToggle:true,quietDraftAndSavedValuesPreserved:true,globalRemountClosed:true,matchPersistence:true,accordionClosedOnEntry:true,checkboxIndependentOfExpansion:true,keyboardExpansionWithoutMutation:true,invitationsIndependent:true,invitationLandingAcceptDecline:true,noAutomaticAccept:true,freshAcceptedState:true,globalIndependent:true,quietHoursSavedAndDisplayed:true,newTableDefaultOff:true,tableWarningAndFreshRecheck:true,noSeatMutation:true,authorizedDeepLink:true,bellPreserved:true,logoutAndUnauthenticatedDeepLink:true});await context.close();
  }
  const mock=await browser.newContext({viewport:{width:390,height:844}});await mock.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());page=await mock.newPage();
  await page.goto(base+'/mock');await page.getByText('LOCAL MOCK', {exact:false}).waitFor();
+ const openGlobal=async()=>{const toggle=page.getByRole('button',{name:'Notifications',exact:true});if(await toggle.getAttribute('aria-expanded')==='false')await toggle.click();};await openGlobal();
  const global=page.getByRole('checkbox',{name:'Your turn',exact:true}),matchBox=page.getByRole('checkbox',{name:'Enable push notifications for this match',exact:true});
  await global.click();await page.waitForFunction(()=>document.querySelectorAll('input')[1].checked);assert.equal(await matchBox.isChecked(),false);
  await page.getByRole('button',{name:'Create mock match from defaults'}).click();await page.waitForFunction(()=>document.querySelector('[aria-label="Match push notifications"] input').checked);
  await matchBox.click();await page.waitForFunction(()=>!document.querySelector('[aria-label="Match push notifications"] input').checked);await page.reload();await matchBox.waitFor();assert.equal(await matchBox.isChecked(),false);
- await page.getByLabel('Viewer',{exact:true}).selectOption('blair');assert.equal(await matchBox.isChecked(),false);assert.equal(await global.isChecked(),false);
- await page.getByLabel('Viewer',{exact:true}).selectOption('alex');await page.waitForFunction(()=>document.querySelectorAll('input')[1].checked);
+ await openGlobal();await page.getByLabel('Viewer',{exact:true}).selectOption('blair');await openGlobal();assert.equal(await matchBox.isChecked(),false);assert.equal(await global.isChecked(),false);
+ await page.getByLabel('Viewer',{exact:true}).selectOption('alex');await openGlobal();await page.waitForFunction(()=>document.querySelectorAll('input')[1].checked);
  for(const [mode,text]of [['denied','Notifications are blocked.'],['revoked','Notification permission was removed.'],['unsupported','Push notifications are not supported'],['iphone-tab','On iPhone or iPad, add Ptown']]){
-  await page.getByLabel('Device simulation',{exact:true}).selectOption(mode);await page.getByRole('status').filter({hasText:text}).first().waitFor();
+  await page.getByLabel('Device simulation',{exact:true}).selectOption(mode);await openGlobal();await page.getByRole('status').filter({hasText:text}).first().waitFor();
   if(mode!=='revoked')assert.equal(await page.getByRole('button',{name:'Enable on this device',exact:true}).count(),0);
  }
- await page.getByLabel('Device simulation',{exact:true}).selectOption('supported');await page.getByRole('button',{name:'Enable on this device',exact:true}).first().click();await page.getByRole('status').filter({hasText:'This device is enabled.'}).first().waitFor();
+ await page.getByLabel('Device simulation',{exact:true}).selectOption('supported');await openGlobal();await page.getByRole('button',{name:'Enable on this device',exact:true}).first().click();await page.getByRole('status').filter({hasText:'This device is enabled.'}).first().waitFor();
+ await page.getByRole('heading',{name:/This device.*Enabled/}).waitFor();await page.getByRole('button',{name:'Disable on this device',exact:true}).click();await page.getByRole('heading',{name:/This device.*Disabled/}).waitFor();
  await page.screenshot({path:out+'/mock-permissions-390.png',fullPage:true});checks.push({mockPermissionScenarios:5,newMatchSeed:true,existingOverride:true,perViewer:true,reload:true,realPermissionPrompt:false});await mock.close();
  writeFileSync(out+'/browser-proof.json',JSON.stringify({passed:true,checks,realPermissionOrDelivery:false},null,2));console.log(JSON.stringify({passed:true,checks}));
 }catch(e){if(page)await page.screenshot({path:out+'/browser-failure.png',fullPage:true}).catch(()=>{});console.log('BROWSER FAILURE',e.message,await page?.locator('body').innerText().catch(()=>''));throw e;}

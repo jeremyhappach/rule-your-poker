@@ -1,3 +1,22 @@
+# Lobby Notifications accordion — 2026-11-01 — local, ready for review
+
+Personal Settings now opens with Notifications collapsed. Its contents are ordered
+device Enabled/Disabled status and controls, notification choices, then quiet hours.
+Quiet-hour time/zone fields show immediately when checked and hide when unchecked;
+draft and saved values are retained, with the existing explicit Save behavior.
+Current invitation, per-match, device enrollment and delivery behavior is preserved.
+
+Six preference tests, application/API TypeScript, local compiled-App preview,
+390px mobile and 1280px desktop browser checks pass. Browser checks cover keyboard
+expansion, field order, immediate visibility, draft/reload persistence and existing
+match/notification flows. Device permission states are mocked; no real delivery
+test or production mutation occurred. Screenshots and browser evidence:
+`dev/web-push/evidence/lobby-accordion/`.
+
+Branch `codex/lobby-notifications-accordion`; existing icon work is preserved.
+This is a local UI candidate only. Jeremy explicitly requires review and a new
+go-ahead before any integration, push or publication.
+
 # Matte nighttime app icon — 2026-11-01 — replacement, iPhone smoke pending
 
 Replaces the glossy artwork from `57e9430da` with Jeremy's approved matte

@@ -57,14 +57,22 @@ export function PushPreferences({userId,matchId,device=browser,rpc=delayedRpc,pr
  const quietDescription=preferences?.quietEnabled
   ?`Quiet hours: ${preferences.quietStart}–${preferences.quietEnd} (${preferences.quietZone}).${preferences.quietStart===preferences.quietEnd?' Notifications are silenced all day.':''}`
   :'Your personal quiet hours will be honored when enabled in lobby Settings → Notifications.';
+ const devicePanel=(deviceEnabled||!matchId)&&<div className={`space-y-2${matchId?' border-t pt-3':''}`}>
+  <h4 className="font-medium">This device{!matchId&&<span className="ml-2 text-sm font-normal">{deviceEnabled&&state==='enabled'?'Enabled':'Disabled'}</span>}</h4>
+  <p role="status" className="text-sm">{deviceEnabled?statusText[state as keyof typeof statusText]:'Phone alerts are not active yet. You can save your preferences now; no notifications will be sent.'}</p>
+  {deviceEnabled&&['device-off','permission-needed','revoked'].includes(state)&&<button type="button" className="rounded border px-3 py-2" disabled={pending} onClick={enable}>Enable on this device</button>}
+  {deviceEnabled&&state==='enabled'&&<button type="button" className="rounded border px-3 py-2" disabled={pending} onClick={()=>{setPending(true);void device.disableDevice().then(()=>setState(device.status())).catch(()=>setError('Device cleanup could not finish. Please retry.')).finally(()=>setPending(false));}}>Disable on this device</button>}
+  {deviceEnabled&&<p className="text-sm">Delivery depends on browser permission, connectivity and device settings such as Do Not Disturb.</p>}
+ </div>;
  return <section className="space-y-3 rounded-lg border p-4" aria-label={matchId?'Match push notifications':'Notifications'}>
   {matchId?<div className="flex min-h-11 w-full items-center justify-between gap-3">
    <label className="flex min-h-11 cursor-pointer items-center gap-3 font-semibold"><input type="checkbox" aria-label="Enable push notifications for this match" checked={enabled===true} disabled={enabled===null||disabled} onChange={e=>void saveMatch(e.target.checked)}/>Notifications</label>
    <button type="button" className="flex min-h-11 min-w-11 items-center justify-center rounded border" aria-label="Notification details" aria-expanded={expanded} aria-controls={detailsId} onClick={()=>setExpanded(v=>!v)}><ChevronDown aria-hidden="true" className={`h-5 w-5 transition-transform${expanded?' rotate-180':''}`}/></button>
-  </div>:<h3 className="font-semibold">Notifications</h3>}
-  <div id={detailsId} hidden={!!matchId&&!expanded} className="w-full space-y-3">
+  </div>:<h3 className="font-semibold"><button type="button" className="flex min-h-11 w-full items-center justify-between gap-3 rounded text-left" aria-expanded={expanded} aria-controls={detailsId} onClick={()=>setExpanded(v=>!v)}>Notifications<ChevronDown aria-hidden="true" className={`h-5 w-5 transition-transform${expanded?' rotate-180':''}`}/></button></h3>}
+  <div id={detailsId} hidden={!expanded} className="w-full space-y-3">
   {preview&&<p role="note">Local preview — simulated permission and delivery. No real notifications are sent.</p>}
-  {!deviceEnabled&&<p role="status" className="text-sm">Phone alerts are not active yet. You can save your preferences now; no notifications will be sent.</p>}
+  {!deviceEnabled&&matchId&&<p role="status" className="text-sm">Phone alerts are not active yet. You can save your preferences now; no notifications will be sent.</p>}
+  {!matchId&&devicePanel}
   {matchId?<>
    <p className="text-sm">Your turn alerts and 24-hour Last Call for this match. {quietDescription}</p>
    <p className="text-sm">Deadlines stay unchanged. After quiet hours, only one still-needed reminder may arrive.</p>
@@ -78,22 +86,19 @@ export function PushPreferences({userId,matchId,device=browser,rpc=delayedRpc,pr
    <fieldset className="space-y-3 border-t pt-3" disabled={disabled}>
     <legend className="font-medium">Quiet hours</legend>
     <label className="flex items-center gap-3"><input type="checkbox" checked={quiet.quietEnabled} onChange={e=>setQuiet({...quiet,quietEnabled:e.target.checked})}/>Enable quiet hours</label>
+    <div hidden={!quiet.quietEnabled} className="space-y-3">
     <div className="grid grid-cols-2 gap-3">
      <label className="text-sm">Start<input className="mt-1 block w-full min-w-0 rounded border bg-background p-2" type="time" value={quiet.quietStart} onChange={e=>setQuiet({...quiet,quietStart:e.target.value})}/></label>
      <label className="text-sm">End<input className="mt-1 block w-full min-w-0 rounded border bg-background p-2" type="time" value={quiet.quietEnd} onChange={e=>setQuiet({...quiet,quietEnd:e.target.value})}/></label>
     </div>
     <label className="block text-sm">Time zone (IANA)<input className="mt-1 block w-full min-w-0 rounded border bg-background p-2" placeholder="America/Chicago" value={quiet.quietZone} onChange={e=>setQuiet({...quiet,quietZone:e.target.value})}/></label>
-    <p className="text-sm">Applies to all phone alerts. Pending invitations and turn reminders wait; table-opening alerts are dropped. Deadlines and in-app indicators stay unchanged.</p>
     <p className="text-sm">Uses this zone’s daylight-saving rules, even when traveling. Start included, end excluded; equal times silence all day.</p>
+    </div>
+    <p className="text-sm">Applies to all phone alerts. Pending invitations and turn reminders wait; table-opening alerts are dropped. Deadlines and in-app indicators stay unchanged.</p>
     <button type="button" className="rounded border px-3 py-2" onClick={()=>void save({quietEnabled:quiet.quietEnabled,quietStart:quiet.quietStart,quietEnd:quiet.quietEnd,quietZone:quiet.quietZone})}>Save quiet hours</button>
    </fieldset>
   </>}
-  {deviceEnabled&&<div className="space-y-2 border-t pt-3">
-   <h4 className="font-medium">This device</h4><p role="status" className="text-sm">{statusText[state as keyof typeof statusText]}</p>
-   {['device-off','permission-needed','revoked'].includes(state)&&<button type="button" className="rounded border px-3 py-2" disabled={pending} onClick={enable}>Enable on this device</button>}
-   {state==='enabled'&&<button type="button" className="rounded border px-3 py-2" disabled={pending} onClick={()=>{setPending(true);void device.disableDevice().then(()=>setState(device.status())).catch(()=>setError('Device cleanup could not finish. Please retry.')).finally(()=>setPending(false));}}>Disable on this device</button>}
-   <p className="text-sm">Delivery depends on browser permission, connectivity and device settings such as Do Not Disturb.</p>
-  </div>}
+  {matchId&&devicePanel}
   </div>
   {saved&&!error&&<p role="status" className="text-sm">{saved}</p>}{error&&<p role="alert">{error}</p>}
  </section>;

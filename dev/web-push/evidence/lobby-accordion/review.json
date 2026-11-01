@@ -1,0 +1,17 @@
+{
+  "capturedAt": "2026-11-01T15:00:19.4941771Z",
+  "baseCommit": "a2b11d0aff9d864519733f7dba555ad5bec23b17",
+  "scope": "Lobby Settings global Notifications accordion",
+  "sourceSha256": "236e71bc0a28f885043e993f3a808f67dfcce5ff68b75778383e2000e3533639",
+  "reactTestsPassed": 6,
+  "applicationApiTypecheckPassed": true,
+  "localAppPreviewBuildPassed": true,
+  "actualAppBrowserWidths": [
+    390,
+    1280
+  ],
+  "accountAndRpcFixtures": "loopback mocks",
+  "devicePermissionScenarios": "mocked",
+  "realPermissionOrDelivery": false,
+  "publication": "held pending Jeremy review and go-ahead"
+}
