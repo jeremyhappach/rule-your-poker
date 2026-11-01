@@ -1,4 +1,4 @@
-# Approved async branding — 2026-11-01 — local review; integration/publication HELD
+# Approved async branding — 2026-11-01 — qualified; production publication approved
 
 Compact branded headers now cover the five current async games. The shared map
 also prepares Take 2, Royal Flash, Mega Card Golf, Trip Flip and 11 Up, without
@@ -8,8 +8,11 @@ Normal cards grow only 7.61px; narrow text-zoom layouts reflow without overflow.
 
 Isolated branch `codex/async-approved-branding` is based on released Arcade
 `dd6a8b5b8`; Arcade files remain untouched. TypeScript, focused tests, production
-build and 30 browser groups pass. Jeremy explicitly requires a later integration
-approval before any publishing. See [review evidence](ASYNC_APPROVED_BRANDING.md).
+build, 80 focused tests and 30 browser groups pass. Jeremy reviewed the local
+candidate and explicitly approved moving it to production, lifting the earlier
+integration/publication hold. Source: `7955e33b5`; checkpoint:
+`async-approved-branding-20261101`. Physical-iPhone acceptance remains pending.
+See [review evidence and release scope](ASYNC_APPROVED_BRANDING.md).
 
 # Approved Arcade lobby — 2026-11-01 — qualified; publication authorized
 

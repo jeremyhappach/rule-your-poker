@@ -1,4 +1,14 @@
-# Approved async match branding — 2026-11-01 — local review, publication HELD
+# Approved async match branding — 2026-11-01 — production publication approved
+
+Jeremy reviewed implementation `7955e33b5` and explicitly approved moving it to
+production on November 1. This supersedes the initial hold recorded below.
+The approved scope remains visual only: no additional games, schema, admission,
+financial or notification changes. Main remains at Arcade `dd6a8b5b8`, allowing
+conflict-free fast-forward integration. Existing qualification is unchanged:
+application TypeScript, 80 tests, production build and 30 browser groups pass.
+Release checkpoint: `async-approved-branding-20261101`. Exact production
+commit/deployment identity is verified and reported in the delivery response.
+Jeremy's physical-iPhone production smoke remains pending.
 
 Jeremy authorized implementation from `PTown_Async_Branded_Headers_Design_Package.zip`
 and explicitly withheld integration/publication until his later approval. The
@@ -76,8 +86,8 @@ Review current cards at
 branding at `http://127.0.0.1:5194/brands`. Query scenarios include `?state=pending`,
 `?state=completed`, `?state=forfeit`, `?long=1`.
 
-Wait for Jeremy's explicit integration approval. Then check current `main` for
-concurrent work, integrate under the normal workflow, publish the approved
+Jeremy has now explicitly approved integration/publication. Check current `main`
+for concurrent work, integrate under the normal workflow, publish the approved
 candidate and verify exact deployment identity. Jeremy performs physical-iPhone
 production smoke: all five brands, both turn colors, live names/stakes/scores,
 countdowns, Take Turn/Resume, results/forfeit, notifications and return navigation.
