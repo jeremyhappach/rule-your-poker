@@ -9,6 +9,7 @@ import {triDealProgress} from '@/lib/triTowers/roundTimeline';
 import type {TriIntentBuffer} from '@/lib/triTowers/intentBuffer';
 import {triInputTiming,triTiming,triPaintTiming} from '@/lib/triTowers/diagnostics';
 import {useTriTowerClearAudio} from './useTriTowerClearAudio';
+import {useTriCardAudio} from '@/hooks/useTriCardAudio';
 import type {TriTowersStageResult} from './TriTowersStageResult';
 import tower from '@/assets/cartoon/tower.webp';
 import './triTowersScene.css';
@@ -29,6 +30,7 @@ export function TriTowersBoard({replay=false,view:v,canAct,onIntent,result,round
  useLayoutEffect(()=>{setAnimated(fresh);previous.current={roundKey,cleared:v.removed.filter(i=>i<3)};},[roundKey,v.removed]);
  const modern=['tri-towers/3','tri-towers/4','tri-towers/5'].includes(v.rules.version);
  const motion=useTriRoundPresentation({replay,scope:roundKey,phase:v.phase,connected,paused,result,now,deadline:v.deadline,userId,active:presentationActive,modern,liveEntry,recoveryEpoch,celebrationMs:v.rules.clearCelebrationMs??0});
+ useTriCardAudio({userId,scope:roundKey,epoch:recoveryEpoch,active:connected&&presentationActive&&!paused,replay,view:v});
  useTriTowerClearAudio({scope:roundKey,userId,removed:v.removed,phase:v.phase,recoveryEpoch,
   active:modern&&connected&&presentationActive&&!paused,reduced:motion.reduced,replay});
  useLayoutEffect(()=>{if(!presentationActive||!connected||paused)input?.interrupt();},[input,presentationActive,connected,paused]);

@@ -278,10 +278,15 @@ owner-only revision notifications. `supabase/functions/arcade-recovery/index.ts`
 recovers due runs. Proofs live in `dev/arcade`; policy in `ARCADE_PHASE_ONE.md`.
 
 Application audio: `src/lib/audio/audioManager.ts` owns the single reusable Web
-Audio context, early gesture listeners, readiness, preference gating, event
+Audio context and observable Sounds preference; `GameplaySoundButton` and
+`VisualPreferences` save through its existing profile adapter. `playbackSession.ts`
+scopes supported iOS playback mode to enabled foreground gameplay. The shared
+`useTriCardAudio` dispatches confirmed TriTowers removal/draw cues independently
+of card animation. See `GAMEPLAY_AUDIO_RELIABILITY.md` for the pathway audit.
+The manager also owns early gesture listeners, readiness, preference gating, event
 receipts, expiry and interruption cleanup. `platformAudio.ts` binds profile I/O;
-`main.tsx` installs it before React and supplies auth identity. `VisualPreferences`
-publishes successful saves. `platformCues.ts` preserves doorbell/knock/scratch
+`main.tsx` installs it before React and supplies auth identity. Settings and the
+speaker share immediate saves with rollback on failure. `platformCues.ts` preserves doorbell/knock/scratch
 synthesis; existing hooks and the Gin overlay request those cues. New effects
 provide an `AudioCue` and use `request` with user/event identity and a monotonic
 presentation deadline. `play` is reserved for existing instantaneous cues, with

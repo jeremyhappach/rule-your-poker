@@ -74,13 +74,78 @@ it('discards preference completion after expiry or withdrawal', async () => {
   expect(h.starts()).toEqual([]); expect(sessionStorage.length).toBe(0);
 });
 
-it('respects mute, unmutes eligible events, and stops active sources when muted again', async () => {
+it('discards muted events and stops active sources without replay on unmute', async () => {
   await ready(); h.manager.setPreference('user', false); h.manager.request(event());
-  expect(h.starts()).toEqual([]); expect(sessionStorage.length).toBe(0);
-  h.manager.setPreference('user', true); expect(h.starts()).toHaveLength(8);
+  expect(h.starts()).toEqual([]);
+  h.manager.setPreference('user', true); h.manager.request(event()); expect(h.starts()).toHaveLength(0);
+  h.manager.request(event('fresh')); expect(h.starts()).toHaveLength(8);
   h.manager.setPreference('user', false);
   expect(h.nodes.filter(n => n.kind === 'oscillator').every(n => n.stop.mock.calls.length === 2)).toBe(true);
   h.manager.setPreference('user', true); h.manager.request(event()); expect(h.starts()).toHaveLength(8);
+});
+
+it('mute consumes queued effects and timelines while suspended, including same-id remounts', async () => {
+  await ready(); h.ctx.state = 'suspended';
+  const timeline = {userId:'user', id:'queued-count', startedAt:Date.now(), expiresAt:Date.now()+2500, cueAt:()=>boxingBellCue};
+  h.manager.request(event()); h.manager.follow(timeline);
+  h.manager.setPreference('user', false); h.manager.setPreference('user', true); h.state('running');
+  h.manager.request(event()); h.manager.follow(timeline); expect(h.starts()).toHaveLength(0);
+  h.manager.request(event('new')); expect(h.starts()).toHaveLength(8);
+});
+
+it('unmute resumes the current context immediately and foreground recovery does not replay old effects', async () => {
+  await ready(); h.manager.request(event()); h.manager.setPreference('user', false);
+  h.ctx.state = 'suspended'; h.ctx.resume.mockClear(); h.manager.setPreference('user', true);
+  expect(h.ctx.resume).toHaveBeenCalledTimes(1); await ready();
+  vi.spyOn(document, 'hidden', 'get').mockReturnValue(true); document.dispatchEvent(new Event('visibilitychange'));
+  h.manager.request(event('hidden'));
+  vi.spyOn(document, 'hidden', 'get').mockReturnValue(false); window.dispatchEvent(new Event('pageshow'));
+  h.state('running'); h.manager.request(event('hidden')); expect(h.starts()).toHaveLength(8);
+  h.manager.request(event('visible')); expect(h.starts()).toHaveLength(16);
+});
+
+it('retries a blocked foreground resume inside the next trusted gesture without creating a new context', async () => {
+  await ready(); h.ctx.state='suspended';h.ctx.resume.mockImplementation(()=>new Promise<void>(()=>{}));
+  h.manager.unlock();h.manager.unlock();expect(h.ctx.resume).toHaveBeenCalledTimes(1);
+  h.manager.unlock(true);expect(h.ctx.resume).toHaveBeenCalledTimes(2);expect(h.createContext).toHaveBeenCalledTimes(1);
+  h.state('running');h.manager.request(event('after-gesture'));expect(h.starts()).toHaveLength(9);
+});
+
+it('owns playback only during audible foreground gameplay and releases after the last header', async () => {
+  const playbackSession = {activate:vi.fn(), release:vi.fn()}; h.env.playbackSession = playbackSession;
+  await ready(); const one = h.manager.acquireGameplay(), two = h.manager.acquireGameplay();
+  expect(playbackSession.activate).toHaveBeenCalled(); playbackSession.release.mockClear(); one();
+  expect(playbackSession.release).not.toHaveBeenCalled(); two(); expect(playbackSession.release).toHaveBeenCalledTimes(1);
+  h.manager.acquireGameplay(); h.manager.setPreference('user', false); expect(playbackSession.release).toHaveBeenCalledTimes(2);
+});
+
+it('shares optimistic preference updates and rolls back a failed save without a stale profile race', async () => {
+  await ready(); let reject!: (error: Error) => void;
+  const save = vi.fn(() => new Promise<void>((_, r) => { reject = r; })); h.env.savePreference = save;
+  const listener = vi.fn(), unsubscribe = h.manager.subscribe(listener);
+  const pending = h.manager.savePreference('user', false);
+  expect(h.manager.getSnapshot()).toEqual({userId:'user', enabled:false, saving:true});
+  await h.manager.savePreference('user', true); expect(save).toHaveBeenCalledTimes(1);
+  reject(new Error('offline')); await expect(pending).rejects.toThrow('offline');
+  expect(h.manager.getSnapshot()).toEqual({userId:'user', enabled:true, saving:false});
+  expect(listener).toHaveBeenCalled(); unsubscribe();
+});
+
+it('does not let an old save completion unlock a new account save', async () => {
+  await ready(); const complete: (() => void)[] = [];
+  h.env.savePreference = () => new Promise<void>(resolve => complete.push(resolve));
+  const old = h.manager.savePreference('user', false);
+  h.manager.setUser(null); h.manager.setUser('user'); await ready();
+  const current = h.manager.savePreference('user', false); complete[0](); await old;
+  expect(h.manager.getSnapshot().saving).toBe(true); complete[1](); await current;
+  expect(h.manager.getSnapshot()).toEqual({userId:'user',enabled:false,saving:false});
+});
+
+it('allows simultaneous independent effects and reloads the existing persisted Sounds field', async () => {
+  await ready(); let persisted=true; h.env.savePreference=async(_id,enabled)=>{persisted=enabled;};
+  h.manager.request(event('card'));h.manager.request(event('celebration'));expect(h.starts()).toHaveLength(16);
+  await h.manager.savePreference('user',false);h.dispose();h=audioHarness(async()=>persisted);await ready();
+  expect(h.manager.getSnapshot().enabled).toBe(false);h.manager.request(event('after-reload'));expect(h.starts()).toHaveLength(0);
 });
 
 it('a saved preference wins over a stale initial fetch and does not affect another user', async () => {

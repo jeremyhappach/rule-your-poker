@@ -23,7 +23,7 @@ export function audioHarness(loadPreference: (userId: string) => Promise<boolean
   });
   const createContext = vi.fn(() => ctx as unknown as AudioContext);
   const preference = vi.fn(loadPreference);
-  const env = { createContext, loadPreference: preference, now: () => Date.now(), storage: () => sessionStorage, document: () => document };
+  const env: ConstructorParameters<typeof AudioManager>[0] = { createContext, loadPreference: preference, now: () => Date.now(), storage: () => sessionStorage, document: () => document };
   const manager = new AudioManager(env);
   const dispose = manager.install();
   manager.setUser('user');

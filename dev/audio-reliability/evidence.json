@@ -1,0 +1,49 @@
+{
+  "date": "2026-11-01",
+  "physicalDevicesTested": false,
+  "syntheticNetwork": true,
+  "checks": [
+    {
+      "width": 320,
+      "height": 740,
+      "preferenceWrites": [
+        false,
+        true
+      ],
+      "audioSources": 60,
+      "passed": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "preferenceWrites": [
+        false,
+        true
+      ],
+      "audioSources": 60,
+      "passed": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "preferenceWrites": [
+        false,
+        true
+      ],
+      "audioSources": 60,
+      "passed": true
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "preferenceWrites": [
+        false,
+        true
+      ],
+      "audioSources": 60,
+      "passed": true
+    }
+  ],
+  "sourceTestsQualified": 3421,
+  "harnessTests": 241
+}

@@ -1,3 +1,4 @@
+vi.mock('@/components/GameplaySoundButton',()=>({GameplaySoundButton:()=>null}));
 // @vitest-environment jsdom
 import {act,cleanup,render} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';

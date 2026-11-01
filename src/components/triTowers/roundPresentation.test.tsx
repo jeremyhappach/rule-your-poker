@@ -6,7 +6,7 @@ import {useTriLiveEntry} from '@/hooks/useTriLiveEntry';
 import {triDealProgress,triResultTimeline} from '@/lib/triTowers/roundTimeline';
 import rulesV2 from '@/lib/triTowers/rules-v2.json';
 import type {TriTowersBoardView} from './TriTowersBoard';
-const audio=vi.hoisted(()=>({follow:vi.fn((_event:any)=>vi.fn())}));
+const audio=vi.hoisted(()=>({request:vi.fn(),follow:vi.fn((_event:any)=>vi.fn())}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:audio}));
 vi.mock('@/components/PlayingCard',()=>({PlayingCard:({isHidden}:any)=><span data-card-back={isHidden}/> }));
 globalThis.ResizeObserver=class{observe(){}disconnect(){}unobserve(){}} as any;
@@ -44,7 +44,7 @@ describe('shared v3 round presentation in both adapters',()=>{
    expect(ui.container.querySelector<HTMLElement>('.tri-upcard-flip')?.style.visibility).toBe('visible');
    expect(ui.container.querySelector('.tri-card-flight')).toBeNull();
   }
-  expect(ui.getByLabelText('Waste 8 of hearts')).toBeTruthy();expect(calls('tri-swoosh:')).toHaveLength(0);
+  expect(ui.getByLabelText('Waste 8 of hearts')).toBeTruthy();expect(calls('tri-swoosh:')).toHaveLength(0);expect(audio.request).toHaveBeenCalledTimes(2);expect(audio.request.mock.calls.every(([event])=>event.id.startsWith('tri-card:'))).toBe(true);
   expect(Element.prototype.animate).not.toHaveBeenCalled();expect(ui.getByRole('button',{name:'Remove 9 of hearts'}).hasAttribute('disabled')).toBe(false);
   delete (Element.prototype as any).animate;vi.restoreAllMocks();
  });

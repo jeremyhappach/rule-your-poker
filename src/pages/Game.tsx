@@ -2,6 +2,7 @@ import {useYahtzeePostgameRecovery} from '@/hooks/useYahtzeePostgameRecovery';
 import {PtownWordsTable} from '@/components/ptownWords/PtownWordsTable';
 import {CanastaTable} from '@/components/canasta/CanastaTable';
 import { CanonicalTableHeader } from '@/lib/canonicalShell/CanonicalTableHeader';
+import { GameplaySoundButton } from '@/components/GameplaySoundButton';
 import {GolfTable} from '@/components/golf/GolfTable';
 import {RacePokerTable} from '@/components/racePoker/RacePokerTable';
 import {Battle31Table} from '@/components/battle31/Battle31Table';
@@ -13363,7 +13364,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `header` prop. The shell renders it above the canonical
   // announcement rail and the opaque game children.
   const mobileHeader = (isMobile || isFullscreenPresentation) ? (
-    <CanonicalTableHeader title={<>{gameName}{!_isShellLobbyMode && game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}</>}>
+    <CanonicalTableHeader gameplay={!_isShellLobbyMode && !_sessionEndedTableActive && !isFullscreenPresentation} title={<>{gameName}{!_isShellLobbyMode && game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}</>}>
         {currentPlayer ? (
           <PlayerOptionsMenu
             isSittingOut={currentPlayer.sitting_out}
@@ -13554,6 +13555,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               </div>
             </div>
             <div className="flex gap-2">
+              {!_isShellLobbyMode && !_sessionEndedTableActive && <GameplaySoundButton />}
               {game.status === 'in_progress' && (
                 <div className="flex flex-col items-end gap-1">
                   <div className="flex gap-2">

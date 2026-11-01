@@ -32,6 +32,8 @@ interface AudioEnvironment {
   now: () => number;
   storage: () => Storage;
   document: () => Document;
+  savePreference?: (userId: string, enabled: boolean) => Promise<void>;
+  playbackSession?: { activate: () => void; release: () => void; observe?: (interrupted: () => void, recovered: () => void) => () => void };
 }
 
 /** One application owner. Games supply cues and presentation deadlines, never contexts. */
@@ -46,8 +48,52 @@ export class AudioManager {
   private timelines = new Map<string, TimelineOwner>();
   private uninstall: (() => void) | null = null;
   private primedContext: AudioContext | null = null;
+  private listeners = new Set<() => void>();
+  private gameplayOwners = new Set<object>();
+  private saving = false;
+  private saveOwner: object | null = null;
+  private snapshot: {userId: string | null; enabled: boolean | null; saving: boolean} = {userId: null, enabled: null, saving: false};
+  private resuming: AudioContext | null = null;
 
   constructor(private env: AudioEnvironment) {}
+
+  subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
+  getSnapshot = () => this.snapshot;
+  private publish() {
+    this.snapshot = {userId: this.userId, enabled: this.enabled, saving: this.saving};
+    this.listeners.forEach(listener => listener());
+  }
+  private updateSession() {
+    if (this.gameplayOwners.size && this.enabled === true && !this.env.document().hidden) this.env.playbackSession?.activate();
+    else this.env.playbackSession?.release();
+  }
+  acquireGameplay = () => {
+    const owner = {};
+    this.gameplayOwners.add(owner); this.updateSession(); this.unlock();
+    return () => {
+      this.gameplayOwners.delete(owner); this.updateSession();
+      if (!this.gameplayOwners.size) { this.stopActive(); this.clearPending(true); }
+    };
+  };
+
+  /** The existing profiles.play_sounds field is the only persisted preference. */
+  savePreference = async (userId: string, enabled: boolean) => {
+    if (userId !== this.userId || this.saving || this.enabled === null || !this.env.savePreference) return;
+    const previous = this.enabled;
+    const owner = {};
+    this.saveOwner = owner;
+    this.saving = true;
+    this.setPreference(userId, enabled);
+    const version = this.preferenceVersion;
+    if (enabled) this.unlock(true); // Stay in the initiating gesture, before network I/O.
+    try { await this.env.savePreference(userId, enabled); }
+    catch (error) {
+      if (this.userId === userId && this.preferenceVersion === version) this.setPreference(userId, previous);
+      throw error;
+    } finally {
+      if (this.saveOwner === owner) { this.saveOwner = null; this.saving = false; this.publish(); }
+    }
+  };
 
   install() {
     if (this.uninstall) return this.uninstall;
@@ -56,14 +102,25 @@ export class AudioManager {
     const gestures = ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown'];
     const gesture = (event: Event) => { if (event.isTrusted) this.unlock(true); };
     const visibility = () => {
-      if (doc.hidden) this.stopActive();
+      this.updateSession();
+      if (doc.hidden) { this.stopActive(); this.clearPending(true); }
       else this.unlock();
     };
+    const foreground = () => { if (!doc.hidden) this.unlock(); };
+    const unobserve = this.env.playbackSession?.observe?.(() => {
+      this.stopActive(); this.clearPending(true);
+    }, foreground);
     gestures.forEach(name => doc.addEventListener(name, gesture, { capture: true, passive: true }));
     doc.addEventListener('visibilitychange', visibility);
+    doc.defaultView?.addEventListener('focus', foreground);
+    doc.defaultView?.addEventListener('pageshow', foreground);
     this.uninstall = () => {
       gestures.forEach(name => doc.removeEventListener(name, gesture, true));
       doc.removeEventListener('visibilitychange', visibility);
+      doc.defaultView?.removeEventListener('focus', foreground);
+      doc.defaultView?.removeEventListener('pageshow', foreground);
+      unobserve?.();
+      this.env.playbackSession?.release();
       this.stopActive();
       this.clearPending();
       this.preferenceVersion++;
@@ -83,12 +140,17 @@ export class AudioManager {
     this.clearPending();
     this.userId = userId;
     this.enabled = null; // Unknown preferences must never briefly unmute a user.
+    this.saving = false;
+    this.saveOwner = null;
+    this.publish(); this.updateSession();
     const version = ++this.preferenceVersion;
     if (!userId) return;
     // Defer profile I/O outside the synchronous auth notification callback.
     void Promise.resolve().then(() => this.env.loadPreference(userId)).then(enabled => {
       if (this.preferenceVersion !== version) return;
       this.enabled = enabled;
+      if (enabled === false) { this.stopActive(); this.clearPending(true); }
+      this.publish(); this.updateSession();
       this.flush();
     }).catch(() => {});
   }
@@ -97,13 +159,15 @@ export class AudioManager {
     if (userId !== this.userId) return;
     this.preferenceVersion++; // A late initial fetch cannot overwrite a successful preference save.
     this.enabled = enabled;
-    if (!enabled) this.stopActive();
-    this.flush();
+    if (!enabled) { this.stopActive(); this.clearPending(true); }
+    this.publish(); this.updateSession();
+    if (enabled) this.unlock();
   }
 
   /** Call synchronously in a trusted gesture: do not await preference or auth I/O first. */
   unlock = (trustedGesture = false) => {
     try {
+      this.updateSession();
       if (!this.context || this.context.state === 'closed') {
         this.context?.removeEventListener('statechange', this.stateChanged);
         this.context = this.env.createContext();
@@ -113,7 +177,15 @@ export class AudioManager {
         // Retire sources that actually started; a first-gesture unlock must not
         // consume live timelines still waiting for permission to play.
         this.stopActive(false);
-        void this.context.resume().then(() => this.flush()).catch(() => {});
+        const context = this.context;
+        // A pre-gesture resume may remain pending under autoplay policy. A real
+        // gesture must still retry synchronously instead of waiting on that promise.
+        if (trustedGesture || this.resuming !== context) {
+          this.resuming = context;
+          void context.resume().then(() => { if (this.context === context) this.flush(); }).catch(() => {}).finally(() => {
+            if (this.resuming === context) this.resuming = null;
+          });
+        }
       }
       // iOS can require an actual source started inside the navigation gesture,
       // before an asynchronous game-start response supplies its first cue.
@@ -136,6 +208,7 @@ export class AudioManager {
   request(event: AudioEvent) {
     const key = `ptown-audio:${event.userId}:${event.id}`;
     if (event.userId !== this.userId || this.hasPlayed(key) || event.expiresAt <= this.env.now()) return () => {};
+    if (this.enabled === false || this.env.document().hidden) { this.remember(key); return () => {}; }
     const token = {};
     let entry = this.pending.get(key);
     if (!entry) {
@@ -154,7 +227,8 @@ export class AudioManager {
   /** Cancellable presentation audio. Unlock skips elapsed ticks; interruption retires the event. */
   follow(event: AudioTimeline) {
     const key = `ptown-audio:${event.userId}:${event.id}`;
-    if (event.userId !== this.userId || event.expiresAt <= this.env.now() || this.env.document().hidden) return () => {};
+    if (event.userId !== this.userId || event.expiresAt <= this.env.now()) return () => {};
+    if (this.enabled === false || this.env.document().hidden) { this.remember(key); return () => {}; }
     let entry = this.timelines.get(key);
     if (!entry) {
       if (this.hasPlayed(key)) return () => {};
@@ -186,7 +260,11 @@ export class AudioManager {
   }
 
   private stateChanged = () => {
-    if (this.context?.state !== 'running') this.stopActive(false);
+    if (this.context?.state !== 'running') {
+      this.stopActive(false);
+      // Initial autoplay suspension may wait for a gesture; an actual interruption may not replay.
+      if ((this.context?.state as string) === 'interrupted') { this.stopActive(); this.clearPending(true); }
+    }
     else this.flush();
   };
 
@@ -255,5 +333,5 @@ export class AudioManager {
     clearTimeout(this.pending.get(key)?.timer);
     this.pending.delete(key);
   }
-  private clearPending() { for (const key of this.pending.keys()) this.removePending(key); }
+  private clearPending(consume = false) { for (const key of this.pending.keys()) { if (consume) this.remember(key); this.removePending(key); } }
 }

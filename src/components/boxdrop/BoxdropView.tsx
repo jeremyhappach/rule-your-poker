@@ -36,7 +36,7 @@ export function BoxdropView({replay=false,view:v,userId,now,pending,error,epoch,
  const send=(intent:BoxdropIntent,destination:number)=>{if(!canAct||flight.current)return;flight.current=true;setSubmitting(true);setTarget(destination);void Promise.resolve(onIntent(intent)).finally(()=>{flight.current=false;setSubmitting(false);setTarget(null);});};
  const active=v.players.find(p=>p.active),displayScore=result?(presentation?.displayScore??result.score):b.score;
  const seconds=Math.ceil(window.remaining/1000),clearing=result?.reason==='full_clear'&&result.elapsed<3000;
- return <FullscreenGameShell className="box-scene" title="Boxdrop" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
+ return <FullscreenGameShell gameplay={!replay} className="box-scene" title="Boxdrop" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
  navigation={navigation??(v.solo?<nav aria-label="Boxdrop controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined)}
  announcement={v.solo?false:undefined} panelTitle={v.solo?'Rules':undefined} panelDescription={`P-Town rules · ${b.rules.version}`} panel={panel??<BoxdropRules/>}>
  <div ref={root}>{layer&&createPortal(<div className="box-plane" ref={viewportRef} data-boxdrop="">

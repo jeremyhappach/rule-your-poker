@@ -1,3 +1,16 @@
+# Gameplay audio reliability and controls — 2026-11-01 — owner device smoke pending
+
+The main lobby keeps its bell; active canonical, fullscreen, Arcade and async
+gameplay use one speaker control bound to the existing Sounds preference.
+Mute immediately retires active/queued effects; unmute and foreground recovery
+resume the shared engine. Supported iOS requests playback audio sessions.
+TriTowers restores confirmed card removal/draw swooshes without changing its
+immediate-upcard presentation. No game rules, timers, financial or schema changes.
+
+Local qualification and exact production status are recorded in the delivery
+report. Physical iPhone/Android validation remains required. See
+[causes, audit, qualification and device smoke](GAMEPLAY_AUDIO_RELIABILITY.md).
+
 # Five-game async real money and Settings — 2026-11-01 — qualified, publication authorized
 
 Financial gate PASS. Jeremy lifted the hold and authorized direct production

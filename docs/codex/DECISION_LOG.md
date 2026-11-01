@@ -1,3 +1,14 @@
+## 2026-11-01 — Gameplay sound preference and playback session
+
+The existing AudioManager exposes the existing profiles.play_sounds preference to
+both global Settings and gameplay headers. Sounds saves immediately through that
+one adapter; the general visual-preference Save cannot overwrite an older sound
+draft. Muting consumes pending cues so unmute never catches them up. Supported
+Audio Session playback is leased by foreground gameplay and released on exit or
+mute. Confirmed TriTowers card audio is independent of animation and reduced
+motion. No gameplay or financial owner changes. Qualification and device limits:
+[Gameplay audio reliability](GAMEPLAY_AUDIO_RELIABILITY.md).
+
 ## October 30, 2026 — Finale requires viewer review completion
 
 Financial settlement and presentation completion are separate. A settled parent

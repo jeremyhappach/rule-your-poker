@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PushPreferences } from '@/components/delayed/PushPreferences';
 import { supabase } from '@/integrations/supabase/client';
 import { platformAudio } from '@/lib/audio/platformAudio';
+import { useSoundPreference } from '@/hooks/useSoundPreference';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -41,7 +42,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
   const [cardBackDesign, setCardBackDesign] = useState('red');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
   const [useHaptic, setUseHaptic] = useState(true);
-  const [playSounds, setPlaySounds] = useState(true);
+  const sounds = useSoundPreference();
   const [networkSimMode, setNetworkSimMode] = useState<NetworkSimMode>('off');
   const [networkSimLogging, setNetworkSimLogging] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,7 +55,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
   const fetchPreferences = async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('table_layout, card_back_design, deck_color_mode, use_haptic, play_sounds, network_sim_mode, network_sim_logging')
+      .select('table_layout, card_back_design, deck_color_mode, use_haptic, network_sim_mode, network_sim_logging')
       .eq('id', userId)
       .maybeSingle();
     
@@ -63,7 +64,6 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
       setCardBackDesign((data as any).card_back_design || 'red');
       setDeckColorMode((data as any).deck_color_mode || 'two_color');
       setUseHaptic((data as any).use_haptic ?? true);
-      setPlaySounds((data as any).play_sounds ?? true);
       setNetworkSimMode(((data as any).network_sim_mode ?? 'off') as NetworkSimMode);
       setNetworkSimLogging(Boolean((data as any).network_sim_logging));
     }
@@ -79,7 +79,6 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
         card_back_design: cardBackDesign,
         deck_color_mode: deckColorMode,
         use_haptic: useHaptic,
-        play_sounds: playSounds,
         network_sim_mode: networkSimMode,
         network_sim_logging: networkSimLogging,
       } as any)
@@ -88,7 +87,6 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
     if (error) {
       toast.error('Failed to save preferences');
     } else {
-      platformAudio.setPreference(userId, playSounds);
       // Refresh the shared provider so every CanonicalCardBack /
       // table-felt consumer picks up the new colors immediately.
       // The profile control request bypasses the impairment layer, so this
@@ -251,8 +249,9 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
           </div>
           <Switch
             id="play-sounds"
-            checked={playSounds}
-            onCheckedChange={setPlaySounds}
+            checked={sounds.userId === userId && sounds.enabled === true}
+            disabled={disabled || sounds.userId !== userId || sounds.enabled === null || sounds.saving}
+            onCheckedChange={enabled => { void platformAudio.savePreference(userId, enabled).catch(error => toast.error(error.message)); }}
           />
         </div>
         
