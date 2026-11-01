@@ -1,4 +1,4 @@
-# Card sounds and silent async notices — 2026-11-01 — approved; local qualification
+# Card sounds and silent async notices — 2026-11-01 — qualified; publication authorized
 
 Jeremy approved the auditioned 150 ms soft swoosh for confirmed card play and
 130 ms double brush for pass/draw in both games. The shared cues preserve their
@@ -12,9 +12,15 @@ push delivery and waiting-table join cue are preserved. Other games, gameplay
 timing and authority are unchanged. 76 focused tests, application TypeScript
 and the production bundle pass for the final changes.
 No dependency/schema changes.
-The existing real-money notification owner-smoke publication hold still applies.
+Jeremy explicitly lifted the publication hold for this update. The push-fix chat
+then confirmed real-money notification receipt independently; its new phone
+vibrate-mode observation is being investigated separately. This release leaves
+the shared audio manager and playback-session behavior untouched.
+Source commits: `20a233f4e` (card pair), `eeb6d4386` (silent async notices).
+Release checkpoint: `release-card-audio-pair-20261101`.
 Runtime acceptance after release: play and pass/draw in both games and their
 Arcade/async/multiplayer surfaces; mute/unmute and reconnect without old sounds.
+Confirm the lobby retains its bell and no longer produces an async notice tone.
 
 # Real-money async push correction — 2026-11-01 — installed; publication and owner smoke pending
 

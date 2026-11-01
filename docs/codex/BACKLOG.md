@@ -6,7 +6,8 @@ remove the in-app async notification tone; retain the visible bell and push
 notifications. The provider's queued cue and heard-receipt effect are removed.
 Waiting-table player-join sound and global Sounds preference remain unchanged.
 Local qualification covers silent entry/exit, notification revisions and bell
-updates. Publication remains subject to the existing notification-smoke hold.
+updates. Jeremy explicitly authorized publication; the push-fix chat subsequently
+confirmed notification receipt. Sources: `20a233f4e` and `eeb6d4386`.
 
 ## Implemented locally — Async match score disclosure — October 29, 2026
 
