@@ -1,0 +1,10 @@
+*.png
+!cards-390.png
+!cards-1280.png
+!all-ten-prepared.png
+!state-pending.png
+!state-completed.png
+!state-forfeit.png
+!long-names-320.png
+!text-200-320.png
+!image-fallback.png

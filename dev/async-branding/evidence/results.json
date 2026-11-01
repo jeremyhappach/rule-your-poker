@@ -1,0 +1,98 @@
+{
+  "checks": 30,
+  "errors": [],
+  "failures": [],
+  "geometry": [
+    {
+      "width": 320,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    },
+    {
+      "width": 375,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    },
+    {
+      "width": 390,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    },
+    {
+      "width": 430,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    },
+    {
+      "width": 667,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    },
+    {
+      "width": 844,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    },
+    {
+      "width": 768,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    },
+    {
+      "width": 1024,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    },
+    {
+      "width": 1280,
+      "addedHeight": [
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375,
+        7.609375
+      ]
+    }
+  ],
+  "environment": "Installed Edge; real Delayed page, native headers and actions; synthetic read/write adapters on loopback only; destination interception after navigation; no hosted changes or gameplay mutation"
+}

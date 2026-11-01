@@ -1,0 +1,155 @@
+[
+  {
+    "game": "run21",
+    "source": "01_run21_full_concept.png",
+    "sourceSha256": "17497163e60a9ceff1b966a619134de013280328fcc44c84d9bdae27b79d383e",
+    "logoCrop": [
+      320,
+      195,
+      1305,
+      485
+    ],
+    "motifCrop": [
+      170,
+      475,
+      1000,
+      685
+    ]
+  },
+  {
+    "game": "tri-towers",
+    "source": "02_tritowers_full_concept.png",
+    "sourceSha256": "6c8260a013cd21ea498895e20e4b6b54d9b03cf4762d7b509c4863e0bdb7cb48",
+    "logoCrop": [
+      265,
+      390,
+      1420,
+      680
+    ],
+    "motifCrop": [
+      355,
+      185,
+      1370,
+      400
+    ]
+  },
+  {
+    "game": "quintzee",
+    "source": "09_quintzee_full_concept.png",
+    "sourceSha256": "94e148985e79805790b296271ff0d6b8955314d1b47e7e9beda67b46835fd15e",
+    "logoCrop": [
+      300,
+      330,
+      1480,
+      635
+    ],
+    "motifCrop": [
+      460,
+      170,
+      1110,
+      340
+    ]
+  },
+  {
+    "game": "boxdrop",
+    "source": "04_boxdrop_full_concept.png",
+    "sourceSha256": "b341a4dbeced7cd25e4538d911c5903c67e45628353afa1a1d16b6447c750e2f",
+    "logoCrop": [
+      290,
+      390,
+      1425,
+      657
+    ],
+    "motifCrop": [
+      340,
+      170,
+      1440,
+      395
+    ]
+  },
+  {
+    "game": "take-two",
+    "source": "06_take_2_full_concept.png",
+    "sourceSha256": "d55c8e073201bfc125a48a15afc4ef312e5ea1de563d6398d78023c80911aa98",
+    "logoCrop": [
+      405,
+      300,
+      1350,
+      650
+    ],
+    "motifCrop": [
+      190,
+      175,
+      1370,
+      315
+    ]
+  },
+  {
+    "game": "royal-flash",
+    "source": "07_royal_flash_full_concept.png",
+    "sourceSha256": "466d9df60fe73008eb9c69b3e807c369958d394484cbe6fded4edf5606df9fe9",
+    "logoCrop": [
+      480,
+      295,
+      1320,
+      670
+    ],
+    "motifCrop": [
+      290,
+      170,
+      1410,
+      300
+    ]
+  },
+  {
+    "game": "mega-card-golf",
+    "source": "08_mega_card_golf_full_concept.png",
+    "sourceSha256": "d3e8e32622918e35ccec5dd3a15342a977561ffa0855d3cb92cf96b249d80581",
+    "logoCrop": [
+      345,
+      260,
+      1360,
+      655
+    ],
+    "motifCrop": [
+      200,
+      170,
+      1510,
+      270
+    ]
+  },
+  {
+    "game": "trip-flip",
+    "source": "05_trip_flip_full_concept.png",
+    "sourceSha256": "632c912cc6f86fb72c1e83cd564947bb3b5352b34f4bb26fc020fe7b09172075",
+    "logoCrop": [
+      460,
+      210,
+      1335,
+      695
+    ],
+    "motifCrop": [
+      190,
+      195,
+      540,
+      670
+    ]
+  },
+  {
+    "game": "eleven-up",
+    "source": "03_11_up_full_concept.png",
+    "sourceSha256": "80478b3eafbc3dd323c2a6cd036e2e23536fd9bccc0f1098fd83d4c43537760e",
+    "logoCrop": [
+      390,
+      245,
+      1350,
+      645
+    ],
+    "motifCrop": [
+      180,
+      175,
+      1380,
+      290
+    ]
+  }
+]

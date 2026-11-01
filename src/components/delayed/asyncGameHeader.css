@@ -1,0 +1,30 @@
+/* Only the existing header row is branded. Scores, turn colors and actions keep
+   their canonical styles and remain outside this decorative layer. */
+.delayed-game-card:has(.async-brand-heading){container-type:inline-size}
+.delayed-match-home:has(.async-brand-heading){container-type:inline-size;grid-template-columns:minmax(0,1fr)}
+.delayed-game-heading.async-brand-heading{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.4rem;min-width:0;min-height:2.85rem;margin:-.8rem -.8rem 0;padding:.3rem .8rem;border-radius:.7rem .7rem 0 0;background:linear-gradient(100deg,var(--async-brand-theme),#101d28 92%)}
+.async-brand-heading h3{position:relative;display:flex;align-items:center;gap:.4rem;min-width:0;line-height:1.15}
+.async-brand-ordinal{flex:none;color:#ffedb0;font-size:1rem}
+.async-brand-title{position:relative;display:flex;align-items:center;min-width:0;min-height:2.25rem;width:100%;max-width:16rem}
+.async-brand-name{position:relative;overflow-wrap:anywhere;color:#ffdf8b;font-weight:800;text-shadow:0 1px 2px #000}
+.async-brand-logo{position:absolute;inset:0 auto 0 0;width:100%;height:100%;object-fit:contain;object-position:left center;opacity:0}
+.async-brand-title[data-loaded] .async-brand-logo{opacity:1}
+.async-brand-title[data-loaded] .async-brand-name{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.async-brand-motif{position:absolute;z-index:-1;inset:0 0 0 auto;width:48%;height:100%;object-fit:cover;opacity:.24;pointer-events:none;mask-image:linear-gradient(90deg,transparent,#000 35%,transparent)}
+.delayed-game-heading>.async-brand-stake{position:relative;font-size:.8rem;line-height:1.2;white-space:nowrap;padding:.35rem .45rem;border:1px solid #b89949;border-radius:.65rem;background:#171e1dde;color:#ffecb4;font-variant-numeric:tabular-nums}
+.async-brand-title[data-words]{gap:.45rem}
+.async-brand-title[data-words] .async-brand-name{font-family:Georgia,serif;font-size:1.15rem;font-weight:900;letter-spacing:-.035em;text-shadow:1px 2px #382408,-1px -1px #6d471f}
+.async-brand-letters{display:flex;flex:none;padding-inline:.1rem;gap:.1rem}
+.async-brand-letters i{display:grid;place-items:center;width:1.05rem;height:1.25rem;border:1px solid #bf883d;border-radius:.2rem;background:linear-gradient(135deg,#ffe5ad,#d3a459);color:#322213;box-shadow:1px 2px 0 #6d4a25;font:bold .8rem/1 Georgia,serif;font-style:normal;transform:rotate(-12deg)}
+.async-brand-letters i:nth-child(2){transform:translateY(.16rem) rotate(6deg)}
+.async-brand-letters i:nth-child(3){transform:rotate(12deg)}
+@container(max-width:17rem){.async-brand-letters{display:none}}
+@container(max-width:12rem){
+  .delayed-game-heading.async-brand-heading{grid-template-columns:minmax(0,1fr)}
+  .async-brand-stake{justify-self:start}
+  .delayed-match-home .async-current-net-heading{flex-wrap:wrap}
+  .delayed-match-home [aria-label="Match push notifications"]>div:first-child{flex-wrap:wrap}
+  .delayed-game-card .delayed-turn-status,.delayed-game-card .delayed-scoreboard{grid-template-columns:minmax(0,1fr)}
+  .delayed-game-card .delayed-turn-status time{justify-content:flex-start}
+}
+@media(forced-colors:active){.async-brand-logo,.async-brand-motif,.async-brand-letters{display:none}.async-brand-title[data-loaded] .async-brand-name{position:static;width:auto;height:auto;margin:0;overflow:visible;clip-path:none;white-space:normal}.async-brand-heading .async-brand-name,.async-brand-ordinal{color:CanvasText;text-shadow:none}.delayed-game-heading>.async-brand-stake{border-color:CanvasText}}

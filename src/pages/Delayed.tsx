@@ -1,4 +1,5 @@
 import {PlayingNow} from '@/components/delayed/PlayingNow';
+import {AsyncGameHeader} from '@/components/delayed/AsyncGameHeader';
 import {CurrentNet} from '@/components/delayed/CurrentNet';
 import {PushPreferences} from '@/components/delayed/PushPreferences';
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
@@ -77,7 +78,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
   <ol className="delayed-lineup">{home.lineup.map(c=>{const ours=c.actor===userId,remaining=Date.parse(c.expiresAt??'')-now;
-   return <li className="delayed-game-card" data-unviewed={needsChildReview(c,userId)||undefined} key={c.id}><div className="delayed-game-heading"><h3>{c.ordinal}. {gameName(c.game)}</h3><span>Stake <strong>${c.stake}</strong></span></div>
+   return <li className="delayed-game-card" data-unviewed={needsChildReview(c,userId)||undefined} key={c.id}><AsyncGameHeader game={c.game} name={gameName(c.game)} ordinal={c.ordinal} stake={c.stake}/>
     {home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">Pending</em>}</div></div>)}</div>}
     {needsChildReview(c,userId)&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
     {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{c.result.reason==='timeout_forfeit'?' · Forfeit':''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:

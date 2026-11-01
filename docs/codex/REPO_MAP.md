@@ -1,3 +1,11 @@
+## Async card branding
+
+`src/components/delayed/AsyncGameHeader.tsx` and its CSS own only the compact
+child-card brand/title and live stake. `src/lib/delayed/gameBranding.ts` holds
+presentation identities; it has no admission role. Separate derivatives live in
+`public/game-branding/async-v1/`. Preview/proofs are in `dev/async-branding/`;
+qualification and the explicit publication hold are in `ASYNC_APPROVED_BRANDING.md`.
+
 ## Approved Arcade lobby
 
 `src/components/arcade/ArcadeTile.tsx` owns the shared compact banner/link and
