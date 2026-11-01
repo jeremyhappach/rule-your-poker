@@ -12,6 +12,7 @@ const RECOVERY_REFRESH_MS = 10_000;
 export function useLobbyGames(userId: string) {
   const [games, setGames] = useState<LobbyGame[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadedForUser, setLoadedForUser] = useState<string | null>(null);
   const { toast } = useToast();
   const refreshRef = useRef<() => void>(() => {});
   const refresh = useCallback(() => refreshRef.current(), []);
@@ -28,6 +29,7 @@ export function useLobbyGames(userId: string) {
     const visible = () => document.visibilityState !== 'hidden';
     setGames([]);
     setLoading(true);
+    setLoadedForUser(null);
 
     const scheduleReconciliation = () => {
       clearTimeout(timer);
@@ -58,6 +60,7 @@ export function useLobbyGames(userId: string) {
           fetchLobbyGames({ userId, signal: controller.signal }));
         if (disposed) return;
         setGames(result);
+        setLoadedForUser(userId);
         readFailed = false;
         lastErrorKey = null;
         perf.done({ gameCount: result.length });
@@ -137,5 +140,5 @@ export function useLobbyGames(userId: string) {
     };
   }, [userId, toast]);
 
-  return { games, loading, refresh };
+  return { games, loading, refresh, initialLoadSucceeded: loadedForUser === userId };
 }

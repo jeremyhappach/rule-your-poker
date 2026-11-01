@@ -1,3 +1,12 @@
+## 2026-11-01 — Launch branding fails closed for admission, open for app startup
+
+Approved branding may cover only a positively identified fresh standalone lobby
+launch after successful live lobby data and a no-active-seat read. Unknown or
+restored launch evidence, deep links, active membership and failed/slow reads
+skip it. It never gates auth, data, routing or recovery. The manifest keeps its
+existing id while marking the Home Screen URL. Legacy installs safely skip until
+they adopt that URL. See `FRESH_LAUNCH_SPLASH.md` for device limits and evidence.
+
 ## 2026-11-01 — Native audio contexts may be replaced under one shared owner
 
 The shared AudioManager remains the only owner, but a native context is no longer

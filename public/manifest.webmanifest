@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Ptown Poker",
   "short_name": "Ptown Poker",
-  "start_url": "/",
+  "start_url": "/?launch=home",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0a0f1a",

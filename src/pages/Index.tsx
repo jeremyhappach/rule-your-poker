@@ -1,4 +1,5 @@
 import {NotificationBell} from '@/components/delayed/NotificationBell';
+import { FreshLaunchSplash } from '@/components/FreshLaunchSplash';
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,6 +75,7 @@ const Index = () => {
   const { toast } = useToast();
   const { user, isReady } = useAuthGuard({ pageLabel: "Index" });
   const [isLoading, setIsLoading] = useState(true);
+  const [lobbyReady, setLobbyReady] = useState(false);
   const [sessionCleanupRequired, setSessionCleanupRequired] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("");
@@ -465,6 +467,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen p-4 bg-background">
+      <FreshLaunchSplash userId={user.id} ready={lobbyReady && !!currentUsername && !balanceLoading && !balanceError && !maintenanceLoading && !isMaintenanceMode} />
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between gap-2">
           {/* Left-aligned username + balance button */}
@@ -518,7 +521,7 @@ const Index = () => {
             </Button>
           </div>
         </div>
-        <GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} />
+        <GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} onInitialLoad={setLobbyReady} />
       </div>
 
         <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>

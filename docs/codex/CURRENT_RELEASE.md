@@ -1,3 +1,17 @@
+# Approved fresh-launch splash — 2026-11-01 — qualified; publication authorized
+
+The supplied MP4/PNG remain byte-identical. An optional decorative overlay is
+admitted only for a marked fresh standalone lobby launch after actual lobby data
+and a read-only no-active-seat check. Notifications/deep links, recovery,
+refresh/resume, browser use and uncertain/slow startup skip it. Startup owners
+remain independent; the three-second navigation budget includes initialization,
+followed by a 200 ms fade. Existing installs need the updated manifest launch URL.
+TypeScript, build, 54 focused tests, 31 push regressions and 20 compiled-App browser
+scenarios pass. Physical iPhone/Android lifecycle and manifest adoption remain
+owner smoke. No rules, finances, schema, notification or audio changes. See
+[qualification, platform limits and smoke](FRESH_LAUNCH_SPLASH.md).
+Checkpoint: `release-approved-launch-splash-20261101`.
+
 # Shared audio-engine recovery — 2026-11-01 — qualified; publication authorized
 
 Repeated complete audio loss survived phone silent-mode and gameplay mute toggles

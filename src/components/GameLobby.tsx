@@ -1,6 +1,6 @@
 import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
 import { Gamepad2 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useLobbyGames } from "@/hooks/useLobbyGames";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -86,13 +86,15 @@ interface Game {
 interface GameLobbyProps {
   userId: string;
   isMaintenanceMode: boolean;
+  onInitialLoad?: (ready: boolean) => void;
 }
 
-export const GameLobby = ({ userId, isMaintenanceMode }: GameLobbyProps) => {
+export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad }: GameLobbyProps) => {
   // Prevent screen from dimming in the lobby
   useWakeLock(true);
   
-  const { games, loading, refresh: fetchGames } = useLobbyGames(userId);
+  const { games, loading, refresh: fetchGames, initialLoadSucceeded } = useLobbyGames(userId);
+  useLayoutEffect(() => { onInitialLoad?.(!loading && initialLoadSucceeded); }, [loading, initialLoadSucceeded, onInitialLoad]);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Game | null>(null);
