@@ -1,3 +1,15 @@
+# Async UI smoke layout correction — 2026-11-01 — qualified; production authorized
+
+Create New Game now stretches to the combined Async/Arcade button height with
+the existing centered text and styling. Async creation places its explanation
+and money toggle in a separate Match settings card above the unchanged lineup.
+Behavior, request handling, finance and backend code remain unchanged.
+TypeScript, production build, 20 focused tests and four compiled-App viewport
+flows pass, including explicit geometry checks and visual inspection.
+Checkpoint: `release-async-ui-layout-20261101`; publication verification is
+recorded in its `-verified` annotated tag. See the
+[smoke follow-up](ASYNC_UX_NAVIGATION_MONEY_RELEASE.md#smoke-layout-follow-up).
+
 # Async navigation and money UX — 2026-11-01 — qualified; production authorized
 
 Isolated `codex/async-ux-navigation-money` adds the permanent Async Mode lobby

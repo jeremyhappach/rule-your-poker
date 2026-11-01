@@ -290,7 +290,7 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad }: GameLobb
               onClick={() => setShowCreateDialog(true)} 
               size="sm"
               disabled={isBlocked}
-              className="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-auto self-stretch flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create New Game
             </Button>

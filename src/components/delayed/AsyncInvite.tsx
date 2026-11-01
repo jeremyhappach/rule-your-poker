@@ -38,9 +38,11 @@ export function AsyncInvite(){
  return <section className="delayed-invite"><Link className="delayed-back" to="/delayed">← All matches</Link>
   <div className="delayed-match-heading"><small>PLAY ON YOUR SCHEDULE</small><h2>New Async Match</h2><p className="delayed-match-meta">Two humans · {realMoney?'Real Money':'Fake Money'} · 36-hour turns</p></div>
   {!enabled&&<p role="status">New async matches are unavailable.</p>}
-  <fieldset className="delayed-form-card" disabled={pending}><legend>Your lineup</legend><p>Every game has its own stake. Play any available turn after acceptance.</p>
+  <fieldset className="delayed-form-card" disabled={pending}><legend>Match settings</legend><p>Every game has its own stake. Play any available turn after acceptance.</p>
    <label className="delayed-money-toggle"><span>Fake Money</span><span className="delayed-money-switch"><input type="checkbox" role="switch" aria-label="Real Money" checked={realMoney} disabled={!realAvailable} onChange={e=>changeMoney(e.target.checked)}/><span aria-hidden="true"/></span><span>Real Money</span></label>
    {!realAvailable&&<small>Real-money matches are currently unavailable.</small>}
+  </fieldset>
+  <fieldset className="delayed-form-card" disabled={pending}><legend>Your lineup</legend>
    {lineup.map((c,index)=><div className="delayed-builder-child" key={c.key}>
     <label>Game {index+1}<select aria-label={'Game '+(index+1)} value={c.game} onChange={e=>change(c.key,{game:e.target.value,stake:defaults.current[e.target.value]??'5'})}>{games.map(g=><option key={g} value={g}>{gameName(g)}</option>)}</select></label>
     {realMoney?<label>Stake<input aria-label={'Stake '+(index+1)} aria-invalid={!/^[1-9][0-9]{0,3}$/.test(c.stake)} aria-describedby={'stake-help-'+c.key} type="number" min="1" max="9999" step="1" value={c.stake} onChange={e=>change(c.key,{stake:e.target.value})}/><small id={'stake-help-'+c.key}>Enter a whole-number stake from 1 to 9,999.</small></label>:<small>Play-money stake: {c.stake}</small>}

@@ -113,3 +113,28 @@ Automated browser checks are desktop Edge with mobile viewports. Physical
 iPhone keyboard, touch/scroll, installed-PWA lifecycle and Jeremy's production
 smoke remain acceptance work. No physical-device or OS push-delivery pass is
 claimed; this release preserves the existing push implementation.
+
+## Smoke layout follow-up
+
+Jeremy authorized two UI-only corrections after production smoke. The live
+Create New Game button overrides its fixed small-button height with automatic
+height and stretch alignment, matching the neighboring Async/Arcade stack.
+The existing button component retains horizontal and vertical centering, and
+all positions, colors, typography, handlers and disabled rules remain intact.
+Async setup moves the explanation and fake/real toggle into a separate Match
+settings fieldset above Your lineup. Both fieldsets retain pending-state
+disabling; individual game controls and all behavior are unchanged.
+
+Application TypeScript, Vite production build and 20 focused tests across
+maintenance ownership, invitation creation and invitation acceptance pass.
+The existing compiled-App fixture flow passes at 320×740, 390×844, 844×390 and
+1280×900 with additional temporary geometry checks for equal stack/button
+height, centered content and separated match-level settings above Game 1.
+All four flows retain zero page errors/external requests. Narrow screenshots
+were visually inspected. Logs and screenshots are retained in ignored
+`qualification.local/async-ui-layout/`. No new dependencies, backend changes,
+financial writes or behavior changes. React review confirms accessible legends
+and the existing control/handler ownership.
+
+Checkpoint: `release-async-ui-layout-20261101`. Its `-verified` annotated tag
+records the exact production SHA, Vercel READY deployment and public manifest.
