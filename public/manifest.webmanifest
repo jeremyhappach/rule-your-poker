@@ -9,16 +9,22 @@
   "theme_color": "#0a0f1a",
   "icons": [
     {
-      "src": "/icons/ptown-poker-v1-192.png",
+      "src": "/icons/ptown-poker-v2-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/ptown-poker-v1-512.png",
+      "src": "/icons/ptown-poker-v2-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/ptown-poker-v2-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -6,6 +6,32 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $iconDir = Join-Path $repoRoot 'public/icons'
 $masterPath = Join-Path $repoRoot 'assets/branding/ptown-poker-icon-full-bleed.png'
 [IO.Directory]::CreateDirectory($iconDir) | Out-Null
+# Extend only the source's rounded perimeter using its own neighboring pixels.
+# This preserves the approved spade/interior exactly, without generative repainting.
+$source = [Drawing.Bitmap]::new((Join-Path $repoRoot 'assets/branding/ptown-poker-icon-source.png'))
+$square = [Drawing.Bitmap]::new(1024, 1024, [Drawing.Imaging.PixelFormat]::Format24bppRgb)
+try {
+    if ($source.Width -ne 1024 -or $source.Height -ne 1024) { throw 'Expected the approved 1024x1024 matte source' }
+    $graphics = [Drawing.Graphics]::FromImage($square)
+    try { $graphics.DrawImageUnscaled($source, 0, 0) } finally { $graphics.Dispose() }
+    for ($y = 0; $y -lt 1024; $y++) {
+        $sy = [Math]::Min([Math]::Max($y, 16), 1007)
+        $cy = [Math]::Min([Math]::Max($sy, 236), 787)
+        $dy = $sy - $cy
+        $left = [int][Math]::Ceiling(236 - [Math]::Sqrt(220 * 220 - $dy * $dy))
+        $right = 1023 - $left
+        for ($x = 0; $x -lt 1024; $x++) {
+            $sx = $x
+            if ($x -lt $left) { $sx = 2 * $left - $x }
+            if ($x -gt $right) { $sx = 2 * $right - $x }
+            if ($sx -ne $x -or $sy -ne $y) { $square.SetPixel($x, $y, $source.GetPixel($sx, $sy)) }
+        }
+    }
+    $square.Save($masterPath, [Drawing.Imaging.ImageFormat]::Png)
+} finally {
+    $square.Dispose()
+    $source.Dispose()
+}
 $master = [Drawing.Image]::FromFile($masterPath)
 $frames = @{}
 try {
@@ -23,7 +49,7 @@ try {
             $bitmap.Save($stream, [Drawing.Imaging.ImageFormat]::Png)
             $frames[$size] = $stream.ToArray()
             if ($size -ne 48) {
-                [IO.File]::WriteAllBytes((Join-Path $iconDir "ptown-poker-v1-$size.png"), $frames[$size])
+                [IO.File]::WriteAllBytes((Join-Path $iconDir "ptown-poker-v2-$size.png"), $frames[$size])
             }
         } finally {
             $stream.Dispose()
@@ -35,7 +61,7 @@ try {
 } finally { $master.Dispose() }
 
 # ICO directory with PNG payloads for the three standard browser sizes.
-$icoPath = Join-Path $iconDir 'ptown-poker-v1.ico'
+$icoPath = Join-Path $iconDir 'ptown-poker-v2.ico'
 $writer = [IO.BinaryWriter]::new([IO.File]::Create($icoPath))
 try {
     $writer.Write([uint16]0)
@@ -58,4 +84,7 @@ try {
 
 # Fallbacks for browsers that discover the conventional root filenames.
 Copy-Item -LiteralPath $icoPath -Destination (Join-Path $repoRoot 'public/favicon.ico')
-Copy-Item -LiteralPath (Join-Path $iconDir 'ptown-poker-v1-180.png') -Destination (Join-Path $repoRoot 'public/apple-touch-icon.png')
+Copy-Item -LiteralPath (Join-Path $iconDir 'ptown-poker-v2-180.png') -Destination (Join-Path $repoRoot 'public/apple-touch-icon.png')
+# The original spade already fits inside the central 40%-radius safe circle.
+# Keep the same composition for Android; no padding, crop or extra rounded mask.
+Copy-Item -LiteralPath (Join-Path $iconDir 'ptown-poker-v2-512.png') -Destination (Join-Path $iconDir 'ptown-poker-v2-maskable-512.png')

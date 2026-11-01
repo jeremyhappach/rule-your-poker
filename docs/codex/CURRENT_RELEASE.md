@@ -1,4 +1,23 @@
-# Official Ptown Poker app icon — 2026-11-01 — qualified, iPhone smoke pending
+# Matte nighttime app icon — 2026-11-01 — replacement, iPhone smoke pending
+
+Replaces the glossy artwork from `57e9430da` with Jeremy's approved matte
+nighttime PNG. The spade and interior scene are preserved pixel-for-pixel;
+only the rounded outer perimeter is extended using the source's own pixels.
+Opaque Apple Touch, PWA, favicon and social assets use v2 URLs. A separate
+Android maskable icon retains the composition within the standard safe circle.
+
+Manifest identity, installed `Ptown Poker` name, standalone behavior and colors
+are unchanged. Push/service-worker/subscription code, gameplay, authentication,
+session management, schema and finances are untouched. No dependencies added.
+Asset metadata/dimensions, ICO frames, references, source preservation,
+safe-zone preview, TypeScript and production build passed.
+Checkpoint: `release-matte-night-icon-20261101`. Exact commit and production
+verification for both `holm357.com` and `ptown-poker.vercel.app` belong to the
+delivery report. Physical iPhone acceptance remains pending; preserve existing
+push-enabled installations and use a separate Home Screen copy for verification.
+See [artwork provenance and verification steps](../../assets/branding/README.md).
+
+# Official Ptown Poker app icon — 2026-11-01 — superseded by matte revision
 
 Replaces the Lovable favicon/social metadata with Jeremy's official bridge and
 metallic spade artwork. Opaque full-bleed Apple Touch (180), PWA (192/512), PNG

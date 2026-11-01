@@ -1,34 +1,49 @@
-# Official Ptown Poker app icon
+# Approved matte nighttime Ptown Poker icon
 
-`ptown-poker-icon-source.png` is Jeremy's unmodified PNG supplied November 1,
-2026. SHA-256: `de27c695eacc13e87a1ac3834c76e1a29df5b8ab35077ed80093d3f98c0156ff`.
+`ptown-poker-icon-source.png` is Jeremy's unmodified
+`Ptown-Poker-Matte-Night-Approved.png`, supplied November 1, 2026.
+SHA-256: `63ed580a874ea74fba513106fd74eebc423a4cbc0bc64efa3e0ea8f56bd05653`.
+It supersedes the glossy artwork released in `57e9430da`.
 
-`ptown-poker-icon-full-bleed.png` is the production master derived from that
-artwork with the built-in image editing tool. Its outer mockup margin and
-rounded frame were removed, with the background extended to square edges.
-The metallic spade and bridge remain the design; the operating system supplies
-the icon mask. SHA-256:
-`ff006b36efc22424bea6d4e1aa1a4065f64c9fccf6a5d90247f7da382e3a0e8f`.
+`ptown-poker-icon-full-bleed.png` is the opaque 1024 px production master.
+SHA-256: `f796edf70e280879eaf0384f1fa48e8c84f394e1c2a0caa656c16f20de6972f3`.
+The spade and interior scene retain the original pixels, position, colors and
+composition. Only the rounded perimeter is extended to square edges, using
+neighboring pixels from the approved source. There is no generative repainting
+in the released artwork. The operating system supplies its own icon mask.
 
-Edit prompt:
+Run `.codex/scripts/generate-app-icons.ps1` to deterministically prepare the
+master and resize it with built-in Windows System.Drawing. The perimeter
+extension reflects source pixels horizontally outside an inset rounded interior
+(16 px inset, 220 px radius); the first/last 16 rows use the adjacent interior
+row. The approved spade's entire bounding rectangle, x=208..791 / y=200..875,
+is preserved pixel-for-pixel.
 
-> Edit target: the attached official Ptown Poker icon PNG. Prepare this exact artwork for an iOS/web app icon. Remove ONLY the outer black margin and the rounded-square mockup bezel/frame. Make the bridge/sky/water scene extend all the way to all four square edges and corners, with no baked-in rounded corners, no border, no drop shadow, no padding, no transparency. Preserve the exact central metallic ace-of-spades design, shape, proportions, texture and highlights, and preserve the bridge towers, bridge lights, sky and water design. Crop away the outer mockup margin and fill only any missing corner background as needed. Do not redesign, reinterpret, add or simplify anything. Flat front-facing full-bleed square icon artwork. Keep the entire spade visible with enough breathing room for the operating system's rounded mask. No text.
+Outputs are opaque RGB PNGs at 16, 32, 180, 192 and 512 px, an ICO containing
+16/32/48 px PNG frames, and conventional root favicon/Apple Touch fallbacks.
+Android has a separate 512 px maskable filename with the same composition:
+the entire spade fits inside the central 40%-radius safe circle without scaling.
+See the [manifest safe-zone specification](https://www.w3.org/TR/appmanifest/#icon-masks).
+The bridge and water remain a full-bleed decorative background.
 
-Run `.codex/scripts/generate-app-icons.ps1` to deterministically resize the
-committed master with Windows System.Drawing (no added dependencies). It emits
-opaque RGB PNGs at 16, 32, 180, 192 and 512 px, an ICO with 16/32/48 px frames,
-and conventional root favicon/Apple Touch Icon fallbacks.
+HTML, social metadata and manifest icons use `ptown-poker-v2` filenames;
+the manifest link uses `?v=ptown-icon-2`. Existing v1 files remain available
+for older cached references. Manifest ID, start URL, scope, name, short name,
+colors and standalone display are unchanged. Do not unregister service workers,
+clear storage or delete push subscriptions to refresh icons. The push-only worker
+has no fetch handler or app-asset cache; its local push store is unchanged.
 
-HTML and manifest references use `ptown-poker-v1` filenames; the HTML manifest
-link also has a version query. Use a new filename version for later artwork.
-Keep the manifest ID, start URL, scope and standalone mode stable. Do not
-unregister service workers, clear storage or delete push subscriptions to refresh
-icons. The push-only worker has no fetch handler or app asset cache.
+Physical iPhone acceptance:
 
-Physical iPhone acceptance: reload the production site in Safari, use Share →
-Add to Home Screen, confirm the new icon and `Ptown Poker` name, and open it in
-standalone mode. Keep an existing push-enabled installation in place during
-testing; its stored icon may not refresh automatically. A separate installation
-may require its own notification permission through the existing enrollment UI.
+1. Keep the existing push-enabled Home Screen installation.
+2. Reload [holm357.com](https://holm357.com) in Safari and use Share → Add to
+   Home Screen. Confirm the matte icon and default `Ptown Poker` name.
+3. Add a separate verification copy if needed; a temporary distinct name can
+   distinguish it from the existing installation. Launch it and confirm standalone
+   display. Inspect the spade, silver outline, edge mask and warm bridge lighting.
+4. Confirm an ordinary notification still arrives on the original installation.
+   The new copy does not need notification enrollment to verify its icon.
 
-See [WebKit's Home Screen icons and app identity guidance](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
+Existing iPhone installations may retain their stored icon. No removal or
+re-enrollment is required for this release. See
+[WebKit's Home Screen identity and multiple-install guidance](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
