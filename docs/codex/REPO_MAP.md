@@ -1,11 +1,12 @@
 ## Fresh standalone launch branding
 
-`src/lib/launchSplash.ts` captures one document's conservative launch eligibility.
+`src/lib/launchSplash.ts` captures one document's standalone lobby eligibility.
 `src/components/FreshLaunchSplash.tsx`/CSS owns the optional decorative overlay and
-read-only membership exclusion. Index mounts the live GameLobby independently;
+reads only the existing current recovery lease; no account membership query.
+Index mounts the live GameLobby independently;
 `useLobbyGames` reports initial successful loading. Approved immutable assets:
 `public/launch-splash/`. Proof: `dev/launch-splash/browser.mjs`; qualification:
-`FRESH_LAUNCH_SPLASH.md`. No recovery, routing, audio or financial ownership.
+`FRESH_LAUNCH_SPLASH_CORRECTION.md`. No recovery, routing, audio or financial ownership.
 
 ## Async card branding
 

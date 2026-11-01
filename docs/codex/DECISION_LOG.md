@@ -1,4 +1,13 @@
-## 2026-11-01 — Launch branding fails closed for admission, open for app startup
+## 2026-11-01 — Fresh lobby launch differs from account-wide session membership
+
+Owner smoke exposed the original splash gate's false negatives. Current launch
+route and the canonical recovery lease identify actual recovery; historical/open
+account memberships and retained sessionStorage do not. Existing Home Screen
+URLs qualify, the display receipt is per document, and data loading duration does
+not decide eligibility. The full clip plays while the real lobby loads, with a
+bounded final-image hold. See `FRESH_LAUNCH_SPLASH_CORRECTION.md`.
+
+## 2026-11-01 — Original launch branding gate — superseded after failed smoke
 
 Approved branding may cover only a positively identified fresh standalone lobby
 launch after successful live lobby data and a no-active-seat read. Unknown or

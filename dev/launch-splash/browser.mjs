@@ -34,14 +34,20 @@ const cases = [
   { name: 'compact', width: 320, height: 568, show: true },
   { name: 'landscape', width: 844, height: 390, show: true },
   { name: 'tablet', width: 1024, height: 1366, show: true },
-  { name: 'browser', browser: true }, { name: 'legacy-install', path: '/' },
+  { name: 'browser', browser: true }, { name: 'updated-install', path: '/?launch=home', show: true },
   { name: 'cold-push-turn', path: '/delayed/22222222-2222-4222-8222-222222222222' },
   { name: 'cold-push-table', path: '/notifications/table/22222222-2222-4222-8222-222222222222' },
   { name: 'results', path: '/?sessions=completed' },
   { name: 'game-recovery', path: '/game/22222222-2222-4222-8222-222222222222' },
   { name: 'arcade-recovery', path: '/arcade/run21/run/22222222-2222-4222-8222-222222222222' },
-  { name: 'real-money-seat', seat: true }, { name: 'membership-failure', fail: true },
-  { name: 'restored-document', restored: true }, { name: 'slow-lobby', slow: true },
+  { name: 'real-money-seat-in-lobby', seat: true, show: true },
+  { name: 'retained-storage-new-document', retained: true, show: true },
+  { name: 'discarded-document', discarded: true },
+  { name: 'back-forward-document', backForward: true },
+  { name: 'slow-lobby', slow: true, show: true },
+  { name: 'slow-js-startup', bootDelay: true, show: true },
+  { name: 'failed-lobby', fail: true, show: true },
+  { name: 'foreground-resume', resume: true, show: true },
   { name: 'reduced-motion', reduced: true, show: true, fallback: true },
   { name: 'autoplay-rejected', reject: true, show: true, fallback: true },
   { name: 'unsupported', unsupported: true, show: true, fallback: true },
@@ -54,7 +60,12 @@ try {
     const queries = [], errors = [];
     await context.addInitScript(({ c, user, token, key }) => {
       localStorage.setItem(key, JSON.stringify({ user, access_token: token, refresh_token: 'synthetic', expires_at: Math.floor(Date.now() / 1000) + 3600, expires_in: 3600, token_type: 'bearer' }));
-      if (c.restored) sessionStorage.setItem('ptown:launch-document:v1', '1');
+      if (c.retained) sessionStorage.setItem('ptown:launch-document:v1', '1');
+      if (c.discarded) Object.defineProperty(document, 'wasDiscarded', { value: true });
+      if (c.backForward) {
+        const entries = performance.getEntriesByType.bind(performance);
+        performance.getEntriesByType = type => type === 'navigation' ? [{ type: 'back_forward' }] : entries(type);
+      }
       const media = window.matchMedia.bind(window);
       window.matchMedia = q => q === '(display-mode: standalone)' ? { ...media(q), matches: !c.browser && !c.ios } : media(q);
       if (c.ios) Object.defineProperty(navigator, 'standalone', { value: true });
@@ -93,41 +104,65 @@ try {
         const table = path.split('/').at(-1), single = (req.headers().accept ?? '').includes('object');
         if (table === 'players' && url.searchParams.get('select') === 'id,games!inner(status)') {
           queries.push(url.search);
-          assert.equal(req.method(), 'GET'); assert.equal(url.searchParams.get('user_id'), 'eq.' + user.id);
-          assert.equal(url.searchParams.get('games.status'), 'neq.session_ended'); assert.equal(url.searchParams.get('limit'), '1');
-          if (c.fail) return route.fulfill({ status: 503, body: '{}' });
-          return send(c.seat ? [{ id: 'active-real-money-seat', games: { status: 'in_progress' } }] : []);
+          return send([{ id: 'active-real-money-seat', games: { status: 'in_progress' } }]);
         }
-        if (table === 'games' && c.slow) await new Promise(r => setTimeout(r, 3300));
+        if (table === 'games' && c.slow) await new Promise(r => setTimeout(r, 3800));
+        if (table === 'games' && c.fail) return route.fulfill({ status: 503, body: '{}' });
+        if (table === 'games' && c.seat) return send([{ id: '22222222-2222-4222-8222-222222222222',
+          name: 'Existing real-money table', status: 'in_progress', game_type: 'holm', real_money: true,
+          buy_in: 20, pot: 0, created_at: '2026-01-01T00:00:00Z' }]);
+        if (table === 'players' && c.seat) return send([{ id: '33333333-3333-4333-8333-333333333333',
+          user_id: user.id, game_id: '22222222-2222-4222-8222-222222222222', chips: 20, legs: 0,
+          is_bot: false, sitting_out: false, created_at: '2026-01-01T00:00:00Z', profiles: { username: 'Splash Player' } }]);
         const value = table === 'profiles' ? { id: user.id, username: 'Splash Player', is_active: true, is_superuser: false, play_sounds: false } : null;
         return send(single ? value : value ? [value] : []);
       }
       if (url.origin !== origin) return route.abort();
       if (path.startsWith('/api/')) return send({});
+      if (c.bootDelay && /^\/assets\/index-.*\.js$/.test(path)) await new Promise(r => setTimeout(r, 2600));
       if (c.mediaFail && path.endsWith('.mp4')) return route.abort();
       return route.continue();
     });
     const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
     try {
-      await page.goto(origin + (c.path ?? '/?launch=home'), { waitUntil: 'domcontentloaded' });
+      await page.goto(origin + (c.path ?? '/'), { waitUntil: 'domcontentloaded' });
       if (c.show && !c.fallback) {
         await page.locator('[data-launch-splash="showing"]').waitFor({ timeout: 3500 });
         const art = await page.locator('.fresh-launch-splash-art').first().evaluate(el => ({ fit: getComputedStyle(el).objectFit, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
-        assert.equal(art.fit, 'contain'); assert.equal(art.width, c.width); assert.equal(art.height, c.height);
+        assert.equal(art.fit, 'contain'); assert.equal(art.width, c.width ?? 390); assert.equal(art.height, c.height ?? 844);
         await page.screenshot({ path: `${out}/${c.name}.png` });
       }
-      await page.waitForTimeout(3500);
+      if (c.resume) {
+        await page.evaluate(() => {
+          Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+          document.dispatchEvent(new Event('visibilitychange'));
+        });
+        assert.equal(await page.locator('[data-launch-splash]').count(), 0);
+        await page.evaluate(() => {
+          Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+          document.dispatchEvent(new Event('visibilitychange'));
+        });
+      }
+      await page.waitForTimeout(c.fail ? 5500 : c.slow ? 4500 : c.show ? 3900 : 800);
       let evidence = await page.evaluate(() => window.splashEvidence);
       const media = await page.evaluate(() => window.splashMedia);
       assert.equal(evidence.some(e => e.phase === 'showing' || e.phase === 'fading'), !!c.show, JSON.stringify({ c, evidence, errors, body: (await page.locator('body').innerText()).slice(0, 500) }));
       assert.equal(await page.locator('[data-launch-splash]').count(), 0);
+      assert.equal(queries.length, 0, 'Splash must not query account-wide memberships');
       if (c.show) {
-        assert(evidence.filter(e => e.phase !== 'none').every(e => e.lobby && e.balance));
-        assert(evidence.at(-1).at < 3450, JSON.stringify(evidence));
+        const start = evidence.find(e => e.phase === 'showing').at;
+        const end = evidence.at(-1);
+        assert(end.at - start < 5500, JSON.stringify(evidence));
+        if (!c.fail && !c.resume) assert(end.lobby && end.balance, JSON.stringify(evidence));
+        if (c.slow) {
+          assert(!evidence.find(e => e.phase === 'showing').lobby);
+          assert(end.at - start > 3500, JSON.stringify(evidence));
+        }
         assert.deepEqual(errors, []);
-        if (!c.fallback) {
+        if (!c.fallback && !c.resume) {
           assert(media.some(m => m.event === 'playing'), JSON.stringify(media));
           assert(media.some(m => m.time > 2.4 && m.width === 720 && m.height === 1280 && Math.abs(m.duration - 3) < 0.1), JSON.stringify(media));
+          assert(media.find(m => m.event === 'loadedmetadata').time < 0.1, 'Play the supplied clip from the beginning');
         }
       }
       if (c.name === 'ios-cold') {

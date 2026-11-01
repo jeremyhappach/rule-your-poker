@@ -1,4 +1,17 @@
-# Approved fresh-launch splash — 2026-11-01 — qualified; publication authorized
+# Fresh-launch splash correction — 2026-11-01 — qualified; publication authorized
+
+Jeremy's force-close/Home Screen smoke failed the initial release. Its account-wide
+membership veto, mandatory new launch URL, retained-storage veto and two-second
+startup cutoff were incorrect. The approved correction accepts existing installs,
+uses one receipt per document and actual recovery identity, and plays the full
+clip while lobby data loads. A bounded final-image hold handles slower loading.
+No Supabase reads/writes, notification, gameplay, financial or artwork changes.
+TypeScript, build, 55 focused checks, 31 push regressions and 24 compiled-App
+browser scenarios pass. Physical iPhone acceptance remains pending; see
+[correction and smoke](FRESH_LAUNCH_SPLASH_CORRECTION.md).
+Checkpoint: `release-launch-splash-cold-start-20261101`.
+
+# Initial fresh-launch splash — 2026-11-01 — owner smoke failed; superseded
 
 The supplied MP4/PNG remain byte-identical. An optional decorative overlay is
 admitted only for a marked fresh standalone lobby launch after actual lobby data

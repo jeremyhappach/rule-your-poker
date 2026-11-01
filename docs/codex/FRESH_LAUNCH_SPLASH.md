@@ -1,5 +1,9 @@
 # Approved fresh-launch splash — 2026-11-01
 
+**Historical qualification only:** owner iPhone smoke failed. The admission and
+timing rules below are superseded by
+[the approved correction](FRESH_LAUNCH_SPLASH_CORRECTION.md).
+
 Presentation only, based on production `5765ff215`. User explicitly authorized
 implementation, qualification and coordinated publication. Worktree/branch:
 `codex/approved-launch-splash`. No migrations, gameplay, settlement, notification

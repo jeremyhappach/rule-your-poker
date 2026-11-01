@@ -5,8 +5,8 @@ This directory is the durable project memory for P-Town Poker. New sessions shou
 Shared audio-engine retirement/recovery and its native browser proof:
 `AUDIO_ENGINE_RECOVERY.md`.
 
-Approved fresh standalone splash, conservative launch admission and phone smoke:
-`FRESH_LAUNCH_SPLASH.md`.
+Approved splash and failed iPhone smoke correction:
+`FRESH_LAUNCH_SPLASH_CORRECTION.md` (original evidence: `FRESH_LAUNCH_SPLASH.md`).
 
 Canasta installed closed qualification and coordination hold: `CANASTA_HOSTED_QUALIFICATION.md`.
 Local terminal correction and Beginner/Expert follow-up, with SQL qualification
