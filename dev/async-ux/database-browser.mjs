@@ -91,4 +91,3 @@ try{
  write(out+'/database-browser.json',JSON.stringify({passed:true,database:ctx.database,checks,rolledBack:true,remainingProfiles:leftovers},null,2));console.log('PASS compiled App -> installed SQL: fake/real creation, notification deep-link, warning/cancel/accept, duplicate/replay/refresh');
 }catch(e){console.error(e);process.exitCode=1;}
 finally{if(browser)await browser.close();await serial;await owner();await db.query('ROLLBACK');await db.end();if(server.listening)await new Promise(r=>server.close(r));}
-

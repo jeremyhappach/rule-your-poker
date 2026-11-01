@@ -113,4 +113,3 @@ Automated browser checks are desktop Edge with mobile viewports. Physical
 iPhone keyboard, touch/scroll, installed-PWA lifecycle and Jeremy's production
 smoke remain acceptance work. No physical-device or OS push-delivery pass is
 claimed; this release preserves the existing push implementation.
-

@@ -60,4 +60,3 @@ BEGIN
  PERFORM pg_temp.ux_assert((SELECT count(*) FROM public.player_transactions WHERE profile_id NOT IN(a,b))=before_count,'no customer accounting changes');
 END $$;
 SELECT jsonb_agg(evidence) AS checks FROM ux_checks;
-

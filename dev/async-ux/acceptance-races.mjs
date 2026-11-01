@@ -23,4 +23,3 @@ try{
  }
  write('qualification.local/async-ux/acceptance-races.json',JSON.stringify({passed:true,database,connections:2,checks},null,2));console.log('PASS independent-connection create/accept races in both modes');
 }finally{await db.end();await peer.end();}
-
