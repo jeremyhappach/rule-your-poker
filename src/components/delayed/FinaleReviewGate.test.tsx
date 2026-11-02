@@ -6,6 +6,7 @@ import {TooltipProvider} from '@/components/ui/tooltip';
 import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 const mock=vi.hoisted(()=>({rpc:vi.fn(),events:{} as Record<string,any[]>,finaleSeen:false,failAck:'',failRefresh:false,revision:1}));
 vi.mock('@/hooks/useAuthGuard',()=>({useAuthGuard:()=>({user:{id:'me'},isReady:true})}));
+vi.mock('@/components/GameplaySoundButton',()=>({GameplaySoundButton:()=>null}));
 vi.mock('@/components/delayed/NotificationBell',()=>({NotificationBell:()=>null}));
 vi.mock('@/components/delayed/PlayingNow',()=>({PlayingNow:()=>null}));
 vi.mock('@/lib/delayed/client',async original=>({...await original<typeof import('@/lib/delayed/client')>(),delayedRpc:mock.rpc}));

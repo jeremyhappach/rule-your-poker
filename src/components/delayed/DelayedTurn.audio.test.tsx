@@ -67,7 +67,7 @@ it('first new placement and pass after reopening sound at confirmation, with dup
  mocks.value=snapshot('run21',true);mount();await flush();expect(placements()).toHaveLength(0);
  await place();expect(placements()).toHaveLength(1);expect((placements()[0][0] as any).cueAt()).toBe(approvedSound('slide'));
  await refresh();await step(100);expect(placements()).toHaveLength(1);
- fireEvent.click(screen.getByRole('button',{name:'Pass'}));await flush();expect(placements()).toHaveLength(2);expect((placements()[1][0] as any).cueAt()).toBe(approvedSound('flip'));
+ fireEvent.click(screen.getByRole('button',{name:'Pass'}));await flush();expect(placements()).toHaveLength(2);expect((placements()[1][0] as any).cueAt().schedule).toBe(approvedSound('flip')?.schedule);
 });
 it('a new action after offline recovery sounds even before the state read returns',async()=>{
  mocks.value=snapshot('run21',true);mount();await flush();

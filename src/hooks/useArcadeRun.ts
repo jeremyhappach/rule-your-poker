@@ -1,3 +1,4 @@
+import {confirmedArcadePass} from '@/lib/arcade/passPresentation';
 import {useRun21Action} from './useRun21Action';
 import {UncertainRun21Action} from '@/lib/run21/actionPresentation';
 import {roundIntro} from '@/lib/run21/roundIntro';
@@ -17,7 +18,8 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
  const [completionLive,setCompletionLive]=useState(false),epoch=useRef(0),finishedSeen=useRef(false);
  const [presentationEpoch,setPresentationEpoch]=useState(0),[audioEpoch,setAudioEpoch]=useState(0);
  const interruptInput=useRef(()=>{});
- const interrupt=useCallback(()=>{epoch.current++;if(trackRoundPresentation){setPresentationEpoch(n=>n+1);interruptInput.current();}else setAudioEpoch(n=>n+1);setCompletionLive(false);},[trackRoundPresentation]);
+ const freshPass=useRef<{id:string;before:ArcadeSnapshot}|null>(null),[passReceipt,setPassReceipt]=useState<string|null>(null);
+ const interrupt=useCallback(()=>{freshPass.current=null;epoch.current++;if(trackRoundPresentation){setPresentationEpoch(n=>n+1);interruptInput.current();}else setAudioEpoch(n=>n+1);setCompletionLive(false);},[trackRoundPresentation]);
  const accept=useCallback((value:T,recovery=false,requestEpoch=epoch.current)=>{
   if(value.id!==runId)return;
   const previous=state.current;
@@ -57,8 +59,13 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   const scope=generation.current,requestEpoch=epoch.current;
   try{
    const value=await arcadeRequest<T>({op:'action',game:'run21',runId,requestId:command.requestId,revision:command.runRevision,roundId:command.roundId,intent:command.intent});
-   if(scope===generation.current){run21SnapshotTiming(command.requestId,(value as unknown as ArcadeSnapshot).view);accept(value,false,requestEpoch);}
+   if(scope===generation.current){
+    const fresh=freshPass.current;freshPass.current=null;
+    if(fresh?.id===command.requestId&&(!state.current||state.current.revision<value.revision||state.current.revision===value.revision&&JSON.stringify(state.current.view)===JSON.stringify(value.view))&&requestEpoch===epoch.current&&!document.hidden&&navigator.onLine&&confirmedArcadePass(fresh.before,value as unknown as ArcadeSnapshot,command))setPassReceipt(runId+':'+command.roundId+':'+command.requestId);
+    run21SnapshotTiming(command.requestId,(value as unknown as ArcadeSnapshot).view);accept(value,false,requestEpoch);
+   }
   }catch(e){
+   freshPass.current=null;
    if(e instanceof UncertainRun21Action)throw e;
    // Restore confirmed state before releasing a rejected tentative card.
    try{const value=await arcadeRequest<T>({op:'state',game:'run21',runId});if(scope===generation.current)accept(value,true);}
@@ -97,7 +104,9 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
    if(intent.type!=='abandon'&&(roundIntro(view,at)||view.scorePresentation||board.result||!board.current||view.active_player_id!==id||(board.deadline!==null&&at>=board.deadline)))return;
    if(intent.type==='place'&&!legalColumns(board,view.config).includes(intent.column))return;
    if(!['place','pass','collect','abandon'].includes(intent.type))return;
-   await run21Action.submit({requestId:crypto.randomUUID(),roundId:view.roundId!,playerId:id,revision:board.revision,runRevision:current.revision,intent:intent as import('@/lib/arcade/model').ArcadeIntent});return;
+   const requestId=crypto.randomUUID();
+   if(intent.type==='pass')freshPass.current={id:requestId,before:current as unknown as ArcadeSnapshot};
+   await run21Action.submit({requestId,roundId:view.roundId!,playerId:id,revision:board.revision,runRevision:current.revision,intent:intent as import('@/lib/arcade/model').ArcadeIntent});return;
   }
   busy.current=true;setPending(true);const scope=generation.current,requestEpoch=epoch.current;
   try{const value=await arcadeRequest<T>({op:'action',runId,requestId:crypto.randomUUID(),revision:current.revision,roundId:current.view.roundId,intent});if(scope===generation.current)accept(value,false,requestEpoch);}
@@ -105,6 +114,6 @@ export function useArcadeRun<T extends ArcadeRunSnapshot=ArcadeSnapshot>(runId:s
   finally{if(scope===generation.current){busy.current=false;setPending(false);}}
  },[runId,accept,refresh,interrupt,trackRoundPresentation,buffer,run21Action.submit]);
  const input=intentView(snapshot)?buffer:undefined;
- return {snapshot,error:error||run21Action.error,pending:pending||!!input?.busy||run21Action.pending,placement:run21Action.placement,now,act,refresh:async()=>{await run21Action.recover();await refresh();},completedOnEntry,completionLive,presentationEpoch,audioEpoch,interruptPresentation:interrupt,input,recoverInput:async()=>{buffer.interrupt();await buffer.recover();await refresh(true);}};
+ return {snapshot,passReceipt,error:error||run21Action.error,pending:pending||!!input?.busy||run21Action.pending,placement:run21Action.placement,now,act,refresh:async()=>{await run21Action.recover();await refresh();},completedOnEntry,completionLive,presentationEpoch,audioEpoch,interruptPresentation:interrupt,input,recoverInput:async()=>{buffer.interrupt();await buffer.recover();await refresh(true);}};
 }
 

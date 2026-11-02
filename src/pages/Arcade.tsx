@@ -1,3 +1,4 @@
+import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {NotificationBell} from '@/components/delayed/NotificationBell';
 import {useQuintzeeTheme} from '@/hooks/useQuintzeeTheme';
 import {Switch} from '@/components/ui/switch';
@@ -62,7 +63,7 @@ export function GameBoard({game,userId}:{userId:string;game:'run21'|'tri-towers'
   catch(e){setError(e instanceof Error?e.message:'Unable to start.');}finally{setPending(false);}
  }
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>
- <header className="arcade-heading arcade-board-heading"><Trophy size={26} aria-hidden="true"/><h1>{name}</h1><NotificationBell/>
+ <header className="arcade-heading arcade-board-heading"><Trophy size={26} aria-hidden="true"/><h1>{name}</h1><GameplaySoundButton/><NotificationBell/>
  <ArcadeInfo game={game} name={name} ruleset={displayRuleset}>
   <p>Top 10 verified scores. Players may appear more than once. Equal scores share rank (1, 1, 3), with earlier completions appearing first. Only ten entries are shown. Last 30 Days uses games completed in that period; personal best shows All Time for the selected rules.</p>
   {!!board?.availableRulesets?.length&&(game!=='tri-towers'||board.availableRulesets.length>1)&&<label className="arcade-version">Leaderboard rules <select aria-label="Leaderboard rules" value={displayRuleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
@@ -89,13 +90,13 @@ export function GameBoard({game,userId}:{userId:string;game:'run21'|'tri-towers'
 }
 function SoloRun({runId,userId}:{runId:string;userId:string}){
  useRun21Diagnostics(userId,'arcade',runId);
- const {snapshot,error,pending,placement,now,act,refresh,completedOnEntry,completionLive,audioEpoch:presentationEpoch}=useArcadeRun(runId),navigate=useNavigate();
+ const {snapshot,error,pending,placement,now,act,refresh,completedOnEntry,completionLive,passReceipt,audioEpoch:presentationEpoch}=useArcadeRun(runId),navigate=useNavigate();
  const [tab,setTab]=useState<ShellTabId>('cards'),[abandon,setAbandon]=useState(false),[celebration,setCelebration]=useState<ScoreCelebrationReceipt|null>(null);
  const [finalUntil,setFinalUntil]=useState<number|null>(null);
  const seen=useRef<string|null>(null),retire=useCallback(()=>setCelebration(null),[]);
  const view=snapshot?.view,intro=view?roundIntro(view,now):null;
  const medalEpoch=useRef<number|null>(null);
- useRun21PlacementAudio(userId,runId+':'+view?.roundId,snapshot?.events,presentationEpoch,!error&&tab==='cards');
+ useRun21PlacementAudio(userId,runId+':'+view?.roundId,snapshot?.events,presentationEpoch,!error&&tab==='cards',passReceipt);
  useRun21Bell(userId,intro?.key??null,intro?.remaining??0);
  useRun21ScoreAudio(userId,runId,view,now,!celebration&&(snapshot?.status==='active'||completionLive));
  useRun21FailureAudio(userId,runId,view,now,presentationEpoch,!error&&!celebration&&tab==='cards'&&!completedOnEntry&&(snapshot?.status==='active'||completionLive));

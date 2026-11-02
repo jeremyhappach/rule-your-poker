@@ -1,0 +1,34 @@
+[
+  {
+    "id": "chucky-heartbeat",
+    "title": "Chucky — Slow Heartbeat",
+    "durationMs": 6000,
+    "sha256": "ffdcbfeeb3a2747b7e775fbad8b70b7ffcb974605f69b73aee39816a65ce9bc4",
+    "peak": 0.08092524547084995,
+    "source": "Original procedural sound; no third-party recording"
+  },
+  {
+    "id": "chucky-sting",
+    "title": "Chucky — Dramatic Three-Note Sting",
+    "durationMs": 1400,
+    "sha256": "6f711fc1c9d61e13bd045c1ea52cdf4411afc6fd123d45328bb11c29437a2bfd",
+    "peak": 0.06869607686809699,
+    "source": "Original procedural sound; no third-party recording"
+  },
+  {
+    "id": "357-beeps",
+    "title": "357 — Drag-Race Beeps",
+    "durationMs": 2700,
+    "sha256": "4a5230f1bbaf2e2a6abcd815b2fcd9d7793e575d08d0461f10db86b9fc35e5a5",
+    "peak": 0.048461666248912495,
+    "source": "Original procedural sound; no third-party recording"
+  },
+  {
+    "id": "357-heartbeat",
+    "title": "357 — Double Heartbeat",
+    "durationMs": 2700,
+    "sha256": "085429926d1bff90fa4d29c92071fc0e1f11afdeee03b25b5e855965f693e92f",
+    "peak": 0.08092524547084995,
+    "source": "Original procedural sound; no third-party recording"
+  }
+]

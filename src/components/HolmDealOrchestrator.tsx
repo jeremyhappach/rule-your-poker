@@ -1,4 +1,3 @@
-import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
 /**
  * HolmDealOrchestrator — canonical deal for Holm.
  *
@@ -124,8 +123,6 @@ export function HolmDealOrchestrator({
   const handsDispatchedRef = useRef(false);
   const communityDispatchedRef = useRef(false);
   const chuckyDispatchedRef = useRef(false);
-  const chuckySound = useLiveSoundEvent(soloDeclared ? handContextId : null, false, 'chucky',
-    () => document.querySelector('[data-canonical-felt-interaction-layer]'));
   const handsManifestDeclaredRef = useRef(false);
   const communityManifestDeclaredRef = useRef(false);
   const chuckyManifestDeclaredRef = useRef(false);
@@ -603,7 +600,6 @@ export function HolmDealOrchestrator({
       return;
     }
     chuckyDispatchedRef.current = true;
-    if (reconciliation.accepted > 0) chuckySound();
     recordHolmTrace('ORCHESTRATOR', `dispatch CHUCKY reconciled`, { phase: 'dispatch', wave: 'chucky', accepted: reconciliation.accepted, active: reconciliation.active, settled: reconciliation.settled, instance: instanceRef.current, handContextId, dispatchedKey: 'chuckyDispatchedRef', intents: intents.length, reason: 'chucky-wave-ready' });
     const beginAt = performance.now();
     ffRecord({

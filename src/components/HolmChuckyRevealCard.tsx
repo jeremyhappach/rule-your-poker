@@ -16,6 +16,8 @@ interface HolmChuckyRevealCardProps {
   faceFillPx?: number;
   dimmed?: boolean;
   onRevealComplete?: () => void;
+  onRevealStart?: (surface:Element) => void;
+  signatureActive?: boolean;
 }
 
 function prefersReducedMotion(): boolean {
@@ -39,6 +41,8 @@ export function HolmChuckyRevealCard({
   faceFillPx,
   dimmed = false,
   onRevealComplete,
+  onRevealStart,
+  signatureActive=false,
 }: HolmChuckyRevealCardProps) {
   const faceResolved = isCardFaceResolved(card);
   const revealReady = revealed && faceResolved;
@@ -140,7 +144,13 @@ export function HolmChuckyRevealCard({
       }}
     >
       <div
-        ref={cardFlipSoundRef(presentationKey, renderedFlipState === 'flipping')}
+        ref={node=>{
+          cardFlipSoundRef(presentationKey, renderedFlipState === 'flipping'&&!signatureActive)(node);
+          if(node){const flip=node.ontransitionrun;node.ontransitionrun=event=>{
+            if(event.target===node&&event.propertyName==='transform'&&renderedFlipState==='flipping')onRevealStart?.(node);
+            flip?.call(node,event);
+          };}
+        }}
         style={{
           position: 'relative',
           width: '100%',

@@ -1,3 +1,4 @@
+import {useChuckyRevealAudio} from '@/hooks/useChuckyRevealAudio';
 import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
 import {legAwardSound, sweepOwnsCelebration} from '@/lib/audio/achievementSounds';
 import { useDiceTerminalTransfer } from '@/hooks/useDiceTerminalTransfer';
@@ -3526,6 +3527,7 @@ export const MobileGameTable = ({
   }, [anteAnimationTriggerId, anteAmount, expectedPostAnteChips, players, preAnteChips, pussyTaxValue]);
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
+  const chuckyRevealAudio=useChuckyRevealAudio(handContextId);
   const [chuckyFlipCompletedHandContextId, setChuckyFlipCompletedHandContextId] = useState<string | null>(null);
   const handleHolmChuckyFlipComplete = useCallback((completedHandContextId: string | null) => {
     if (!completedHandContextId) return;
@@ -14965,9 +14967,11 @@ export const MobileGameTable = ({
                                   revealed={isRevealed}
                                   faceFillPx={faceFillPx}
                                   dimmed={shouldDimChucky}
+                                  onRevealStart={index===0?chuckyRevealAudio.start:undefined}
+                                  signatureActive={chuckyRevealAudio.active}
                                   onRevealComplete={
                                     index === chuckyTotalForRender - 1
-                                      ? () => handleHolmChuckyFlipComplete(chuckyHandIdForRender)
+                                      ? () => {chuckyRevealAudio.stop();handleHolmChuckyFlipComplete(chuckyHandIdForRender);}
                                       : undefined
                                   }
                                 />

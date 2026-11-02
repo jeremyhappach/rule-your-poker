@@ -31,7 +31,7 @@ it('uses the approved shared pair once per confirmed play/pass and lets the full
   act(() => vi.advanceTimersByTime(190));
   expect(play.stop).toHaveBeenCalledTimes(1); // Scheduled source end only, no old 100 ms truncation.
   ui.rerender({...base, events: [event(1), event(2, 'pass_used')]});
-  expect(audio.follow.mock.lastCall?.[0].cueAt(0, 165)).toBe(approvedSound('flip'));
+  expect(audio.follow.mock.lastCall?.[0].cueAt(0, 165).schedule).toBe(approvedSound('flip')?.schedule);
   expect(h.starts()).toHaveLength(2);
   ui.rerender({...base, events: [event(1), event(2, 'pass_used')]}); expect(h.starts()).toHaveLength(2);
   act(() => vi.advanceTimersByTime(50)); expect(play.stop).toHaveBeenCalledTimes(2);
@@ -59,4 +59,24 @@ it('silently baselines recovered/offline events and cancels active sources on a 
   act(() => window.dispatchEvent(new Event('offline')));
   ui.rerender({...base, scope: 'next-round', epoch: 1, events: [event(3)]});
   expect(h.starts()).toHaveLength(1);
+});
+
+it('admits a quick successful Pass without the shared card cooldown',()=>{
+ const ui=render();ui.rerender({...base,events:[event(1)]});
+ ui.rerender({...base,events:[event(1),event(2,'pass_used')]});
+ expect(h.starts()).toHaveLength(2);
+});
+it('plays an accepted Arcade receipt once and consumes muted receipts',()=>{
+ const ui=renderHook(p=>useRun21PlacementAudio('user','arcade:round',[],0,true,p.receipt),{initialProps:{receipt:null as string|null}});
+ ui.rerender({receipt:'request-1'});expect(h.starts()).toHaveLength(1);
+ ui.rerender({receipt:'request-1'});expect(h.starts()).toHaveLength(1);
+ h.manager.setPreference('user',false);ui.rerender({receipt:'request-2'});h.manager.setPreference('user',true);
+ ui.rerender({receipt:'request-2'});expect(h.starts()).toHaveLength(1);
+});
+
+it('allows a native first-gesture Pass unlock at 80 ms but never catches up after 150 ms',()=>{
+ const ui=render();h.state('suspended');ui.rerender({...base,events:[event(1,'pass_used')]});
+ act(()=>vi.advanceTimersByTime(80));h.state('running');expect(h.starts()).toHaveLength(1);
+ act(()=>vi.advanceTimersByTime(200));h.state('suspended');ui.rerender({...base,events:[event(2,'pass_used')]});
+ act(()=>vi.advanceTimersByTime(151));h.state('running');expect(h.starts()).toHaveLength(1);
 });

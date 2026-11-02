@@ -1,3 +1,15 @@
+# Sound Pass 2 smoke corrections — 2026-11-02 — local audition, production held
+
+Isolated candidate on `codex/sound-pass2-smoke-corrections` from verified production
+`6411bb674`. Adds the existing global speaker to waiting, Async list/match and
+Arcade pre-game headers. Run21 Pass gains exact fresh Arcade acknowledgement
+provenance and a bounded first-gesture audio allowance without card throttling.
+The rejected Chucky laugh is removed from runtime; its replacement follows actual
+own-hand reveal edges and remains unassigned pending listening approval.
+Four focused candidates are available at localhost:4320 and 192.168.1.242:4320.
+No production push, migration or sound selection is authorized by this checkpoint.
+See [findings, audition and qualification](SOUND_PASS2_SMOKE_CORRECTIONS.md).
+
 # Sound Pass 2 final selections — 2026-11-02 — production authorized
 
 24 distinct sounds approved and integrated. Jeremy's saved final choices are
