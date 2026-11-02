@@ -94,3 +94,33 @@ and verifies mute with zero page errors. The test waits for the actual Play →
 Stop → Play cycle; an earlier immediate Play lookup could finish before React
 committed the preview and incorrectly report zero sources. Both audition links
 are served on port 4320; physical-device listening remains Jeremy's next step.
+
+## Studio audibility follow-up — 2026-11-02
+
+Jeremy reported that only the 357 beeps were audible; both heartbeats and the
+Chucky sting were silent to him. The first qualification only counted native
+source starts and missed two issues:
+
+- Preview counters restarted at zero after reload, while the shared manager's
+  played receipts survived in session storage. A direct browser reproduction
+  played all four on the first pass and started zero sources for every candidate
+  when repeating the same order after reload. Each studio page now adds a random
+  audition namespace, using `crypto.getRandomValues` for LAN HTTP compatibility.
+  Production dedupe and identity semantics are untouched.
+- The other three files concentrated their energy below 150 Hz. Their low
+  fundamentals remain, with stronger damped upper partials so the pulse/sting
+  also carries above the deep-bass range. This addresses the signal limitation;
+  physical speaker listening is still needed to accept the sound and balance.
+
+Only the local studio, three unapproved candidate WAVs, manifest/generator and
+focused qualification changed. The dry beep file is byte-identical. The same
+900 ms countdown beats, silent DROP and Chucky reveal timing remain in place.
+The browser regression now repeats every preview after reload at desktop/phone
+widths and checks useful signal after a 300 Hz high-pass proxy, headroom,
+identical countdown beats and the preserved beep hash, in addition to mute and
+source counts. This proxy is not a claim of physical-device listening success.
+All 16 before/after-reload preview checks pass with zero page errors; the signal,
+headroom, identical-beat, beep-preservation and mute checks pass. The focused
+studio TypeScript check and Vite build pass. The repository's suggested `tsgo`
+command was unavailable; validation used the already-installed TypeScript compiler.
+No production push or final sound choice is authorized by this follow-up.

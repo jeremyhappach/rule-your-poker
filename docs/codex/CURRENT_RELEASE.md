@@ -7,6 +7,9 @@ provenance and a bounded first-gesture audio allowance without card throttling.
 The rejected Chucky laugh is removed from runtime; its replacement follows actual
 own-hand reveal edges and remains unassigned pending listening approval.
 Four focused candidates are available at localhost:4320 and 192.168.1.242:4320.
+Studio follow-up: Jeremy heard only the beeps. The heartbeat/sting candidates now
+include stronger upper partials, and preview identities no longer repeat after
+reload. The working beep bytes and all gameplay audio remain unchanged.
 No production push, migration or sound selection is authorized by this checkpoint.
 See [findings, audition and qualification](SOUND_PASS2_SMOKE_CORRECTIONS.md).
 
