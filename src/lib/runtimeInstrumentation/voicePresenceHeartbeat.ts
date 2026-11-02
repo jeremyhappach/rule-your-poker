@@ -14,6 +14,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveVoiceOperationId } from "@/lib/runtimeInstrumentation/voiceOperation";
+import { getAppInteractionAgeMs } from "@/lib/appActivity";
 
 const TAB_ID_KEY = "voice-op:tab-id-v1";
 const HEARTBEAT_MS = 4000;
@@ -57,6 +58,7 @@ async function writeHeartbeat(status: VoicePresenceStatus): Promise<void> {
       active_voice_operation_id: getActiveVoiceOperationId(),
       last_heartbeat_at: new Date().toISOString(),
       status,
+      interaction_age_ms: status === "active" ? getAppInteractionAgeMs(user_id) : null,
     };
     await supabase
       .from("voice_presence_heartbeats")
@@ -87,7 +89,7 @@ async function beat(status: VoicePresenceStatus): Promise<void> {
 export function startVoicePresenceHeartbeat(): void {
   if (started || typeof window === "undefined") return;
   started = true;
-  void beat("active");
+  void beat(document.hidden ? "hidden" : "active");
   timer = setInterval(() => { void beat(document.hidden ? "hidden" : "active"); }, HEARTBEAT_MS);
   document.addEventListener("visibilitychange", () => {
     void beat(document.hidden ? "hidden" : "active");

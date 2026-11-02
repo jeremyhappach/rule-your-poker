@@ -1,3 +1,25 @@
+## Approved game sound presentation
+
+`src/lib/delayed/turnAudio.ts` verifies fresh local Async action presentation
+against accepted snapshots. `DelayedTurn` supplies its ephemeral Start admission
+and Run21 feedback to existing shared bell/card hooks; recovery/history cannot
+create this provenance. See `ASYNC_SOUND_REGRESSIONS.md`.
+
+`src/lib/audio/approvedSounds.ts` maps sixteen exact approved samples and the
+Cribbage highlight cue; `pcm.ts` caches decoded native buffers. The existing
+`AudioManager` owns preference, context lifecycle, dedupe and priority/grouping.
+`presentationSound.ts` admits only visible current events. Card flights attach
+at `CardTransportRuntime`; game presentation boundaries own flips, dice and pegs.
+`useHolmCrackedResult` reads an exact committed structured settlement identity.
+`winnerCelebration.ts` and legacy terminal financial presentation callbacks own
+Winner A. V2 attaches special dice results, UUID-attributed legs, canonical Sweep
+and the admitted Chucky deal wave using useLiveSoundEvent receipts. Sweep reserves
+its terminal generation against routine leg/winner cues. See
+SOUND_STUDIO_V2_INTEGRATION.md. None of these sounds advance gameplay or authorize settlement.
+Saved async reviews retain visual presentation with historical sound suppressed.
+Local audition/browser qualification: `dev/sound-lab/`; coverage and smoke:
+`SOUND_EFFECTS_INTEGRATION.md`.
+
 ## Fresh standalone launch branding
 
 `src/lib/launchSplash.ts` captures one document's standalone lobby eligibility.

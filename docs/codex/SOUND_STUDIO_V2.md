@@ -1,3 +1,8 @@
+> November 1 follow-up: Jeremy chose Take A for all nine categories and explicitly
+> authorized gameplay integration and production release (option 1). The original
+> studio audit below is historical; current delivery is documented in
+> [SOUND_STUDIO_V2_INTEGRATION.md](SOUND_STUDIO_V2_INTEGRATION.md).
+
 # Sound Studio V2 — audition and event audit
 
 November 1, 2026. Local studio only. 27 new candidates across nine categories,

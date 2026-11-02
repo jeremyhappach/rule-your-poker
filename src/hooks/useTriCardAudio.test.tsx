@@ -3,22 +3,23 @@ import {act, cleanup, renderHook} from '@testing-library/react';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import {useTriCardAudio} from './useTriCardAudio';
 import {audioHarness} from '@/lib/audio/audioTestHarness';
-import {cardPlayCue,cardPassCue} from '@/lib/audio/cardActionCues';
-const audio = vi.hoisted(() => ({request:vi.fn()}));
+import {approvedSound} from '@/lib/audio/approvedSounds';
+import {loadAuditionedFixtures} from '@/lib/audio/approvedSounds.fixture';
+const audio = vi.hoisted(() => ({present:vi.fn()}));
 vi.mock('@/lib/audio/platformAudio', () => ({platformAudio:audio}));
 let h: ReturnType<typeof audioHarness>;
 const base = {userId:'user',scope:'run:round:actor',epoch:0,active:true,replay:false,
   view:{cards:[5,6,7],removed:[] as number[],waste:4,stockRemaining:24,phase:'playing'}};
-beforeEach(async () => {vi.useFakeTimers(); sessionStorage.clear(); h=audioHarness(); h.env.now=()=>performance.now(); audio.request.mockImplementation(e=>h.manager.request(e)); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();});
-afterEach(() => {cleanup();h.dispose();vi.useRealTimers();vi.restoreAllMocks();audio.request.mockReset();});
+beforeEach(async () => {await loadAuditionedFixtures(); vi.useFakeTimers(); sessionStorage.clear(); h=audioHarness(); h.env.now=()=>performance.now(); audio.present.mockImplementation(e=>h.manager.present(e)); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();});
+afterEach(() => {cleanup();h.dispose();vi.useRealTimers();vi.restoreAllMocks();audio.present.mockReset();});
 
 it('plays once for confirmed card removal and stock draw without any animation or DOM geometry', () => {
   const ui=renderHook(p=>useTriCardAudio(p),{initialProps:base}); expect(h.starts()).toHaveLength(0);
   const removed={...base,view:{...base.view,removed:[0],waste:5}}; ui.rerender(removed);
-  expect(h.starts()).toHaveLength(1); expect(audio.request.mock.lastCall?.[0].cue).toBe(cardPlayCue);
+  expect(h.starts()).toHaveLength(1); expect(audio.present.mock.lastCall?.[0].cue).toBe(approvedSound('slide'));
   ui.rerender({...removed,view:{...removed.view}}); expect(h.starts()).toHaveLength(1);
-  ui.rerender({...removed,view:{...removed.view,waste:9,stockRemaining:23}}); expect(h.starts()).toHaveLength(3);
-  expect(audio.request.mock.lastCall?.[0].cue).toBe(cardPassCue);
+  act(()=>vi.advanceTimersByTime(200)); ui.rerender({...removed,view:{...removed.view,waste:9,stockRemaining:23}}); expect(h.starts()).toHaveLength(2);
+  expect(audio.present.mock.lastCall?.[0].cue).toBe(approvedSound('flip'));
 });
 it.each(['scope','epoch','inactive','replay','batch','regressive'] as const)('does not play stale/recovered deltas: %s', mode => {
   const ui=renderHook(p=>useTriCardAudio(p),{initialProps:base});

@@ -1,6 +1,11 @@
 import {AsyncSessionName} from './AsyncSessionName';
 import {playingTopic,roundGameplayRunning,usePlayingPresence} from '@/lib/delayed/playingPresence';
 import {admitTurnSnapshot} from '@/lib/delayed/turnSnapshot';
+import {localTurnPresentation} from '@/lib/delayed/turnAudio';
+import {useRun21PlacementAudio} from '@/hooks/useRun21PlacementAudio';
+import {useRun21Bell} from '@/hooks/useRun21Bell';
+import {roundIntro} from '@/lib/run21/roundIntro';
+import type {BoardFeedbackEvent} from '@/lib/run21/exact21Feedback';
 import {ASYNC_SCORE_HOLD_MS,reviewSchedule} from '@/lib/delayed/reviewPresentation';
 import {AsyncTurnStage} from './AsyncTurnStage';
 import {TriScorePill} from '@/components/triTowers/TriTowersPresentation';
@@ -37,13 +42,26 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const requestKey='ptown:async-turn:request:'+userId+':'+childId;
  const clock=useRef({at:Date.now(),received:performance.now()}),generation=useRef(0),request=useRef<Record<string,unknown>|null>(readPendingTurn(requestKey)),initialSegment=useRef<number|null>(null);
  const initialRound=useRef<number|null>(null);
+ const freshAction=useRef<{id:unknown;before:Snapshot}|null>(null);
+ const [audio,setAudio]=useState({liveEntry:false,epoch:0,events:[] as BoardFeedbackEvent[]});
+ const interruptAudio=useCallback(()=>{freshAction.current=null;setAudio(p=>({liveEntry:false,epoch:p.epoch+1,events:[]}));},[]);
+ useEffect(()=>{if(tab!=='cards')interruptAudio();},[tab,interruptAudio]);
  const scoreRoot=useRef<HTMLDivElement>(null);
  const [medal,setMedal]=useState<ScoreCelebrationReceipt|null>(null),seenMedal=useRef<string|null>(null);
  const retireMedal=useCallback(()=>setMedal(null),[]);
  const navigate=useNavigate(),latest=useRef<Snapshot|null>(null);
- const accept=useCallback((value:Snapshot)=>{
+ const accept=useCallback((value:Snapshot,command?:Record<string,unknown>|null)=>{
   if(value.id!==childId||value.matchId!==matchId)throw Error('Turn identity changed. Return to the match.');
   const old=latest.current;if(!admitTurnSnapshot(old,value)){if(old&&(value.reviewRevision??0)<(old.reviewRevision??0))throw Error('delayed:review_stale');return;}
+  const fresh=freshAction.current;
+  if(command&&fresh?.id===command.requestId){
+   freshAction.current=null;
+   if(!document.hidden&&navigator.onLine){
+    const admitted=localTurnPresentation(fresh.before,value,command,userId);
+    if(admitted.start)setAudio({liveEntry:true,epoch:0,events:[]});
+    else if(admitted.event)setAudio(p=>({...p,events:[admitted.event!]}));
+   }
+  }
   latest.current=value;
   // A duplicate/recovery response cannot rewind an already-running result window.
   const at=old?Math.max(value.serverAt,clock.current.at+performance.now()-clock.current.received):value.serverAt;
@@ -51,22 +69,24 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   setSnapshot(old=>old&&old.revision>value.revision?old:value);
   if(initialSegment.current===null){initialSegment.current=value.segment;initialRound.current=value.round;if(value.terminal||value.actor!==userId)navigate('/delayed/'+matchId+(value.terminal?'?review='+childId:''),{replace:true});}
  },[childId,matchId,userId,navigate]);
- const refresh=useCallback(async()=>{const epoch=++generation.current;try{
-  const value=await delayedRequest<Snapshot>(request.current??{op:'state',childId});
-  if(epoch!==generation.current)return;accept(value);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');
+ const refresh=useCallback(async()=>{const epoch=++generation.current,command=request.current;try{
+  const value=await delayedRequest<Snapshot>(command??{op:'state',childId});
+  if(epoch!==generation.current)return;accept(value,command);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');
  }catch(e){if(epoch===generation.current){
+  interruptAudio();
   const message=e instanceof Error?e.message:'Unable to reconnect.';
   if(message==='delayed:stale_action'||message==='delayed:review_stale'||e instanceof DelayedRequestError&&e.status<500){
    request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);
    try{accept(await delayedRequest<Snapshot>({op:'state',childId}));setError('');}catch{setError('Unable to restore the latest turn.');}
   }else setError(message);
- }}},[childId,accept]);
+ }}},[childId,accept,interruptAudio]);
  useEffect(()=>{void refresh();const channel=supabase.channel('delayed-turn:'+childId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},payload=>{
   if((payload.new as any).match_id===matchId&&!request.current)void refresh();
  }).subscribe(status=>{if(status==='SUBSCRIBED'&&!request.current)void refresh();});
-  const focus=()=>{if(!document.hidden)void refresh();};document.addEventListener('visibilitychange',focus);window.addEventListener('online',focus);
-  return()=>{generation.current++;void supabase.removeChannel(channel);document.removeEventListener('visibilitychange',focus);window.removeEventListener('online',focus);};
- },[childId,userId,matchId,refresh]);
+  const focus=()=>{if(document.hidden)interruptAudio();else void refresh();};document.addEventListener('visibilitychange',focus);window.addEventListener('online',focus);
+  window.addEventListener('offline',interruptAudio);window.addEventListener('pagehide',interruptAudio);
+  return()=>{generation.current++;void supabase.removeChannel(channel);document.removeEventListener('visibilitychange',focus);window.removeEventListener('online',focus);window.removeEventListener('offline',interruptAudio);window.removeEventListener('pagehide',interruptAudio);};
+ },[childId,userId,matchId,refresh,interruptAudio]);
  useEffect(()=>{const timer=setInterval(()=>setNow(clock.current.at+performance.now()-clock.current.received),100);return()=>clearInterval(timer);},[]);
  const ended=!!snapshot&&(snapshot.terminal||snapshot.actor!==userId||snapshot.segment!==initialSegment.current);
  // Keep this route's attempt even if later turns arrive while its result plays.
@@ -97,7 +117,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   const timer=setTimeout(()=>void refresh(),Math.max(0,due-clock.current.at));return()=>clearTimeout(timer);
  },[due,snapshot?.revision,refresh]);
  async function act(intent:Record<string,unknown>){if(!snapshot||pending||request.current)return;
-  request.current={op:'action',childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');await refresh();}
+  request.current={op:'action',childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');await refresh();}
  // A reconnect into an unavailable/terminal segment belongs at the match home.
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
  // Shared presentation completion starts the final readable hold. This only
@@ -113,6 +133,9 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   active_player_id:ended?null:userId,liveBoards:true,revealed:false,cumulative:runResult?{...snapshot.totals,[userId]:runTotal}:snapshot.totals,scorePresentation:runPresentation,presentationKey:childId,
   pausedAt:snapshot.held?now:null}:undefined;
  const presentationActive=!error&&!snapshot?.held&&tab==='cards';
+ const intro=view?roundIntro(view,now):null;
+ useRun21Bell(userId,audio.liveEntry&&presentationActive?intro?.key??null:null,intro?.remaining??0);
+ useRun21PlacementAudio(userId,childId+':'+initialSegment.current,audio.events,audio.epoch,presentationActive);
  useRun21ScoreAudio(userId,childId,view,now,presentationActive&&!medal);
  useRun21FailureAudio(userId,childId,view,now,0,presentationActive&&!medal);
  useEffect(()=>{
@@ -142,7 +165,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  }
  if(snapshot.game==='boxdrop'){
   const value:BoxdropSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,round:displayRound!,board,canAct,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:Object.keys(snapshot.totals).map(id=>({id,name:participants.find(p=>p.id===id)?.name??(id===userId?'You':'Opponent'),score:snapshot.totals[id],active:id===(ended?userId:snapshot.actor)}))};
-  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><BoxdropView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={0} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
+  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><BoxdropView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={audio.epoch} liveEntry={audio.liveEntry} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
  }
  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><FullscreenGameShell className={view?'run21-space-theme':'tri-scene'} title={gameName(snapshot.game)} description={'Round '+displayRound}
   activeTab={tab} setActiveTab={setTab} panel={view?<Run21ScoringReference config={view.config}/>:<TriTowersRules rules={board.rules}/>}
@@ -152,7 +175,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
    {error&&<div role="alert" className="arcade-error">{error}<button onClick={()=>void refresh()}>Reconnect</button></div>}
    {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct} hideScoring={!!medal}/></>:
     <div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard view={board} now={now} canAct={canAct} roundKey={childId+':'+initialSegment.current} result={triResult}
-     userId={userId} connected={!error} presentationActive={tab==='cards'} paused={snapshot.held} roundLabel={'ROUND '+displayRound} scores={scores.map(item=>item.active?{...item,score:board.score}:item)}
+     userId={userId} liveEntry={audio.liveEntry} recoveryEpoch={audio.epoch} connected={!error} presentationActive={tab==='cards'} paused={snapshot.held} roundLabel={'ROUND '+displayRound} scores={scores.map(item=>item.active?{...item,score:board.score}:item)}
      takeScore={board.phase==='playing'?<button className="tri-take-score" disabled={!canAct} onClick={()=>void act({type:'take_score'})}>Take Score</button>:null}
      onIntent={i=>void act(i)}/></div>}
   </FullscreenGameShell>{medal&&<Run21ScoreCelebration userId={userId} receipt={medal} onRetire={retireMedal}/>}</div>;

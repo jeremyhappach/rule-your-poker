@@ -19,7 +19,7 @@ export function audioHarness(loadPreference: (userId: string) => Promise<boolean
     createPeriodicWave: vi.fn(() => ({} as PeriodicWave)),
     createBufferSource: vi.fn(() => node('buffer')),
     createBiquadFilter: vi.fn(() => node('filter')),
-    createBuffer: vi.fn((_channels: number, length: number) => ({ getChannelData: () => new Float32Array(length) })),
+    createBuffer: vi.fn((_channels: number, length: number) => ({ getChannelData: () => new Float32Array(length), copyToChannel: vi.fn() })),
   });
   const createContext = vi.fn(() => ctx as unknown as AudioContext);
   const preference = vi.fn(loadPreference);

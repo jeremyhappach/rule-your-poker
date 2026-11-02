@@ -39,3 +39,11 @@ it('applies tuned duration to the next roll without extending or shortening an a
  rerender({serial:3});act(()=>vi.advanceTimersByTime(699));expect(result.current?.held).toEqual([0]);
  act(()=>vi.advanceTimersByTime(1));expect(result.current).toBeNull();
 });
+it('reports actual unheld dice at the existing landing boundary and suppresses interrupted rolls',()=>{
+ vi.useFakeTimers();const landing=vi.fn();
+ const ui=renderHook(({serial,held})=>useQuintzeeRumble('sound-round',serial,5,held,true,landing),{initialProps:{serial:0,held:[] as number[]}});
+ ui.rerender({serial:1,held:[0,1,2,3]});act(()=>vi.advanceTimersByTime(1499));expect(landing).not.toHaveBeenCalled();
+ act(()=>vi.advanceTimersByTime(1));expect(landing).toHaveBeenLastCalledWith('sound-round:1',[4]);
+ ui.rerender({serial:2,held:[]});act(()=>{window.dispatchEvent(new Event('offline'));vi.advanceTimersByTime(1500);});expect(landing).toHaveBeenCalledTimes(1);
+ ui.rerender({serial:3,held:[]});act(()=>vi.advanceTimersByTime(1500));expect(landing).toHaveBeenLastCalledWith('sound-round:3',[0,1,2,3,4]);
+});

@@ -1,3 +1,6 @@
+import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
+import {yahtzeePostedSound} from '@/lib/audio/achievementSounds';
+import {presentSound} from '@/lib/audio/presentationSound';
 import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
 import {useCompletionRetry} from '@/hooks/useCompletionRetry';
 /**
@@ -590,6 +593,8 @@ export function YahtzeeGameTable({
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const winnerSoundActive = useRef(false);
+  const [postedSound, setPostedSound] = useState<{id:string;sound:ReturnType<typeof yahtzeePostedSound>}|null>(null);
 
   // Overlay states
   const [showYahtzeeOverlay, setShowYahtzeeOverlay] = useState<string | null>(null); // playerName
@@ -658,7 +663,10 @@ export function YahtzeeGameTable({
     if (!retainTerminalBatch(batch)) return;
     if (terminalBatchRef.current?.id === batch.id && terminalBatchRef.current.cursor === batch.cursor) return;
     terminalBatchRef.current = { id: batch.id, cursor: batch.cursor };
-  }, [retainTerminalBatch]);
+    const scope = terminalPayoutScopeRef.current;
+    if (scope && players.some(p => p.id === scope.winnerId && p.user_id === currentUserId))
+      presentSound('winner', `yahtzee:${batch.id}`, winnerSoundActive.current ? tableContainerRef.current : null);
+  }, [retainTerminalBatch, players, currentUserId]);
   const handleTerminalBatchSettled = useCallback((batch: ChipPresentationBatch) => {
     const scope = terminalPayoutScopeRef.current;
     const captured = terminalBatchRef.current;
@@ -781,6 +789,7 @@ export function YahtzeeGameTable({
   const [activeTab, setActiveTabRaw] = useState<'cards' | 'chat' | 'lobby' | 'history'>(
     () => readPersistedMatchChatTab(gameId, 'cards') as 'cards' | 'chat' | 'lobby' | 'history'
   );
+  winnerSoundActive.current = activeTab === 'cards';
   const setActiveTab = useCallback((next: 'cards' | 'chat' | 'lobby' | 'history') => {
     writePersistedMatchChatTab(gameId, next);
     setActiveTabRaw(next);
@@ -1207,6 +1216,9 @@ export function YahtzeeGameTable({
     return () => clearTimeout(timer);
   }, [viewState?.lastAction?.sequence, myPlayer?.id, remotePresentationHydratedRoundId, currentRoundId, clearActiveScorePresentation]);
 
+  useLiveSoundEvent(postedSound?.id ?? null, true, postedSound?.sound ?? 'scorePost',
+    () => winnerSoundActive.current ? tableContainerRef.current : null);
+
   /* ---- Canonical rail narration — never occupies the scorecard pane ---- */
   useEffect(() => {
     if (remotePresentationHydratedRoundId !== currentRoundId) return;
@@ -1217,6 +1229,7 @@ export function YahtzeeGameTable({
     if (!scorer) return;
 
     lastAnnouncedScoreSequenceRef.current = action.sequence;
+    setPostedSound({sound:yahtzeePostedSound(viewState!), id:'yahtzee:'+currentRoundId+':'+action.playerId+':'+action.sequence});
     announcements.emit(createYahtzeeScoreAnnouncement({
       dealerGameId: gameId,
       roundId: currentRoundId,
@@ -1640,6 +1653,9 @@ export function YahtzeeGameTable({
       const committedPs = result.state.playerStates[myPlayer.id];
       if (!committedPs) throw new Error('Yahtzee score result omitted the acting player state.');
       if (result.state.lastAction?.type === 'score') {
+        const action = result.state.lastAction;
+        if (activeRoundIdRef.current === currentRoundId) setPostedSound({sound:yahtzeePostedSound(result.state),
+          id:'yahtzee:'+currentRoundId+':'+action.playerId+':'+action.sequence});
         scorePresentation = { roundId: currentRoundId, sequence: result.state.lastAction.sequence };
         activeScorePresentationRef.current = scorePresentation;
       }

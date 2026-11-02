@@ -6,6 +6,7 @@ import {installCreationFixture,notificationsProof} from './notifications-proof.m
 import assert from 'node:assert/strict';
 const database='web_push_fe00_'+Date.now(),template='async_reviews_1793308358890';
 const root=await connect('template1');let db,peer,passed=false;const checks=[];
+mkdirSync('qualification.local/web-push',{recursive:true});
 if(process.argv.includes('--inspect')){
  try{
   const old='web_push_fe00_1793402041595';
@@ -95,6 +96,7 @@ try{
  if(process.argv.includes('--with-invitations')){const {invitationsProof}=await import('./invitations-proof.mjs');await invitationsProof(db,peer,checks);}
  if(process.argv.includes('--with-real-money')){const {realMoneyProof}=await import('./real-money-proof.mjs');await realMoneyProof(db,peer,checks);}
  else await notificationsProof(db,peer,checks);
+ if(process.argv.includes('--with-cycles')){const {cyclesProof}=await import('./cycles-proof.mjs');await cyclesProof(db,peer,checks);}
  passed=true;
  console.log(JSON.stringify({passed:true,checks},null,2));
 }finally{

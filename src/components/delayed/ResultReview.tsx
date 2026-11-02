@@ -2,10 +2,8 @@ import {AsyncSessionName} from './AsyncSessionName';
 import boxingWinner from '@/assets/async-finale/boxing-winner-cash-v1.jpg';
 import {AsyncTurnStage} from './AsyncTurnStage';
 import boxingDraw from '@/assets/async-finale/boxing-draw-v1.jpg';
-import {useRun21FailureAudio} from '@/hooks/useRun21FailureAudio';
 import {reviewSchedule,rebaseReviewBoard,reviewScoreContext,ASYNC_SCORE_HOLD_MS} from '@/lib/delayed/reviewPresentation';
 import {roundResultPresentation} from '@/lib/triTowers/stagePresentation';
-import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
 import {Run21ScoreCelebration} from '@/components/run21/Run21ScoreCelebration';
 import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
 import {Component,useCallback,useEffect,useMemo,useRef,useState,type ReactNode,type CSSProperties} from 'react';
@@ -83,15 +81,14 @@ function SavedBoard({event,scores,childId,userId,elapsed}:{event:ReviewEvent;sco
  const origin=1_000_000,now=origin+elapsed;
  const board=useMemo(()=>rebaseReviewBoard(event,origin,scores.before),[event,scores.before]);
  const runView=event.receipt.game==='run21'&&board?{config:event.receipt.rules,roundId:scope,roundNumber:event.round,viewerId:userId,boards:{[actor]:board},players:scores.players,active_player_id:null,liveBoards:true,revealed:true,cumulative:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),scorePresentation:{playerId:actor,startedAt:origin+schedule.countStart,endsAt:origin+schedule.countEnd,from:scores.before,to:scores.after},presentationKey:scope}:undefined;
- useRun21ScoreAudio(userId,scope,runView as any,now,active&&tab==='cards');
- useRun21FailureAudio(userId,scope,runView as any,now,0,active&&tab==='cards',true);
+ // Saved-result animation is read-only history; do not re-admit its audio.
  if(!board)return <main className="delayed-page"><p>Historic board replay is unavailable.</p><strong>{event.score?.toLocaleString()} points</strong></main>;
  const players=scores.players.map(p=>p.id),base={navigation:<nav aria-label="Saved result information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>,activeTab:tab,setActiveTab:setTab,pending:false,error:'',onReconnect:noop,onIntent:noop};
  if(event.receipt.game==='quintzee')return <QuintzeeView replay {...base} actor={userId} userId={userId} now={now} snapshot={{id:childId,revision:1,scope,serverAt:origin,theme:'modern',pausedAt:null,status:'completed',outcome:'active',playerNames:Object.fromEntries(scores.players.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),round:event.round,turnIndex:players.indexOf(actor),qualified:[],results:[],finished:false,board}} as any}/>;
  if(event.receipt.game==='boxdrop')return <BoxdropView replay {...base} userId={userId} now={now} epoch={0} view={{id:childId,revision:1,scope,serverAt:origin,round:event.round,board,canAct:false,paused:false,pausedAt:null,finished:false,settled:false,solo:false,players:scores.players} as any}/>;
  if(event.receipt.game==='ptown-words')return <PtownWordsView gameplay={false} view={{...board,identity:{sessionId:childId,dealerGameId:childId,roundId:scope},revision:1,viewerId:userId,serverAt:origin,canAct:false,paused:false,finished:true,phase:'complete',rack:[],rackCounts:{},terminal:null,financial:{balances:{}}} as any} now={now} pending={false} connected={true} error="" activeTab={tab} setActiveTab={setTab} panel={<p>Saved public board. Private racks are not included.</p>} sessionEnded={false} onIntent={async()=>false} onReconnect={noop}/>;
  return <FullscreenGameShell gameplay={false} className={event.receipt.game==='tri-towers'?'tri-scene':'run21-space-theme'} title="Saved result" description={'Round '+event.round} activeTab={tab} setActiveTab={setTab} panel={<p>Saved result · controls disabled</p>} announcement={false} scores={runView&&<div ref={scoreRoot} className="async-score-pills" aria-label="Game scores">{scores.players.map(p=><TriScorePill key={p.id} root={scoreRoot} item={{...p,active:p.id===userId}} value={p.id===actor?displayedScore(runView as any,actor,now):p.score}/>)}</div>}>
-  {runView?<><Run21Felt solo layout="fullscreen" playerId={actor} now={now} view={runView as any} hideScoring={elapsed<schedule.medal}/>{active&&elapsed<schedule.medal&&<Run21ScoreCelebration userId={userId} onRetire={noop} receipt={{key:scope,aggregate:board.result.aggregate,playerName:name,durationMs:schedule.medal,startedAt:performance.now()-elapsed}}/>}</>:<div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard replay view={board} canAct={false} onIntent={noop} now={now} roundKey={scope} userId={userId} result={roundResultPresentation({...board.result,id:scope,stage:event.round},board.deadline,board.rules.holdMs,now,board.rules.clearCelebrationMs??0)} scores={scores.players}/></div>}
+  {runView?<><Run21Felt solo layout="fullscreen" playerId={actor} now={now} view={runView as any} hideScoring={elapsed<schedule.medal}/>{active&&elapsed<schedule.medal&&<Run21ScoreCelebration userId={userId} onRetire={noop} receipt={{key:scope,audioEligible:false,aggregate:board.result.aggregate,playerName:name,durationMs:schedule.medal,startedAt:performance.now()-elapsed}}/>}</>:<div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard replay view={board} canAct={false} onIntent={noop} now={now} roundKey={scope} userId={userId} result={roundResultPresentation({...board.result,id:scope,stage:event.round},board.deadline,board.rules.holdMs,now,board.rules.clearCelebrationMs??0)} scores={scores.players}/></div>}
  </FullscreenGameShell>;
 }
 
@@ -116,7 +113,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
  </div></FullscreenGameShell></div>;
 }
 
-function Confetti({identity,userId,winner}:{identity:string;userId:string;winner:string}){const active=useVisible();useEffect(()=>{celebrateCanonicalWinner(identity,userId,[winner],active);},[identity,userId,winner,active]);return <div className="async-confetti" aria-hidden="true"/>;}
+function Confetti({identity,userId,winner}:{identity:string;userId:string;winner:string}){const active=useVisible();useEffect(()=>{celebrateCanonicalWinner(identity,userId,[winner],active,false);},[identity,userId,winner,active]);return <div className="async-confetti" aria-hidden="true"/>;}
 export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
  const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[imageReady,setImageReady]=useState(false),[ackError,setAckError]=useState(''),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(7500,home&&imageReady?matchId:'loading'),busy=useRef(false);
  useEffect(()=>{let alive=true;setHome(null);setImageReady(false);setError('');setAckError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!mayViewFinale(h)){navigate('/delayed/'+matchId+(h.removedAt?'?history=1':''),{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;};},[matchId,navigate]);

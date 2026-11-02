@@ -1,3 +1,4 @@
+import {cardFlipSoundRef} from '@/lib/audio/presentationSound';
 /**
  * HolmCanonicalCommunityRow — always-on community anchor strip used
  * during the Holm canonical deal (DealRuntime phase !== 'GAMEPLAY').
@@ -367,6 +368,7 @@ export function HolmCanonicalCommunityRow({
                 }}
               >
                 <div
+                  ref={cardFlipSoundRef(`${handContextId}:community:${i}`, isFlippingThisCard)}
                   style={
                     isFlippingThisCard
                       ? {

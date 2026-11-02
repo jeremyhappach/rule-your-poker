@@ -1,7 +1,7 @@
 import {useEffect,useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {supabase} from '@/integrations/supabase/client';
-import {prepare,reconcile,setAccount,foreground,pushEnabled} from '@/lib/webPush/browser';
+import {prepare,reconcile,setAccount,pushEnabled} from '@/lib/webPush/browser';
 
 export function PushLifecycle(){
  const {pathname}=useLocation(),[userId,setUserId]=useState<string|null|undefined>();
@@ -16,12 +16,9 @@ export function PushLifecycle(){
  },[]);
  useEffect(()=>{
   if(!pushEnabled||!userId)return;
-  const matchId=/^\/delayed\/([0-9a-f-]{36})(?:\/|$)/i.exec(pathname)?.[1]??null;
-  const sync=()=>{void prepare()?.then(()=>reconcile()).then(()=>foreground(document.hidden?null:matchId)).catch(()=>{});};
+  const sync=()=>{void prepare()?.then(()=>reconcile()).catch(()=>{});};
   sync();document.addEventListener('visibilitychange',sync);window.addEventListener('online',sync);
-  // Renewal of an expiring suppression lease, never gameplay/notification polling.
-  const timer=setInterval(sync,30000);
-  return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',sync);window.removeEventListener('online',sync);void foreground(null).catch(()=>{});};
+  return()=>{document.removeEventListener('visibilitychange',sync);window.removeEventListener('online',sync);};
  },[userId,pathname]);
  return null;
 }

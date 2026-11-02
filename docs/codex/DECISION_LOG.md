@@ -1,3 +1,26 @@
+## 2026-11-02 — Async push follows match availability and current account activity
+
+The existing per-recipient match episode owns one zero-to-positive availability
+cycle. Child/segment Last Call identity remains separate. Dispatch alone checks
+the existing authenticated, server-stamped tab heartbeat with a piggybacked
+interaction age: 10-second freshness and 60-second foreground-idle limit.
+Hidden/leaving permits immediate dispatch; suppression is permanent for that
+event. No last-seen cooldown, additional polling, table or gameplay dependency.
+See [qualification](ASYNC_PUSH_CYCLES.md).
+
+## 2026-11-01 — Approved samples follow visible presentation, never authority
+
+Jeremy approved seven auditioned effects and a discrete Cribbage scoring-highlight
+cue. Samples attach to existing visual edges and consume durable receipts even
+when muted, hidden, unloaded or interrupted. Routine card sounds group and yield
+to meaningful cues under the existing shared manager and global Sounds setting.
+Cribbage sounds each new highlight, never an ascending total. HOLM cracked uses
+exact structured committed result identity; Winner A requires final settled
+victory admission. Saved async result animation does not re-admit historical
+sounds. No new authority, gameplay timers, dependencies or database writes.
+Implementation/qualification stays local until explicit production cutover;
+see `SOUND_EFFECTS_INTEGRATION.md`.
+
 ## 2026-11-01 — Fresh lobby launch differs from account-wide session membership
 
 Owner smoke exposed the original splash gate's false negatives. Current launch

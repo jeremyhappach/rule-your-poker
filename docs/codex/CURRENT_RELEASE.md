@@ -1,15 +1,86 @@
-# Sound Studio V2 — 2026-11-01 — isolated local audition only
+# Async sounds — 2026-11-02 — qualified; production authorized
 
-Branch `codex/sound-effects-pass2` contains 27 candidates, seven approved Pass 1
-references, favorites/export and an event audit. No gameplay integration,
-database mutation, push or deployment. Pass 1 worktree is untouched. Variable
-legs-to-win and sweep suppression are explicit; Chucky pre-deal event identity
-remains a future integration gap. See [studio audit](SOUND_STUDIO_V2.md).
-Jeremy provisionally selected Take A in all nine categories on November 1;
-gameplay smoke will determine his final sound preferences. The selection and
-exact asset hashes are saved in the studio; the phase remains local-only.
+Run21 Async now connects its existing bell and approved placement/pass cues.
+TriTowers and Boxdrop Async admit their existing bell only for a freshly accepted
+local Start. Restored requests, state reads and saved reviews remain silent;
+new actions after resume retain sound. One Async presentation boundary uses exact
+request/actor/segment/revision evidence without changing authority or finances.
+TypeScript, production bundle and 339 focused/new and Arcade/live tests pass.
+Native browser qualification and physical/hosted smoke boundaries are recorded in
+[Async sound evidence](ASYNC_SOUND_REGRESSIONS.md). Published V2 and the standalone
+Sound Studio are preserved. Jeremy provided explicit production GO. Release
+checkpoint: `release-async-sounds-20261102`; its matching `-verified` tag records
+the exact published SHA and deployment evidence. Physical/hosted owner smoke
+remains pending. No migration or production-data correction is included.
 
-# Sound effects audition — 2026-11-01 — local review only
+# Async push cycles and active-use suppression — 2026-11-02 — qualified; publication authorized
+
+One Your Turn event now spans each match/recipient's continuous availability
+cycle, with separate Last Call reminders. Dispatch reuses the existing four-second
+heartbeat: active under 10 seconds old plus interaction under 60 seconds suppresses
+permanently; hidden/leaving allows immediately. No post-exit cooldown, new table,
+loop or gameplay presence lookup. The old 30-second push lease renewal is removed.
+
+Migration 20261102154632 is installed. Candidate/installed hosted rollback proofs,
+26 financial groups, 3,571 app tests, 241 harness tests, 31 push tests, TypeScript
+and build pass. No historical match or financial rows changed. Source checkpoint:
+release-async-push-cycles-20261102; matching -verified tag records publication.
+Physical iPhone smoke remains pending. See [evidence and smoke](ASYNC_PUSH_CYCLES.md).
+
+# Sound Studio V2 — 2026-11-01 — qualified; production authorized
+
+Jeremy chose all nine Take A candidates and authorized gameplay integration plus
+production publication (option 1). Isolated release branch extends the published
+Pass 1 palette through existing presentation owners. Variable leg targets and
+authoritative terminal descriptors govern celebrations; Sweep reserves its whole
+result sequence. Rules, financial logic, timers and audio controls are unchanged.
+TypeScript, 3,569 source tests, 241 harness tests, 97 final focused tests and
+20 native desktop/mobile browser checks pass. The exact nine selections extend
+the seven Pass 1 WAVs. Release checkpoint: release-sound-effects-v2-20261101;
+its matching -verified tag records publication evidence. Physical-device listening
+and real-session owner smoke remain pending.
+See [V2 integration and triggers](SOUND_STUDIO_V2_INTEGRATION.md).
+
+# Pass 1 sounds — 2026-11-01 — production authorized; device smoke pending
+
+Jeremy approved the Cribbage scoring-highlight cue and the complete Pass 1
+palette. No design approval remains. `codex/sound-effects-pass1-release` is an
+isolated candidate based on approved runtime `d39f0140e`; freshly fetched main
+`dbc57dbe8` is already included, so reconciliation required no source merge.
+Speaker/control and native-recovery implementations are preserved. Pass 2 is
+excluded and untouched. Fresh typecheck, 3,555 source tests, 241 harness tests,
+production build, 11 palette-native checks and four compiled-App speaker/recovery
+flows pass. Exactly seven approved WAVs are emitted with unchanged asset hashes.
+The only reconciliation changes are release documentation, a worktree-local
+Sound Lab cache and fixture pacing compatible with the approved grouping policy.
+No product-code change or engineering blocker remains. Local checkpoint:
+`local-sound-effects-pass1-ready-20261101`.
+Jeremy provided explicit production GO. The cutover uses the existing main push
+helper; no migrations or Pass 2 changes are included. Release checkpoint:
+`release-pass1-sounds-20261101`. Its matching `-verified` annotated tag records
+the exact published SHA, Vercel READY deployment and public verification.
+Physical iOS/Android and real-session owner smoke remain pending. See
+[release preparation](SOUND_EFFECTS_INTEGRATION.md#final-reconciliation-and-cutover-preparation).
+
+# Approved sound effects — 2026-11-01 — locally qualified; production held
+
+Isolated branch `codex/sound-effects-lab` integrates Jeremy's seven exact
+approved WAVs and one new discrete Cribbage highlight cue. Card flights/flips,
+actual one/multiple dice landings, peg movement, structured HOLM cracked results
+and settled final winner presentations use the existing audio manager and Sounds
+preference. Dense deals group; mute retires active sources; invisible, recovered
+and already-consumed events do not catch up. Saved async result animations remain,
+but their historical audio is silent. Unselected live cues remain unchanged.
+No dependency, schema, rule, timer, financial or production-data change.
+TypeScript, 3,555 source tests (489 files), 241 harness tests, the final production
+build and 11 native Edge/Web Audio checks pass. The final Mega Card Golf addition
+also passes all 105 affected regressions. Local checkpoint:
+`local-sound-effects-qualified-20261101`. Coverage, evidence and device smoke:
+[SOUND_EFFECTS_INTEGRATION.md](SOUND_EFFECTS_INTEGRATION.md).
+No push, main integration or production deployment is authorized. Installed
+phone listening and real-session owner smoke remain pending.
+
+# Sound effects audition — 2026-11-01 — superseded by approved integration
 
 Isolated `codex/sound-effects-lab` adds 21 sourced/original WAV candidates,
 three winner alternatives, nine unchanged reference cues and a development-only

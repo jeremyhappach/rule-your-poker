@@ -1,3 +1,4 @@
+import {cardFlipSoundRef} from '@/lib/audio/presentationSound';
 import { useEffect, useRef, useState } from 'react';
 import type { Card as CardType } from '@/lib/cardUtils';
 import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
@@ -139,6 +140,7 @@ export function HolmChuckyRevealCard({
       }}
     >
       <div
+        ref={cardFlipSoundRef(presentationKey, renderedFlipState === 'flipping')}
         style={{
           position: 'relative',
           width: '100%',

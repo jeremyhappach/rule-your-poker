@@ -1,3 +1,4 @@
+import {useDiceLandingAudio} from '@/hooks/useDiceLandingAudio';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Button } from '@/components/ui/button';
 import type { FarkleAction, FarkleState } from '@/lib/farkle/types';
@@ -33,6 +34,9 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
   // Hold. Its order is the presentation row identity; indexes remain scoring
   // identity only. A new Roll replaces this array and therefore this map.
   const dice = resolvedRoll?.dice ?? state.dice;
+  const soundSurface = useRef<HTMLDivElement>(null);
+  useDiceLandingAudio(resolvedRoll?.id ?? `${state._authorityScope}/${state.currentTurnPlayerId}/${state.rollNumber}`,
+    phase === 'reveal' && (!!resolvedRoll || animate), dice.length, soundSurface);
   const currentRollSlots = new Map(dice.map((die, slot) => [die.index, slot]));
   const rowX = (index: number) => `${50 + ((currentRollSlots.get(index) ?? 0) - (dice.length - 1) / 2) * (100 / 6)}%`;
   const consolidated = !resolvedRoll && committed.some(group => state.rollNumber > group.rollNumber);
@@ -49,7 +53,7 @@ export function FarkleActiveArea({ state, controllable, pending, committed, onAc
   const dissolvingDice = !resolvedRoll && presentationHold?.phase === 'dissolving'
     ? dice.filter(die => heldIndexes.includes(die.index))
     : [];
-  return <div className="flex h-full min-h-0 flex-col gap-1 px-2 text-foreground" data-farkle-active-area="" data-farkle-resolved-roll={resolvedRoll?.id}>
+  return <div ref={soundSurface} className="flex h-full min-h-0 flex-col gap-1 px-2 text-foreground" data-farkle-active-area="" data-farkle-resolved-roll={resolvedRoll?.id}>
     <strong className="shrink-0 text-center text-sm">THIS TURN {state.thisTurn.toLocaleString('en-US')}</strong>
     <div className="farkle-self-dice" data-farkle-self-roll-phase={phase} data-held-consolidated={consolidated}
       data-farkle-self-hold-phase={presentationHold?.phase}>

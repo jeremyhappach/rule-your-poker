@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {platformAudio} from '@/lib/audio/platformAudio';
-import {cardPlayCue,cardPassCue} from '@/lib/audio/cardActionCues';
+import {approvedSound} from '@/lib/audio/approvedSounds';
 import {PlacementAudio} from '@/lib/run21/placementAudio';
 import type {BoardFeedbackEvent} from '@/lib/run21/exact21Feedback';
 
@@ -10,7 +10,8 @@ export function useRun21PlacementAudio(userId:string,scope:string,events:BoardFe
   useEffect(()=>{
     const action=receipts.current.accept(scope+':'+interruption,epoch,events??[],enabled&&!document.hidden&&navigator.onLine);
     if(!action)return;
-    const cue=action.kind==='play'?cardPlayCue:cardPassCue;
+    const cue=approvedSound(action.kind==='play'?'slide':'flip');
+    if(!cue){platformAudio.present({userId,id:'run21-swoosh:'+action.key});return;}
     const startedAt=performance.now();
     // Allow only 25 ms to admit the complete approved cue; never catch up late.
     const lifetime=cue.durationMs+25;

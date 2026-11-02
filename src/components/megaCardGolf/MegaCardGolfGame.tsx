@@ -10,7 +10,8 @@ import {formatGolfScore,type MegaFrame} from '@/lib/megaCardGolf/presentation';
 import {CourseCardBack} from './CourseCardBack';
 import {MegaResultScorecard} from './MegaResultScorecard';
 const ranks:Rank[]=['A','2','3','4','5','6','7','8','9','10','J','Q','K'],suits:Suit[]=['♠','♥','♦','♣'];
-export function MegaCard({card,label,onClick,disabled,selected=false,highlight=false,course=INITIAL_COURSES[0],stage}:{card:number|null;label:string;onClick?:()=>void;disabled?:boolean;selected?:boolean;highlight?:boolean;course?:CourseConfig;stage?:string}){
+export type MegaCardSound=(kind:'slide'|'flip',identity:string,surface:Element|null)=>void;
+export function MegaCard({card,label,onClick,disabled,selected=false,highlight=false,course=INITIAL_COURSES[0],stage,audioIdentity,onSound}:{audioIdentity?:string;onSound?:MegaCardSound;card:number|null;label:string;onClick?:()=>void;disabled?:boolean;selected?:boolean;highlight?:boolean;course?:CourseConfig;stage?:string}){
  const face=card!==null&&Number.isInteger(card)&&card>=0&&card<52?{rank:ranks[card%13],suit:suits[Math.floor(card/13)]}:null;
  const root=useRef<HTMLButtonElement>(null);
  useLayoutEffect(()=>{
@@ -22,14 +23,15 @@ export function MegaCard({card,label,onClick,disabled,selected=false,highlight=f
   const from=source.getBoundingClientRect(),to=target.getBoundingClientRect();
   if(!to.width)return;
   const animation=inner.animate([{transform:`translate(${from.left-to.left}px,${from.top-to.top}px) scale(${from.width/to.width})`},{transform:'none'}],{duration:350,easing:'ease-out',fill:'both'});
+  if(audioIdentity)onSound?.('slide',audioIdentity,target);
   return()=>animation.cancel();
  },[stage,card]);
  return <button ref={root} className="mega-card" data-replacement-stage={stage} data-scored={highlight||undefined} aria-pressed={selected} aria-label={label+(face?' · '+face.rank+' '+face.suit:' · concealed')} onClick={onClick} disabled={disabled}>
-  <span key={(face?card:'back')+'/'+(stage??'')} className="mega-card-inner">{face?<PlayingCard card={face} frontStyle="megatouch" tier="large" className="mega-canonical-face" highlight={highlight?'gold':null}/>:<CourseCardBack course={course}/>}</span>
+  <span key={(face?card:'back')+'/'+(stage??'')} className="mega-card-inner" onAnimationStart={event=>{if(event.target===event.currentTarget&&audioIdentity&&(stage==='reveal'||stage==='stock-reveal'))onSound?.('flip',audioIdentity,event.currentTarget);}}>{face?<PlayingCard card={face} frontStyle="megatouch" tier="large" className="mega-canonical-face" highlight={highlight?'gold':null}/>:<CourseCardBack course={course}/>}</span>
   {face&&(stage==='reveal'||stage==='stock-reveal')&&<span className="mega-flip-back" aria-hidden><CourseCardBack course={course}/></span>}
  </button>;
 }
-export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,canAbandon=true,autoDrawPending=false}:{view:MegaView;onIntent:(intent:Intent)=>void;onExit:()=>void;busy:boolean;now:number;presentation?:MegaFrame;canAbandon?:boolean;autoDrawPending?:boolean}){
+export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,canAbandon=true,autoDrawPending=false,onSound}:{onSound?:MegaCardSound;view:MegaView;onIntent:(intent:Intent)=>void;onExit:()=>void;busy:boolean;now:number;presentation?:MegaFrame;canAbandon?:boolean;autoDrawPending?:boolean}){
  const [tab,setTab]=useState<ShellTabId>('cards'),[opening,setOpening]=useState<number[]>([]),[tapIn,setTapIn]=useState<{index:number|null;revision:number}|null>(null),[abandon,setAbandon]=useState(false),[standPatConfirmation,setStandPatConfirmation]=useState(false);
  const result=view.phase==='scoring'?view.results.find(r=>r.hole===view.hole):null;
  const scoring=presentation?.scoring??(result?{tally:result.score,finished:true,indices:[],points:null,revealing:false}:null);
@@ -61,10 +63,10 @@ export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,can
    </div>
    <div className="mega-play-area"><div className="mega-hand-area">
     <p className="mega-turn-text" role="status">{presentation?.replacement?'Replaced card':scoring?scoring.revealing?'Revealing your hand…':scoring.finished?'Hole '+view.hole+' complete':scoring.indices.length===2?'Pair cancels · E':formatGolfScore(scoring.points):view.phase==='opening'?'Choose '+(sequential?openingLeft:view.config.initialExposed)+' opening '+(sequential&&openingLeft===1?'card':'cards'):view.pending===null?'Preparing stock…':standPat?'Replace a card or Stand Pat':'Choose any card to replace'}</p>
-    <div className="mega-tableau">{view.cards.map((card,i)=><MegaCard key={view.id+'/'+view.hole+'/'+i} course={view.config} card={card} label={'Card '+(i+1)} onClick={()=>choose(i)} disabled={!available||now>=view.deadline||(view.phase==='opening'&&sequential&&card!==null)||(view.phase!=='opening'&&(!playable||view.pending===null))} selected={!sequential&&opening.includes(i)} highlight={scoring?.indices.includes(i)} stage={presentation?.replacement?.index===i?presentation.replacement.stage:presentation?.opening?.index===i?'reveal':undefined}/>)}</div>
+    <div className="mega-tableau">{view.cards.map((card,i)=><MegaCard audioIdentity={view.id+'/'+view.hole+'/'+view.revision+'/'+i} onSound={tab==='cards'?onSound:undefined} key={view.id+'/'+view.hole+'/'+i} course={view.config} card={card} label={'Card '+(i+1)} onClick={()=>choose(i)} disabled={!available||now>=view.deadline||(view.phase==='opening'&&sequential&&card!==null)||(view.phase!=='opening'&&(!playable||view.pending===null))} selected={!sequential&&opening.includes(i)} highlight={scoring?.indices.includes(i)} stage={presentation?.replacement?.index===i?presentation.replacement.stage:presentation?.opening?.index===i?'reveal':undefined}/>)}</div>
    </div>
    <aside className="mega-draw-area" data-anytime-stand-pat={anytimeStandPat||undefined}><div className="mega-counters"><div><strong>{view.stockRemaining}</strong><span>stock draws left</span></div><div><strong>{view.discardsRemaining}</strong><span>discards left</span></div></div>
-    <div className="mega-draw-card"><MegaCard course={view.config} card={view.pending} label={view.pending===null?'Next stock card':'Active stock card'} stage={presentation?.stockRevealing?'stock-reveal':undefined} disabled/></div>
+    <div className="mega-draw-card"><MegaCard audioIdentity={view.id+'/'+view.hole+'/'+view.revision+'/stock'} onSound={tab==='cards'?onSound:undefined} course={view.config} card={view.pending} label={view.pending===null?'Next stock card':'Active stock card'} stage={presentation?.stockRevealing?'stock-reveal':undefined} disabled/></div>
     {view.phase==='opening'&&!sequential&&<button className="mega-start" disabled={!available||now>=view.deadline||opening.length!==view.config.initialExposed} onClick={()=>onIntent({type:'open',indices:opening})}>Reveal selected</button>}
     {actionsSettled&&anytimeStandPat&&view.phase==='playing'&&<button className="mega-start" disabled={!available||!playable||!standPat} onClick={()=>{setStandPatConfirmation(true);setTapIn({index:null,revision:view.revision});}}>Stand Pat</button>}
     {actionsSettled&&view.pending!==null&&<button className="mega-secondary" disabled={!available||!playable||((anytimeStandPat||!standPat)&&view.discardsRemaining===0)} onClick={()=>onIntent({type:!anytimeStandPat&&standPat?'stand-pat':'discard'})}>{!anytimeStandPat&&standPat?'Stand Pat':'Discard'}</button>}

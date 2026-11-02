@@ -24,6 +24,8 @@ export function isRun21TerminalBatch(batch:ChipPresentationBatch,view:Projection
 export function useRun21Terminal(view:Projection|undefined,sessionEnded:boolean,onActive:(v:boolean)=>void,onComplete:(id:string)=>void,firstRoundId?:string) {
   const announcements=useAnnouncements();
   const receipt=view?.settlement;
+  const sawLive=useRef<string|null>(null);
+  if(view&&!receipt&&!sessionEnded)sawLive.current=view.identity.dealerGameId;
   const key=receipt&&view?`${view.identity.sessionId}:${view.identity.dealerGameId}:${receipt.resultId}:${receipt.transferBatchId}`:null;
   const [batch,setBatch]=useState<{key:string;cursor:number}|null>(null),[error,setError]=useState('');
   const [attempt,setAttempt]=useState(0);
@@ -55,7 +57,7 @@ export function useRun21Terminal(view:Projection|undefined,sessionEnded:boolean,
       announcements.emit({id:`match_win:run21:${receipt.resultId}`,type:'match_win',scope:{dealerGameId:view.identity.sessionId,roundId:view.roundId},
         payload:{winnerName:winner.name,text:`${winner.name} Wins! ${view.players.map(p=>`${p.name}: ${view.cumulative[p.id].toLocaleString()}`).join(' • ')}`,
           score:{winner:view.cumulative[receipt.winnerId],loser:view.cumulative[receipt.loserId]}},ttlMs:10000});
-      celebrateCanonicalWinner(key,view.viewerId??'',[winner.id],true);
+      celebrateCanonicalWinner(key,view.viewerId??'',[winner.id],true,sawLive.current===view.identity.dealerGameId);
     }
     // Resolve the immutable receipt to its real journal cursor, never a locally
     // synthesized animation id. Cursor state survives child remounts.

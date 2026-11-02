@@ -1,3 +1,4 @@
+import {cardFlipSoundRef} from '@/lib/audio/presentationSound';
 import { useState, useEffect, useRef } from 'react';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
@@ -88,6 +89,9 @@ export const CribbageCutCardReveal = ({
   );
 
   const [isFlipping, setIsFlipping] = useState(false);
+  const audioEntry = useRef({hand: handBoundaryKey, sawBack: !card});
+  if (audioEntry.current.hand !== handBoundaryKey) audioEntry.current = {hand: handBoundaryKey, sawBack: !card};
+  else if (!card) audioEntry.current.sawBack = true;
   // Show face immediately only on true remounts (registry already consumed).
   // Legitimate first reveals start back-side so the flip animation can play.
   const [showFace, setShowFace] = useState(alreadyConsumedAtMount);
@@ -241,6 +245,7 @@ export const CribbageCutCardReveal = ({
       >
         <div
           className="relative transition-transform duration-300 ease-out"
+          ref={cardFlipSoundRef(`${handBoundaryKey}:cut`, isFlipping && !!handBoundaryKey && audioEntry.current.sawBack)}
           style={{
             transformStyle: 'preserve-3d',
             transform: isFlipping
@@ -265,4 +270,3 @@ export const CribbageCutCardReveal = ({
     </div>
   );
 };
-

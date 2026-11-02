@@ -49,3 +49,13 @@ by the studio. Physical iPhone access, sound quality and fatigue remain pending.
 Vite uses a worktree-local cache so concurrently running labs stay independent.
 
 [Event audit](../../docs/codex/SOUND_STUDIO_V2.md) · [Provenance](SOURCES.md).
+
+V2 release qualification uses an independent checkout on port 4328:
+
+    bunx --no-install vite --config dev/sound-studio-v2/vite.config.ts --port 4328
+    node dev/sound-studio-v2/verify-runtime.mjs
+
+The runtime.html fixture imports the actual presentation components and approved
+catalog, with the local audio adapter. The verifier blocks non-local requests.
+Jeremy authorized the nine Take A selections for gameplay; see
+../../docs/codex/SOUND_STUDIO_V2_INTEGRATION.md. Other takes remain audition-only.

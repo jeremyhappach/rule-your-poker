@@ -70,23 +70,23 @@ export function useTriRoundPresentation({scope,phase,connected,paused,result,now
  const presented=admitted||!!result&&active&&!!resultSequence?.seekOnRecovery,namespace=resultSequence?.namespace??'tri';
  const bellKey=modern&&intro===scope&&phase==='intro'&&connected&&active&&!paused&&!document.hidden?scope:null;
  useEffect(()=>{
-  if(!bellKey)return;
+  if(!bellKey||replay)return;
   const local=performance.now();
   return platformAudio.follow({userId,id:'run21-bell:tri:'+bellKey,startedAt:local,expiresAt:local+deadline-now,cueAt:()=>boxingBellCue});
- },[bellKey,userId]);
+ },[bellKey,userId,replay]);
  const fraction=presented&&!reduced?(modern?timeline.center:Math.max(0,Math.min(1,elapsed/200,(3100-elapsed)/300))):0;
  const countWindow=resultSequence?.countWindow(cleared)??triCountWindow(cleared,cleared?celebrationMs:0);
  const end=modern?countWindow.end:2800,start=modern?countWindow.start:0;
  const count=result?{from:result.scoreBefore,to:result.score,startedAt:now-elapsed+start,endsAt:now-elapsed+end}:null;
- usePresentedScoreAudio(userId,admitted&&!reduced&&result.score>result.scoreBefore&&elapsed>=start&&elapsed<end?namespace+'-count:'+scope+':'+result.id:null,count,now);
+ usePresentedScoreAudio(userId,!replay&&admitted&&!reduced&&result.score>result.scoreBefore&&elapsed>=start&&elapsed<end?namespace+'-count:'+scope+':'+result.id:null,count,now);
  const clearMs=resultSequence?.clearMs??TRI_FANFARE_MS,clearCueAt=resultSequence?.clearCueAt??triAllClearCueAt;
- const clearKey=modern&&admitted&&!reduced&&cleared&&elapsed<clearMs?result.id:null;
+ const clearKey=!replay&&modern&&admitted&&!reduced&&cleared&&elapsed<clearMs?result.id:null;
  useEffect(()=>{
   if(!clearKey)return;
   const local=performance.now();
   return platformAudio.follow({userId,id:namespace+'-clear:'+scope+':'+clearKey,startedAt:local-elapsed,expiresAt:local-elapsed+clearMs,cueAt:clearCueAt});
  },[clearKey,userId,scope,namespace,clearMs,clearCueAt]);
- return {fraction,admitted,reduced,elapsed,timeline,
+ return {fraction,admitted,introAdmitted:bellKey!==null,reduced,elapsed,timeline,
   drainRemaining:admitted&&!reduced?drainFrom*(1-timeline.progress):0,
   displayScore:presented&&!reduced&&result&&result.score>result.scoreBefore?(modern?Math.round(result.scoreBefore+(result.score-result.scoreBefore)*timeline.progress):result.displayScore):result?.score};
 }
