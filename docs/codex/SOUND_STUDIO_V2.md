@@ -14,6 +14,31 @@ sent and no wait for that work was introduced.
 
 ## Ownership and preserve list
 
+### Owner selection — November 1, 2026
+
+Jeremy selected the first option (Take A) in all nine categories as the starting
+palette: “the first option on each is good to me, I have to smoke them to start
+developing a serious opinion.” These are provisional selections for contextual
+listening; gameplay smoke and final sound judgment remain pending. The current
+phase remains studio-only. Preserve the alternatives for later comparison.
+
+| Category | Selected candidate | Asset identity |
+|---|---|---|
+| SCC — No Qualify | Felt sigh | `no-qualify-a` |
+| SCC — Midnight | Midnight blue | `midnight-a` |
+| Horses — Five Ones | Five of a kind | `five-ones-a` |
+| Dice score posting | Ink & felt | `score-post-a` |
+| Yahtzee / Quintzee | Five stars | `yahtzee-a` |
+| My leg earned | Up one | `my-leg-a` |
+| Opponent leg earned | Across the felt | `opponent-leg-a` |
+| Sweep the Legs | The P-Town sweep | `sweep-a` |
+| Chucky's evil laugh | Velvet villain | `chucky-a` |
+
+The machine-readable selection, including exact WAV hashes, is retained in
+`dev/sound-studio-v2/owner-selection.json`.
+
+### Preserved owners
+
 Only `dev/sound-studio-v2/`, this document and an isolated release-note entry
 are changed. Existing Sound Lab files, `src/`, `public/`, migrations, game
 components, audio manager, account preferences, package/lock files and timers

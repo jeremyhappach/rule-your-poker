@@ -1,0 +1,72 @@
+{
+  "selectedOn": "2026-11-01",
+  "selectedBy": "Jeremy",
+  "status": "provisional-audition-selection",
+  "gameplaySmokePending": true,
+  "phase": "studio-only",
+  "picks": [
+    {
+      "id": "no-qualify-a",
+      "category": "no-qualify",
+      "title": "Felt sigh",
+      "file": "no-qualify-a.wav",
+      "sha256": "90084ece3f8d72f0d7b3344a4538fc6cf43630eeb51c05c030b5db4711fd5ed8"
+    },
+    {
+      "id": "midnight-a",
+      "category": "midnight",
+      "title": "Midnight blue",
+      "file": "midnight-a.wav",
+      "sha256": "93cd2dcebd5109650d65e92b94c755f8d8cdb787fb1bc3317bf69c39e15cf19f"
+    },
+    {
+      "id": "five-ones-a",
+      "category": "five-ones",
+      "title": "Five of a kind",
+      "file": "five-ones-a.wav",
+      "sha256": "83cb5e1f766b0c51feb0df626a0e964167ee32d2ca988f0cc14df951a55e96b4"
+    },
+    {
+      "id": "score-post-a",
+      "category": "score-post",
+      "title": "Ink & felt",
+      "file": "score-post-a.wav",
+      "sha256": "66e1165de3e7c33703797605f3268b1c1bfe7b3a3c817b088c7528adb1c614b3"
+    },
+    {
+      "id": "yahtzee-a",
+      "category": "yahtzee",
+      "title": "Five stars",
+      "file": "yahtzee-a.wav",
+      "sha256": "7dc592b613de9f327c8b3b2037b03bd4a0496ad4b03f1b6107b1553eb01e7d94"
+    },
+    {
+      "id": "my-leg-a",
+      "category": "my-leg",
+      "title": "Up one",
+      "file": "my-leg-a.wav",
+      "sha256": "b34b771f409f5a53911ec3edffb79eac804bceb9717a67ceb4f7ab08bf8a2e34"
+    },
+    {
+      "id": "opponent-leg-a",
+      "category": "opponent-leg",
+      "title": "Across the felt",
+      "file": "opponent-leg-a.wav",
+      "sha256": "96b2df2e9ee35e0c26b6f98095e3b1326e549da95b8dc4f3a42560e4db085ecc"
+    },
+    {
+      "id": "sweep-a",
+      "category": "sweep",
+      "title": "The P-Town sweep",
+      "file": "sweep-a.wav",
+      "sha256": "e3473c5675c2fa9387a82b496b069b2d783b85f7ea9c913f08a56b34616400ed"
+    },
+    {
+      "id": "chucky-a",
+      "category": "chucky",
+      "title": "Velvet villain",
+      "file": "chucky-a.wav",
+      "sha256": "965b0cb164ab4e6b2b2c515e4d514037565c38c0dec2472b31cd53c3af7897a4"
+    }
+  ]
+}

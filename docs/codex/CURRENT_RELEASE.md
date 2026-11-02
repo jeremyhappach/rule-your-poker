@@ -5,6 +5,9 @@ references, favorites/export and an event audit. No gameplay integration,
 database mutation, push or deployment. Pass 1 worktree is untouched. Variable
 legs-to-win and sweep suppression are explicit; Chucky pre-deal event identity
 remains a future integration gap. See [studio audit](SOUND_STUDIO_V2.md).
+Jeremy provisionally selected Take A in all nine categories on November 1;
+gameplay smoke will determine his final sound preferences. The selection and
+exact asset hashes are saved in the studio; the phase remains local-only.
 
 # Sound effects audition — 2026-11-01 — local review only
 
