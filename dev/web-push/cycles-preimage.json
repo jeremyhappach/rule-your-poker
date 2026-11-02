@@ -1,0 +1,178 @@
+{
+  "columns": [
+    {
+      "data_type": "uuid",
+      "table_name": "push_episodes",
+      "column_name": "match_id",
+      "table_schema": "private",
+      "column_default": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "push_episodes",
+      "column_name": "user_id",
+      "table_schema": "private",
+      "column_default": null
+    },
+    {
+      "data_type": "bigint",
+      "table_name": "push_episodes",
+      "column_name": "epoch",
+      "table_schema": "private",
+      "column_default": "0"
+    },
+    {
+      "data_type": "ARRAY",
+      "table_name": "push_episodes",
+      "column_name": "keys",
+      "table_schema": "private",
+      "column_default": "'{}'::text[]"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "id",
+      "table_schema": "public",
+      "column_default": "gen_random_uuid()"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "user_id",
+      "table_schema": "public",
+      "column_default": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "tab_id",
+      "table_schema": "public",
+      "column_default": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "game_id",
+      "table_schema": "public",
+      "column_default": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "session_id",
+      "table_schema": "public",
+      "column_default": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "route",
+      "table_schema": "public",
+      "column_default": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "active_voice_operation_id",
+      "table_schema": "public",
+      "column_default": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "last_heartbeat_at",
+      "table_schema": "public",
+      "column_default": "now()"
+    },
+    {
+      "data_type": "text",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "status",
+      "table_schema": "public",
+      "column_default": "'active'::text"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "created_at",
+      "table_schema": "public",
+      "column_default": "now()"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "voice_presence_heartbeats",
+      "column_name": "updated_at",
+      "table_schema": "public",
+      "column_default": "now()"
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX voice_presence_heartbeats_pkey ON public.voice_presence_heartbeats USING btree (id)",
+      "tablename": "voice_presence_heartbeats",
+      "schemaname": "public"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX voice_presence_heartbeats_user_id_tab_id_key ON public.voice_presence_heartbeats USING btree (user_id, tab_id)",
+      "tablename": "voice_presence_heartbeats",
+      "schemaname": "public"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_vph_game ON public.voice_presence_heartbeats USING btree (game_id, last_heartbeat_at DESC)",
+      "tablename": "voice_presence_heartbeats",
+      "schemaname": "public"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_vph_active_op ON public.voice_presence_heartbeats USING btree (active_voice_operation_id) WHERE (active_voice_operation_id IS NOT NULL)",
+      "tablename": "voice_presence_heartbeats",
+      "schemaname": "public"
+    },
+    {
+      "indexdef": "CREATE INDEX voice_presence_game_user_server_seen_idx ON public.voice_presence_heartbeats USING btree (game_id, user_id, updated_at DESC)",
+      "tablename": "voice_presence_heartbeats",
+      "schemaname": "public"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX push_episodes_pkey ON private.push_episodes USING btree (match_id, user_id)",
+      "tablename": "push_episodes",
+      "schemaname": "private"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX push_events_table_id_user_id_key ON private.push_events USING btree (table_id, user_id)",
+      "tablename": "push_events",
+      "schemaname": "private"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX push_events_match_id_user_id_epoch_kind_key ON private.push_events USING btree (match_id, user_id, epoch, kind)",
+      "tablename": "push_events",
+      "schemaname": "private"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX push_events_pkey ON private.push_events USING btree (id)",
+      "tablename": "push_events",
+      "schemaname": "private"
+    }
+  ],
+  "functions": [
+    {
+      "name": "public.async_push_authorize",
+      "definition": "CREATE OR REPLACE FUNCTION public.async_push_authorize(p_event uuid, p_subscription uuid, p_lease uuid)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE d private.push_deliveries; e private.push_events; s private.push_subscriptions; p private.push_defaults; expiry timestamptz;\nBEGIN\n SELECT * INTO d FROM private.push_deliveries WHERE event_id=p_event AND subscription_id=p_subscription AND lease=p_lease AND state='sending' AND lease_until>clock_timestamp();\n IF NOT FOUND THEN RETURN NULL; END IF;\n SELECT * INTO e FROM private.push_events WHERE id=p_event; SELECT * INTO s FROM private.push_subscriptions WHERE id=p_subscription;\n IF s.binding<>d.binding OR NOT private.push_eligible(e,s) OR EXISTS(SELECT FROM private.push_presence WHERE subscription_id=s.id AND match_id=e.match_id AND until_at>clock_timestamp()) THEN RETURN NULL; END IF;\n SELECT * INTO p FROM private.push_defaults WHERE user_id=e.user_id;\n IF private.push_quiet_at(p,clock_timestamp()) THEN\n  UPDATE private.push_deliveries SET state=CASE WHEN e.kind='table_open' THEN 'skipped' ELSE 'pending' END,\n   retry_at=private.push_quiet_transition(p,clock_timestamp(),false),lease=NULL,lease_until=NULL\n   WHERE event_id=p_event AND subscription_id=p_subscription AND lease=p_lease AND state='sending';\n  RETURN NULL;\n END IF;\n expiry:=least(clock_timestamp()+interval '60 seconds',private.push_quiet_transition(p,clock_timestamp(),true));\n IF e.kind='table_open' THEN expiry:=least(expiry,e.created_at+interval '5 minutes');\n ELSIF e.kind='invite' THEN SELECT least(expiry,m.expires_at) INTO expiry FROM private.delayed_matches m WHERE m.id=e.match_id;\n ELSE\n  SELECT least(expiry,min(least(c.expires_at,coalesce(c.gameplay_due_at,'infinity')))) INTO expiry\n   FROM private.delayed_children c WHERE c.match_id=e.match_id AND c.actor=e.user_id AND NOT c.terminal\n    AND c.id::text||':'||c.segment=ANY(e.keys) AND c.expires_at>clock_timestamp() AND (c.gameplay_due_at IS NULL OR c.gameplay_due_at>clock_timestamp());\n END IF;\n RETURN jsonb_build_object('endpoint',s.endpoint,'keys',jsonb_build_object('p256dh',s.p256dh,'auth',s.auth_secret),\n  'payload',jsonb_build_object('eventId',e.id,'matchId',e.match_id,'tableId',e.table_id,'binding',s.binding,'kind',e.kind,'expiresAt',floor(extract(epoch FROM expiry)*1000)));\nEND $function$\n"
+    },
+    {
+      "name": "private.stamp_voice_presence_heartbeat_updated_at",
+      "definition": "CREATE OR REPLACE FUNCTION private.stamp_voice_presence_heartbeat_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n  NEW.updated_at := clock_timestamp();\n  RETURN NEW;\nEND;\n$function$\n"
+    },
+    {
+      "name": "private.push_sync",
+      "definition": "CREATE OR REPLACE FUNCTION private.push_sync(parent uuid)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE m private.delayed_matches; who uuid; ks text[]; fresh text[]; old private.push_episodes; kind_i text; event_i uuid;\nBEGIN\n SELECT * INTO m FROM private.delayed_matches WHERE id=parent FOR UPDATE;\n IF NOT FOUND THEN RETURN; END IF;\n FOREACH who IN ARRAY ARRAY[m.organizer,m.opponent] LOOP\n  SELECT coalesce(array_agg(c.id::text||':'||c.segment ORDER BY c.id),'{}') INTO ks\n   FROM private.delayed_children c WHERE c.match_id=parent AND c.actor=who AND NOT c.terminal AND c.expires_at>clock_timestamp()\n   AND (c.gameplay_due_at IS NULL OR c.gameplay_due_at>clock_timestamp())\n   AND m.status='active' AND NOT EXISTS(SELECT FROM private.delayed_removals WHERE match_id=parent);\n  INSERT INTO private.push_episodes(match_id,user_id) VALUES(parent,who) ON CONFLICT DO NOTHING;\n  SELECT * INTO old FROM private.push_episodes WHERE match_id=parent AND user_id=who FOR UPDATE;\n  SELECT coalesce(array_agg(k),'{}') INTO fresh FROM unnest(ks) k WHERE NOT k=ANY(old.keys);\n  -- One event per committed match transition, including new turns while another child waits.\n  IF cardinality(fresh)>0 THEN\n   old.epoch:=old.epoch+1;\n   UPDATE private.push_episodes SET epoch=old.epoch WHERE match_id=parent AND user_id=who;\n   FOREACH kind_i IN ARRAY ARRAY['turn','last_call'] LOOP\n    INSERT INTO private.push_events(match_id,user_id,epoch,kind,keys) VALUES(parent,who,old.epoch,kind_i,fresh) RETURNING id INTO event_i;\n    -- Only devices/preferences opted in at transition time; no retrospective push flood.\n    INSERT INTO private.push_deliveries(event_id,subscription_id,binding)\n     SELECT event_i,s.id,s.binding FROM private.push_subscriptions s JOIN private.push_match_preferences p ON p.user_id=s.user_id AND p.match_id=parent\n     WHERE s.user_id=who AND NOT s.disabled AND p.enabled;\n   END LOOP;\n  END IF;\n  UPDATE private.push_episodes SET keys=ks WHERE match_id=parent AND user_id=who;\n END LOOP;\nEND $function$\n"
+    },
+    {
+      "name": "private.push_eligible",
+      "definition": "CREATE OR REPLACE FUNCTION private.push_eligible(e private.push_events, s private.push_subscriptions)\n RETURNS boolean\n LANGUAGE sql\n STABLE\n SET search_path TO ''\nAS $function$\n SELECT NOT s.disabled AND s.user_id=e.user_id\n AND EXISTS(SELECT FROM auth.sessions WHERE id=s.session_id AND user_id=s.user_id AND (not_after IS NULL OR not_after>clock_timestamp()))\n AND EXISTS(SELECT FROM public.profiles WHERE id=s.user_id AND is_active)\n AND ((e.kind='table_open'\n  AND e.created_at+interval '5 minutes'>clock_timestamp()\n  AND EXISTS(SELECT FROM private.push_defaults WHERE user_id=e.user_id AND new_table_enabled)\n  AND EXISTS(SELECT FROM private.push_table_openings WHERE session_id=e.table_id AND host_id IS DISTINCT FROM e.user_id)\n  AND private.push_table_allowed(e.table_id,e.user_id)\n  -- Drop a table alert if any quiet minute has elapsed since its opening, even\n  -- when the worker was asleep for that entire (short) window. No morning backlog.\n  AND NOT EXISTS(SELECT FROM private.push_defaults p, LATERAL generate_series(date_trunc('minute',e.created_at),clock_timestamp(),interval '1 minute') t\n   WHERE p.user_id=e.user_id AND private.push_quiet_at(p,t)))\n OR (e.kind='invite'\n  AND EXISTS(SELECT FROM private.push_defaults WHERE user_id=e.user_id AND invitations_enabled)\n  AND EXISTS(SELECT FROM private.delayed_matches m WHERE m.id=e.match_id AND m.opponent=e.user_id\n   AND m.status='invited' AND m.accepted_at IS NULL AND m.expires_at>clock_timestamp()\n   AND NOT private.delayed_held(m.id) AND NOT EXISTS(SELECT FROM private.delayed_removals WHERE match_id=m.id)))\n OR (e.kind IN('turn','last_call') AND EXISTS(SELECT FROM private.push_match_preferences WHERE match_id=e.match_id AND user_id=e.user_id AND enabled)\n AND EXISTS(SELECT FROM private.push_episodes WHERE match_id=e.match_id AND user_id=e.user_id AND keys&&e.keys)\n AND EXISTS(SELECT FROM private.delayed_matches m WHERE m.id=e.match_id AND e.user_id IN(m.organizer,m.opponent)\n  AND m.status='active' AND NOT private.delayed_held(m.id)\n  AND NOT EXISTS(SELECT FROM private.delayed_removals WHERE match_id=m.id))\n AND EXISTS(SELECT FROM private.delayed_children c WHERE c.match_id=e.match_id AND c.actor=e.user_id AND NOT c.terminal\n  AND c.id::text||':'||c.segment=ANY(e.keys)\n  AND (c.gameplay_due_at IS NULL OR c.gameplay_due_at>clock_timestamp())\n  AND c.expires_at>clock_timestamp() AND (e.kind='turn' OR c.last_call_at<=clock_timestamp()))));\n$function$\n"
+    },
+    {
+      "name": "public.async_push_claim",
+      "definition": "CREATE OR REPLACE FUNCTION public.async_push_claim()\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE d private.push_deliveries; e private.push_events; s private.push_subscriptions; token uuid; p private.push_defaults;\nBEGIN\n -- Serialize only the short claim/coalescing transaction, never an HTTP send.\n IF NOT pg_try_advisory_xact_lock(914,6021) THEN RETURN NULL; END IF;\n FOR d IN SELECT * FROM private.push_deliveries WHERE state IN('pending','sending') AND retry_at<=clock_timestamp()\n  AND (lease_until IS NULL OR lease_until<clock_timestamp()) ORDER BY retry_at LIMIT 100 FOR UPDATE SKIP LOCKED LOOP\n  SELECT * INTO e FROM private.push_events WHERE id=d.event_id;\n  SELECT * INTO s FROM private.push_subscriptions WHERE id=d.subscription_id;\n  -- A Last Call is eligible only when the current pending turn actually reaches 24h.\n  IF e.kind='last_call' AND EXISTS(SELECT FROM private.delayed_children WHERE match_id=e.match_id AND actor=e.user_id AND NOT terminal AND expires_at>clock_timestamp() AND id::text||':'||segment=ANY(e.keys))\n   AND NOT EXISTS(SELECT FROM private.delayed_children WHERE match_id=e.match_id AND actor=e.user_id AND NOT terminal AND expires_at>clock_timestamp() AND last_call_at<=clock_timestamp() AND id::text||':'||segment=ANY(e.keys)) THEN\n   UPDATE private.push_deliveries SET retry_at=(SELECT min(last_call_at) FROM private.delayed_children WHERE match_id=e.match_id AND actor=e.user_id AND NOT terminal AND expires_at>clock_timestamp() AND id::text||':'||segment=ANY(e.keys)) WHERE event_id=d.event_id AND subscription_id=d.subscription_id;\n   CONTINUE;\n  END IF;\n  IF s.binding<>d.binding OR NOT private.push_eligible(e,s) OR d.attempts>=8 THEN\n   UPDATE private.push_deliveries SET state='skipped' WHERE event_id=d.event_id AND subscription_id=d.subscription_id; CONTINUE;\n  END IF;\n  SELECT * INTO p FROM private.push_defaults WHERE user_id=e.user_id;\n  IF private.push_quiet_at(p,clock_timestamp()) THEN\n   UPDATE private.push_deliveries SET state=CASE WHEN e.kind='table_open' THEN 'skipped' ELSE 'pending' END,\n    retry_at=private.push_quiet_transition(p,clock_timestamp(),false),lease=NULL,lease_until=NULL\n    WHERE event_id=d.event_id AND subscription_id=d.subscription_id;\n   CONTINUE;\n  END IF;\n  IF e.match_id IS NOT NULL THEN\n   IF EXISTS(SELECT FROM private.push_deliveries x JOIN private.push_events y ON y.id=x.event_id\n    WHERE x.subscription_id=s.id AND y.match_id=e.match_id AND x.event_id<>e.id\n     AND x.state='sending' AND x.lease_until>clock_timestamp()) THEN CONTINUE; END IF;\n   -- Select only the newest still-actionable due reminder for this device/match.\n   -- This also handles worker downtime spanning the whole quiet window.\n   IF EXISTS(SELECT FROM private.push_deliveries x JOIN private.push_events y ON y.id=x.event_id\n    WHERE x.subscription_id=s.id AND x.binding=s.binding AND y.match_id=e.match_id AND y.user_id=e.user_id\n     AND x.state IN('pending','sending') AND private.push_eligible(y,s)\n     AND (y.epoch,CASE WHEN y.kind='last_call' THEN 1 ELSE 0 END)>(e.epoch,CASE WHEN e.kind='last_call' THEN 1 ELSE 0 END)) THEN\n    UPDATE private.push_deliveries SET state='skipped',lease=NULL,lease_until=NULL WHERE event_id=d.event_id AND subscription_id=d.subscription_id;\n    CONTINUE;\n   END IF;\n   UPDATE private.push_deliveries x SET state='skipped',lease=NULL,lease_until=NULL FROM private.push_events y\n    WHERE y.id=x.event_id AND x.subscription_id=s.id AND y.match_id=e.match_id AND y.user_id=e.user_id\n     AND x.state IN('pending','sending') AND y.id<>e.id AND private.push_eligible(y,s)\n     AND (y.epoch,CASE WHEN y.kind='last_call' THEN 1 ELSE 0 END)<(e.epoch,CASE WHEN e.kind='last_call' THEN 1 ELSE 0 END);\n  END IF;\n  IF EXISTS(SELECT FROM private.push_presence WHERE subscription_id=s.id AND match_id=e.match_id AND until_at>clock_timestamp()) THEN\n   UPDATE private.push_deliveries SET state='skipped' WHERE event_id=d.event_id AND subscription_id=d.subscription_id; CONTINUE;\n  END IF;\n  token:=gen_random_uuid();\n  UPDATE private.push_deliveries SET state='sending',lease=token,lease_until=clock_timestamp()+interval '90 seconds',attempts=attempts+1 WHERE event_id=d.event_id AND subscription_id=d.subscription_id;\n  RETURN jsonb_build_object('eventId',e.id,'subscriptionId',s.id,'lease',token);\n END LOOP;\n RETURN NULL;\nEND $function$\n"
+    }
+  ]
+}

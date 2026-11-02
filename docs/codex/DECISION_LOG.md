@@ -1,3 +1,13 @@
+## 2026-11-02 — Async push follows match availability and current account activity
+
+The existing per-recipient match episode owns one zero-to-positive availability
+cycle. Child/segment Last Call identity remains separate. Dispatch alone checks
+the existing authenticated, server-stamped tab heartbeat with a piggybacked
+interaction age: 10-second freshness and 60-second foreground-idle limit.
+Hidden/leaving permits immediate dispatch; suppression is permanent for that
+event. No last-seen cooldown, additional polling, table or gameplay dependency.
+See [qualification](ASYNC_PUSH_CYCLES.md).
+
 ## 2026-11-01 — Approved samples follow visible presentation, never authority
 
 Jeremy approved seven auditioned effects and a discrete Cribbage scoring-highlight

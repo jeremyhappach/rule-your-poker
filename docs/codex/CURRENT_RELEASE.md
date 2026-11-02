@@ -1,3 +1,17 @@
+# Async push cycles and active-use suppression — 2026-11-02 — qualified; publication authorized
+
+One Your Turn event now spans each match/recipient's continuous availability
+cycle, with separate Last Call reminders. Dispatch reuses the existing four-second
+heartbeat: active under 10 seconds old plus interaction under 60 seconds suppresses
+permanently; hidden/leaving allows immediately. No post-exit cooldown, new table,
+loop or gameplay presence lookup. The old 30-second push lease renewal is removed.
+
+Migration 20261102154632 is installed. Candidate/installed hosted rollback proofs,
+26 financial groups, 3,571 app tests, 241 harness tests, 31 push tests, TypeScript
+and build pass. No historical match or financial rows changed. Source checkpoint:
+release-async-push-cycles-20261102; matching -verified tag records publication.
+Physical iPhone smoke remains pending. See [evidence and smoke](ASYNC_PUSH_CYCLES.md).
+
 # Sound Studio V2 — 2026-11-01 — qualified; production authorized
 
 Jeremy chose all nine Take A candidates and authorized gameplay integration plus

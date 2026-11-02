@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { fromMock, getUserMock, getSessionMock, upsertMock } = vi.hoisted(() => ({
+const { fromMock, getUserMock, getSessionMock, upsertMock, interactionAgeMock } = vi.hoisted(() => ({
   fromMock: vi.fn(),
   getUserMock: vi.fn(),
   getSessionMock: vi.fn(),
   upsertMock: vi.fn(),
+  interactionAgeMock: vi.fn(),
 }));
+vi.mock("@/lib/appActivity",()=>({getAppInteractionAgeMs:interactionAgeMock}));
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -43,6 +45,7 @@ describe("voice presence heartbeat request ownership", () => {
     getSessionMock.mockReset();
     upsertMock.mockReset();
     fromMock.mockReset();
+    interactionAgeMock.mockReset().mockReturnValue(0);
     getSessionMock.mockResolvedValue({ data: { session: { user: { id: "user-1" } } }, error: null });
     fromMock.mockReturnValue({ upsert: upsertMock });
     window.sessionStorage.clear();
@@ -194,5 +197,19 @@ describe("voice presence heartbeat request ownership", () => {
     pagehide(new Event("pagehide"));
     await flushPromises();
     expect(upsertMock.mock.calls.at(-1)![0][0].status).toBe("leaving");
+    expect(upsertMock.mock.calls.at(-1)![0][0].interaction_age_ms).toBeNull();
+  });
+
+  it("piggybacks interaction age without extra writes and starts hidden correctly",async()=>{
+    Object.defineProperty(document,"hidden",{configurable:true,value:true});
+    const heartbeat=await import("./voicePresenceHeartbeat");
+    heartbeat.startVoicePresenceHeartbeat();await flushPromises();
+    expect(upsertMock.mock.calls[0][0][0]).toMatchObject({status:"hidden",interaction_age_ms:null});
+    Object.defineProperty(document,"hidden",{configurable:true,value:false});
+    interactionAgeMock.mockReturnValue(65000);
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(upsertMock).toHaveBeenCalledTimes(2);
+    expect(upsertMock.mock.calls[1][0][0]).toMatchObject({status:"active",interaction_age_ms:65000});
+    expect(interactionAgeMock).toHaveBeenCalledWith("user-1");
   });
 });
