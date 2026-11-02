@@ -24,8 +24,8 @@ export async function verifyApp(browser,out){
   await context.addInitScript(({user,token,authStorageKey})=>{
    const session=JSON.stringify({access_token:token,refresh_token:'synthetic',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user});
    localStorage.setItem(authStorageKey,session);
-   window.polishAppAudio=[];window.cardSources=[];window.stoppedSources=0;window.audioContexts=[];window.silentContext=null;window.blockedOutputs=0;window.connectedOutputs=0;const Real=window.AudioContext;
-   window.AudioContext=class extends Real{constructor(){super();window.audioContexts.push(this);}createGain(){const node=super.createGain(),connect=node.connect.bind(node);node.connect=(destination,...args)=>{if(destination===this.destination){if(window.silentContext===this){window.blockedOutputs++;return destination;}window.connectedOutputs++;}return connect(destination,...args);};return node;}createBufferSource(){const node=super.createBufferSource(),start=node.start.bind(node),stop=node.stop.bind(node);node.start=(at=0)=>{window.cardSources.push(at);start(at);};node.stop=(...args)=>{window.stoppedSources++;stop(...args);};return node;}createOscillator(){const osc=super.createOscillator(),start=osc.start.bind(osc);osc.start=(at=0)=>{window.polishAppAudio.push(at);start(at);};return osc;}};
+   window.polishAppAudio=[];window.cardSources=[];window.cardCueReadyAt=0;window.stoppedSources=0;window.audioContexts=[];window.silentContext=null;window.blockedOutputs=0;window.connectedOutputs=0;const Real=window.AudioContext;
+   window.AudioContext=class extends Real{constructor(){super();window.audioContexts.push(this);}createGain(){const node=super.createGain(),connect=node.connect.bind(node);node.connect=(destination,...args)=>{if(destination===this.destination){if(window.silentContext===this){window.blockedOutputs++;return destination;}window.connectedOutputs++;}return connect(destination,...args);};return node;}createBufferSource(){const node=super.createBufferSource(),start=node.start.bind(node),stop=node.stop.bind(node);node.start=(...args)=>{const [at=0]=args;if(node.buffer?.length>1){window.cardCueReadyAt=Math.max(window.cardCueReadyAt,performance.now()+node.buffer.duration*1000);}window.cardSources.push(at);return start(...args);};node.stop=(...args)=>{window.stoppedSources++;stop(...args);};return node;}createOscillator(){const osc=super.createOscillator(),start=osc.start.bind(osc);osc.start=(at=0)=>{window.polishAppAudio.push(at);start(at);};return osc;}};
   },{user,token,authStorageKey});
   const rules={...JSON.parse(readFileSync('src/lib/triTowers/rules-v2.json','utf8')),version:'tri-towers/5',roundIntroMs:2500,clearCelebrationMs:3000};
   let board={rules,phase:'playing',cards:Array.from({length:28},(_,i)=>i>=18&&i<=22?i-13:null),removed:Array.from({length:28},(_,i)=>i).filter(i=>i<18||i>22),waste:4,stockRemaining:12,run:5,highRun:5,score:20000,deadline:Date.now()+120000};
@@ -75,13 +75,17 @@ export async function verifyApp(browser,out){
    // This fixture joins an already-playing board, without the normal intro.
    // Let the navigation gesture finish native audio activation before testing cues.
    await page.waitForFunction(()=>window.audioContexts.at(-1)?.state==='running');
+   // Recovery must test a scheduled source, not intentional dense-event grouping.
+   // Derive pacing from the real decoded sample; rapid-event policy is tested separately.
+   // Closed contexts need not emit source-ended events, so do not wait on retired nodes.
+   const audibleCard=async index=>{await page.waitForFunction(()=>performance.now()>=window.cardCueReadyAt);await page.locator('[data-tri-card="'+index+'"]').click();};
    const initialOutputs=await page.evaluate(()=>window.connectedOutputs);
-   await page.locator('[data-tri-card="18"]').click();await page.getByLabel('Waste 6 of spades',{exact:true}).waitFor();
+   await audibleCard(18);await page.getByLabel('Waste 6 of spades',{exact:true}).waitFor();
    await page.waitForFunction(before=>window.connectedOutputs>before,initialOutputs);
    // Fault injection only in this local fixture: a native running context whose
    // output graph is silent. The app must recover without reloading the page.
    await page.evaluate(()=>{window.silentContext=window.audioContexts.at(-1);});
-   await page.locator('[data-tri-card="19"]').click();await page.getByLabel('Waste 7 of spades',{exact:true}).waitFor();
+   await audibleCard(19);await page.getByLabel('Waste 7 of spades',{exact:true}).waitFor();
    await page.waitForFunction(()=>window.blockedOutputs>0);
    assert.equal(await page.evaluate(()=>window.silentContext.state),'running');
    const first=await page.evaluate(()=>window.cardSources.length);
@@ -92,7 +96,7 @@ export async function verifyApp(browser,out){
    await page.getByRole('button',{name:'Unmute sounds',exact:true}).click();await speaker.waitFor();
    await page.waitForFunction(()=>window.audioContexts.at(-1)!==window.silentContext&&window.audioContexts.at(-1).state==='running');
    const outputs=await page.evaluate(()=>window.connectedOutputs);
-   await page.locator('[data-tri-card="21"]').click();await page.getByLabel('Waste 9 of spades',{exact:true}).waitFor();
+   await audibleCard(21);await page.getByLabel('Waste 9 of spades',{exact:true}).waitFor();
    await page.waitForFunction(before=>window.connectedOutputs>before,outputs);
    await speaker.click();await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();await page.waitForFunction(()=>!document.querySelector('button[title="Unmute sounds"]').disabled);
    // Reload proves the existing server preference persists and the observed board does not replay.
@@ -102,7 +106,7 @@ export async function verifyApp(browser,out){
    // Native close/recreate on page lifecycle recovery, while retaining the game.
    await page.evaluate(()=>{window.beforeHide=window.audioContexts.at(-1);window.dispatchEvent(new Event('pagehide'));window.dispatchEvent(new Event('pageshow'));window.dispatchEvent(new Event('focus'));});
    await page.waitForFunction(()=>window.beforeHide.state==='closed'&&window.audioContexts.at(-1)!==window.beforeHide&&window.audioContexts.at(-1).state==='running');
-   await page.locator('[data-tri-card="22"]').click();await page.getByLabel('All three towers cleared').waitFor();
+   await audibleCard(22);await page.getByLabel('All three towers cleared').waitFor();
    await page.waitForFunction(count=>window.cardSources.length>count,unmuted);
    await page.screenshot({path:out+'/game-'+width+'x'+height+'.png'});
    assert.deepEqual(preferenceWrites,[false,true,false,true]);assert.equal(await page.evaluate(()=>window.audioContexts.filter(c=>c.state!=='closed').length),1);

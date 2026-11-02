@@ -1,3 +1,20 @@
+# Pass 1 sounds — 2026-11-01 — release ready; production GO pending
+
+Jeremy approved the Cribbage scoring-highlight cue and the complete Pass 1
+palette. No design approval remains. `codex/sound-effects-pass1-release` is an
+isolated candidate based on approved runtime `d39f0140e`; freshly fetched main
+`dbc57dbe8` is already included, so reconciliation required no source merge.
+Speaker/control and native-recovery implementations are preserved. Pass 2 is
+excluded and untouched. Fresh typecheck, 3,555 source tests, 241 harness tests,
+production build, 11 palette-native checks and four compiled-App speaker/recovery
+flows pass. Exactly seven approved WAVs are emitted with unchanged asset hashes.
+The only reconciliation changes are release documentation, a worktree-local
+Sound Lab cache and fixture pacing compatible with the approved grouping policy.
+No product-code change or engineering blocker remains. Local checkpoint:
+`local-sound-effects-pass1-ready-20261101`.
+No main integration, push or production deployment is authorized until explicit
+production GO. See [release preparation](SOUND_EFFECTS_INTEGRATION.md#final-reconciliation-and-cutover-preparation).
+
 # Approved sound effects — 2026-11-01 — locally qualified; production held
 
 Isolated branch `codex/sound-effects-lab` integrates Jeremy's seven exact

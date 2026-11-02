@@ -1,9 +1,74 @@
-# Approved sound integration — local qualification / production hold
+# Pass 1 sound integration — fully approved / production GO pending
 
-Jeremy approved implementation on 2026-11-01 in `codex/sound-effects-lab`.
-Production deployment, main integration and physical-device smoke require the
-next explicit cutover authorization. No migration, production data mutation,
+Jeremy approved the complete Pass 1 palette, including the new Cribbage
+scoring-highlight cue, on 2026-11-01. No sound-design approval remains.
+The final candidate is prepared in `codex/sound-effects-pass1-release`.
+Production publication and the main-branch cutover remain held for his explicit
+production **GO**; this reconciliation is not that authorization. No migration, production data mutation,
 dependency installation or change to rules/timers/financial ownership is included.
+
+## Final reconciliation and cutover preparation
+
+The refreshed remote and clean local main both resolve to
+`dbc57dbe85f75265d4d5d60d5f67ce5e7fb24659` (2026-11-02 UTC / November 1 Central).
+That commit is already an ancestor of Pass 1. The approved runtime remains
+`d39f0140e68d6f914fcf242098ebb54ca9f8b9eb`; no source merge or conflict resolution
+was needed. Both speaker-control and native-recovery source files match their
+existing owner branches, and main contains `d140a89f9` and `5765ff215`.
+Their additional branch-tip documentation is not missing runtime functionality.
+
+The release branch uses a separate worktree and local Sound Lab port 4327.
+Sound Lab's dependency cache is now worktree-local; regression caching is disabled.
+Pass 2's branch, assets, files and development server are not edited or merged.
+No `dev/sound-studio-v2` or `SOUND_STUDIO_V2.md` is included in this candidate.
+Pass 2 must retain its own future approval and release scope. Its independent
+work advanced to `da8f6b8d3` during qualification; that commit is not an ancestor
+of this release candidate, and none of its changes were imported.
+
+The refreshed typecheck, 3,555 source tests / 489 files, 241 harness tests / 12
+files, production build and all 11 palette-native checks pass. The compiled-app
+speaker/recovery check passes all four viewport flows (320×740, 390×844,
+844×390 and 1440×900), with no page errors or external requests. Build verification finds exactly seven
+WAV assets, each byte-identical to its approved audition asset; no unselected
+candidate recordings are emitted. Production source is unchanged from `d39f0140e`.
+
+The native recovery fixture now paces audible test actions by the decoded sample
+duration. The previous rapid second action was intentionally grouped; waiting
+for a retired source's `ended` event was also invalid after native context close.
+The corrected fixture forwards native buffer start arguments and never waits
+on retired nodes. This is test-fixture adaptation, not a runtime audio change.
+Rapid-event suppression remains independently covered by the palette proof.
+
+ No engineering blocker remains. Checkpoint:
+`local-sound-effects-pass1-ready-20261101`. Production is held for explicit GO;
+physical-device and real-session acceptance follows that authorized cutover.
+Raw logs live in
+`qualification.local/pass1-release/`; palette-native browser evidence is in
+`qualification.local/sound-effects/`, and the compiled-App speaker/recovery proof
+is in `qualification.local/audio-reliability/`. That proof uses synthetic HTTP
+authority, real routes, real preference UI and native Web Audio across four
+viewports; it never sends production gameplay or preference writes.
+
+After explicit production GO only:
+
+1. Fetch main again and compare it with the exact reconciled baseline above. If
+   it moved, reconcile and requalify the affected boundary before publication;
+   stop on a material conflict or divergence.
+2. Use the clean main worktree at
+   `C:/Users/jerem/Documents/Codex/2026-10-27/task/incident-release-main` for
+   conflict-free fast-forward integration of `codex/sound-effects-pass1-release`.
+   Preserve every unrelated worktree, including Pass 2 and the dirty Golf checkout.
+3. Publish only through the existing unmodified `.codex\scripts\push-origin-main.cmd`,
+   with no arguments. Its sole Git operation is the installed Windows Git's
+   exact `git push origin main`. No migrations, admission changes or production
+   data repair belong to this release.
+4. Verify Vercel's deployment for the exact main SHA is READY, then perform the
+   phone/two-client smoke below. Record the published SHA and owner acceptance
+   separately. A local qualification tag is not a production smoke checkpoint.
+
+The pre-cutover app baseline is `dbc57dbe8`. If smoke exposes a release regression,
+restore that app behavior through the normal reviewed revert/publication flow;
+never force-push or change historical gameplay/financial records.
 
 ## Palette and event ownership
 
@@ -19,7 +84,7 @@ preserved. Provenance is in `src/assets/audio/NOTICE.txt` and the audition catal
 | Wooden Peg A | Cribbage peg's actual CSS `left` transition completion, after a new displayed score in the same hand scope |
 | Recorded Glass | Committed HOLM `game_results.id`, exact game/dealer-game/hand, loss event kind and negative chip delta for the local player UUID; then the existing completed Chucky reveal gate and visible cracked overlay |
 | Winner A | Existing settled canonical winner celebrations for Run21, Canasta, Golf, Battle 31, Boxdrop, Royal Flash, 11 Up, Take 2, Trip Flip, Race Poker, P-Town Words and Quintzee; TriTowers verified terminal receipt; legacy Cribbage/Yahtzee/HOLM/357/Horses/SCC/Farkle terminal financial presentation boundaries; Gin after its awaited settlement and match-win announcement |
-| New Cribbage highlight | One 190 ms fixed mallet dyad per newly raised scoring combination. Uses the discrete highlight identity/timing approach of Golf scoring. No pitch/trigger derives from the accumulating score. Recovered active combos are silent |
+| Approved Cribbage highlight | One 190 ms fixed mallet dyad per newly raised scoring combination. Uses the discrete highlight identity/timing approach of Golf scoring. No pitch/trigger derives from the accumulating score. Recovered active combos are silent |
 
 Visible card backs in actual shared flights may sound; private opponent state
 changes without visible presentation do not. First/historical snapshots establish
@@ -62,7 +127,7 @@ flip, Mega Card Golf native flip/slide, peg movement, two actual Cribbage scorin
 Winner A, mid-playback mute, grouping and hidden-surface silence. The browser
 report and screenshot are in `qualification.local/sound-effects/`.
 
-Final automated qualification:
+Initial implementation qualification (`sound-effects-lab` worktree):
 
 | Gate | Result / local evidence |
 | --- | --- |
@@ -74,7 +139,9 @@ Final automated qualification:
 | Final production bundle | PASS: `bunx vite build`; `sound-effects-build.log`. Existing large-chunk/Browserslist notices only |
 | Scope/diff review | Exact seven asset hashes verified; no dependencies, migrations, financial/rule code or gameplay timer changes; diff whitespace check passes |
 
-Logs above live under `qualification.local/` and are intentionally untracked.
+These initial logs live under `qualification.local/` in the original
+`sound-effects-lab` worktree and are intentionally untracked. Fresh release
+evidence lives in the locations recorded in the reconciliation section above.
 The native browser harness and focused regression tests are committed. The
 browser fixture proves real Web Audio source scheduling against actual DOM/CSS
 and WAAPI events; it does not prove acoustic quality on physical speakers.
@@ -97,7 +164,7 @@ Before accepting production, smoke two authenticated clients and an observer:
 1. Listen on desktop, installed iOS PWA and installed Android PWA. Include a
    dense opening deal, a single visible flip, one-die reroll and multiple dice.
 2. In Cribbage, move a peg, score two separate highlighted pairs, and pause or
-   change tabs. Audition **NEW · Cribbage scoring highlight** in Sound Lab.
+   change tabs. Confirm one cue per highlight; its sound design is approved.
 3. Lose to Chucky in a solo matchup and a tied matchup; verify only the losing
    player hears glass. Verify final Winner A after confirmed payout; ordinary
    rounds and HOLM's continuing showdown award must not trigger it.

@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const repo = fileURLToPath(new URL('../..', import.meta.url));
 export default defineConfig({
+  cacheDir: repo + '/qualification.local/sound-lab/vite-cache',
   root, envDir:repo, publicDir: false, plugins: [react()],
   resolve: {alias: [
     {find: '@/lib/audio/platformAudio', replacement: root + 'labAudio.ts'},
