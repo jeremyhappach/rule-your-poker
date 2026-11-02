@@ -4,6 +4,10 @@ BEGIN;
 
 DO $proof$
 DECLARE
+  v_finance_before jsonb;
+  v_settled_finance jsonb;
+  v_batches_before integer;
+  v_retry integer;
   v_case integer;
   v_expected text;
   v_money numeric;
@@ -268,6 +272,24 @@ BEGIN
   PERFORM set_config('app.gin_rummy_authoritative_write','on',true);
   PERFORM private.gin_publish_state(v_round_three,v_state);
   PERFORM set_config('request.jwt.claims','{"role":"service_role"}',true);
+  -- Pause at the terminal presentation boundary, then resume the same durable
+  -- round after missed realtime delivery. Exercise the actual recovery owner.
+  SET CONSTRAINTS ALL IMMEDIATE;
+  SET CONSTRAINTS ALL DEFERRED;
+  SELECT jsonb_build_object('players',(SELECT jsonb_object_agg(id::text,chips) FROM public.players WHERE game_id=v_game_id),'pot',(SELECT pot FROM public.games WHERE id=v_game_id)) INTO v_finance_before;
+  SELECT count(*) INTO v_batches_before FROM public.gameplay_transfer_batches WHERE game_id=v_game_id;
+  v_result:=public.set_game_paused(v_game_id,true,v_dealer_game_id,0);
+  IF v_result->>'outcome' IS DISTINCT FROM 'paused' THEN RAISE EXCEPTION 'pause_finance:pause:%',v_result; END IF;
+  PERFORM private.run_due_game_recovery_task('gin_rummy');
+  IF (SELECT jsonb_build_object('players',(SELECT jsonb_object_agg(id::text,chips) FROM public.players WHERE game_id=v_game_id),'pot',(SELECT pot FROM public.games WHERE id=v_game_id))) IS DISTINCT FROM v_finance_before
+     OR EXISTS(SELECT 1 FROM public.game_results WHERE dealer_game_id=v_dealer_game_id AND settlement_key='gin_rummy_terminal')
+     OR (SELECT count(*) FROM public.gameplay_transfer_batches WHERE game_id=v_game_id)<>v_batches_before THEN
+    RAISE EXCEPTION 'pause_finance:paused_recovery_settled';
+  END IF;
+  v_result:=public.set_game_paused(v_game_id,false,v_dealer_game_id,0);
+  IF v_result->>'outcome' IS DISTINCT FROM 'stale_identity' THEN RAISE EXCEPTION 'pause_finance:stale_resume'; END IF;
+  v_result:=public.set_game_paused(v_game_id,false,v_dealer_game_id,1);
+  IF v_result->>'outcome' IS DISTINCT FROM 'resumed' THEN RAISE EXCEPTION 'pause_finance:resume:%',v_result; END IF;
   v_scheduler_result:=private.run_due_game_recovery_task('gin_rummy');
   SELECT state INTO v_state FROM private.gin_rummy_round_states WHERE round_id=v_round_three;
   IF v_scheduler_result->>'outcome'<>'completed' OR v_state->>'phase'<>'complete'
@@ -281,6 +303,41 @@ BEGIN
   PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_user_one,'role','authenticated')::text,true);
   v_replay:=public.gin_rummy_settle_game(v_game_id,v_round_three,v_dealer_game_id,3);
   IF v_replay->>'status'<>'already_settled' THEN RAISE EXCEPTION 'settlement_replay_failed:%',v_replay; END IF;
+  -- Financial proof uses canonical chips, immutable result deltas, the real
+  -- deferred transfer trigger, and post-payout snapshots (not UI counters).
+  SET CONSTRAINTS ALL IMMEDIATE;
+  SET CONSTRAINTS ALL DEFERRED;
+  IF EXISTS(
+    SELECT 1 FROM public.players p JOIN public.game_results r ON r.game_id=p.game_id
+    WHERE p.game_id=v_game_id AND r.settlement_key='gin_rummy_terminal'
+      AND p.chips-(v_finance_before->'players'->>p.id::text)::numeric
+          IS DISTINCT FROM (r.player_chip_changes->>p.id::text)::numeric
+  ) OR (SELECT sum(chips) FROM public.players WHERE game_id=v_game_id)+(SELECT pot FROM public.games WHERE id=v_game_id)
+      IS DISTINCT FROM (SELECT sum(value::numeric) FROM jsonb_each_text(v_finance_before->'players'))+(v_finance_before->>'pot')::numeric
+    OR (SELECT count(*) FROM public.gameplay_transfer_batches WHERE game_id=v_game_id)<>v_batches_before+1
+    OR EXISTS(SELECT 1 FROM public.gameplay_transfer_batches WHERE game_id=v_game_id AND (unmatched_deltas<>'{}'::jsonb OR jsonb_array_length(transfers)=0))
+    OR EXISTS(SELECT 1 FROM public.players p WHERE p.game_id=v_game_id AND NOT EXISTS(
+      SELECT 1 FROM public.session_player_snapshots snap WHERE snap.game_id=v_game_id AND snap.dealer_game_id=v_dealer_game_id
+        AND snap.hand_number=(SELECT hand_number FROM public.rounds WHERE id=v_round_three) AND snap.player_id=p.id AND snap.chips=p.chips)) THEN
+    RAISE EXCEPTION 'pause_finance:canonical_settlement_mismatch';
+  END IF;
+  SELECT jsonb_build_object('balances',jsonb_build_object('players',(SELECT jsonb_object_agg(id::text,chips) FROM public.players WHERE game_id=v_game_id),'pot',(SELECT pot FROM public.games WHERE id=v_game_id)),'results',(SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM public.game_results r WHERE game_id=v_game_id),
+    'batches',(SELECT jsonb_agg(to_jsonb(b) ORDER BY cursor) FROM public.gameplay_transfer_batches b WHERE game_id=v_game_id),
+    'snapshots',(SELECT jsonb_agg(to_jsonb(s) ORDER BY player_id) FROM public.session_player_snapshots s WHERE game_id=v_game_id)) INTO v_settled_finance;
+  -- Actor and peer reconnect/retry the same settled identity after a lost reply.
+  FOR v_retry IN 1..2 LOOP
+    PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',CASE WHEN v_retry=1 THEN v_user_one ELSE v_user_two END,'role','authenticated')::text,true);
+    v_result:=public.gin_rummy_settle_game(v_game_id,v_round_three,v_dealer_game_id,(SELECT hand_number FROM public.rounds WHERE id=v_round_three));
+    IF v_result->>'status' IS DISTINCT FROM 'already_settled' THEN RAISE EXCEPTION 'pause_finance:reconnect_replay:%',v_result; END IF;
+  END LOOP;
+  SET CONSTRAINTS ALL IMMEDIATE;
+  SET CONSTRAINTS ALL DEFERRED;
+  IF (SELECT jsonb_build_object('balances',jsonb_build_object('players',(SELECT jsonb_object_agg(id::text,chips) FROM public.players WHERE game_id=v_game_id),'pot',(SELECT pot FROM public.games WHERE id=v_game_id)),'results',(SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM public.game_results r WHERE game_id=v_game_id),
+    'batches',(SELECT jsonb_agg(to_jsonb(b) ORDER BY cursor) FROM public.gameplay_transfer_batches b WHERE game_id=v_game_id),
+    'snapshots',(SELECT jsonb_agg(to_jsonb(s) ORDER BY player_id) FROM public.session_player_snapshots s WHERE game_id=v_game_id))) IS DISTINCT FROM v_settled_finance THEN
+    RAISE EXCEPTION 'pause_finance:retry_mutated_finances';
+  END IF;
+
 
   -- Each scenario rolls back to the identical server-settled game. These calls
   -- use the real authenticated database role, with no browser cleanup beforehand.

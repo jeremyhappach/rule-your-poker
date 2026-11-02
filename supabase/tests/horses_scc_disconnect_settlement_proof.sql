@@ -1,6 +1,6 @@
 -- Rollback-only proof for Horses/SCC disconnect-safe settlement.
--- Run the migration body inside this transaction before deployment, then run
--- this proof again against the deployed database. Nothing survives ROLLBACK.
+-- Run only in a disposable local database: the partial-roll case temporarily
+-- instruments the randomness boundary. Nothing survives ROLLBACK.
 
 BEGIN;
 
@@ -31,11 +31,7 @@ DECLARE
   v_timeout_round_id uuid;
   v_timeout_player_one uuid;
   v_timeout_player_two uuid;
-  v_seed_index integer;
-  v_seed double precision;
-  v_first_roll integer;
-  v_second_roll integer;
-  v_third_roll integer;
+  v_random_definition text;
 BEGIN
   SELECT array_agg(id ORDER BY created_at, id)
     INTO v_users
@@ -170,23 +166,21 @@ BEGIN
     RAISE EXCEPTION 'horses_scc_disconnect_proof:single_disconnect_timeout_invalid:%', v_result;
   END IF;
 
-  -- A partial human turn gets only the persisted final roll. Seed the database
-  -- random stream so a regression to three new rolls cannot accidentally pass.
-  FOR v_seed_index IN -99..99 LOOP
-    v_seed := v_seed_index::double precision / 100.0;
-    PERFORM setseed(v_seed);
-    v_first_roll := floor(random() * 6)::integer + 1;
-    v_second_roll := floor(random() * 6)::integer + 1;
-    v_third_roll := floor(random() * 6)::integer + 1;
-    EXIT WHEN v_first_roll NOT IN (1, 6)
-      AND v_second_roll <> v_first_roll
-      AND v_third_roll <> v_first_roll;
-  END LOOP;
-  IF v_first_roll IN (1, 6)
-     OR v_second_roll = v_first_roll
-     OR v_third_roll = v_first_roll THEN
-    RAISE EXCEPTION 'horses_scc_disconnect_proof:unable_to_seed_partial_roll_case';
-  END IF;
+  -- A partial human turn gets only its persisted final roll. setseed() cannot
+  -- control secure_random_int. Spy on that boundary in this rollback-only
+  -- fixture: return a non-wild, non-target die so an erroneous three-roll loop
+  -- cannot stop early. Restore the exact definition before other scenarios.
+  SELECT pg_get_functiondef('private.secure_random_int(integer)'::regprocedure)
+    INTO v_random_definition;
+  CREATE TEMP TABLE horses_partial_roll_calls(bound integer) ON COMMIT DROP;
+  EXECUTE $replacement$
+    CREATE OR REPLACE FUNCTION private.secure_random_int(p_bound integer)
+    RETURNS integer LANGUAGE plpgsql SET search_path TO '' AS $rng$
+    BEGIN
+      INSERT INTO pg_temp.horses_partial_roll_calls VALUES (p_bound);
+      RETURN 1; -- zero-based value: die face 2, never held with four sixes
+    END $rng$
+  $replacement$;
   UPDATE public.rounds
      SET horses_state = jsonb_build_object(
        'gamePhase', 'playing', 'currentTurnPlayerId', v_timeout_player_two,
@@ -202,10 +196,18 @@ BEGIN
        )
      )
    WHERE id = v_timeout_round_id;
-  PERFORM setseed(v_seed);
   SELECT private.advance_horses_scc_expired_turn(v_timeout_round_id, clock_timestamp()) INTO v_result;
+  EXECUTE v_random_definition;
   IF (SELECT (horses_state -> 'playerStates' -> v_timeout_player_two::text -> 'dice' -> 4 ->> 'value')::integer
-        FROM public.rounds WHERE id = v_timeout_round_id) <> v_first_roll THEN
+        FROM public.rounds WHERE id = v_timeout_round_id) IS DISTINCT FROM 2
+     OR (SELECT count(*) FROM pg_temp.horses_partial_roll_calls) <> 1
+     OR EXISTS (SELECT 1 FROM pg_temp.horses_partial_roll_calls WHERE bound <> 6)
+     OR EXISTS (
+       SELECT 1 FROM public.rounds r,
+         jsonb_array_elements(r.horses_state -> 'playerStates' -> v_timeout_player_two::text -> 'dice') WITH ORDINALITY d(die, position)
+       WHERE r.id = v_timeout_round_id AND d.position <= 4
+         AND (d.die ->> 'value' IS DISTINCT FROM '6' OR d.die ->> 'isHeld' IS DISTINCT FROM 'true')
+     ) THEN
     RAISE EXCEPTION 'horses_scc_disconnect_proof:partial_turn_received_extra_roll:%', v_result;
   END IF;
 

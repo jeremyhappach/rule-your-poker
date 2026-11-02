@@ -1,0 +1,62 @@
+{
+  "main": "6411bb674a592d49cc6ed87fc0ae49a56a2f5361",
+  "originMain": "6411bb674a592d49cc6ed87fc0ae49a56a2f5361",
+  "candidate": "fc3b9aa4b20908f0da354683f2275a383ae19921",
+  "branches": [
+    {
+      "ref": "codex/host-succession-inactivity",
+      "head": "48ac2026bc9a49b5d9855dbcf933b77f2edfd9fd",
+      "mergeBase": "6411bb674a592d49cc6ed87fc0ae49a56a2f5361",
+      "changedFiles": 15,
+      "overlappingFiles": [
+        "docs/codex/CURRENT_RELEASE.md",
+        "src/pages/Game.tsx"
+      ],
+      "productHunks": [
+        {
+          "file": "src/pages/Game.tsx",
+          "candidate": [
+            "@@ -13831,0 +13832,2 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu",
+            "@@ -14166,0 +14169,2 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu",
+            "@@ -14648,0 +14653 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu",
+            "@@ -14725,0 +14731 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu"
+          ],
+          "other": [
+            "@@ -12299 +12299 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu",
+            "@@ -12301,4 +12301 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu",
+            "@@ -13204,4 +13201 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu",
+            "@@ -13211,2 +13205,2 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu",
+            "@@ -13214 +13208 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu",
+            "@@ -13478,0 +13473 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu"
+          ]
+        }
+      ]
+    },
+    {
+      "ref": "codex/activity-aware-recovery",
+      "head": "4dd3df1266a64971d3be8ce4716af4e2e679bf65",
+      "mergeBase": "dbc57dbe85f75265d4d5d60d5f67ce5e7fb24659",
+      "changedFiles": 74,
+      "overlappingFiles": [
+        "docs/codex/CURRENT_RELEASE.md"
+      ],
+      "productHunks": []
+    },
+    {
+      "ref": "codex/async-sound-regressions",
+      "head": "5037d7fdf01d1ad4d6e28d926c3b50ac210f3168",
+      "mergeBase": "5037d7fdf01d1ad4d6e28d926c3b50ac210f3168",
+      "changedFiles": 0,
+      "overlappingFiles": [],
+      "productHunks": []
+    },
+    {
+      "ref": "codex/sound-effects-pass2",
+      "head": "6411bb674a592d49cc6ed87fc0ae49a56a2f5361",
+      "mergeBase": "6411bb674a592d49cc6ed87fc0ae49a56a2f5361",
+      "changedFiles": 0,
+      "overlappingFiles": [],
+      "productHunks": []
+    }
+  ]
+}

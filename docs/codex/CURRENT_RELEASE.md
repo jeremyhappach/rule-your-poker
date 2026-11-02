@@ -6,10 +6,15 @@ state, gate hand controls and action callbacks, and resume Cribbage automatic Go
 Shipped recovery/terminal ownership is preserved. No database migration, production
 data/cron change, host-succession work, sound change, push or deployment.
 
-Focused component, touch-emulated browser and local SQL evidence, plus explicit
-full-suite, financial and physical-device gaps, are recorded in
-[focused results](../../e2e/pauseAudit/FOCUSED_RESULTS.md). This is not an all-game
-or production acceptance checkpoint.
+Local qualification is complete: 3,617 source tests, 241 harness tests, 182
+focused pause tests, app typecheck, 12 simulated browser checks and 10 rollback
+SQL proofs plus an extra-roll negative control pass. Horses/SCC fixtures now
+match current FK/randomness behavior. Gin/Cribbage proofs cover paused recovery,
+resume and exactly-once canonical settlement through actor/peer retries.
+[Focused results](../../e2e/pauseAudit/FOCUSED_RESULTS.md) records scope, captured
+authority limits, branch overlaps and the owner-only phone checklist. Ready for
+coordinated release authorization, then physical-device smoke; no unresolved
+local test blocker. Still isolated and unpublished; no production acceptance.
 
 # Sound Pass 2 final selections — 2026-11-02 — production authorized
 
