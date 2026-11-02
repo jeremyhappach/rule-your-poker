@@ -1,4 +1,4 @@
-# Pass 1 sounds — 2026-11-01 — release ready; production GO pending
+# Pass 1 sounds — 2026-11-01 — production authorized; device smoke pending
 
 Jeremy approved the Cribbage scoring-highlight cue and the complete Pass 1
 palette. No design approval remains. `codex/sound-effects-pass1-release` is an
@@ -12,8 +12,12 @@ The only reconciliation changes are release documentation, a worktree-local
 Sound Lab cache and fixture pacing compatible with the approved grouping policy.
 No product-code change or engineering blocker remains. Local checkpoint:
 `local-sound-effects-pass1-ready-20261101`.
-No main integration, push or production deployment is authorized until explicit
-production GO. See [release preparation](SOUND_EFFECTS_INTEGRATION.md#final-reconciliation-and-cutover-preparation).
+Jeremy provided explicit production GO. The cutover uses the existing main push
+helper; no migrations or Pass 2 changes are included. Release checkpoint:
+`release-pass1-sounds-20261101`. Its matching `-verified` annotated tag records
+the exact published SHA, Vercel READY deployment and public verification.
+Physical iOS/Android and real-session owner smoke remain pending. See
+[release preparation](SOUND_EFFECTS_INTEGRATION.md#final-reconciliation-and-cutover-preparation).
 
 # Approved sound effects — 2026-11-01 — locally qualified; production held
 

@@ -1,10 +1,12 @@
-# Pass 1 sound integration — fully approved / production GO pending
+# Pass 1 sound integration — production authorized / device smoke pending
 
 Jeremy approved the complete Pass 1 palette, including the new Cribbage
 scoring-highlight cue, on 2026-11-01. No sound-design approval remains.
 The final candidate is prepared in `codex/sound-effects-pass1-release`.
-Production publication and the main-branch cutover remain held for his explicit
-production **GO**; this reconciliation is not that authorization. No migration, production data mutation,
+Jeremy subsequently provided explicit production **GO**, authorizing the main
+fast-forward and publication through the unchanged push helper. Release tag
+`release-pass1-sounds-20261101` identifies the cutover; its matching `-verified`
+annotated tag records the deployment, exact published SHA and public checks. No migration, production data mutation,
 dependency installation or change to rules/timers/financial ownership is included.
 
 ## Final reconciliation and cutover preparation
@@ -40,8 +42,8 @@ on retired nodes. This is test-fixture adaptation, not a runtime audio change.
 Rapid-event suppression remains independently covered by the palette proof.
 
  No engineering blocker remains. Checkpoint:
-`local-sound-effects-pass1-ready-20261101`. Production is held for explicit GO;
-physical-device and real-session acceptance follows that authorized cutover.
+`local-sound-effects-pass1-ready-20261101`. Production GO is now granted;
+physical-device and real-session acceptance follows the authorized cutover.
 Raw logs live in
 `qualification.local/pass1-release/`; palette-native browser evidence is in
 `qualification.local/sound-effects/`, and the compiled-App speaker/recovery proof
@@ -49,7 +51,7 @@ is in `qualification.local/audio-reliability/`. That proof uses synthetic HTTP
 authority, real routes, real preference UI and native Web Audio across four
 viewports; it never sends production gameplay or preference writes.
 
-After explicit production GO only:
+Authorized production cutover workflow:
 
 1. Fetch main again and compare it with the exact reconciled baseline above. If
    it moved, reconcile and requalify the affected boundary before publication;
