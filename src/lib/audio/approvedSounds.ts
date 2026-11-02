@@ -7,8 +7,17 @@ import diceOne from '@/assets/audio/dice-land-soft.wav?url';
 import peg from '@/assets/audio/peg-wood.wav?url';
 import cracked from '@/assets/audio/holm-glass-recorded.wav?url';
 import winner from '@/assets/audio/winner-a.wav?url';
+import noQualify from '@/assets/audio/no-qualify-a.wav?url';
+import midnight from '@/assets/audio/midnight-a.wav?url';
+import fiveOnes from '@/assets/audio/five-ones-a.wav?url';
+import scorePost from '@/assets/audio/score-post-a.wav?url';
+import yahtzee from '@/assets/audio/yahtzee-a.wav?url';
+import myLeg from '@/assets/audio/my-leg-a.wav?url';
+import opponentLeg from '@/assets/audio/opponent-leg-a.wav?url';
+import sweep from '@/assets/audio/sweep-a.wav?url';
+import chucky from '@/assets/audio/chucky-a.wav?url';
 
-const files = {slide, flip, diceMany, diceOne, peg, cracked, winner};
+const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, chucky};
 export type ApprovedSound = keyof typeof files | 'cribbageHighlight';
 const cues = new Map<ApprovedSound, AudioCue>();
 let loading: Promise<void> | undefined;
@@ -20,6 +29,15 @@ const policies = {
   peg: {priority: 45, group: 'pegs', intervalMs: 80},
   cracked: {priority: 90, group: 'outcome', intervalMs: 0},
   winner: {priority: 100, group: 'outcome', intervalMs: 0},
+  noQualify: {priority: 65, group: 'scoring', intervalMs: 0},
+  midnight: {priority: 85, group: 'scoring', intervalMs: 0},
+  fiveOnes: {priority: 85, group: 'scoring', intervalMs: 0},
+  scorePost: {priority: 55, group: 'scoring', intervalMs: 0},
+  yahtzee: {priority: 85, group: 'scoring', intervalMs: 0},
+  myLeg: {priority: 75, group: 'outcome', intervalMs: 0},
+  opponentLeg: {priority: 70, group: 'outcome', intervalMs: 0},
+  sweep: {priority: 110, group: 'outcome', intervalMs: 0},
+  chucky: {priority: 60, group: 'chucky', intervalMs: 30000},
 };
 
 /** Fetch once without creating an AudioContext or touching the user's preference.

@@ -1,3 +1,17 @@
+# Sound Studio V2 — 2026-11-01 — qualified; production authorized
+
+Jeremy chose all nine Take A candidates and authorized gameplay integration plus
+production publication (option 1). Isolated release branch extends the published
+Pass 1 palette through existing presentation owners. Variable leg targets and
+authoritative terminal descriptors govern celebrations; Sweep reserves its whole
+result sequence. Rules, financial logic, timers and audio controls are unchanged.
+TypeScript, 3,569 source tests, 241 harness tests, 97 final focused tests and
+20 native desktop/mobile browser checks pass. The exact nine selections extend
+the seven Pass 1 WAVs. Release checkpoint: release-sound-effects-v2-20261101;
+its matching -verified tag records publication evidence. Physical-device listening
+and real-session owner smoke remain pending.
+See [V2 integration and triggers](SOUND_STUDIO_V2_INTEGRATION.md).
+
 # Pass 1 sounds — 2026-11-01 — production authorized; device smoke pending
 
 Jeremy approved the Cribbage scoring-highlight cue and the complete Pass 1

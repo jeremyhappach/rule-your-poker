@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import {diceLandingSound} from '@/lib/audio/approvedSounds';
 import {presentSound} from '@/lib/audio/presentationSound';
+import {isFiveOnes} from '@/lib/audio/achievementSounds';
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
@@ -75,7 +76,8 @@ export function DiceRollAnimation({
   }, []);
   useLayoutEffect(() => {
     if (phase !== 'landing' || !audioIdentity || landedIdentity !== audioIdentity) return;
-    const sound = diceLandingSound(animatingIndices.filter((_, i) => !!targetPositions[i]), dice.length);
+    const sound = audioIdentity.startsWith('horses:') && isFiveOnes(dice)
+      ? 'fiveOnes' : diceLandingSound(animatingIndices.filter((_, i) => !!targetPositions[i]), dice.length);
     if (sound) presentSound(sound, audioIdentity, soundInterrupted.current ? null : soundSurface.current);
   }, [phase, audioIdentity, landedIdentity]);
   const [flyProgress, setFlyProgress] = useState(0);

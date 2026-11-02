@@ -1,13 +1,16 @@
 ## Approved game sound presentation
 
-`src/lib/audio/approvedSounds.ts` maps the seven exact approved samples and the
+`src/lib/audio/approvedSounds.ts` maps sixteen exact approved samples and the
 Cribbage highlight cue; `pcm.ts` caches decoded native buffers. The existing
 `AudioManager` owns preference, context lifecycle, dedupe and priority/grouping.
 `presentationSound.ts` admits only visible current events. Card flights attach
 at `CardTransportRuntime`; game presentation boundaries own flips, dice and pegs.
 `useHolmCrackedResult` reads an exact committed structured settlement identity.
 `winnerCelebration.ts` and legacy terminal financial presentation callbacks own
-Winner A. None of these sounds advance gameplay or authorize settlement.
+Winner A. V2 attaches special dice results, UUID-attributed legs, canonical Sweep
+and the admitted Chucky deal wave using useLiveSoundEvent receipts. Sweep reserves
+its terminal generation against routine leg/winner cues. See
+SOUND_STUDIO_V2_INTEGRATION.md. None of these sounds advance gameplay or authorize settlement.
 Saved async reviews retain visual presentation with historical sound suppressed.
 Local audition/browser qualification: `dev/sound-lab/`; coverage and smoke:
 `SOUND_EFFECTS_INTEGRATION.md`.

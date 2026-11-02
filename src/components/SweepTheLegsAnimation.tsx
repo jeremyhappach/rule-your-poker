@@ -12,9 +12,10 @@ interface SweepTheLegsAnimationProps {
   show: boolean;
   onComplete?: () => void;
   holdUntilDismissed?: boolean;
+  onSoundStart?: (surface:Element) => void;
 }
 
-export const SweepTheLegsAnimation = ({ show, onComplete, holdUntilDismissed = false }: SweepTheLegsAnimationProps) => {
+export const SweepTheLegsAnimation = ({ show, onComplete, holdUntilDismissed = false, onSoundStart }: SweepTheLegsAnimationProps) => {
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
@@ -50,6 +51,7 @@ export const SweepTheLegsAnimation = ({ show, onComplete, holdUntilDismissed = f
   const node = (
     <div
       data-sweep-the-legs-overlay
+      onAnimationStart={event => {if(event.target===event.currentTarget&&event.animationName==='sweepSequence')onSoundStart?.(event.currentTarget);}}
       className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
       style={{ zIndex: SHELL_Z.CELEBRATION, animation: 'sweepSequence 4s linear' }}
       onAnimationEnd={event => {if(event.target===event.currentTarget&&event.animationName==='sweepSequence')finish();}}

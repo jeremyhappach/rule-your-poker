@@ -14,9 +14,10 @@ interface LegEarnedAnimationProps {
   /** Immutable presentation generation for a descriptor-owned award. */
   presentationCycleId?: string | null;
   onComplete?: () => void;
+  onSoundStart?: (surface:Element) => void;
 }
 
-export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, presentationCycleId = null, onComplete }: LegEarnedAnimationProps) => {
+export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosition, isWinningLeg = false, suppressWinnerOverlay = false, presentationCycleId = null, onComplete, onSoundStart }: LegEarnedAnimationProps) => {
   const [cycle, setCycle] = useState<{
     id: string; key: number; generation: string | null; winning: boolean; startedAt: number;
   } | null>(null);
@@ -107,6 +108,7 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
       <div 
         key={cycle.key}
         data-leg-award={cycle.id}
+        onAnimationStart={event => {if(!winning&&event.target===event.currentTarget&&event.animationName==='flyToTarget')onSoundStart?.(event.currentTarget);}}
         data-leg-award-generation={cycle.generation ?? undefined}
         data-leg-award-winning={winning ? '1' : '0'}
         data-leg-award-completes-at={cycle.startedAt + (winning ? 1800 : 1500)}

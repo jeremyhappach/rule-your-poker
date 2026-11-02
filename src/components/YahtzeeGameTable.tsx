@@ -1,3 +1,5 @@
+import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
+import {yahtzeePostedSound} from '@/lib/audio/achievementSounds';
 import {presentSound} from '@/lib/audio/presentationSound';
 import {CanonicalPlayerIdentityRow} from '@/lib/canonicalShell/CanonicalPlayerIdentityRow';
 import {useCompletionRetry} from '@/hooks/useCompletionRetry';
@@ -592,6 +594,7 @@ export function YahtzeeGameTable({
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const winnerSoundActive = useRef(false);
+  const [postedSound, setPostedSound] = useState<{id:string;sound:ReturnType<typeof yahtzeePostedSound>}|null>(null);
 
   // Overlay states
   const [showYahtzeeOverlay, setShowYahtzeeOverlay] = useState<string | null>(null); // playerName
@@ -1213,6 +1216,9 @@ export function YahtzeeGameTable({
     return () => clearTimeout(timer);
   }, [viewState?.lastAction?.sequence, myPlayer?.id, remotePresentationHydratedRoundId, currentRoundId, clearActiveScorePresentation]);
 
+  useLiveSoundEvent(postedSound?.id ?? null, true, postedSound?.sound ?? 'scorePost',
+    () => winnerSoundActive.current ? tableContainerRef.current : null);
+
   /* ---- Canonical rail narration — never occupies the scorecard pane ---- */
   useEffect(() => {
     if (remotePresentationHydratedRoundId !== currentRoundId) return;
@@ -1223,6 +1229,7 @@ export function YahtzeeGameTable({
     if (!scorer) return;
 
     lastAnnouncedScoreSequenceRef.current = action.sequence;
+    setPostedSound({sound:yahtzeePostedSound(viewState!), id:'yahtzee:'+currentRoundId+':'+action.playerId+':'+action.sequence});
     announcements.emit(createYahtzeeScoreAnnouncement({
       dealerGameId: gameId,
       roundId: currentRoundId,
@@ -1646,6 +1653,9 @@ export function YahtzeeGameTable({
       const committedPs = result.state.playerStates[myPlayer.id];
       if (!committedPs) throw new Error('Yahtzee score result omitted the acting player state.');
       if (result.state.lastAction?.type === 'score') {
+        const action = result.state.lastAction;
+        if (activeRoundIdRef.current === currentRoundId) setPostedSound({sound:yahtzeePostedSound(result.state),
+          id:'yahtzee:'+currentRoundId+':'+action.playerId+':'+action.sequence});
         scorePresentation = { roundId: currentRoundId, sequence: result.state.lastAction.sequence };
         activeScorePresentationRef.current = scorePresentation;
       }

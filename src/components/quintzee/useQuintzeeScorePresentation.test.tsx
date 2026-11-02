@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import {renderHook,cleanup} from '@testing-library/react';import {afterEach,expect,it,vi} from 'vitest';
 import {useQuintzeeScorePresentation} from './useQuintzeeScorePresentation';import type {QuintzeeSnapshot} from '@/lib/quintzee/model';
-const audio=vi.hoisted(()=>({follow:vi.fn(()=>vi.fn())}));vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:audio}));
+const audio=vi.hoisted(()=>({follow:vi.fn(),post:vi.fn()}));vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:audio}));vi.mock('@/lib/audio/presentationSound',()=>({presentSound:audio.post}));
 function snap(revision=1,base=0,upper=0,yahtzee?:number):QuintzeeSnapshot{return {id:'run',scope:'round:1',revision,state:{board:{phase:'playing',baseScore:base,upperBonusAwarded:upper,scores:yahtzee===undefined?{}:{yahtzee}}}} as QuintzeeSnapshot;}
-afterEach(()=>{cleanup();audio.follow.mockClear();});
+afterEach(()=>{cleanup();audio.follow.mockClear();audio.post.mockClear();});
 it('hydrates authoritative base without replaying celebration or sound',()=>{const h=renderHook(()=>useQuintzeeScorePresentation(snap(5,120,35,50),1000,'user',true));expect(h.result.current.base).toBe(120);expect(h.result.current.banner).toBeUndefined();expect(audio.follow).not.toHaveBeenCalled();});
-it('celebrates upper bonus for 1500ms before counting the exact server total',()=>{const h=renderHook(({v,now})=>useQuintzeeScorePresentation(v,now,'user',true),{initialProps:{v:snap(1,60),now:1000}});const v=snap(2,101,35);h.rerender({v,now:1000});expect(h.result.current.banner).toBe('Upper bonus!');expect(h.result.current.base).toBe(60);h.rerender({v,now:2499});expect(h.result.current.base).toBe(60);h.rerender({v,now:2800});expect(h.result.current.banner).toBeUndefined();expect(h.result.current.base).toBe(81);h.rerender({v,now:3100});expect(h.result.current.base).toBe(101);expect(audio.follow.mock.calls.map(c=>(c as any)[0].id)).toEqual(['quintzee-bonus:round:1:2:0','quintzee-base:round:1:2']);});
-it('Quintzee rerender/replay does not duplicate cues or add bonus points',()=>{const h=renderHook(({v,now})=>useQuintzeeScorePresentation(v,now,'user',true),{initialProps:{v:snap(),now:1000}});const v=snap(2,50,0,50);h.rerender({v,now:1000});h.rerender({v:{...v},now:1500});expect(h.result.current.banner).toBe('Quintzee!');expect(audio.follow).toHaveBeenCalledTimes(1);h.rerender({v,now:3200});expect(h.result.current.base).toBe(50);});
-it('pause or disconnection cancels transient work and never replays on recovery',()=>{const h=renderHook(({v,now,on})=>useQuintzeeScorePresentation(v,now,'user',on),{initialProps:{v:snap(),now:1000,on:true}});const v=snap(2,50,0,50);h.rerender({v,now:1000,on:true});h.rerender({v,now:1100,on:false});expect(h.result.current.base).toBe(50);expect(h.result.current.banner).toBeUndefined();h.rerender({v,now:1200,on:true});expect(h.result.current.busy).toBe(false);expect(audio.follow).toHaveBeenCalledTimes(1);});
+it('celebrates upper bonus for 1500ms before counting the exact server total',()=>{const h=renderHook(({v,now})=>useQuintzeeScorePresentation(v,now,'user',true),{initialProps:{v:snap(1,60),now:1000}});const v=snap(2,101,35);h.rerender({v,now:1000});expect(h.result.current.banner).toBe('Upper bonus!');expect(h.result.current.base).toBe(60);h.rerender({v,now:2499});expect(h.result.current.base).toBe(60);h.rerender({v,now:2800});expect(h.result.current.banner).toBeUndefined();expect(h.result.current.base).toBe(81);h.rerender({v,now:3100});expect(h.result.current.base).toBe(101);expect(audio.follow).not.toHaveBeenCalled();});
+it('Quintzee rerender/replay does not duplicate cues or add bonus points',()=>{const h=renderHook(({v,now})=>useQuintzeeScorePresentation(v,now,'user',true),{initialProps:{v:snap(),now:1000}});const v=snap(2,50,0,50);h.rerender({v,now:1000});h.rerender({v:{...v},now:1500});expect(h.result.current.banner).toBe('Quintzee!');expect(audio.post).toHaveBeenCalledTimes(1);h.rerender({v,now:3200});expect(h.result.current.base).toBe(50);});
+it('pause or disconnection cancels transient work and never replays on recovery',()=>{const h=renderHook(({v,now,on})=>useQuintzeeScorePresentation(v,now,'user',on),{initialProps:{v:snap(),now:1000,on:true}});const v=snap(2,50,0,50);h.rerender({v,now:1000,on:true});h.rerender({v,now:1100,on:false});expect(h.result.current.base).toBe(50);expect(h.result.current.banner).toBeUndefined();h.rerender({v,now:1200,on:true});expect(h.result.current.busy).toBe(false);expect(audio.post).toHaveBeenCalledTimes(1);});
 it('round finish waits for the celebration and base count before final pill motion',()=>{const h=renderHook(({v})=>useQuintzeeScorePresentation(v,1000,'user',true),{initialProps:{v:snap()}});const v=snap(2,85,0,50);v.state.board.phase='stage_complete';v.state.board.result={completedAt:1000,rawSubtotal:85,upperBonus:0} as any;h.rerender({v});expect(h.result.current.finalDelay).toBe(2100);expect(h.result.current.base).toBe(0);});
 it('a new scope cannot inherit a previous round celebration',()=>{const h=renderHook(({v})=>useQuintzeeScorePresentation(v,1000,'user',true),{initialProps:{v:snap()}});h.rerender({v:snap(2,50,0,50)});h.rerender({v:{...snap(3),scope:'round:2'}});expect(h.result.current.busy).toBe(false);expect(h.result.current.base).toBe(0);});
 
@@ -17,9 +17,18 @@ it('seeks a server-owned upper celebration and keeps its overlay through the cou
  expect(h.result.current.banner).toBe('Upper Bonus +35');expect(h.result.current.base).toBe(45);expect(h.result.current.busy).toBe(true);
  h.rerender({now:2800});expect(h.result.current.banner).toBe('Upper Bonus +35');expect(h.result.current.base).toBe(72);
  h.rerender({now:3100});expect(h.result.current.base).toBe(98);expect(h.result.current.banner).toBeUndefined();expect(h.result.current.busy).toBe(false);
- expect(audio.follow.mock.calls.map(c=>(c as any)[0].id)).toEqual(['quintzee-bonus:round:1:1:sixes:0','quintzee-base:round:1:1:sixes']);
+ expect(audio.follow).not.toHaveBeenCalled();expect(audio.post).not.toHaveBeenCalled();
 });
 it('does not restart an expired server celebration or delay a server-reserved final window twice',()=>{
  const v=snap(9,133,35);v.state.board.rules={version:'quintzee/3'} as any;v.state.board.celebration={id:'1:sixes',startedAt:1000,countAt:2500,endsAt:3100,from:45,to:133,label:'Upper Bonus +35'};v.state.board.phase='stage_complete';v.state.board.result={completedAt:1000,rawSubtotal:133} as any;
  const h=renderHook(()=>useQuintzeeScorePresentation(v,4000,'user',true));expect(h.result.current.banner).toBeUndefined();expect(h.result.current.base).toBe(133);expect(h.result.current.finalDelay).toBe(0);expect(audio.follow).not.toHaveBeenCalled();
+});
+
+it('posts a committed zero once and never on scope replacement or replay',()=>{
+ const h=renderHook(({v,on,user})=>useQuintzeeScorePresentation(v,1000,user,on),{initialProps:{v:snap(),on:true,user:'user'}});
+ const v=snap(2);v.state.board.scores={ones:0};
+ h.rerender({v,on:true,user:'user'});h.rerender({v,on:true,user:'user'});
+ expect(audio.post.mock.calls.map(c=>c.slice(0,2))).toEqual([['scorePost','quintzee:round:1:2']]);
+ h.rerender({v:{...v,scope:'round:2'},on:true,user:'user'});expect(audio.post).toHaveBeenCalledTimes(1);
+ h.rerender({v:{...snap(3,50,0,50),scope:'round:2'},on:true,user:''});expect(audio.post).toHaveBeenCalledTimes(1);
 });

@@ -1,3 +1,4 @@
+import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
 /**
  * ThreeFiveSevenTerminalController
  *
@@ -82,6 +83,7 @@ export const ThreeFiveSevenTerminalController = ({
   onEnterCanonical,
   renderSweepFlights,
 }: ThreeFiveSevenTerminalControllerProps) => {
+  const sweepSound = useLiveSoundEvent(descriptor?.terminalGenerationId ?? null, false, 'sweep', () => null);
   const sweepReceipts=useRef({generation:'',legs:false,overlay:false});
   const deal = useDealRuntime();
   const dealSettled = !!deal?.dealSettled;
@@ -367,6 +369,7 @@ export const ThreeFiveSevenTerminalController = ({
       <SweepTheLegsAnimation
         key={descriptor.terminalGenerationId}
         show={showSweep}
+        onSoundStart={sweepSound}
         holdUntilDismissed={!!renderSweepFlights}
         onComplete={() => {
           if (phase !== "sweep_legs") return;

@@ -2774,6 +2774,11 @@ export function useHorsesMobileController({
     // Turn announcement
     turnAnnouncement: resultPresentation.announcement ? `${announcedPlayer ? getPlayerUsername(announcedPlayer) : 'Player'} rolled ${resultPresentation.announcement.description}!` : null,
     resultPresentationKey: resultPresentation.key,
+    soundResult: resultPresentation.hold ? {
+      identity: resultPresentation.key!, playerId: resultPresentation.hold.playerId,
+      result: resultPresentation.hold.result, dice: resultPresentation.hold.dice,
+      ready: !!resultPresentation.announcement,
+    } : null,
     resultPresentationPending: resultPresentation.pending,
     onResultDiceLanded: resultPresentation.landed,
     // No Qualify animation state (SCC only)

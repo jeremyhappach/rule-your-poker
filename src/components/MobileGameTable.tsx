@@ -1,3 +1,5 @@
+import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
+import {legAwardSound, sweepOwnsCelebration} from '@/lib/audio/achievementSounds';
 import { useDiceTerminalTransfer } from '@/hooks/useDiceTerminalTransfer';
 import {useDiceRolloverBarrier} from '@/hooks/useDiceRolloverBarrier';
 import {diceTransferReady} from '@/lib/dice/transferAdmission';
@@ -2868,6 +2870,7 @@ export const MobileGameTable = ({
   
   // Leg earned animation state
   const [showLegEarned, setShowLegEarned] = useState(false);
+  const [legSoundEvent, setLegSoundEvent] = useState<{id:string;playerId:string}|null>(null);
   const [legEarnedPlayerName, setLegEarnedPlayerName] = useState('');
   const [legEarnedPlayerPosition, setLegEarnedPlayerPosition] = useState<number | null>(null);
   const [isWinningLegAnimation, setIsWinningLegAnimation] = useState(false);
@@ -4938,10 +4941,11 @@ export const MobileGameTable = ({
       ? holmAdmittedTransferPresentationsRef.current.get(batch.id)?.stage === 'chucky-final-award'
       : gameType === '3-5-7' ? threeFiveSevenWinPhase === 'pot-to-player'
       : (gameType === 'horses' || gameType === 'ship-captain-crew') && !!horsesWinPotTriggerId;
-    if (terminalAward && batch.game_id === gameId && batch.transfers.some(t =>
+    const sweepReserved = gameType === '3-5-7' && sweepOwnsCelebration(threeFiveSevenTerminalDescriptor ?? normal357SweepDescriptor);
+    if (!sweepReserved && terminalAward && batch.game_id === gameId && batch.transfers.some(t =>
       t.from.kind === 'pot' && t.to.kind === 'player' && t.to.playerId === currentPlayer?.id))
       presentSound('winner', `${gameType}:${batch.id}`, activeTab === 'cards' ? tableContainerRef.current : null);
-  }, [onThreeFiveSevenFinancialBatchStarted, gameType, threeFiveSevenWinPhase, horsesWinPotTriggerId, gameId, players, currentUserId, activeTab]);
+  }, [onThreeFiveSevenFinancialBatchStarted, gameType, threeFiveSevenWinPhase, horsesWinPotTriggerId, gameId, players, currentUserId, activeTab, threeFiveSevenTerminalDescriptor, normal357SweepDescriptor]);
   const onChipTransferPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
     onThreeFiveSevenFinancialBatchSettled(batch);
 
@@ -9892,6 +9896,7 @@ export const MobileGameTable = ({
 
           const isWinningLeg = currentLegs >= legsToWin;
           setIsWinningLegAnimation(isWinningLeg);
+          if (!isWinningLeg) setLegSoundEvent({id:animationKey,playerId:player.id});
           setShowLegEarned(true);
           // Mark ref SYNCHRONOUSLY to prevent race with 357 trigger fallback path
           legAnimationActiveRef.current = true;
@@ -11196,6 +11201,20 @@ export const MobileGameTable = ({
     });
     return getParticipantChipBgClass(status);
   };
+
+  const diceSoundResult = horsesController.soundResult;
+  const sccSoundResult = gameType === 'ship-captain-crew' && diceSoundResult
+    ? diceSoundResult.result as {isQualified?:boolean;cargoSum?:number} : null;
+  const diceResultSound = sccSoundResult?.isQualified === false ? 'noQualify'
+    : sccSoundResult?.isQualified && sccSoundResult.cargoSum === 12 ? 'midnight' : 'scorePost';
+  useLiveSoundEvent(diceSoundResult?.identity ?? null,
+    !!diceSoundResult?.ready && (diceResultSound !== 'midnight' || horsesController.showMidnightAnimation) && (diceResultSound !== 'noQualify' || diceSoundResult.playerId !== currentPlayer?.id || diceRollover.show),
+    diceResultSound, () => diceGameplayUiActive && activeTab === 'cards' ? tableContainerRef.current : null);
+  const legSoundStart = useLiveSoundEvent(legSoundEvent?.id ?? null, false,
+    legAwardSound(legSoundEvent?.playerId ?? '', currentPlayer?.id),
+    () => activeTab === 'cards' && !threeFiveSevenTerminalDescriptor ? tableContainerRef.current : null);
+  const normalSweepSound = useLiveSoundEvent(normal357SweepDescriptor?.terminalGenerationId ?? null,
+    false, 'sweep', () => null);
 
   // Calculate animation origin for dice fly-in based on current turn player's position.
   // Sourced from the same canonical anchor table the seat cluster reads
@@ -12856,6 +12875,7 @@ export const MobileGameTable = ({
                 its exact sweep-credit cursor before pot flight. */}
             <SweepTheLegsAnimation
               key={normal357SweepDescriptor?.terminalGenerationId ?? 'legacy-sweep'}
+              onSoundStart={normalSweepSound}
               show={showSweepTheLegs357 || threeFiveSevenWinPhase === 'legs-to-player'}
               holdUntilDismissed={!!normal357SweepDescriptor}
               onComplete={() => {
@@ -13297,7 +13317,8 @@ export const MobileGameTable = ({
         )}
         
         {/* Leg Earned Animation (3-5-7 only) */}
-        <LegEarnedAnimation 
+        <LegEarnedAnimation
+          onSoundStart={() => legSoundStart()}
           show={showLegEarned} 
           playerName={legEarnedPlayerName}
           legValue={legValue}

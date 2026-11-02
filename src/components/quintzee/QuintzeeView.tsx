@@ -25,7 +25,7 @@ export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineE
   if(sound&&!replay)presentSound(sound,identity,!sessionEnded&&!error&&tab==='cards'?viewport.current:null);
  });
  const ready=b.phase==='ready',v2=b.rules.version!=='quintzee/1',viewport=useRef<HTMLDivElement>(null);
- const baseMotion=useQuintzeeScorePresentation(v,at,replay?'':userId,!sessionEnded&&!error&&v.pausedAt===null&&tab==='cards');
+ const baseMotion=useQuintzeeScorePresentation(v,at,replay?'':userId,!sessionEnded&&!error&&v.pausedAt===null&&tab==='cards',viewport);
  const result=b.phase==='stage_complete'&&b.result?{...b.result,id:v.scope+':result',elapsed:Math.max(0,b.rules.resultMs-(b.deadline-at)),displayScore:b.result.score}:null;
  const resultSequence=useMemo(()=>({namespace:'quintzee',clearMs:0,clearCueAt:celebrationCueAt,seekOnRecovery:false,timeline:(elapsed:number)=>triResultTimeline(Math.max(0,elapsed-baseMotion.finalDelay)),countWindow:()=>{const w=triCountWindow();return {start:w.start+baseMotion.finalDelay,end:w.end+baseMotion.finalDelay};}}),[baseMotion.finalDelay]);
  const motion=useTriRoundPresentation({replay,scope:v.scope,phase:b.phase,connected:!error,paused:v.pausedAt!==null,now:at,deadline:b.deadline,userId,active:!sessionEnded&&tab==='cards',modern:true,liveEntry:false,recoveryEpoch:0,result,resultSequence});

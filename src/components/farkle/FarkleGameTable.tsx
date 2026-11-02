@@ -1,3 +1,4 @@
+import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -110,6 +111,8 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const [resolvedRoll, setResolvedRoll] = useState<FarkleResolvedRoll | null>(null);
   const [blockingOverlay, setBlockingOverlay] = useState<FarkleBlockingOverlayReceipt | null>(null);
   const [farkleOverlayArm, setFarkleOverlayArm] = useState<FarkleBlockingOverlayReceipt | null>(null);
+  useLiveSoundEvent(blockingOverlay?.eventType === 'banked' ? blockingOverlay.id : null, true, 'scorePost',
+    () => tab === 'cards' && !isPaused && !error ? document.querySelector('[data-canonical-felt-interaction-layer]') : null);
   const activeOverlayRef = useRef<FarkleBlockingOverlayReceipt | null>(null);
   const pendingHotOverlayRef = useRef<FarkleBlockingOverlayReceipt | null>(null);
   const farkleOverlayArmRef = useRef<FarkleBlockingOverlayReceipt | null>(null);
