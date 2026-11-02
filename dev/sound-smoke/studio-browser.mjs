@@ -8,11 +8,12 @@ assert.equal(createHash('sha256').update(readFileSync('dev/sound-smoke/assets/35
 assert.equal(createHash('sha256').update(readFileSync('dev/sound-smoke/assets/chucky-sting.wav')).digest('hex'),'a749db852de124ff4b6841eddf909e334cee34bdef852ebfae730f260acd6823');
 assert.equal(createHash('sha256').update(readFileSync('dev/sound-smoke/sources/andy-jack-heartbeat-pair.wav')).digest('hex'),'b3def8839e5e0a1624a65277fca5959e355cbabff03cb6bd244f17bd4115fa40');
 const browser=await chromium.launch({channel:'msedge',headless:true}),checks=[],levels=[];
-try{for(const width of [390,1440]){
+try{for(const timing of ['production','uneven'])for(const width of [390,1440]){
  const page=await browser.newPage({viewport:{width,height:900},hasTouch:width<500});const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{
-  window.proof={starts:[],stops:0,outputs:[],flips:[]};const Real=AudioContext;
+  window.proof={starts:[],stops:0,outputs:[],flips:[],completions:[]};const Real=AudioContext;
+  new MutationObserver(records=>{for(const record of records)if(record.target.getAttribute('data-holm-chucky-flip-state')==='revealed')window.proof.completions.push(performance.now());}).observe(document,{subtree:true,attributes:true,attributeFilter:['data-holm-chucky-flip-state']});
   document.addEventListener('transitionrun',event=>{const card=event.target.closest?.('[data-holm-chucky-flip-card]');if(card&&event.target===card.firstElementChild&&event.propertyName==='transform')window.proof.flips.push(performance.now());},true);
   window.AudioContext=class extends Real{
    createBufferSource(){const n=super.createBufferSource(),start=n.start.bind(n),stop=n.stop.bind(n);n.start=(...args)=>{if(n.buffer?.duration>.02){const entry={at:performance.now(),duration:n.buffer.duration};window.proof.starts.push(entry);n.addEventListener('ended',()=>{entry.endedAt=performance.now();},{once:true});}return start(...args);};n.stop=(...args)=>{window.proof.stops++;return stop(...args);};return n;}
@@ -32,8 +33,8 @@ try{for(const width of [390,1440]){
    }
   };
  });
- await page.goto('http://127.0.0.1:4320');await page.getByRole('button',{name:'Mute sounds'}).waitFor();
- if(width===390){
+ await page.goto('http://127.0.0.1:4320/?timing='+timing);await page.getByRole('button',{name:'Mute sounds'}).waitFor();
+ if(width===390&&timing==='production'){
   // Compare speaker-range energy with the audible beep over the same first 400 ms.
   // Keep this stricter gate: lowering it to 120 Hz admitted the inaudible bass-heavy recording.
   // Real-recording EQ meets the gate without adding synthetic tones. Listening remains acceptance.
@@ -56,27 +57,31 @@ try{for(const width of [390,1440]){
  }
  for(const attempt of ['initial','after-reload']){
  if(attempt==='after-reload'){await page.reload();await page.getByRole('button',{name:'Mute sounds'}).waitFor();}
- for(const id of ['chucky-heartbeat','chucky-sting','357-beeps','357-heartbeat']){
+ for(const id of timing==='production'?['chucky-heartbeat','chucky-sting','357-beeps','357-heartbeat']:['chucky-heartbeat']){
   const card=page.locator('[id="'+id+'"]');await card.scrollIntoViewIfNeeded();const before=await page.evaluate(()=>window.proof.starts.length);
   const beforeOutputs=await page.evaluate(()=>window.proof.outputs.length);
   const beforeFlips=await page.evaluate(()=>window.proof.flips.length);
+  const beforeCompletions=await page.evaluate(()=>window.proof.completions.length);
   await card.getByRole('button',{name:'Play preview'}).click();await card.getByRole('button',{name:'Stop',exact:true}).waitFor();await card.getByRole('button',{name:'Play preview'}).waitFor({timeout:10000});
   const after=await page.evaluate(()=>window.proof.starts.slice());const added=after.slice(before);
   const outputs=await page.evaluate(before=>window.proof.outputs.slice(before),beforeOutputs);
   if(id==='chucky-heartbeat'){
    const heartbeats=added.filter(source=>source.duration>1),flips=await page.evaluate(before=>window.proof.flips.slice(before),beforeFlips);
-   assert.equal(heartbeats.length,4,'one independent four-pair heartbeat sequence');assert.equal(flips.length,4,'four actual card flips');
-   assert.ok(heartbeats[3].endedAt<flips[3],'last complete heartbeat ends before final flip');
-   for(let i=1;i<4;i++)assert.ok(heartbeats[i].at-heartbeats[i-1].at<flips[i]-flips[i-1],'heartbeat cadence is faster than card cadence');
+   const completions=await page.evaluate(before=>window.proof.completions.slice(before),beforeCompletions);
+   assert.equal(heartbeats.length,timing==='production'?3:5,'independent heartbeat sequence for '+timing);assert.equal(flips.length,4,'four actual card flips');assert.equal(completions.length,4,'four completed reveals');
+   assert.ok(heartbeats.at(-1).endedAt<flips[3],'last complete heartbeat ends before final flip');
+   assert.ok(heartbeats.at(-1).endedAt>completions[2],'heartbeat remains audible through the third completed reveal');
+   for(let i=1;i<heartbeats.length;i++)assert.ok(Math.abs(heartbeats[i].at-heartbeats[i-1].at-625)<100,'steady heartbeat regardless of each card delay');
    // The ordinary final-card flip may sound once the heartbeat has ended; it must not overlap.
-   for(const other of added.filter(source=>source.duration<=1))assert.ok(other.at>heartbeats[3].endedAt,'card flip cannot compete with heartbeat');
+   for(const other of added.filter(source=>source.duration<=1))assert.ok(other.at>heartbeats.at(-1).endedAt,'card flip cannot compete with heartbeat');
+   checks.push({timing,width,id,attempt,flips,completions});
   }else assert.equal(added.length,id.startsWith('357')?3:1,id+' source starts '+attempt);
   assert.equal(outputs.length,added.length,id+' connected output graphs');
   for(const output of outputs)assert.ok(output.peakRms>.001,id+' real engine output must contain signal');
-  checks.push({width,id,attempt,starts:added,outputs});
+  checks.push({timing,width,id,attempt,starts:added,outputs});
  }
  }
- await page.screenshot({path:out+'/studio-'+width+'.png',fullPage:true});
+ await page.screenshot({path:out+'/studio-'+timing+'-'+width+'.png',fullPage:true});
  await page.getByRole('button',{name:'Mute sounds'}).click();const before=await page.evaluate(()=>window.proof.starts.length);
  await page.locator('#chucky-heartbeat').getByRole('button',{name:'Play preview'}).click();await page.waitForTimeout(500);assert.equal(await page.evaluate(()=>window.proof.starts.length),before);
  assert.deepEqual(errors,[]);await page.close();

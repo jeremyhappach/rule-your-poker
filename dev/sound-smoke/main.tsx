@@ -22,11 +22,17 @@ function Preview({id,serial,onEnd}:{id:string;serial:string;onEnd:()=>void}){
  const cue=pcm?{...pcmCue(pcm,0,heartbeat?400:Infinity),policy:{priority:60,group:'chucky',intervalMs:0}}:undefined;
  const sound=useChuckyRevealAudio(id+':'+serial,cue,heartbeat);
  useEffect(()=>{let live=true;fetch(audioUrl(id)).then(r=>r.arrayBuffer()).then(b=>{if(live)setPCM(decodePCM(b));});return()=>{live=false;};},[id]);
- useEffect(()=>{if(!pcm)return;let raf=0;const start=performance.now()+250;let last=-1;
-  if(heartbeat){sound.armReveal(0,4,timing.chuckyPreviewCardIntervalMs);sound.armReveal(3,4,start+3*timing.chuckyPreviewCardIntervalMs-performance.now());}
+ useEffect(()=>{if(!pcm)return;let raf=0,timer:ReturnType<typeof setTimeout>|undefined;const start=performance.now()+250;let last=-1;
+  if(chucky){
+   // Exercise the production stepper order: arm the next delay immediately,
+   // then let React/native CSS admit the current card's actual transition.
+   const delays=new URLSearchParams(location.search).get('timing')==='uneven'?[450,900,1400,1100]:timing.chuckyPreviewCardDelaysMs;
+   let index=0;
+   const arm=()=>{if(index===delays.length){timer=setTimeout(onEnd,800);return;}const delay=delays[index];sound.armReveal(index,delays.length,delay);timer=setTimeout(()=>{index++;setShown(index);arm();},delay);};
+   arm();return()=>clearTimeout(timer);
+  }
   const tick=(now:number)=>{const elapsed=now-start;
-   if(chucky){setShown(Math.min(4,Math.max(0,Math.floor(elapsed/timing.chuckyPreviewCardIntervalMs)+1)));if(elapsed>3500){onEnd();return;}}
-   else {const index=Math.floor(elapsed/THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.countBeatMs);if(index!==last&&index>=0){last=index;setBeat(index<3?String(3-index):'DROP');if(index<3)platformAudio.present({userId:LAB_USER,id:`audition:${id}:${serial}:${index}`,cue:{...pcmCue(pcm,index*THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.countBeatMs,400),policy:{priority:35,group:'countdown',intervalMs:0}}});}if(elapsed>THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.countBeatMs*4){onEnd();return;}}
+   const index=Math.floor(elapsed/THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.countBeatMs);if(index!==last&&index>=0){last=index;setBeat(index<3?String(3-index):'DROP');if(index<3)platformAudio.present({userId:LAB_USER,id:`audition:${id}:${serial}:${index}`,cue:{...pcmCue(pcm,index*THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.countBeatMs,400),policy:{priority:35,group:'countdown',intervalMs:0}}});}if(elapsed>THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.countBeatMs*4){onEnd();return;}
    raf=requestAnimationFrame(tick);
   };raf=requestAnimationFrame(tick);return()=>cancelAnimationFrame(raf);
  },[pcm,id,serial,chucky,onEnd]);

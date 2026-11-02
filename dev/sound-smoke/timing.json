@@ -1,5 +1,5 @@
 {
-  "chuckyPreviewCardIntervalMs": 950,
-  "chuckyHeartbeatIntervalMs": 760,
-  "chuckyHeartbeatPairs": 4
+  "chuckyPreviewCardDelaysMs": [500, 500, 500, 800],
+  "chuckyHeartbeatIntervalMs": 625,
+  "chuckyHeartbeatPairs": 3
 }

@@ -249,3 +249,49 @@ offline/recovery silence, 357 beeps, all card reveal timing, authority and money
 Qualify against actual uneven four-card timing and first-frame/timer delays,
 including measured last-pair ending before the final CSS flip. Jeremy's actual
 production listening remains acceptance truth. Product code is unchanged.
+
+## Approved independent-clock correction — 2026-11-02
+
+Jeremy replied `approve` to the diagnosed heartbeat correction through
+publication. The existing hook now runs at 625 ms per pair (96 BPM), independent
+of every card delay. `armReveal` observes only the actual final-card deadline;
+all intermediate predictions and cadence scaling are removed. Each admitted
+400 ms pair must finish with a 40 ms quiet gap. Foreground lateness up to 100 ms
+is tolerated only when the whole pair still fits; a missed pulse skips forward
+on the same clock without a catch-up burst or retiring all remaining beats.
+Existing final-flip cancellation, identity, replay, mute, offline, hidden-tab
+and unmount guards remain. MobileGameTable's card scheduler changes only its
+audio observer call; no card delays or gameplay rules are altered.
+
+The original 400 ms recorded pair is byte-identical to `07081b3cf`. Only the
+downloadable three-pair WAV assembly/manifest adopts the independent cadence;
+runtime still plays the first recorded pair. The 357 beeps, unselected 357
+heartbeat and sting remain unchanged. No database writes or migrations occur.
+
+The preview now mirrors production's 500/500/500/800 ms arm/set-state/native
+transition sequence. A second preview uses four distinct 450/900/1400/1100 ms
+delays. Twenty native browser previews pass across phone/desktop widths and
+before/after reload. Eight heartbeat cases measure the output graph and prove
+the final pair ends after card three completes and before card four's actual
+CSS transition starts. Mute, nonzero signal, speaker-range balance, headroom,
+identical 357 beats and absence of page errors also pass.
+
+Seventeen focused tests cover the actual production schedule with 0/20/80/100 ms
+render offsets, four unequal delays, 80/250 ms foreground timer delays, final
+cutoff, interruption/replay and actual card rendering. A before/after proof
+executes the old and corrected hooks: the 20 ms render case changes pair starts
+from 520/960/1400 ms to 520/1145/1770 ms; the last pair ends at 2170 ms, between
+card three completion (2100 ms) and final flip (2300 ms). Ignored evidence:
+`qualification.local/sound-smoke/heartbeat-rca.json` and `studio-browser.json`.
+
+Final validation: `npm run build` passes TypeScript, 3,635 application tests
+across 501 files, 241 harness tests across 12 files, and the production build.
+Studio TypeScript/build also pass. Native production timing cases finish the
+last pair 43–55 ms after the third reveal completes and 146–180 ms before the
+final flip. The unrelated test-generated Cribbage snapshot line-ending rewrite
+was verified to have no content diff and restored only in this isolated checkout.
+
+Release checkpoint: `release-holm-heartbeat-clock-20261102`; the matching
+`-verified` tag records the published SHA, deployment and public audio hashes.
+Owner production/device acceptance remains pending. The separate 357 Hand
+Strength bot report remains queued and uninvestigated in this release.

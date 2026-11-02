@@ -2,8 +2,8 @@
   {
     "id": "chucky-heartbeat",
     "title": "Chucky — Independent Heartbeat",
-    "durationMs": 2680,
-    "sha256": "c0c5b0d86ba3e2b80c3df80b6a9a70e6495f17283291fe1d50eb66a31bc49120",
+    "durationMs": 1650,
+    "sha256": "aa9a6905673498af3b68461575f4387363457a1323e9aef2fb375a0d675a8de0",
     "peak": 0.38,
     "source": "Real heartbeat recorded by Andy Jack, published by JonasTisell (CC0); trimmed, filtered and level-adjusted",
     "sourceUrl": "https://freesound.org/people/JonasTisell/sounds/670465/",

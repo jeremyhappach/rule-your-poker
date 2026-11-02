@@ -9612,7 +9612,7 @@ export const MobileGameTable = ({
       const cfgDelay = getChuckyConfiguredStepperDelayMs(idx, total);
       const fallbackDelayMs = idx === total - 1 ? 800 : 500;
       const delayMs = cfgDelay.ms ?? fallbackDelayMs;
-      chuckyRevealAudio.armReveal(idx, total, delayMs, getChuckyConfiguredStepperDelayMs(total-1,total).ms ?? 800);
+      chuckyRevealAudio.armReveal(idx, total, delayMs);
       const source: 'gameDefaults' | 'fallback' =
         cfgDelay.ms != null && cfgDelay.source === 'gameDefaults' ? 'gameDefaults' : 'fallback';
       const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;

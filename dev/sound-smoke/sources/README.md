@@ -20,10 +20,13 @@ No pitch shifting, time stretching or generated tones are used.
 a broad +12 dB presence adjustment at 450 Hz (Q 0.7), then 5/8 ms boundary fades
 and a peak level of 0.38. This balances the recorded sound for computer speakers
 without added tones or distortion. Both heartbeat candidates use this same pair.
-Chucky's four-pair audition has a separate 760 ms rhythm against 950 ms card
-flips; its final pair fades and ends at 2.68 seconds, before the final flip at
-2.85 seconds. The runtime repeats the recorded pair using the canonical card
-scheduler's actual cadence/deadline, and never cuts a pair to fit the final flip.
+Chucky uses a steady 625 ms rhythm (96 BPM), independent of card delays. Its
+three-pair WAV ends at 1.65 seconds. The runtime repeats only the unchanged
+first 400 ms pair, admitting complete pairs until the actually armed final-card
+deadline, with a 40 ms quiet margin. The preview now uses the deployed
+500/500/500/800 ms reveal delays, including real render/transition admission;
+`?timing=uneven` exercises 450/900/1400/1100 ms delays. The last pair remains
+audible through card three's complete reveal and ends before card four flips.
 The unselected 357 heartbeat remains at 900 ms; Jeremy selected the beeps for 357.
 DROP remains silent. These derivatives remain CC0.
 

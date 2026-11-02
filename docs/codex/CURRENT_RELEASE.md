@@ -1,3 +1,26 @@
+# Holm heartbeat independent clock — 2026-11-02 — qualified, release approved
+
+Jeremy approved the correction after the failed production smoke below. The
+recorded heartbeat now has its own steady 625 ms rhythm (96 BPM); intermediate
+card delays cannot change its tempo or predict its end. Only the actually armed
+final-card deadline admits the last complete pair, with a 40 ms quiet margin.
+Missed foreground pulses skip without a burst or retiring the whole sequence.
+Recorded timbre, mute/dedupe/interruption guards, 357 beeps and all card timing,
+rules, authority and finances are preserved. The 357 bot report remains Queued.
+
+The unchanged shipped hook reproduces the three rapid pairs under production
+delays and a 20 ms native-render offset. The corrected hook ends at 2170 ms,
+after card three completes at 2100 ms and before card four flips at 2300 ms.
+All 17 focused hook/card tests and 20 native studio previews pass, including
+production delays, four unequal delays, phone/desktop widths and reload.
+Native audio measurements confirm signal through the third completed reveal
+and a whole-pair ending before the final CSS flip. Full validation passes 3,635
+application tests, 241 harness tests, App/studio typechecks and both builds.
+Publication evidence is recorded in SOUND_PASS2_SMOKE_CORRECTIONS.md.
+Checkpoint: `release-holm-heartbeat-clock-20261102`; its matching `-verified`
+tag records the exact-SHA deployment and public asset verification receipt.
+Jeremy's new production/device smoke remains pending.
+
 # Sound Pass 2 smoke corrections — 2026-11-02 — published, Holm heartbeat smoke failed
 
 Jeremy's production smoke rejects the Holm heartbeat: three rapid lub-dubs end
