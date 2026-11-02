@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import {diceLandingSound} from '@/lib/audio/approvedSounds';
+import {presentSound} from '@/lib/audio/presentationSound';
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCDie as SCCDieType } from "@/lib/sccGameLogic";
 import { HorsesDie } from "./HorsesDie";
 
 interface DiceRollAnimationProps {
+  audioIdentity?: string;
   /** The dice to animate */
   dice: (HorsesDieType | SCCDieType)[];
   /** Indices of dice that should animate (unheld dice) */
@@ -46,6 +49,7 @@ const createTumbleDatum = (): TumbleDatum => ({
 });
 
 export function DiceRollAnimation({
+  audioIdentity,
   dice,
   animatingIndices,
   targetPositions,
@@ -60,6 +64,20 @@ export function DiceRollAnimation({
   
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing">("flying");
+  const [landedIdentity, setLandedIdentity] = useState<string | undefined>();
+  const soundSurface = useRef<HTMLDivElement>(null);
+  const soundInterrupted = useRef(false);
+  useEffect(() => {
+    const retire = () => { soundInterrupted.current = true; };
+    const hidden = () => { if (document.hidden) retire(); };
+    document.addEventListener('visibilitychange', hidden); window.addEventListener('offline', retire);
+    return () => { document.removeEventListener('visibilitychange', hidden); window.removeEventListener('offline', retire); };
+  }, []);
+  useLayoutEffect(() => {
+    if (phase !== 'landing' || !audioIdentity || landedIdentity !== audioIdentity) return;
+    const sound = diceLandingSound(animatingIndices.filter((_, i) => !!targetPositions[i]), dice.length);
+    if (sound) presentSound(sound, audioIdentity, soundInterrupted.current ? null : soundSurface.current);
+  }, [phase, audioIdentity, landedIdentity]);
   const [flyProgress, setFlyProgress] = useState(0);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
@@ -93,6 +111,7 @@ export function DiceRollAnimation({
 
   useEffect(() => {
     if (animatingIndices.length === 0) return;
+    soundInterrupted.current = document.hidden || !navigator.onLine;
 
     settledRef.current = false;
 
@@ -150,6 +169,7 @@ export function DiceRollAnimation({
       setPhase("landing");
       if (!completedRef.current) {
         completedRef.current = true;
+        setLandedIdentity(audioIdentity);
 
         completionTimeoutRef.current = window.setTimeout(() => {
           settledRef.current = true;
@@ -179,7 +199,7 @@ export function DiceRollAnimation({
   // Y offset is now passed in as a prop to match DiceTableLayout's unheldYOffset
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-20" data-dice-layer="animation" data-layer-z={20}>
+    <div ref={soundSurface} className="absolute inset-0 pointer-events-none z-20" data-dice-layer="animation" data-layer-z={20}>
       {animatingIndices.map((dieIndex, animIdx) => {
         const die = dice[dieIndex];
         const target = targetPositions[animIdx];

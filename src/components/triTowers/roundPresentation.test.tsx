@@ -6,7 +6,7 @@ import {useTriLiveEntry} from '@/hooks/useTriLiveEntry';
 import {triDealProgress,triResultTimeline} from '@/lib/triTowers/roundTimeline';
 import rulesV2 from '@/lib/triTowers/rules-v2.json';
 import type {TriTowersBoardView} from './TriTowersBoard';
-const audio=vi.hoisted(()=>({request:vi.fn(),follow:vi.fn((_event:any)=>vi.fn())}));
+const audio=vi.hoisted(()=>({request:vi.fn(),present:vi.fn(),getSnapshot:()=>({userId:'user',enabled:true}),follow:vi.fn((_event:any)=>vi.fn())}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:audio}));
 vi.mock('@/components/PlayingCard',()=>({PlayingCard:({isHidden}:any)=><span data-card-back={isHidden}/> }));
 globalThis.ResizeObserver=class{observe(){}disconnect(){}unobserve(){}} as any;
@@ -44,7 +44,7 @@ describe('shared v3 round presentation in both adapters',()=>{
    expect(ui.container.querySelector<HTMLElement>('.tri-upcard-flip')?.style.visibility).toBe('visible');
    expect(ui.container.querySelector('.tri-card-flight')).toBeNull();
   }
-  expect(ui.getByLabelText('Waste 8 of hearts')).toBeTruthy();expect(calls('tri-swoosh:')).toHaveLength(0);expect(audio.request).toHaveBeenCalledTimes(2);expect(audio.request.mock.calls.every(([event])=>event.id.startsWith('tri-card:'))).toBe(true);
+  expect(ui.getByLabelText('Waste 8 of hearts')).toBeTruthy();expect(calls('tri-swoosh:')).toHaveLength(0);expect(audio.present).toHaveBeenCalledTimes(2);expect(audio.present.mock.calls.every(([event])=>event.id.startsWith('tri-card:'))).toBe(true);
   expect(Element.prototype.animate).not.toHaveBeenCalled();expect(ui.getByRole('button',{name:'Remove 9 of hearts'}).hasAttribute('disabled')).toBe(false);
   delete (Element.prototype as any).animate;vi.restoreAllMocks();
  });
@@ -116,9 +116,21 @@ describe('shared v3 round presentation in both adapters',()=>{
  });
 });
 
-it('explicit saved replay admits the existing count/audio while fresh live entry stays silent',()=>{
+it('saved replay retains visual score presentation while all historical audio stays silent',()=>{
  const end={...base,phase:'stage_complete' as const,deadline:7000},saved={...result,reason:'take_score',elapsed:2600};
  const live=render(<TriTowersBoard {...props} view={end} result={saved}/>);expect(calls('tri-count:')).toHaveLength(0);live.unmount();
- const review=render(<TriTowersBoard {...props} view={end} result={saved} replay/>);expect(calls('tri-count:')).toHaveLength(1);expect(review.getByLabelText('Score 550')).toBeTruthy();
- act(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});review.rerender(<TriTowersBoard {...props} view={end} result={{...saved,elapsed:2800}} replay/>);expect(calls('tri-count:')).toHaveLength(1);
+ const review=render(<TriTowersBoard {...props} view={end} result={saved} replay/>);expect(calls('tri-count:')).toHaveLength(0);expect(review.getByLabelText('Score 550')).toBeTruthy();
+ act(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});review.rerender(<TriTowersBoard {...props} view={end} result={{...saved,elapsed:2800}} replay/>);expect(calls('tri-count:')).toHaveLength(0);
+});
+
+it('opening card sounds follow live deal progress and retire on recovery',()=>{
+ const view={...base,phase:'intro' as const,deadline:2500},ui=render(<TriTowersBoard {...props} view={view} now={600} liveEntry/>);
+ ui.rerender(<TriTowersBoard {...props} view={view} now={1400} liveEntry/>);
+ const cards=()=>audio.present.mock.calls.filter(([e])=>e.id.startsWith('palette:'));
+ expect(cards().some(([e])=>e.id.includes(':deal:'))).toBe(true);
+ ui.rerender(<TriTowersBoard {...props} view={view} now={2200} liveEntry/>);expect(cards().some(([e])=>e.id.includes('opening-upcard'))).toBe(true);
+ const count=cards().length;ui.rerender(<TriTowersBoard {...props} view={view} now={2200} liveEntry/>);expect(cards()).toHaveLength(count);
+ ui.rerender(<TriTowersBoard {...props} view={view} now={2300} recoveryEpoch={1}/>);expect(cards()).toHaveLength(count);
+ ui.unmount();audio.present.mockClear();const history=render(<TriTowersBoard {...props} view={view} now={600}/>);
+ history.rerender(<TriTowersBoard {...props} view={view} now={2200}/>);expect(cards()).toHaveLength(0);
 });

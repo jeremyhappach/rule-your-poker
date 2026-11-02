@@ -1,3 +1,4 @@
+import {preloadApprovedSounds} from '@/lib/audio/approvedSounds';
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
@@ -44,6 +45,7 @@ import { startVoicePresenceHeartbeat } from "@/lib/runtimeInstrumentation/voiceP
 // Every tab visible to the server publishes route + active voice op every ~4s.
 startVoicePresenceHeartbeat();
 const disposeAudio = platformAudio.install();
+void preloadApprovedSounds();
 if (import.meta.hot) import.meta.hot.dispose(disposeAudio);
 
 // PIPELINE PROOF: fire the earliest observable events BEFORE any other

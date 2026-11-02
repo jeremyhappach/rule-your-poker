@@ -1,6 +1,7 @@
 export type TrackAudioNode = <T extends AudioNode>(node: T) => T;
 export interface AudioCue {
   durationMs: number;
+  policy?: {priority: number; group: string; intervalMs: number};
   schedule: (context: AudioContext, destination: AudioNode, track: TrackAudioNode) => boolean;
 }
 
@@ -45,6 +46,8 @@ export class AudioManager {
   private played = new Set<string>();
   private pending = new Map<string, { event: AudioEvent; owners: Set<object>; timer: ReturnType<typeof setTimeout> }>();
   private active = new Set<() => void>();
+  private voices = new Map<() => void, NonNullable<AudioCue['policy']>>();
+  private lastGroup = new Map<string, number>();
   private timelines = new Map<string, TimelineOwner>();
   private uninstall: (() => void) | null = null;
   private primedContext: AudioContext | null = null;
@@ -225,6 +228,16 @@ export class AudioManager {
     return this.schedule(cue, this.env.now() + cue.durationMs + 50);
   }
 
+  /** Consume a discrete visual edge immediately, even while muted or unloaded. */
+  present(event: {userId: string; id: string; cue?: AudioCue}) {
+    const key = `ptown-audio:${event.userId}:${event.id}`;
+    if (event.userId !== this.userId || this.hasPlayed(key)) return false;
+    this.remember(key);
+    if (!event.cue || this.enabled !== true) return false;
+    this.unlock();
+    return this.schedule(event.cue, this.env.now() + event.cue.durationMs + 25);
+  }
+
   request(event: AudioEvent) {
     const key = `ptown-audio:${event.userId}:${event.id}`;
     if (event.userId !== this.userId || this.hasPlayed(key) || event.expiresAt <= this.env.now()) return () => {};
@@ -312,6 +325,16 @@ export class AudioManager {
     const ctx = this.context;
     if (!ctx || ctx.state !== 'running' || this.enabled !== true || this.pageAway || this.sessionInterrupted || this.env.document().hidden) return false;
     if (expiresAt - this.env.now() < cue.durationMs) return false;
+    const policy = cue.policy;
+    if (policy) {
+      const recent = this.env.now() - (this.lastGroup.get(policy.group) ?? -Infinity) < policy.intervalMs;
+      const stronger = [...this.voices.values()].some(voice => voice.priority > policy.priority);
+      // Suppressed effects must not queue up behind the meaningful sound.
+      if (recent || stronger || (this.voices.size >= 3 && ![...this.voices.values()].some(v => v.priority < policy.priority))) {
+        scheduled?.(() => {});
+        return true;
+      }
+    }
     const nodes: AudioNode[] = [];
     const track: TrackAudioNode = node => { nodes.push(node); return node; };
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -322,6 +345,7 @@ export class AudioManager {
         try { node.disconnect(); } catch { /* Already disconnected. */ }
       }
       this.active.delete(stop);
+      this.voices.delete(stop);
     };
     try {
       // Connect only after the complete cue schedules, so a partial failure stays silent.
@@ -331,6 +355,13 @@ export class AudioManager {
         return false;
       }
       output.connect(ctx.destination);
+      // Existing bell/scoring/notification cues remain unchanged, but their
+      // active presence keeps new routine table sounds from masking them.
+      this.voices.set(stop, policy ?? {priority: 50, group: 'existing', intervalMs: 0});
+      if (policy) {
+        for (const [end, voice] of this.voices) if (end !== stop && voice.priority < policy.priority) end();
+        this.lastGroup.set(policy.group, this.env.now());
+      }
       this.active.add(stop);
       timer = setTimeout(stop, Math.min(cue.durationMs, expiresAt - this.env.now()));
       scheduled?.(stop);

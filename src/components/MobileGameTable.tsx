@@ -150,6 +150,8 @@ import { useHolmCommunityFaces } from '@/lib/holmCommunityFaces';
 import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 import { HolmChuckyRevealCard } from "./HolmChuckyRevealCard";
 import { ChoppedAnimation } from "./ChoppedAnimation";
+import {useHolmCrackedResult} from '@/hooks/useHolmCrackedResult';
+import {presentSound} from '@/lib/audio/presentationSound';
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 import { MobileChatPanel } from "./MobileChatPanel";
@@ -4932,7 +4934,14 @@ export const MobileGameTable = ({
   ]);
   const onChipTransferPresentationBatchStarted = useCallback((batch: ChipPresentationBatch) => {
     onThreeFiveSevenFinancialBatchStarted(batch);
-  }, [onThreeFiveSevenFinancialBatchStarted]);
+    const terminalAward = gameType === 'holm-game'
+      ? holmAdmittedTransferPresentationsRef.current.get(batch.id)?.stage === 'chucky-final-award'
+      : gameType === '3-5-7' ? threeFiveSevenWinPhase === 'pot-to-player'
+      : (gameType === 'horses' || gameType === 'ship-captain-crew') && !!horsesWinPotTriggerId;
+    if (terminalAward && batch.game_id === gameId && batch.transfers.some(t =>
+      t.from.kind === 'pot' && t.to.kind === 'player' && t.to.playerId === currentPlayer?.id))
+      presentSound('winner', `${gameType}:${batch.id}`, activeTab === 'cards' ? tableContainerRef.current : null);
+  }, [onThreeFiveSevenFinancialBatchStarted, gameType, threeFiveSevenWinPhase, horsesWinPotTriggerId, gameId, players, currentUserId, activeTab]);
   const onChipTransferPresentationBatchSettled = useCallback((batch: ChipPresentationBatch) => {
     onThreeFiveSevenFinancialBatchSettled(batch);
 
@@ -8800,20 +8809,15 @@ export const MobileGameTable = ({
 
 
 
-  // Detect Chucky chopped animation
+  const crackedResultId = useHolmCrackedResult(gameId, holmDealerGameId, holmHandNumber,
+    currentPlayer?.id, roundStatus, gameType === 'holm-game' && activeTab === 'cards' && !isPaused);
+  // The settlement row owns this outcome; aliases and announcement text do not.
   useEffect(() => {
-    if (gameType === 'holm-game' && !chuckyVisualRevealComplete) return;
-    if (gameType === 'holm-game' && lastRoundResult && lastRoundResult !== lastChoppedResultRef.current && currentUserId) {
-      const currentUsername = currentPlayer?.profiles?.username || '';
-      if (!currentUsername) return;
-      const is1v1Loss = lastRoundResult.includes(`Chucky beat ${currentUsername} `);
-      const isTieBreakerLoss = lastRoundResult.includes('lose to Chucky') && (lastRoundResult.includes(`${currentUsername} and `) || lastRoundResult.includes(` and ${currentUsername} lose`) || lastRoundResult.includes(`! ${currentUsername} lose`));
-      if (is1v1Loss || isTieBreakerLoss) {
-        lastChoppedResultRef.current = lastRoundResult;
-        setShowChopped(true);
-      }
+    if (chuckyVisualRevealComplete && crackedResultId && crackedResultId !== lastChoppedResultRef.current) {
+      lastChoppedResultRef.current = crackedResultId;
+      setShowChopped(true);
     }
-  }, [lastRoundResult, gameType, currentPlayer, currentUserId, chuckyVisualRevealComplete]);
+  }, [crackedResultId, chuckyVisualRevealComplete]);
 
   // Pre-settlement legs latch — mirrors player.legs > 0 for the CURRENT
   // handContextId while no 357_SWEEP sentinel is present. On sentinel
@@ -12752,7 +12756,7 @@ export const MobileGameTable = ({
         )}
         
         {/* Chopped Animation */}
-        <ChoppedAnimation show={showChopped} onComplete={() => setShowChopped(false)} />
+        <ChoppedAnimation show={showChopped} resultIdentity={crackedResultId} onComplete={() => setShowChopped(false)} />
         
         {/* 357 Sweeps Pot Animation — completion is the SOLE release
             signal for the sweep-wait phase. If legs were present at

@@ -1,3 +1,4 @@
+import {presentSound} from '@/lib/audio/presentationSound';
 import { useCallback, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { useChipTransferPresentationAdmission } from '@/lib/canonicalShell/ChipTransportProvider';
@@ -25,6 +26,7 @@ export function FarkleTerminalPresentation({ scope, state, live, winnerName, win
   const started = useCallback((batch: ChipPresentationBatch) => {
     if (!live || !token || presented.current === token || !isFarkleTerminalPayout(batch, scope, state)) return;
     presented.current = token;
+    if (winnerIsSelf) presentSound('winner', token, document.querySelector('[data-farkle-active-area], [data-canonical-felt-interaction-layer]'));
     emit({ id: token, type: 'match_win', scope: { dealerGameId: scope.gameId, roundId: scope.roundId },
       payload: { text: `${winnerName} wins!`, winnerId: state.winnerPlayerId }, ttlMs: 10000 });
     if (winnerIsSelf) void confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });

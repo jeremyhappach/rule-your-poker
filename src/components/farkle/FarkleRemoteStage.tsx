@@ -1,4 +1,5 @@
-import { type CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
+import {useDiceLandingAudio} from '@/hooks/useDiceLandingAudio';
 import type { FarkleDie as Die } from '@/lib/farkle/types';
 import { farkleStraightRow } from '@/lib/farkle/presentation';
 import { FarkleDie } from './FarkleDie';
@@ -19,6 +20,8 @@ export function FarkleRemoteStage({ dice, receiptKey, animate = false, previewPh
 }) {
   const phase = useFarkleRollPhase(receiptKey, animate && !previewPhase);
   const shown = previewPhase ?? phase;
+  const soundSurface = useRef<HTMLDivElement>(null);
+  useDiceLandingAudio(receiptKey, animate && !previewPhase && phase === 'reveal', dice.length, soundSurface);
   const orderedDice = farkleStraightRow(dice);
   const heldIndexes = new Set(hold?.indexes ?? []);
   const removingHeldDice = hold?.phase === 'dissolving' || hold?.phase === 'retired';
@@ -32,7 +35,7 @@ export function FarkleRemoteStage({ dice, receiptKey, animate = false, previewPh
     '--farkle-cluster-x': `${40 + (die.index % 3) * 10}%`,
     '--farkle-cluster-y': `${38 + Math.floor(die.index / 3) * 24}%`,
   } as CSSProperties);
-  return <div className="farkle-remote-stage" data-farkle-roll-phase={shown}
+  return <div ref={soundSurface} className="farkle-remote-stage" data-farkle-roll-phase={shown}
     data-farkle-fresh-roll={animate && !previewPhase || undefined} aria-label="Farkle dice">
     {liveDice.map(die => {
       const held = hold?.indexes.includes(die.index) ? hold : undefined;

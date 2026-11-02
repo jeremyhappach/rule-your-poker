@@ -1,3 +1,4 @@
+import {useVisibleCardChangeAudio} from '@/hooks/useVisibleCardChangeAudio';
 import {TakeTwoRules} from '@/components/rules/TakeTwoRules';
 export {TakeTwoRules} from '@/components/rules/TakeTwoRules';
 import {memo,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
@@ -33,7 +34,9 @@ export function TakeTwoView({view:v,userId,now,pending,error,epoch,liveEntry=fal
  const submittedItems=submission?.scope===v.scope&&submission.revision===v.revision?submission.items:[];
  const motion=useTriRoundPresentation({scope:'take-two:'+v.scope,phase:b.phase,connected:connected&&!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards'&&!sessionEnded,modern:true,liveEntry,recoveryEpoch:epoch,resultSequence:takeTwoResultSequence});
  const allClear=!!result&&result.reason==='cleared'&&result.elapsed<takeTwoResultSequence.clearMs;
- const root=useRef<HTMLDivElement>(null),playersRef=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),submitted=useRef(false);
+ const root=useRef<HTMLDivElement>(null),soundSurface=useRef<HTMLDivElement>(null),playersRef=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),submitted=useRef(false);
+ useVisibleCardChangeAudio({scope:v.scope,revision:v.revision,epoch,active:connected&&!error&&!v.paused&&tab==='cards'&&!sessionEnded,
+  signature:JSON.stringify([b.slots,b.current,b.stockRemaining])},'flip',soundSurface);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
  useLayoutEffect(()=>{setSelection(null);setFeedback('');},[v.scope,epoch,tab]);
  const terminal=b.phase==='complete',canSelect=v.canAct&&connected&&!v.paused&&!error&&window.playable&&tab==='cards'&&!sessionEnded,canAct=canSelect&&!pending&&!submission;
@@ -61,7 +64,7 @@ export function TakeTwoView({view:v,userId,now,pending,error,epoch,liveEntry=fal
  <div className="take-root" ref={root} data-take-two={sessionEnded?undefined:''}>
  {error&&!sessionEnded&&<div className="take-error" role="alert">{error} <button onClick={onReconnect}>Reconnect</button></div>}
  {!connected&&!error&&!sessionEnded&&<div className="take-error" role="status">Connecting live updates…</div>}
- {layer&&createPortal(<div className="take-plane">
+ {layer&&createPortal(<div className="take-plane" ref={soundSurface}>
  {!v.solo&&<div className="take-players" ref={playersRef} aria-label="Player scores">{v.players.map(p=><div key={p.id} data-active={p.active}><span>{p.name}</span><b>{p.score.toLocaleString()}</b>{balance?.(p)}</div>)}</div>}
  {!sessionEnded&&<div className="take-fit"><div className="take-cabinet" ref={cabinetRef}>
  <header><span className="take-stage">Round <b>{v.round} / 3</b></span><div className="take-total"><TriScorePill root={cabinetRef} item={{id:v.scope,score:v.terminal?.score??b.score,active:true}} fraction={motion.fraction} value={motion.displayScore??v.terminal?.score??b.score}/></div><button className="take-bank" disabled={!canAct} onClick={()=>send({type:'take_score'})}>Take Score</button></header>

@@ -1,3 +1,17 @@
+## Approved game sound presentation
+
+`src/lib/audio/approvedSounds.ts` maps the seven exact approved samples and the
+Cribbage highlight cue; `pcm.ts` caches decoded native buffers. The existing
+`AudioManager` owns preference, context lifecycle, dedupe and priority/grouping.
+`presentationSound.ts` admits only visible current events. Card flights attach
+at `CardTransportRuntime`; game presentation boundaries own flips, dice and pegs.
+`useHolmCrackedResult` reads an exact committed structured settlement identity.
+`winnerCelebration.ts` and legacy terminal financial presentation callbacks own
+Winner A. None of these sounds advance gameplay or authorize settlement.
+Saved async reviews retain visual presentation with historical sound suppressed.
+Local audition/browser qualification: `dev/sound-lab/`; coverage and smoke:
+`SOUND_EFFECTS_INTEGRATION.md`.
+
 ## Fresh standalone launch branding
 
 `src/lib/launchSplash.ts` captures one document's standalone lobby eligibility.

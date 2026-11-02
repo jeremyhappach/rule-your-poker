@@ -1,5 +1,4 @@
-import {platformAudio} from '@/lib/audio/platformAudio';
-import {cardSwooshCueAt} from '@/lib/audio/cardSwoosh';
+import {presentSound} from '@/lib/audio/presentationSound';
 import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 /**
  * CardTransportRuntime — owns launch, travel, arrival, destroy.
@@ -349,7 +348,6 @@ export function CardTransportRuntime({
           const r = resolvedRef.current.get(intent.id);
           if (!r) return;
           r.launched = true;
-          if(intent.soundUserId)platformAudio.request({userId:intent.soundUserId,id:'card-flight:'+intent.id,expiresAt:performance.now()+100,cue:cardSwooshCueAt(0,flightMs)});
           if (isThreeFiveSevenSelfHandIntent(intent)) {
             const currentTo = resolveCardEndpoint(intent.to, container) ?? r.to;
             record357DealLandingTrace(intent.cardId, {
@@ -381,7 +379,6 @@ export function CardTransportRuntime({
         }, delayMs);
         launchTimersRef.current.set(intent.id, tLaunch);
       } else {
-        if(intent.soundUserId)platformAudio.request({userId:intent.soundUserId,id:'card-flight:'+intent.id,expiresAt:performance.now()+100,cue:cardSwooshCueAt(0,flightMs)});
         if (isThreeFiveSevenSelfHandIntent(intent)) {
           const currentTo = resolveCardEndpoint(intent.to, container) ?? to;
           record357DealLandingTrace(intent.cardId, {
@@ -840,7 +837,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           animation: `${kf} ${card.flightMs}ms ${easing} 0ms 1 forwards`,
           willChange: 'transform, opacity',
         }}
-        onAnimationStart={() => logActualLaunch('animationstart')}
+        onAnimationStart={() => { logActualLaunch('animationstart'); presentSound('slide', card.intent.id, containerRef.current); }}
         onAnimationEnd={() => logActualArrival('animationend')}
       >
         {(card.intent.stackCount??1)>1&&<span data-card-stack-count style={{position:'absolute',right:0,bottom:0,zIndex:1,background:'#111',color:'#fff',fontSize:12,padding:'1px 3px'}}>{card.intent.stackCount}</span>}

@@ -31,8 +31,8 @@ export function useQuintzeeScorePresentation(v:QuintzeeSnapshot,now:number,userI
  const banner=event?.authoritative?event.labels[0]:event&&now<event.countAt?event.labels[Math.floor(Math.max(0,now-event.start)/QUINTZEE_CELEBRATION_MS)]:undefined;
  const bannerIndex=event?.authoritative?0:event?Math.floor(Math.max(0,now-event.start)/QUINTZEE_CELEBRATION_MS):0;
  const bannerKey=banner&&event&&now<event.countAt?`quintzee-bonus:${event.id}:${bannerIndex}`:null;
- useEffect(()=>{if(!bannerKey||!event)return;const at=event.start+bannerIndex*QUINTZEE_CELEBRATION_MS,local=performance.now();return platformAudio.follow({userId,id:bannerKey,startedAt:local-(now-at),expiresAt:local+at+QUINTZEE_CELEBRATION_MS-now,cueAt:event.authoritative?upperBonusCueAt:celebrationCueAt});},[bannerKey,userId]);
- usePresentedScoreAudio(userId,event&&now>=event.countAt?`quintzee-base:${event.id}`:null,event?{startedAt:event.countAt,endsAt:event.end,from:event.from,to:event.to}:null,now);
+ useEffect(()=>{if(!userId||!bannerKey||!event)return;const at=event.start+bannerIndex*QUINTZEE_CELEBRATION_MS,local=performance.now();return platformAudio.follow({userId,id:bannerKey,startedAt:local-(now-at),expiresAt:local+at+QUINTZEE_CELEBRATION_MS-now,cueAt:event.authoritative?upperBonusCueAt:celebrationCueAt});},[bannerKey,userId]);
+ usePresentedScoreAudio(userId,userId&&event&&now>=event.countAt?`quintzee-base:${event.id}`:null,event?{startedAt:event.countAt,endsAt:event.end,from:event.from,to:event.to}:null,now);
  const fraction=event?Math.max(0,Math.min(1,(now-event.countAt)/(event.end-event.countAt))):1;
  return {base:event?Math.round(event.from+(event.to-event.from)*fraction):base,banner,busy:!!event,finalDelay:fixed?0:finalDelay};
 }

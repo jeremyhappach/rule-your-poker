@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
+import {presentSound} from '@/lib/audio/presentationSound';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { getHandScoringCombos, getTotalFromCombos, type ScoringCombo } from '@/lib/cribbageScoringDetails';
 import {
@@ -41,6 +42,7 @@ type CountingTarget = {
 type TransitionPhase = 'scoring' | 'exiting' | 'entering';
 
 interface CribbageCountingPhaseProps {
+  audioActive?: boolean;
   cribbageState: CribbageState;
   players: Player[];
   onCountingComplete: (winDetected: boolean) => void;
@@ -80,6 +82,7 @@ const EXIT_ANIMATION_MS = 1500; // 1.5 seconds for cards to exit
 const ENTER_ANIMATION_MS = 800; // 0.8 seconds for cards to enter
 
 export const CribbageCountingPhase = ({
+  audioActive = false,
   cribbageState,
   players,
   onCountingComplete,
@@ -98,6 +101,7 @@ export const CribbageCountingPhase = ({
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
   const [highlightedCards, setHighlightedCards] = useState<CribbageCard[]>([]);
+  const [highlightSoundKey, setHighlightSoundKey] = useState<string | null>(null);
   // Store announcement WITH its target label to prevent label mismatch during transitions
   // Announcement carries owner-identity (targetIndex + comboIndex) so the
   // render layer can identity-suppress stale prior-owner announcements
@@ -417,6 +421,11 @@ export const CribbageCountingPhase = ({
   const scoringFanOverlap = useCardOverlap('cardOverlap.cribbage.scoringHand');
   const scoringToCutGap = useCardOverlap('cardOverlap.cribbage.scoringHandToCutGap');
   const firstCardRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    if (highlightSoundKey && highlightedCards.length) {
+      presentSound('cribbageHighlight', highlightSoundKey, audioActive ? firstCardRef.current : null);
+    }
+  }, [highlightSoundKey, highlightedCards, audioActive, winFrozen]);
   const [measuredCardWidthPx, setMeasuredCardWidthPx] = useState<number>(40);
   useEffect(() => {
     const el = firstCardRef.current;
@@ -1346,6 +1355,8 @@ export const CribbageCountingPhase = ({
         });
         if (!isResumedActiveCombo) {
           setHighlightedCards(combo.cards);
+          if (debugContext?.gameId && debugContext.roundId) setHighlightSoundKey(
+            `${debugContext.gameId}:${debugContext.roundId}:${debugContext.handNumber}:${currentTarget.playerId}:${currentTargetIndex}:${currentComboIndex}`);
           publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label, 'combo');
         }
 

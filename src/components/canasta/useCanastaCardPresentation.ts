@@ -4,8 +4,6 @@ import {useCardTransport} from '@/lib/canonicalShell/cardTransport/CardTransport
 import type {CardEndpoint} from '@/lib/canonicalShell/cardTransport/types';
 import {isResolvedJoker,type PhysicalCard} from '@/lib/cardGames/physicalCard';
 import {resolveTransportCardFace} from '@/lib/cardGames/resolvedCardFace';
-import {platformAudio} from '@/lib/audio/platformAudio';
-import {cardSwooshCueAt} from '@/lib/audio/cardSwoosh';
 /** Animate only adjacent observed commits. Reconnect baselines never replay old actions. */
 export function useCanastaCardPresentation(snapshot:Snapshot|null,userId:string){
  const prior=useRef<Snapshot|null>(null),transport=useCardTransport(),dispatch=useRef(transport.dispatch);dispatch.current=transport.dispatch;
@@ -15,9 +13,8 @@ export function useCanastaCardPresentation(snapshot:Snapshot|null,userId:string)
   if(!old||!h||!before||h.id!==before.id||snapshot.state.revision!==old.state.revision+1||!viewer||snapshot.finished)return;
   const emit=(card:PhysicalCard,from:CardEndpoint,to:CardEndpoint,stackCount?:number)=>{
    const id=`canasta:${h.id}:${snapshot.state.revision}:${card.id}`;
-   const accepted=dispatch.current({id,cardId:card.id,handContextId:h.id,face:'visible',from,to,stackCount,durationMs:300,
+   dispatch.current({id,cardId:card.id,handContextId:h.id,face:'visible',from,to,stackCount,durationMs:300,
     ...(isResolvedJoker(card.face)?{jokerFace:card.face}:{visibleFace:resolveTransportCardFace(card.face)!})});
-   if(accepted){const at=performance.now();platformAudio.follow({userId,id:`swoosh:${id}`,startedAt:at,expiresAt:at+100,cueAt:cardSwooshCueAt});}
   };
   const was=before.players[viewer].cards??[],cards=h.players[viewer].cards??[];
   if(before.phase==='draw'&&h.source==='pile'&&h.pileCount===0&&before.pileCount>0){

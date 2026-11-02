@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const repo = fileURLToPath(new URL('../..', import.meta.url));
 export default defineConfig({
-  root, publicDir: false, plugins: [react()],
+  root, envDir:repo, publicDir: false, plugins: [react()],
   resolve: {alias: [
     {find: '@/lib/audio/platformAudio', replacement: root + 'labAudio.ts'},
     {find: '@', replacement: repo + '/src'},

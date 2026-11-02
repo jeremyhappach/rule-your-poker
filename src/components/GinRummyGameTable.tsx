@@ -1,3 +1,4 @@
+import {presentSound} from '@/lib/audio/presentationSound';
 // Gin Rummy Game Table - Mobile layout following CribbageMobileGameTable pattern
 // Circular felt, opponent chip, tabs (cards, chat, lobby, history)
 
@@ -2230,6 +2231,7 @@ export const GinRummyGameTable = ({
             // Winner-only confetti
             if (winnerPlayer.user_id === currentUserId) {
               traceGinAnnouncement('confetti:start', { id: matchWinId, winnerOnly: true });
+              presentSound('winner', matchWinId, tableContainerRef.current);
               confetti({
                 particleCount: 150,
                 spread: 70,

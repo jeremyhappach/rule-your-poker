@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {presentSound} from '@/lib/audio/presentationSound';
 import {useTriTowers} from '@/hooks/useTriTowers';
 import {TriTowersRules,TriTowersView} from './TriTowersView';
 import {triTowersRpc} from '@/lib/triTowers/client';
@@ -15,6 +16,8 @@ export function TriTowersGame(props:Props){
   const game=useTriTowers(props.dealerGameId),chat=useGameChatContext(),announcements=useAnnouncements();
   const [history,setHistory]=useState<{revision:number;frame:Projection}[]>([]),[error,setError]=useState(''),[closing,setClosing]=useState(false);
   const terminal=useRef<string|null>(null),completed=useRef<string|null>(null),callbacks=useRef(props);callbacks.current=props;
+  const sawLive=useRef<string|null>(null);
+  if(game.view&&!game.view.settlement&&game.connected)sawLive.current=game.view.identity.dealerGameId;
   const batch=game.view?.financial?.batch;
   const validBatch=!!batch&&!!game.view&&isTriTowersTerminalBatch(batch,game.view);
   const cursor=useChipPresentationCursorState(validBatch?batch.cursor:null);
@@ -29,6 +32,8 @@ export function TriTowersGame(props:Props){
     if(!game.view?.settlement||terminal.current===props.dealerGameId||props.sessionEnded)return;
     if(game.view.finished&&financialReady){complete(game.view);return;}
     terminal.current=props.dealerGameId;callbacks.current.onTerminalActive(true);
+    if(sawLive.current===props.dealerGameId&&game.presentationEpoch===0&&validBatch&&game.view.financial?.resultId&&(game.view.settlement[game.view.viewerId]??0)>0)
+      presentSound('winner',`tri-towers:${game.view.financial.resultId}`,props.activeTab==='cards'?document.querySelector('[data-fullscreen-board-slot]'):null);
     announcements.emit({id:`match_win:tri-towers:${props.dealerGameId}`,type:'match_win',scope:{dealerGameId:game.view.identity.sessionId,roundId:game.view.identity.roundId},
       payload:{text:`TriTowers complete · ${game.view.players.map(p=>`${p.name}: ${game.view!.scores[p.id].toLocaleString()}`).join(' · ')}`},ttlMs:10000});
   },[game.view,props.dealerGameId,props.sessionEnded,announcements,financialReady]);

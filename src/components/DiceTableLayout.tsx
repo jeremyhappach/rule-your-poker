@@ -2076,6 +2076,7 @@ export function DiceTableLayout({
       {/* Fly-in animation overlay for unheld dice */}
       {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
+          audioIdentity={cacheKey && rollKey !== undefined ? `${gameType}:${cacheKey}:${rollKey}` : undefined}
           runKey={flyInRunId}
           dice={effectiveDice}
           animatingIndices={animatingDiceIndices}

@@ -1,3 +1,4 @@
+import {presentSound} from '@/lib/audio/presentationSound';
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import {useCompletionRetry} from '@/hooks/useCompletionRetry';
 import { supabase } from '@/integrations/supabase/client';
@@ -7337,6 +7338,12 @@ export const CribbageMobileGameTable = ({
   useChipTransferPresentationAdmission(
     canAdmitCribbageTransfer,
     handleCribbageTransferSettled,
+    (batch) => {
+      if (winSequencePhase === 'chips' && currentPlayerId === winSequenceData?.winnerId
+        && batch.game_id === gameId && batch.dealer_game_id === dealerGameId
+        && batch.transfers.some(t => t.from.kind === 'player' && t.to.kind === 'player' && t.to.playerId === currentPlayerId))
+        presentSound('winner', `cribbage:${batch.id}`, activeTab === 'cards' ? tableContainerRef.current : null);
+    },
   );
 
 
@@ -8897,6 +8904,7 @@ export const CribbageMobileGameTable = ({
                 {/* Counting Phase Overlay */}
                 {countingStateSnapshot && !countingDelayActive && (
                   <CribbageCountingPhase
+                    audioActive={activeTab === 'cards' && !sessionEndedPhase}
                     cribbageState={countingStateSnapshot}
                     players={players}
                     onCountingComplete={handleCountingComplete}
@@ -8933,6 +8941,8 @@ export const CribbageMobileGameTable = ({
               cribVisible={true}
             >
               {!sessionEndedPhase && <CribbagePegBoard
+                audioScope={`${gameId}:${dealerGameId}:${currentRoundId}:${currentHandNumber}`}
+                audioActive={activeTab === 'cards' && !sessionEndedPhase}
                 players={players}
                 playerStates={pegboardPlayerStates}
                 winningScore={

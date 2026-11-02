@@ -15,7 +15,7 @@ const mock=vi.hoisted(()=>({snapshot:null as any,change:null as any,request:vi.f
 vi.mock('@/lib/delayed/client',()=>({delayedRequest:mock.request,delayedRpc:vi.fn(),DelayedRequestError:class extends Error{},gameName:(s:string)=>s,signed:String}));
 vi.mock('@/lib/ptownWords/client',()=>({wordsRpc:mock.words}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:()=>{const c={on:(_e:any,_f:any,cb:any)=>{mock.change=cb;return c;},subscribe:(cb:any)=>{cb?.('SUBSCRIBED');return c;}};return c;},removeChannel:vi.fn()}}));
-vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{follow:mock.audio,request:mock.audio}}));
+vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{follow:mock.audio,request:mock.audio,present:vi.fn(),getSnapshot:()=>({userId:'user',enabled:true})}}));
 const quintRules={version:'quintzee/3',durationMs:180000,resultMs:5000,clearBonus:35,upperThreshold:63,upperBonus:35,bonusThreshold:80000,rounds:2,maxRounds:3,introMs:2500,speedMin:100,speedRange:200};
 function board(game:string):any{
  if(game==='run21')return {playerId:'me',columns:Array.from({length:5},()=>[{rank:'10',suit:'spades'}]),passesUsed:0,presented:[],current:{rank:'A',suit:'spades'},cardIndex:0,revision:1,startedAt:0,deadline:120000,result:null};

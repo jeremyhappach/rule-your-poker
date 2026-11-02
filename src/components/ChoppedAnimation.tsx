@@ -1,14 +1,20 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useLayoutEffect, useState, useRef } from "react";
+import {presentSound} from '@/lib/audio/presentationSound';
 
 interface ChoppedAnimationProps {
+  resultIdentity?: string | null;
   show: boolean;
   onComplete?: () => void;
 }
 
-export const ChoppedAnimation = ({ show, onComplete }: ChoppedAnimationProps) => {
+export const ChoppedAnimation = ({ show, onComplete, resultIdentity }: ChoppedAnimationProps) => {
+  const surface = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const onCompleteRef = useRef(onComplete);
   const hasShownRef = useRef(false);
+  useLayoutEffect(() => {
+    if (visible && resultIdentity) presentSound('cracked', resultIdentity, surface.current);
+  }, [visible, resultIdentity]);
   
   // Keep ref updated
   onCompleteRef.current = onComplete;
@@ -31,7 +37,7 @@ export const ChoppedAnimation = ({ show, onComplete }: ChoppedAnimationProps) =>
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-[1000] pointer-events-none overflow-hidden">
+    <div ref={surface} className="absolute inset-0 flex items-center justify-center z-[1000] pointer-events-none overflow-hidden">
       {/* Cracked glass overlay */}
       <div className="absolute inset-0 bg-black/20" />
       

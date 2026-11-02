@@ -1,3 +1,4 @@
+import {useVisibleCardChangeAudio} from '@/hooks/useVisibleCardChangeAudio';
 import {TripFlipRules} from '@/components/rules/TripFlipRules';
 export {TripFlipRules} from '@/components/rules/TripFlipRules';
 import {memo,useEffect,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
@@ -33,6 +34,8 @@ export function TripFlipView({view:v,userId,now,pending,error,epoch,liveEntry=fa
  const selected=selection?.scope===v.scope&&selection.revision===v.revision&&tripFlipCard(b,selection.location)===selection.card?selection:null;
  const presentation=useTriRoundPresentation({scope:'trip-flip:'+v.scope,phase:b.phase,connected:connected&&!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards'&&!sessionEnded,modern:true,liveEntry,recoveryEpoch:epoch});
  const root=useRef<HTMLDivElement>(null),viewportRef=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),flight=useRef(false),previous=useRef({scope:v.scope,revision:v.revision,epoch});
+ useVisibleCardChangeAudio({scope:v.scope,revision:v.revision,epoch,active:connected&&!error&&!v.paused&&tab==='cards'&&!sessionEnded,
+  signature:JSON.stringify([b.columns,b.cells,b.fan])},'slide',viewportRef);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
  useLayoutEffect(()=>{setSelection(null);setFeedback('');},[v.scope,epoch,tab]);
  useEffect(()=>{const p=previous.current;previous.current={scope:v.scope,revision:v.revision,epoch};if(p.scope!==v.scope||p.epoch!==epoch||p.revision>=v.revision||!connected||error||v.paused||tab!=='cards'||document.hidden||b.phase!=='playing'||b.event.points<=0)return;return platformAudio.request({userId,id:`trip-flip:${v.scope}:${v.revision}:clear`,expiresAt:performance.now()+1100,cue:tripFlipClearCue(!!b.event.special)});},[v.scope,v.revision,epoch,connected,error,v.paused,tab,b.phase,b.event.points,b.event.special,userId]);

@@ -4,6 +4,7 @@ import triRules from '@/lib/triTowers/rules-v2.json';
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {useState} from 'react';
+import {platformAudio} from '@/lib/audio/platformAudio';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
 import {ReviewGate,ChildResults,MatchFinale} from './ResultReview';
 import {TooltipProvider} from '@/components/ui/tooltip';
@@ -20,7 +21,7 @@ beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-29T15:00:0
  mock.home={id:'match',status:'settled',organizer:'me',opponent:'other',players:[{id:'me',name:'Hap'},{id:'other',name:'Other'}],net:-5,reviewsComplete:true,receipt:{match_id:'match'},lineup:[{id:'child',game:'run21',stake:5,ordinal:1,terminal:true,result:{winner:'other',delta:-5}}]};
  mock.rpc.mockReset();mock.rpc.mockImplementation(async(name:string,args:any)=>{if(name==='delayed_reviews')return structuredClone(mock.state);if(name==='delayed_review_begin')return {elapsed:0,seen:false};if(name==='delayed_review_ack'){mock.state.events.find((e:any)=>e.id===args.p_event).seen=true;return;}if(name==='delayed_home'||name==='delayed_history_detail')return mock.home;});
 });
-afterEach(()=>{cleanup();vi.useRealTimers();});
+afterEach(()=>{expect(platformAudio.request).not.toHaveBeenCalled();expect(platformAudio.follow).not.toHaveBeenCalled();cleanup();vi.clearAllMocks();vi.useRealTimers();});
 const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve();});
 const advance=async(ms:number)=>act(async()=>{await vi.advanceTimersByTimeAsync(ms);});
 const gate=()=> <ReviewGate home={mock.home} childId='child' matchId='match' userId='me'>{()=> <h1>Gameplay owner</h1>}</ReviewGate>;

@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import {cleanup,renderHook} from '@testing-library/react';import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {useRacePokerAudio} from './useRacePokerAudio';import type {RacePokerSnapshot} from '@/lib/racePoker/model';
-const request=vi.hoisted(()=>vi.fn((_request:{id:string})=>vi.fn()));vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{request}}));
+const request=vi.hoisted(()=>vi.fn((_request:{id:string})=>vi.fn()));vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{request,present:request}}));
 const frame=(revision:number,phase='playing')=>({scope:'a:1:p',revision,paused:false,viewerId:'p',terminal:{winnerIds:['p']},board:{phase,hand:revision>1?[0]:[],result:phase==='stage_complete'?{points:4500}:null}} as RacePokerSnapshot);
 beforeEach(()=>request.mockClear());afterEach(cleanup);
-it('admits new card, hoof and victory edges once, with cancellation',()=>{
+it('admits new card and hoof edges once; final victory waits for the settled table owner',()=>{
  const stop=vi.fn();request.mockReturnValue(stop);const {rerender,unmount}=renderHook(({v})=>useRacePokerAudio(v,'user',0,20,true,'','cards',false),{initialProps:{v:frame(1)}});
  expect(request).not.toHaveBeenCalled();rerender({v:frame(2)});rerender({v:frame(2)});expect(request).toHaveBeenCalledTimes(1);
- rerender({v:frame(3,'stage_complete')});rerender({v:frame(4,'complete')});expect(request).toHaveBeenCalledTimes(3);expect(request.mock.calls.map(c=>c[0].id)).toEqual(expect.arrayContaining([expect.stringContaining(':card:'),expect.stringContaining(':hoof:'),expect.stringContaining(':victory:')]));unmount();expect(stop).toHaveBeenCalled();
+ rerender({v:frame(3,'stage_complete')});rerender({v:frame(4,'complete')});expect(request).toHaveBeenCalledTimes(2);expect(request.mock.calls.map(c=>c[0].id)).toEqual(expect.arrayContaining([expect.stringContaining(':card'),expect.stringContaining(':hoof:')]));unmount();expect(stop).toHaveBeenCalled();
 });
 it('never sounds recovered cards, results or victory snapshots',()=>{
  const {rerender}=renderHook(({v,epoch})=>useRacePokerAudio(v,'user',epoch,5,true,'','cards',false),{initialProps:{v:frame(1),epoch:0}});

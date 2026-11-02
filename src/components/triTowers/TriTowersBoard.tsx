@@ -1,4 +1,5 @@
 import {useLayoutEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
+import {presentSound} from '@/lib/audio/presentationSound';
 import {PlayingCard} from '@/components/PlayingCard';
 import {CountdownDots} from '@/components/ui/CountdownDots';
 import {adjacent,cardName,position,isV2,type Projection,type Intent} from '@/lib/triTowers/model';
@@ -39,6 +40,15 @@ export function TriTowersBoard({replay=false,view:v,canAct,onIntent,result,round
  const dealing=modern&&v.phase==='intro',dealElapsed=(v.rules.roundIntroMs??2500)-remaining;
  const deal=(index:number|'stock'|'upcard')=>dealing&&!motion.reduced?triDealProgress(dealElapsed,index):1;
  const flip=deal('upcard');
+ const dealAudio=useRef({scope:roundKey,count:0,flipped:false});
+ const dealtCount=dealing?v.cards.filter((_,i)=>deal(i)>0).length+(deal('stock')>0?1:0):0;
+ useLayoutEffect(()=>{
+  const previous=dealAudio.current;
+  dealAudio.current={scope:roundKey,count:dealtCount,flipped:flip>=.5};
+  if(!dealing||replay||motion.reduced||!motion.introAdmitted)return;
+  if(dealtCount>(previous.scope===roundKey?previous.count:0))presentSound('slide',`${roundKey}:deal:${dealtCount}`,root.current);
+  if(flip>=.5&&previous.scope===roundKey&&!previous.flipped)presentSound('flip',`${roundKey}:opening-upcard`,root.current);
+ },[roundKey,dealtCount,flip,dealing,replay,motion.reduced,motion.introAdmitted]);
  useLayoutEffect(()=>triPaintTiming(roundKey+':'+diagnosticRevision),[roundKey,diagnosticRevision]);
  return <div ref={root} className="tri-shared-board" data-round-key={roundKey} data-stage-result={result?.id} data-dealing={dealing} data-result-elapsed={result?.elapsed}>
   <div className="tri-gameplay-top">

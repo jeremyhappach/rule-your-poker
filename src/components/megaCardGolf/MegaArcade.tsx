@@ -6,6 +6,8 @@ import {MegaCardGolfGame} from '@/components/megaCardGolf/MegaCardGolfGame';
 import {acceptView,type Intent,type MegaView} from '@/lib/megaCardGolf/engine';
 import type {CourseConfig,CourseId} from '@/lib/megaCardGolf/config';
 import {AudioManager} from '@/lib/audio/audioManager';
+import {approvedSound} from '@/lib/audio/approvedSounds';
+import {isSoundSurfaceVisible} from '@/lib/audio/presentationSound';
 import {megaCue} from '@/lib/megaCardGolf/audio';
 import {emptyPresentation,receivePresentation,presentationFrame} from '@/lib/megaCardGolf/presentation';
 import '@/components/megaCardGolf/megaCardGolf.css';
@@ -80,7 +82,7 @@ export function MegaArcade({request,audio,userId,preview=false,onBack,subscribe}
   <CourseSelection courses={catalog.courses} request={request} busy={busy} onSelect={id=>{setBoard(id);setScreen('board');}}/>
  </>}
   {screen==='board'&&catalog.active&&<div className="mega-resume">Your course is still in progress. <button disabled={busy} onClick={()=>void perform(async()=>{await restore(catalog.active!);setScreen('game');history.replaceState(null,'','?run='+catalog.active);})}>Resume course</button> · <button disabled={busy} onClick={()=>void perform(async()=>{const r=await request<MegaView>({op:'state',runId:catalog.active});await request({op:'action',runId:r.id,requestId:crypto.randomUUID(),revision:r.revision,hole:r.hole,intent:{type:'abandon'}});await loadCatalog();})}>Abandon unranked</button></div>}
- {screen==='game'&&view&&<MegaCardGolfGame view={frame?.view??view} presentation={frame??undefined} now={now} busy={busy} autoDrawPending={autoDrawScheduled||autoDrawInFlight.current} canAbandon={view.status==='active'} onIntent={act} onExit={()=>act({type:'abandon'})}/>}
+ {screen==='game'&&view&&<MegaCardGolfGame onSound={(kind,id,surface)=>audio.present({userId,id:`palette:${kind}:mega:${id}`,cue:isSoundSurfaceVisible(surface)?approvedSound(kind):undefined})} view={frame?.view??view} presentation={frame??undefined} now={now} busy={busy} autoDrawPending={autoDrawScheduled||autoDrawInFlight.current} canAbandon={view.status==='active'} onIntent={act} onExit={()=>act({type:'abandon'})}/>}
  {screen==='board'&&selectedCourse&&<CourseClubhouse course={selectedCourse} archives={catalog.archives.filter(a=>a.config.id===board)} request={request} busy={busy} canStart={selectedCourse.enabled&&catalog.admission!==false} completedScore={view?.status==='completed'&&view.config.id===board?view.score:undefined} onStart={startCourse} onReturn={()=>void perform(()=>navigate('courses'))}/>}
  </>}</div>;
 }

@@ -1,4 +1,22 @@
-# Sound effects audition — 2026-11-01 — local review only
+# Approved sound effects — 2026-11-01 — locally qualified; production held
+
+Isolated branch `codex/sound-effects-lab` integrates Jeremy's seven exact
+approved WAVs and one new discrete Cribbage highlight cue. Card flights/flips,
+actual one/multiple dice landings, peg movement, structured HOLM cracked results
+and settled final winner presentations use the existing audio manager and Sounds
+preference. Dense deals group; mute retires active sources; invisible, recovered
+and already-consumed events do not catch up. Saved async result animations remain,
+but their historical audio is silent. Unselected live cues remain unchanged.
+No dependency, schema, rule, timer, financial or production-data change.
+TypeScript, 3,555 source tests (489 files), 241 harness tests, the final production
+build and 11 native Edge/Web Audio checks pass. The final Mega Card Golf addition
+also passes all 105 affected regressions. Local checkpoint:
+`local-sound-effects-qualified-20261101`. Coverage, evidence and device smoke:
+[SOUND_EFFECTS_INTEGRATION.md](SOUND_EFFECTS_INTEGRATION.md).
+No push, main integration or production deployment is authorized. Installed
+phone listening and real-session owner smoke remain pending.
+
+# Sound effects audition — 2026-11-01 — superseded by approved integration
 
 Isolated `codex/sound-effects-lab` adds 21 sourced/original WAV candidates,
 three winner alternatives, nine unchanged reference cues and a development-only

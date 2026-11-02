@@ -2,6 +2,9 @@
 
 This directory is the durable project memory for P-Town Poker. New sessions should read this index, `CURRENT_RELEASE.md`, and only the files relevant to the task.
 
+Approved palette, event ownership, qualification and production hold:
+`SOUND_EFFECTS_INTEGRATION.md` (original candidates: `SOUND_EFFECTS_AUDITION.md`).
+
 Shared audio-engine retirement/recovery and its native browser proof:
 `AUDIO_ENGINE_RECOVERY.md`.
 
