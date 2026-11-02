@@ -204,3 +204,48 @@ rewrite was discarded only in this isolated worktree.
 Release checkpoint: `release-sound-smoke-corrections-20261102`. Its matching
 `-verified` tag records the published SHA, Vercel deployment and remote audio hashes
 after production verification. The original Golf checkout remains untouched.
+
+## Failed production heartbeat smoke and read-only RCA — 2026-11-02
+
+Jeremy reports three rapid lub-dubs, stopping before the third card shows, and
+reiterates that the heartbeat must be independent of the varying card timings.
+The separate 357 Hand Strength bot report is Queued in BACKLOG.md; it was not
+investigated as part of this audio scope. No exact smoke session/device identity
+was supplied, so the reproduction below is a source-level timing proof, not a
+captured trace of Jeremy's device.
+
+Published owner: `MobileGameTable`'s single Chucky reveal stepper calls
+`useChuckyRevealAudio.armReveal`; the first real `HolmChuckyRevealCard` CSS
+transition starts audio. Identity remains the canonical `deal.handContextId`,
+with one admission per hand and shared user/event playback receipts. Later
+cards do not restart it; mute, interruption, unmount, identity change and final
+flip stop it. The sole production caller is MobileGameTable; the other caller
+is the local sound studio.
+
+A read-only query of `xvhmbuppghwmwpwrkzao.public.game_defaults` for `holm`
+returns 0.5 seconds for the ordinary steps and 0.8 seconds for the final pause.
+The unchanged shipped hook therefore sets a 440 ms pair interval, not the
+audition's 760 ms. Its whole-pair fit calculation is sensitive to the native
+first-render offset. Executing that actual hook under a controlled clock with
+the existing four-step sequence and a 20 ms render offset gives pair starts at
+520, 960 and 1400 ms and sound ending at 1800 ms. Card three starts its 600 ms
+turn at 1500 ms and completes at 2100 ms; card four starts at 2300 ms. With the
+unrealistic zero-render-offset case, a fourth pair fits exactly at the 80 ms
+margin. This explains the observed rapid three-pair pattern and early silence.
+Ignored proof: `qualification.local/sound-smoke/heartbeat-rca.mjs`.
+
+The hook also extrapolates unarmed delays from the current card delay, and a
+timer callback over 50 ms late retires the entire sequence. These assumptions
+are unsuitable for the requested independent heartbeat. The earlier tests
+proved only that audio ended before the final flip; they did not require it to
+remain audible through the third reveal under actual rendering offsets.
+
+Recommended correction, awaiting approval: give the heartbeat its own steady
+natural tempo; keep the audio sequence alive through intermediate reveals;
+use the actual final-card deadline only to admit the last complete lub-dub;
+skip a missed pulse without a catch-up burst or permanently retiring the live
+sequence. Preserve the recorded timbre, global mute, per-hand dedupe, hidden/
+offline/recovery silence, 357 beeps, all card reveal timing, authority and money.
+Qualify against actual uneven four-card timing and first-frame/timer delays,
+including measured last-pair ending before the final CSS flip. Jeremy's actual
+production listening remains acceptance truth. Product code is unchanged.

@@ -1,3 +1,16 @@
+## Queued — 3-5-7 Hand Strength bot repeatedly stays — November 2, 2026
+
+Jeremy reported during production smoke after Sound Pass 2 publication that a
+3-5-7 bot configured as Hand Strength stayed approximately 20 times in a row.
+Expected: the bot's stay/drop decisions reflect its actual hand strength and
+the selected strategy, rather than apparently staying every time. The exact
+session/dealer-game/round, bot UUID, device and dealt hands were not supplied.
+Treat this as an owner observation, not yet a proven strategy defect or a claim
+that the sound release caused it. Preserve historical sessions. Investigation
+is queued behind the active Holm heartbeat smoke correction; no bot code or
+production state has been changed. Provenance: Jeremy's two-item smoke report
+in this chat on 2026-11-02; published sound checkpoint `07081b3cf`.
+
 ## Implemented locally — Repeated shared gameplay audio dropout — November 1, 2026
 
 Jeremy reported two complete audio losses across async/Arcade; silent-mode changes

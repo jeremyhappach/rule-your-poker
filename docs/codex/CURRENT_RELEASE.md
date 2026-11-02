@@ -1,4 +1,18 @@
-# Sound Pass 2 smoke corrections — 2026-11-02 — qualified, release approved
+# Sound Pass 2 smoke corrections — 2026-11-02 — published, Holm heartbeat smoke failed
+
+Jeremy's production smoke rejects the Holm heartbeat: three rapid lub-dubs end
+before the third card is fully exposed. Read-only reproduction of unchanged
+`07081b3cf` with deployed 500/500/500/800 ms reveal delays and a 20 ms first-render
+offset produces three 440 ms-spaced pairs ending at 1800 ms, before card three's
+2100 ms flip completion. The approved audition used 760 ms pairs and 950 ms card
+spacing; it did not qualify this production sequence. Independent tempo and an
+actual-final-deadline-only ending are recommended, pending correction approval.
+The separate report of a 357 Hand Strength bot staying about 20 consecutive
+times is captured as Queued in BACKLOG.md; no bot diagnosis is claimed.
+No product changes or production writes were made during this investigation.
+
+The following records the earlier qualification and publication authorization;
+its passing checks do not supersede the failed owner smoke above.
 
 Isolated candidate on `codex/sound-pass2-smoke-corrections` from verified production
 `6411bb674`. Adds the existing global speaker to waiting, Async list/match and
