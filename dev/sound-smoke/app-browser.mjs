@@ -102,7 +102,9 @@ async function scenario(game,width,mode='async'){
     for(const w of [320,360,390,844,1440]){await page.setViewportSize({width:w,height:900});const box=await page.getByRole('button',{name:'Mute sounds',exact:true}).boundingBox();assert(box&&box.x>=0&&box.x+box.width<=w,'speaker inside header '+path+' '+w);}
     await page.setViewportSize({width,height:width<500?844:900});
    }
-   await page.getByRole('button',{name:'Mute sounds',exact:true}).click();await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();
+   // The button changes optimistically; a full document navigation can abort its pending save.
+   const muteSaved=page.waitForResponse(response=>response.url().includes('/rest/v1/profiles')&&response.request().method()==='PATCH'&&response.request().postDataJSON()?.play_sounds===false&&response.ok());
+   await page.getByRole('button',{name:'Mute sounds',exact:true}).click();await muteSaved;await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();
    await page.goto(origin+initial);await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();
    await page.reload();await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();
    await page.getByRole('button',{name:'Unmute sounds',exact:true}).click();await page.getByRole('button',{name:'Mute sounds',exact:true}).waitFor();

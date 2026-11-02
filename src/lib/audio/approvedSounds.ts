@@ -17,14 +17,15 @@ import opponentLeg from '@/assets/audio/opponent-leg-a.wav?url';
 import sweep from '@/assets/audio/sweep-a.wav?url';
 import cupRoll from '@/assets/audio/cup-roll-c.wav?url';
 import quintzeeRoll from '@/assets/audio/quintzee-roll-b2.wav?url';
-import dropCountdown from '@/assets/audio/drop-countdown-b.wav?url';
+import dropCountdown from '@/assets/audio/drop-countdown-beeps.wav?url';
+import chucky from '@/assets/audio/chucky-heartbeat.wav?url';
 import farkleBust from '@/assets/audio/farkle-bust-a.wav?url';
 import upperBonus from '@/assets/audio/upper-bonus-b.wav?url';
 import allFilled from '@/assets/audio/all-filled-b.wav?url';
 import chip from '@/assets/audio/chip-single.wav?url';
 
-const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, cupRoll, quintzeeRoll, dropCountdown, farkleBust, upperBonus, allFilled, chip};
-export type ApprovedSound = keyof typeof files | 'cribbageHighlight' | 'chucky';
+const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, cupRoll, quintzeeRoll, dropCountdown, chucky, farkleBust, upperBonus, allFilled, chip};
+export type ApprovedSound = keyof typeof files | 'cribbageHighlight';
 const cues = new Map<ApprovedSound, AudioCue>();
 const countdown = new Map<string, AudioCue>();
 let loading: Promise<void> | undefined;
@@ -47,6 +48,7 @@ const policies = {
   cupRoll: {priority: 25, group: 'rolling', intervalMs: 0},
   quintzeeRoll: {priority: 25, group: 'rolling', intervalMs: 0},
   dropCountdown: {priority: 35, group: 'countdown', intervalMs: 0},
+  chucky: {priority: 60, group: 'chucky', intervalMs: 0},
   farkleBust: {priority: 70, group: 'scoring', intervalMs: 0},
   upperBonus: {priority: 75, group: 'scoring', intervalMs: 0},
   allFilled: {priority: 75, group: 'scoring', intervalMs: 0},
@@ -62,7 +64,7 @@ export function preloadApprovedSounds() {
       const response = await fetch(url);
       if (!response.ok) return;
       const pcm = decodePCM(await response.arrayBuffer());
-      const cue = pcmCue(pcm);
+      const cue = name==='chucky'?pcmCue(pcm,0,400):pcmCue(pcm);
       if (name === 'dropCountdown') ['3','2','1'].forEach((beat,i) =>
         countdown.set(beat, {...pcmCue(pcm,i*900,180),policy:policies.dropCountdown}));
       cues.set(name as keyof typeof files, {...cue, policy: policies[name as keyof typeof files]});

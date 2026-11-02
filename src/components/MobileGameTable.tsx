@@ -1,3 +1,4 @@
+import {approvedSound} from '@/lib/audio/approvedSounds';
 import {useChuckyRevealAudio} from '@/hooks/useChuckyRevealAudio';
 import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
 import {legAwardSound, sweepOwnsCelebration} from '@/lib/audio/achievementSounds';
@@ -3527,7 +3528,7 @@ export const MobileGameTable = ({
   }, [anteAnimationTriggerId, anteAmount, expectedPostAnteChips, players, preAnteChips, pussyTaxValue]);
 
   const potInPerPlayerAmount = useMemo(() => getPotInPerPlayerAmount(), [getPotInPerPlayerAmount]);
-  const chuckyRevealAudio=useChuckyRevealAudio(handContextId);
+  const chuckyRevealAudio=useChuckyRevealAudio(handContextId,()=>approvedSound('chucky'),true);
   const [chuckyFlipCompletedHandContextId, setChuckyFlipCompletedHandContextId] = useState<string | null>(null);
   const handleHolmChuckyFlipComplete = useCallback((completedHandContextId: string | null) => {
     if (!completedHandContextId) return;
@@ -9611,6 +9612,7 @@ export const MobileGameTable = ({
       const cfgDelay = getChuckyConfiguredStepperDelayMs(idx, total);
       const fallbackDelayMs = idx === total - 1 ? 800 : 500;
       const delayMs = cfgDelay.ms ?? fallbackDelayMs;
+      chuckyRevealAudio.armReveal(idx, total, delayMs, getChuckyConfiguredStepperDelayMs(total-1,total).ms ?? 800);
       const source: 'gameDefaults' | 'fallback' =
         cfgDelay.ms != null && cfgDelay.source === 'gameDefaults' ? 'gameDefaults' : 'fallback';
       const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
@@ -14967,7 +14969,7 @@ export const MobileGameTable = ({
                                   revealed={isRevealed}
                                   faceFillPx={faceFillPx}
                                   dimmed={shouldDimChucky}
-                                  onRevealStart={index===0?chuckyRevealAudio.start:undefined}
+                                  onRevealStart={index===0?chuckyRevealAudio.start:index===chuckyTotalForRender-1?chuckyRevealAudio.stop:undefined}
                                   signatureActive={chuckyRevealAudio.active}
                                   onRevealComplete={
                                     index === chuckyTotalForRender - 1

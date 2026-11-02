@@ -1,17 +1,22 @@
-# Sound Pass 2 smoke corrections — 2026-11-02 — local audition, production held
+# Sound Pass 2 smoke corrections — 2026-11-02 — qualified, release approved
 
 Isolated candidate on `codex/sound-pass2-smoke-corrections` from verified production
 `6411bb674`. Adds the existing global speaker to waiting, Async list/match and
 Arcade pre-game headers. Run21 Pass gains exact fresh Arcade acknowledgement
 provenance and a bounded first-gesture audio allowance without card throttling.
-The rejected Chucky laugh is removed from runtime; its replacement follows actual
-own-hand reveal edges and remains unassigned pending listening approval.
+The rejected Chucky laugh is removed. Jeremy selected the identical 357 beeps
+and a real Chucky heartbeat with an independent, slightly faster cadence ending
+on a complete beat before the final card flips, then approved with “perfect.
+let's go.” Both choices are integrated; this supersedes the initial audition hold.
 Four focused candidates are available at localhost:4320 and 192.168.1.242:4320.
-Studio follow-up: preview identities no longer repeat after reload. Jeremy found
-the synthesized heartbeat too artificial; both heartbeat candidates now use an
-actual resting-heart recording by Andy Jack (CC0), with light filtering/leveling.
-Listening approval is pending. The sting, beeps and gameplay audio are unchanged.
-No production push, migration or sound selection is authorized by this checkpoint.
+The heartbeat is a speaker-balanced real recording by Andy Jack (CC0).
+All 3,632 application tests, 241 harness tests, eight compiled-App browser flows
+and 16 studio preview checks pass. App/studio typechecks and builds pass.
+Native output and independent heartbeat ending are measured in browser tests.
+Publication is limited to these four sound corrections. No migrations, financial
+changes or gameplay timing changes. Owner production/device smoke remains pending.
+Checkpoint: `release-sound-smoke-corrections-20261102`; its matching `-verified`
+tag is the exact-SHA production deployment and public asset verification receipt.
 See [findings, audition and qualification](SOUND_PASS2_SMOKE_CORRECTIONS.md).
 
 # Sound Pass 2 final selections — 2026-11-02 — production authorized

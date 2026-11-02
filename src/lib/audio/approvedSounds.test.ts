@@ -23,6 +23,10 @@ it.each(['deal-paper','flip-soft','dice-land','dice-land-soft','peg-wood','holm-
  expect(pcm.rate).toBe(32000);expect(pcm.samples.every(Number.isFinite)).toBe(true);
  expect(Math.max(...pcm.samples.map(Math.abs))).toBeLessThan(1);
 });
+it.each([['357-beeps','drop-countdown-beeps'],['chucky-heartbeat','chucky-heartbeat']])('ships the selected smoke audition: %s',(audition,asset)=>{
+ const hash=(file:string)=>createHash('sha256').update(readFileSync(resolve(file))).digest('hex');
+ expect(hash(`src/assets/audio/${asset}.wav`)).toBe(hash(`dev/sound-smoke/assets/${audition}.wav`));
+});
 it.each([[[],6,null],[[2],6,'diceOne'],[[2,2],6,'diceOne'],[[0,4],6,'diceMany'],[[0,1,2,3,4],5,'diceMany'],[[-1,6,1.5],6,null]] as const)('counts actual valid unique landing dice %j',(indices,count,sound)=>expect(diceLandingSound(indices,count)).toBe(sound));
 it('groups dense deals, consumes suppression, and caches the decoded AudioBuffer',()=>{
  for(let i=0;i<20;i++)play('slide','deal:'+i);

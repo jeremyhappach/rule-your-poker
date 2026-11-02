@@ -1,7 +1,9 @@
 # Sound Pass 2 smoke corrections — November 2, 2026
 
-Local candidate only. Jeremy explicitly requested implementation and audition,
-with **no production deployment** and no automatic Chucky/357 selection.
+Jeremy initially requested implementation/audition with no production deployment.
+He subsequently selected the 357 beeps, specified the independent Chucky heartbeat
+ending before the final flip, and approved proceeding with “perfect. let's go.”
+The selected sounds are now integrated for the scoped release; see final notes below.
 Branch: `codex/sound-pass2-smoke-corrections`. Isolated worktree:
 `C:/Users/jerem/.codex/worktrees/sound-pass2-smoke-corrections/rule-your-poker`.
 Baseline: `6411bb674a592d49cc6ed87fc0ae49a56a2f5361`, verified against the
@@ -43,7 +45,7 @@ and stops at the final card's existing completion callback. Its identity is the
 canonical hand identity. Already-revealed mounts do not animate or start audio;
 repeated transitions cannot restart the sequence. Mute, pagehide, offline,
 identity changes and unmount cancel it. During an admitted signature, individual
-card-flip sounds yield. **No replacement cue is assigned to gameplay yet.**
+card-flip sounds yield. The final selected heartbeat integration is described below.
 
 ## Four-option audition
 
@@ -56,7 +58,7 @@ beeps, and identical paired 357 heartbeats. The Chucky preview uses the actual
 reveal card and sequence-audio hook. Countdown previews use the canonical 900 ms
 beat interval and emit no sound at DROP. The old 51-candidate studio is preserved.
 Selections saved on the review device are audition preferences, not deployment
-authorization. Confirm the two final choices in chat.
+authorization. The final chat selections are 357 beeps and the revised Chucky heartbeat.
 
 ## Qualification and release boundary
 
@@ -75,8 +77,7 @@ Physical iPhone/Android PWA speaker output and real-session owner smoke remain
 unverified. The waiting-table change is source/unit-qualified; live waiting-table
 phone smoke remains required. No financial, gameplay, timer, schema, historical
 session or production infrastructure mutation is included. Final production
-readiness depends on listening selection, integration of the selected alternatives,
-and the owner's device smoke and explicit production GO.
+readiness is subject to the final qualification below and the owner's production/device smoke.
 
 Final local results: all 3,623 application tests in 501 files and 241 harness
 tests in 12 files pass. Application TypeScript and both production/app and
@@ -151,3 +152,55 @@ signal/headroom, identical countdown pairs and preservation checks passing.
 Focused studio TypeScript and Vite build pass. Physical-device listening remains
 unverified; this is a replacement audition, not an approved sound selection.
 No final selection or production deployment is authorized.
+
+## Final speaker mix, choices and integration — 2026-11-02
+
+Jeremy reported the recorded heartbeats were inaudible again and confirmed he
+was using computer speakers. Native browser graph taps showed nonzero playback;
+the recording's energy above deep bass was roughly 20 dB below the audible beeps.
+The permissive 120 Hz-only check had failed to qualify that listening situation.
+The immutable recording now uses a 200 Hz rumble filter, broad 450 Hz presence
+adjustment and peak 0.38, without synthetic tones, pitch shifts or distortion.
+The 300 Hz speaker proxy is restored and strengthened to require energy within
+2.5 dB of the beep. Each browser cue also must produce measured signal in the
+actual audio graph. Asset URLs include the current manifest hash to avoid stale
+audition mixes. Source/processing/license details remain in the source README.
+
+Jeremy then chose **357 drag-race beeps** and specified an **independent Chucky
+heartbeat**, slightly faster than card reveals, ending on the last complete
+beat before the final flip. His subsequent “perfect. let's go” approves the
+scoped release and supersedes the initial hold. The two selected files are
+copied into the production assets and hash-matched by tests. All older approved
+recordings remain intact. 357 uses three identical beeps and silence on DROP.
+
+Chucky's first real own-card flip admits one sound sequence. Its heartbeat clock
+uses 80% of the actual card cadence (at least 440 ms for a complete 400 ms pair).
+The existing reveal scheduler supplies its configured timing and final deadline;
+audio observes that schedule without advancing or changing cards. A complete
+pair must fit with an 80 ms quiet gap before the final flip. Later cards do not
+restart the rhythm. A final-flip cancellation guard, mute, offline/pagehide,
+identity change, and unmount retire it. Replayed first edges cannot start later
+beats, and missing/unloaded audio never catches up. The native audition uses
+the same hook and card component: 760 ms heartbeats against 950 ms flips, with
+the final pair ending before the last flip. Timing tests include the 500/800 ms
+fallback, the audition cadence, slower cards, and a short 100 ms final delay.
+
+The release is limited to the pre-game speakers, Run21 Pass correction, removal
+of the misplaced laugh, and the two selected audio treatments. No migrations,
+financial writes, game rules or gameplay timers change. Production/device smoke
+after publication remains Jeremy's acceptance step.
+
+Final qualification: `npm run build` passes all 3,632 application tests across
+501 files and 241 harness tests across 12 files, then builds the production App.
+The latest App and studio TypeScript checks and the studio build also pass.
+All eight compiled-App native browser flows and all 16 studio before/after-reload
+previews pass. Studio checks measure actual output graphs, independent heartbeat
+cadence and the final source's end before the last card transition. One browser
+fixture race was corrected: it now awaits the mute PATCH acknowledgement before
+full-document navigation, instead of aborting an in-flight optimistic save.
+The complete browser rerun passes. The test-generated Cribbage snapshot line-ending
+rewrite was discarded only in this isolated worktree.
+
+Release checkpoint: `release-sound-smoke-corrections-20261102`. Its matching
+`-verified` tag records the published SHA, Vercel deployment and remote audio hashes
+after production verification. The original Golf checkout remains untouched.
