@@ -1,15 +1,53 @@
-## Queued — 3-5-7 Hand Strength bot repeatedly stays — November 2, 2026
+## Diagnosed — 3-5-7 Hand Strength bot repeatedly stays — November 2, 2026
 
 Jeremy reported during production smoke after Sound Pass 2 publication that a
 3-5-7 bot configured as Hand Strength stayed approximately 20 times in a row.
 Expected: the bot's stay/drop decisions reflect its actual hand strength and
 the selected strategy, rather than apparently staying every time. The exact
 session/dealer-game/round, bot UUID, device and dealt hands were not supplied.
-Treat this as an owner observation, not yet a proven strategy defect or a claim
-that the sound release caused it. Preserve historical sessions. Investigation
-is queued behind the active Holm heartbeat smoke correction; no bot code or
-production state has been changed. Provenance: Jeremy's two-item smoke report
+The initial report was an owner observation; the read-only diagnosis below
+confirms the policy defect without attributing it to the sound release.
+Preserve historical sessions. Investigation
+was queued behind the Holm heartbeat smoke correction, then activated by Jeremy's
+explicit request to diagnose it. No bot code or production state has changed.
+Provenance: Jeremy's two-item smoke report
 in this chat on 2026-11-02; published sound checkpoint `07081b3cf`.
+
+Read-only production evidence from `xvhmbuppghwmwpwrkzao`: the `3-5-7` defaults
+have `bot_use_hand_strength=true`, `bot_fold_probability=0`, and decision delay
+0.1 seconds. The actual deployed owner, `private.three_five_seven_recover_game`,
+ignores the hand-strength flag, cards and aggression. It locks every eligible
+undecided bot to `fold` only when `secure_random_unit()*100 < 0`, otherwise
+`stay`. This is deterministic always-stay, not a streak of strong hands. A
+read-only boundary calculation at draws 0, .25, .5 and .999999999 returns Stay
+in every case. No recent two-day immutable 357 decision snapshots remain, so
+the exact reported 20 decisions were not individually reconstructed.
+
+The failure boundary was introduced when 357 decisions moved to PostgreSQL
+(`7c750c8fa`): `src/lib/botPlayer.ts` returns before the old 357 hand-strength
+code, while recovery retained only the fixed-probability policy. The settings
+UI in `GameDefaultsConfig.tsx` correctly saves the flag and hides the fixed
+probability slider while Hand Strength is enabled. Current GAME_RULES.md's
+browser-owned bot description is stale; deployed definitions and source win.
+The scheduled entry `private.advance_due_three_five_seven_state` converges on
+the same recovery owner. The other generic fold-probability match belongs to
+Holm's deadline fallback, not a second 357 decision writer.
+
+Recommended correction, awaiting approval: implement the existing per-round
+hand-strength/aggression policy in the server-owned 357 decision path, using
+only each bot's own cards for the exact locked round and the authoritative
+`private.three_five_seven_score_hand` evaluator. When Hand Strength is disabled,
+retain the explicit fixed fold percentage, including 0% and 100%. Preserve
+private card/decision disclosure, secure randomness, exact game/dealer-game/
+hand/round identity, pause and seat eligibility, already-locked decisions,
+canonical settlement and zero-client recovery. No historical repairs.
+
+Approval scope should include the focused database migration and server proofs:
+weak/strong hands in all three rounds, wild ranks, aggression, fixed mode,
+duplicate/replay/concurrent recovery, missing or stale cards, authorization and
+unchanged settlement. Production acceptance: with Hand Strength enabled, a
+controlled set of eligible weak/strong bot hands follows those probabilities;
+fixed 0% always stays and fixed 100% always folds only when that mode is selected.
 
 ## Implemented locally — Repeated shared gameplay audio dropout — November 1, 2026
 
