@@ -1,3 +1,15 @@
+# Async sounds — 2026-11-02 — local correction; production held
+
+Run21 Async now connects its existing bell and approved placement/pass cues.
+TriTowers and Boxdrop Async admit their existing bell only for a freshly accepted
+local Start. Restored requests, state reads and saved reviews remain silent;
+new actions after resume retain sound. One Async presentation boundary uses exact
+request/actor/segment/revision evidence without changing authority or finances.
+TypeScript, production bundle and 339 focused/new and Arcade/live tests pass.
+Native browser qualification and physical/hosted smoke boundaries are recorded in
+[Async sound evidence](ASYNC_SOUND_REGRESSIONS.md). Published V2 and the standalone
+Sound Studio are preserved. Local work only; explicit production GO is required.
+
 # Async push cycles and active-use suppression — 2026-11-02 — qualified; publication authorized
 
 One Your Turn event now spans each match/recipient's continuous availability

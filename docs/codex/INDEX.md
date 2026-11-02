@@ -2,6 +2,9 @@
 
 This directory is the durable project memory for P-Town Poker. New sessions should read this index, `CURRENT_RELEASE.md`, and only the files relevant to the task.
 
+Async bell/placement correction and its explicit production hold:
+`ASYNC_SOUND_REGRESSIONS.md`.
+
 Approved palette, event ownership, qualification and production hold:
 `SOUND_EFFECTS_INTEGRATION.md` (original candidates: `SOUND_EFFECTS_AUDITION.md`).
 

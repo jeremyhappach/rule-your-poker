@@ -1,5 +1,10 @@
 ## Approved game sound presentation
 
+`src/lib/delayed/turnAudio.ts` verifies fresh local Async action presentation
+against accepted snapshots. `DelayedTurn` supplies its ephemeral Start admission
+and Run21 feedback to existing shared bell/card hooks; recovery/history cannot
+create this provenance. See `ASYNC_SOUND_REGRESSIONS.md`.
+
 `src/lib/audio/approvedSounds.ts` maps sixteen exact approved samples and the
 Cribbage highlight cue; `pcm.ts` caches decoded native buffers. The existing
 `AudioManager` owns preference, context lifecycle, dedupe and priority/grouping.
