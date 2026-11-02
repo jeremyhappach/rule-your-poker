@@ -87,6 +87,9 @@ for existing tables to finish. The migration refuses installation while any
 nonterminal session remains, so tenure starts accurately with new sessions;
 historical membership is not fabricated. Production activation remains outside
 this local task. The rollback proof also exercises this installation gate.
+See [release readiness](HOST_SUCCESSION_RELEASE_READINESS.md) for the exact
+paused/empty/async conditions, hosted verification gap, parallel-work comparisons,
+transactional refusal proof and forward recovery plan.
 
 Future acceptance: use three humans and a bot; briefly disconnect/reconnect the
 host; leave and reseat the oldest participant; have the host leave and verify

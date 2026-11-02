@@ -4,6 +4,7 @@ import {readFileSync as read,writeFileSync as write,mkdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {definition} from '../battle31/canonical-lifecycle.mjs';
+import {verifyInstallation} from './readiness.mjs';
 const database='session_membership_'+Date.now();
 assert(/^session_membership_\d+$/.test(database));
 const admin=new pg.Client({host:'127.0.0.1',port:55439,user:'tri_test',database:'postgres',connectionTimeoutMillis:3000});
@@ -55,6 +56,7 @@ try {
  await query('TRUNCATE public.games CASCADE');
  await query("INSERT INTO public.game_defaults(game_type,holm_presentation_ack_fallback_seconds,allow_bot_dealers) VALUES('holm',30,false) ON CONFLICT(game_type) DO UPDATE SET holm_presentation_ack_fallback_seconds=30,allow_bot_dealers=false");
  if(!await val("SELECT to_regclass('private.session_table_tenure')::text v")){
+  await verifyInstallation({query,val,pass,migration,peer});
   await query('BEGIN');await query("INSERT INTO public.games(name,status,real_money) VALUES('Rollout gate proof','waiting',false)");
   await assert.rejects(()=>query(migration),/finish_existing_tables_before_install/);await query('ROLLBACK');pass('migration refuses installation while existing tables remain');
   await query('BEGIN');await query(migration);await query('ROLLBACK');

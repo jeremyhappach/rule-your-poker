@@ -8,6 +8,10 @@ Canonical host announcements use host versions and defer through gameplay.
 No push, merge, deployment or production migration is authorized. Local proof,
 preservation boundaries and the historical-tenure rollout decision are recorded
 in [host succession qualification](HOST_SUCCESSION_INACTIVITY.md).
+Release-readiness follow-up: 20 local database check groups pass, including
+installation refusal and financial-history-preserving code restoration. Product
+code remains `48ac2026b`; hosted validation and production installation are not
+ready. See [exact gates and release order](HOST_SUCCESSION_RELEASE_READINESS.md).
 
 # Sound Pass 2 final selections — 2026-11-02 — production authorized
 
