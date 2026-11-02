@@ -1,0 +1,835 @@
+[
+  {
+    "id": "no-qualify-a",
+    "category": "no-qualify",
+    "categoryTitle": "SCC — No Qualify",
+    "title": "Felt sigh",
+    "description": "A muted wooden descent with a soft breath.",
+    "trigger": "A brief, gentle letdown. Completed unqualified turn only.",
+    "priority": 30,
+    "file": "no-qualify-a.wav",
+    "durationMs": 420,
+    "peakDb": -28,
+    "rmsDb": -39.8,
+    "playbackGain": 1,
+    "bytes": 26924,
+    "sha256": "90084ece3f8d72f0d7b3344a4538fc6cf43630eeb51c05c030b5db4711fd5ed8",
+    "recipe": {
+      "notes": [
+        60,
+        57
+      ],
+      "step": 0.11,
+      "timbre": "wood"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "no-qualify-b",
+    "category": "no-qualify",
+    "categoryTitle": "SCC — No Qualify",
+    "title": "Low velvet",
+    "description": "Two rounded low notes; quiet and matter-of-fact.",
+    "trigger": "A brief, gentle letdown. Completed unqualified turn only.",
+    "priority": 30,
+    "file": "no-qualify-b.wav",
+    "durationMs": 480,
+    "peakDb": -29,
+    "rmsDb": -39.6,
+    "playbackGain": 1,
+    "bytes": 30764,
+    "sha256": "704a221df881264385c9fce6bfbbae27b7b7a9e1d94814433a5c9dacf8d7d79a",
+    "recipe": {
+      "notes": [
+        55,
+        50
+      ],
+      "step": 0.14,
+      "timbre": "warm"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "no-qualify-c",
+    "category": "no-qualify",
+    "categoryTitle": "SCC — No Qualify",
+    "title": "Closing bell",
+    "description": "A small descending glass interval, softened at the edges.",
+    "trigger": "A brief, gentle letdown. Completed unqualified turn only.",
+    "priority": 30,
+    "file": "no-qualify-c.wav",
+    "durationMs": 520,
+    "peakDb": -29,
+    "rmsDb": -41,
+    "playbackGain": 1,
+    "bytes": 33324,
+    "sha256": "154ee2cda84ce1ffd4732cca414980f9b8542287878534988bffa47753c3918c",
+    "recipe": {
+      "notes": [
+        72,
+        69
+      ],
+      "step": 0.13,
+      "timbre": "bell"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "midnight-a",
+    "category": "midnight",
+    "categoryTitle": "SCC — Midnight",
+    "title": "Midnight blue",
+    "description": "A low bell opens into a compact, luminous answer.",
+    "trigger": "Qualified 6–5–4 plus cargo 12. An achievement, not a victory.",
+    "priority": 65,
+    "file": "midnight-a.wav",
+    "durationMs": 950,
+    "peakDb": -22,
+    "rmsDb": -35.2,
+    "playbackGain": 1,
+    "bytes": 60844,
+    "sha256": "93cd2dcebd5109650d65e92b94c755f8d8cdb787fb1bc3317bf69c39e15cf19f",
+    "recipe": {
+      "notes": [
+        55,
+        67,
+        74
+      ],
+      "step": 0.14,
+      "timbre": "bell"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "midnight-b",
+    "category": "midnight",
+    "categoryTitle": "SCC — Midnight",
+    "title": "After hours",
+    "description": "Warm mallets with a little suspended jazz color.",
+    "trigger": "Qualified 6–5–4 plus cargo 12. An achievement, not a victory.",
+    "priority": 65,
+    "file": "midnight-b.wav",
+    "durationMs": 1050,
+    "peakDb": -23,
+    "rmsDb": -35.2,
+    "playbackGain": 1,
+    "bytes": 67244,
+    "sha256": "54dcc7e3968512798e9307fbed0312b7b188f34d914668c60ecb9159334b2645",
+    "recipe": {
+      "notes": [
+        60,
+        67,
+        69,
+        76
+      ],
+      "step": 0.13,
+      "timbre": "warm"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "midnight-c",
+    "category": "midnight",
+    "categoryTitle": "SCC — Midnight",
+    "title": "Moonlit brass",
+    "description": "A brushed rise and a short, rounded brass accent.",
+    "trigger": "Qualified 6–5–4 plus cargo 12. An achievement, not a victory.",
+    "priority": 65,
+    "file": "midnight-c.wav",
+    "durationMs": 1100,
+    "peakDb": -23,
+    "rmsDb": -33.4,
+    "playbackGain": 1,
+    "bytes": 70444,
+    "sha256": "76a454661b714651f2418c92503c497897dad85f2ec6a8e5786f22cda2599a77",
+    "recipe": {
+      "notes": [
+        55,
+        62,
+        67,
+        74
+      ],
+      "step": 0.15,
+      "timbre": "brass"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "five-ones-a",
+    "category": "five-ones",
+    "categoryTitle": "Horses — Five Ones",
+    "title": "Five of a kind",
+    "description": "Five close mallet strikes and a warm final glint.",
+    "trigger": "Five actual 1 faces on an admitted roll; not wild-assisted five of another value.",
+    "priority": 70,
+    "file": "five-ones-a.wav",
+    "durationMs": 1120,
+    "peakDb": -21,
+    "rmsDb": -33.8,
+    "playbackGain": 1,
+    "bytes": 71724,
+    "sha256": "83cb5e1f766b0c51feb0df626a0e964167ee32d2ca988f0cc14df951a55e96b4",
+    "recipe": {
+      "notes": [
+        60,
+        64,
+        67,
+        72,
+        79
+      ],
+      "step": 0.1,
+      "timbre": "wood"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "five-ones-b",
+    "category": "five-ones",
+    "categoryTitle": "Horses — Five Ones",
+    "title": "Lucky iron",
+    "description": "A low metallic pulse resolving into a bright fifth.",
+    "trigger": "Five actual 1 faces on an admitted roll; not wild-assisted five of another value.",
+    "priority": 70,
+    "file": "five-ones-b.wav",
+    "durationMs": 1250,
+    "peakDb": -22,
+    "rmsDb": -34,
+    "playbackGain": 1,
+    "bytes": 80044,
+    "sha256": "90d73796630d494ac4f389ab0d7dd561745ee8db2df03ee643b4667529bbd1f9",
+    "recipe": {
+      "notes": [
+        48,
+        55,
+        60,
+        67,
+        72
+      ],
+      "step": 0.14,
+      "timbre": "bell"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "five-ones-c",
+    "category": "five-ones",
+    "categoryTitle": "Horses — Five Ones",
+    "title": "Royal tumble",
+    "description": "A soft brass burst with a restrained high answer.",
+    "trigger": "Five actual 1 faces on an admitted roll; not wild-assisted five of another value.",
+    "priority": 70,
+    "file": "five-ones-c.wav",
+    "durationMs": 1300,
+    "peakDb": -22,
+    "rmsDb": -33,
+    "playbackGain": 1,
+    "bytes": 83244,
+    "sha256": "ebeefab2fce578268e315d5d0199146bf8c1267829244498efb968b597662111",
+    "recipe": {
+      "notes": [
+        55,
+        60,
+        64,
+        67,
+        76
+      ],
+      "step": 0.13,
+      "timbre": "brass"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "score-post-a",
+    "category": "score-post",
+    "categoryTitle": "Dice Games — Score Posting",
+    "title": "Ink & felt",
+    "description": "A dry contact and a tiny rounded tone.",
+    "trigger": "One committed score appears. A single confirmation, never a count-up.",
+    "priority": 20,
+    "file": "score-post-a.wav",
+    "durationMs": 220,
+    "peakDb": -30,
+    "rmsDb": -40.7,
+    "playbackGain": 1,
+    "bytes": 14124,
+    "sha256": "66e1165de3e7c33703797605f3268b1c1bfe7b3a3c817b088c7528adb1c614b3",
+    "recipe": {
+      "notes": [
+        72
+      ],
+      "step": 0.1,
+      "timbre": "wood"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "score-post-b",
+    "category": "score-post",
+    "categoryTitle": "Dice Games — Score Posting",
+    "title": "Soft seal",
+    "description": "Two tightly joined mallet notes; a compact confirmation.",
+    "trigger": "One committed score appears. A single confirmation, never a count-up.",
+    "priority": 20,
+    "file": "score-post-b.wav",
+    "durationMs": 300,
+    "peakDb": -30,
+    "rmsDb": -40.7,
+    "playbackGain": 1,
+    "bytes": 19244,
+    "sha256": "29f92150cd4c3ad63097883c77d910c86a5cb8985dbb54d59f8e768cd628573c",
+    "recipe": {
+      "notes": [
+        69,
+        76
+      ],
+      "step": 0.045,
+      "timbre": "warm"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "score-post-c",
+    "category": "score-post",
+    "categoryTitle": "Dice Games — Score Posting",
+    "title": "Silver dot",
+    "description": "A small, clean bell with a very short tail.",
+    "trigger": "One committed score appears. A single confirmation, never a count-up.",
+    "priority": 20,
+    "file": "score-post-c.wav",
+    "durationMs": 260,
+    "peakDb": -31,
+    "rmsDb": -41.9,
+    "playbackGain": 1,
+    "bytes": 16684,
+    "sha256": "dabe59467c5c03cfb4bb744cab0e8d2d80a25a9a09cb97b0a317b3e44a316828",
+    "recipe": {
+      "notes": [
+        81
+      ],
+      "step": 0.1,
+      "timbre": "bell"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "yahtzee-a",
+    "category": "yahtzee",
+    "categoryTitle": "Yahtzee / Quintzee",
+    "title": "Five stars",
+    "description": "A recognizable five-note rise with a neat finish.",
+    "trigger": "Celebrate the relevant committed scoring achievement once.",
+    "priority": 75,
+    "file": "yahtzee-a.wav",
+    "durationMs": 1200,
+    "peakDb": -21,
+    "rmsDb": -32.6,
+    "playbackGain": 1,
+    "bytes": 76844,
+    "sha256": "7dc592b613de9f327c8b3b2037b03bd4a0496ad4b03f1b6107b1553eb01e7d94",
+    "recipe": {
+      "notes": [
+        60,
+        64,
+        67,
+        74,
+        79
+      ],
+      "step": 0.14,
+      "timbre": "wood"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "yahtzee-b",
+    "category": "yahtzee",
+    "categoryTitle": "Yahtzee / Quintzee",
+    "title": "High five",
+    "description": "A playful syncopated brass answer; no long fanfare.",
+    "trigger": "Celebrate the relevant committed scoring achievement once.",
+    "priority": 75,
+    "file": "yahtzee-b.wav",
+    "durationMs": 1350,
+    "peakDb": -22,
+    "rmsDb": -32.3,
+    "playbackGain": 1,
+    "bytes": 86444,
+    "sha256": "aadf01ac659a37b1be02800eb9a5361f23b242de49a89d3c7517e249a89f83d3",
+    "recipe": {
+      "notes": [
+        60,
+        67,
+        64,
+        72,
+        79
+      ],
+      "step": 0.16,
+      "timbre": "brass"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "yahtzee-c",
+    "category": "yahtzee",
+    "categoryTitle": "Yahtzee / Quintzee",
+    "title": "Crown of glass",
+    "description": "A light crystalline climb with a warm underlying note.",
+    "trigger": "Celebrate the relevant committed scoring achievement once.",
+    "priority": 75,
+    "file": "yahtzee-c.wav",
+    "durationMs": 1250,
+    "peakDb": -23,
+    "rmsDb": -35.2,
+    "playbackGain": 1,
+    "bytes": 80044,
+    "sha256": "d78f612360010338bc3ad11e8c72395d3896fa7da4bd664eddfc105896efd873",
+    "recipe": {
+      "notes": [
+        67,
+        72,
+        76,
+        79,
+        84
+      ],
+      "step": 0.12,
+      "timbre": "bell"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "my-leg-a",
+    "category": "my-leg",
+    "categoryTitle": "My Leg Earned",
+    "title": "Up one",
+    "description": "A warm, ascending three-note mallet figure.",
+    "trigger": "Local player UUID receives a legitimate individual leg award.",
+    "priority": 50,
+    "file": "my-leg-a.wav",
+    "durationMs": 680,
+    "peakDb": -24,
+    "rmsDb": -35.9,
+    "playbackGain": 1,
+    "bytes": 43564,
+    "sha256": "b34b771f409f5a53911ec3edffb79eac804bceb9717a67ceb4f7ab08bf8a2e34",
+    "recipe": {
+      "notes": [
+        60,
+        64,
+        67
+      ],
+      "step": 0.12,
+      "timbre": "wood"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "my-leg-b",
+    "category": "my-leg",
+    "categoryTitle": "My Leg Earned",
+    "title": "Little lift",
+    "description": "A soft upward interval with an airy finish.",
+    "trigger": "Local player UUID receives a legitimate individual leg award.",
+    "priority": 50,
+    "file": "my-leg-b.wav",
+    "durationMs": 620,
+    "peakDb": -25,
+    "rmsDb": -36.4,
+    "playbackGain": 1,
+    "bytes": 39724,
+    "sha256": "1c5023176c3e625ac930cc681ededc820f8e1a4108c3fd439c734f24e30354b4",
+    "recipe": {
+      "notes": [
+        64,
+        71,
+        76
+      ],
+      "step": 0.11,
+      "timbre": "warm"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "my-leg-c",
+    "category": "my-leg",
+    "categoryTitle": "My Leg Earned",
+    "title": "Step of gold",
+    "description": "A rounded low note answered by two small bells.",
+    "trigger": "Local player UUID receives a legitimate individual leg award.",
+    "priority": 50,
+    "file": "my-leg-c.wav",
+    "durationMs": 750,
+    "peakDb": -25,
+    "rmsDb": -36.7,
+    "playbackGain": 1,
+    "bytes": 48044,
+    "sha256": "0bb330372e5ce37bda7349cd175203b39c8f499eb3de6b95127485038b2e8d1f",
+    "recipe": {
+      "notes": [
+        55,
+        67,
+        72
+      ],
+      "step": 0.13,
+      "timbre": "bell"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "opponent-leg-a",
+    "category": "opponent-leg",
+    "categoryTitle": "Opponent Leg Earned",
+    "title": "Across the felt",
+    "description": "Two low, neutral wooden taps.",
+    "trigger": "Another player UUID receives a leg; acknowledgment without personal triumph.",
+    "priority": 40,
+    "file": "opponent-leg-a.wav",
+    "durationMs": 380,
+    "peakDb": -29,
+    "rmsDb": -39.3,
+    "playbackGain": 1,
+    "bytes": 24364,
+    "sha256": "96b2df2e9ee35e0c26b6f98095e3b1326e549da95b8dc4f3a42560e4db085ecc",
+    "recipe": {
+      "notes": [
+        55,
+        55
+      ],
+      "step": 0.1,
+      "timbre": "wood"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "opponent-leg-b",
+    "category": "opponent-leg",
+    "categoryTitle": "Opponent Leg Earned",
+    "title": "Quiet nod",
+    "description": "A mellow descending interval, shorter than your own award.",
+    "trigger": "Another player UUID receives a leg; acknowledgment without personal triumph.",
+    "priority": 40,
+    "file": "opponent-leg-b.wav",
+    "durationMs": 440,
+    "peakDb": -30,
+    "rmsDb": -40.4,
+    "playbackGain": 1,
+    "bytes": 28204,
+    "sha256": "86182651a6a6cdf8a3852b63b0dbe7717bbe3099c38a4ef1f1150917b490f6e4",
+    "recipe": {
+      "notes": [
+        62,
+        60
+      ],
+      "step": 0.11,
+      "timbre": "warm"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "opponent-leg-c",
+    "category": "opponent-leg",
+    "categoryTitle": "Opponent Leg Earned",
+    "title": "Distant marker",
+    "description": "One dusky bell, with no rising victory gesture.",
+    "trigger": "Another player UUID receives a leg; acknowledgment without personal triumph.",
+    "priority": 40,
+    "file": "opponent-leg-c.wav",
+    "durationMs": 480,
+    "peakDb": -30,
+    "rmsDb": -43.2,
+    "playbackGain": 1,
+    "bytes": 30764,
+    "sha256": "7824e5e095575dde1f6d395504d64b8777996b47bf277cc3acc1c0cdc8f712a1",
+    "recipe": {
+      "notes": [
+        62
+      ],
+      "step": 0.1,
+      "timbre": "bell"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "sweep-a",
+    "category": "sweep",
+    "categoryTitle": "Sweep the Legs",
+    "title": "The P-Town sweep",
+    "description": "A brushed sweep, low impact, then a compact signature flourish.",
+    "trigger": "Admitted canonical sweep phase. Owns the whole terminal audio family.",
+    "priority": 120,
+    "file": "sweep-a.wav",
+    "durationMs": 1600,
+    "peakDb": -19,
+    "rmsDb": -32.3,
+    "playbackGain": 1,
+    "bytes": 102444,
+    "sha256": "e3473c5675c2fa9387a82b496b069b2d783b85f7ea9c913f08a56b34616400ed",
+    "recipe": {
+      "notes": [
+        43,
+        55,
+        62,
+        67,
+        74
+      ],
+      "step": 0.18,
+      "timbre": "brass"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "sweep-b",
+    "category": "sweep",
+    "categoryTitle": "Sweep the Legs",
+    "title": "Felt thunder",
+    "description": "A warm low sweep with a climbing mallet finish.",
+    "trigger": "Admitted canonical sweep phase. Owns the whole terminal audio family.",
+    "priority": 120,
+    "file": "sweep-b.wav",
+    "durationMs": 1450,
+    "peakDb": -20,
+    "rmsDb": -33.5,
+    "playbackGain": 1,
+    "bytes": 92844,
+    "sha256": "1ecfb1a6d3d251483181e7b26e795947dd9ddfb642b69c6920fc544bbbc3ed58",
+    "recipe": {
+      "notes": [
+        48,
+        55,
+        60,
+        64,
+        72
+      ],
+      "step": 0.16,
+      "timbre": "wood"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "sweep-c",
+    "category": "sweep",
+    "categoryTitle": "Sweep the Legs",
+    "title": "House signature",
+    "description": "A dark bell pickup into a memorable bright resolution.",
+    "trigger": "Admitted canonical sweep phase. Owns the whole terminal audio family.",
+    "priority": 120,
+    "file": "sweep-c.wav",
+    "durationMs": 1700,
+    "peakDb": -20,
+    "rmsDb": -33.7,
+    "playbackGain": 1,
+    "bytes": 108844,
+    "sha256": "5dbe1a13d5a84dd777d3370b08647ba173b49edee2de6942f1a3a638416f7623",
+    "recipe": {
+      "notes": [
+        50,
+        57,
+        62,
+        69,
+        74
+      ],
+      "step": 0.19,
+      "timbre": "bell"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "chucky-a",
+    "category": "chucky",
+    "categoryTitle": "Chucky’s Evil Laugh",
+    "title": "Velvet villain",
+    "description": "Low theatrical mwa-ha-ha-ha; smooth and slightly sinister.",
+    "trigger": "One fresh pre-deal character moment, never each card. Audition bypasses fatigue limits.",
+    "priority": 60,
+    "file": "chucky-a.wav",
+    "durationMs": 1300,
+    "peakDb": -24,
+    "rmsDb": -38.6,
+    "playbackGain": 1,
+    "bytes": 83244,
+    "sha256": "965b0cb164ab4e6b2b2c515e4d514037565c38c0dec2472b31cd53c3af7897a4",
+    "recipe": {
+      "notes": [],
+      "step": 0,
+      "timbre": "laugh-low"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "chucky-b",
+    "category": "chucky",
+    "categoryTitle": "Chucky’s Evil Laugh",
+    "title": "Little trouble",
+    "description": "A brighter impish mwa-ha-ha-ha with a quick final chuckle.",
+    "trigger": "One fresh pre-deal character moment, never each card. Audition bypasses fatigue limits.",
+    "priority": 60,
+    "file": "chucky-b.wav",
+    "durationMs": 1080,
+    "peakDb": -25,
+    "rmsDb": -37,
+    "playbackGain": 1,
+    "bytes": 69164,
+    "sha256": "71b5d4535199526d88ab3d069dc06d8b8a30250a1213b50af623c198443412df",
+    "recipe": {
+      "notes": [],
+      "step": 0,
+      "timbre": "laugh-imp"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  },
+  {
+    "id": "chucky-c",
+    "category": "chucky",
+    "categoryTitle": "Chucky’s Evil Laugh",
+    "title": "Crooked grin",
+    "description": "A grainier, nasal mwa-ha-ha-ha with a descending finish.",
+    "trigger": "One fresh pre-deal character moment, never each card. Audition bypasses fatigue limits.",
+    "priority": 60,
+    "file": "chucky-c.wav",
+    "durationMs": 1420,
+    "peakDb": -25,
+    "rmsDb": -39,
+    "playbackGain": 1,
+    "bytes": 90924,
+    "sha256": "b2068beb118bf72ca678c191cf3c66ddf652ceaf5fcd7de0f310703ef8709677",
+    "recipe": {
+      "notes": [],
+      "step": 0,
+      "timbre": "laugh-grain"
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design by Codex",
+      "license": "Project original; no third-party audio, melody or voice",
+      "generator": "prepare.mjs",
+      "seed": 231101
+    }
+  }
+]

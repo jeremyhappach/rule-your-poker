@@ -1,0 +1,6 @@
+{
+ "extends":"../../tsconfig.app.json",
+ "compilerOptions":{"baseUrl":"../..","types":["vite/client"],"resolveJsonModule":true,
+  "paths":{"@/lib/audio/platformAudio":["./dev/sound-studio-v2/labAudio.ts"],"@/*":["./src/*"]}},
+ "include":["./*.ts","./*.tsx"]
+}
