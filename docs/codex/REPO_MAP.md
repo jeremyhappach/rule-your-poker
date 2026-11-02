@@ -1,3 +1,12 @@
+## Session host succession and inactivity (local candidate)
+
+`20261102210516_session_host_succession_and_inactivity.sql` extends the existing
+host stamp/participation boundaries with private continuous tenure and exact
+missed-game receipts. `SessionLifecycleAnnouncer.tsx` and `hostSuccession.ts` own
+presentation-only version cursors. `dev/session-membership/proof.mjs` runs the
+disposable local PostgreSQL/concurrency/financial regression proof. See
+`HOST_SUCCESSION_INACTIVITY.md` for eligibility, preservation and rollout limits.
+
 ## Approved game sound presentation
 
 `src/lib/delayed/turnAudio.ts` verifies fresh local Async action presentation

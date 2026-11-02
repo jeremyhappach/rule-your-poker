@@ -12296,12 +12296,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // If a non-host flips status early, it can unmount the host's dealer-selection component
     // and cancel the host timeout that should start round 1.
     // IMPORTANT: Host is NOT necessarily seat 1 (cribbage/bots can occupy seat 1).
-    // Use the same host rule as the rest of Game.tsx: current_host if present, else earliest HUMAN player.
+    // Hosting is server-owned; a vacant host must never elect a browser fallback.
     const currentHost = (game as any)?.current_host as string | null | undefined;
-    const hostPlayer = [...players]
-      .filter((p) => !p.is_bot)
-      .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0];
-    const isHostUser = Boolean(user?.id && (currentHost ? currentHost === user.id : hostPlayer?.user_id === user.id));
+    const isHostUser = Boolean(user?.id && currentHost === user.id);
     if (!isHostUser) {
       console.log('[CRIBBAGE] Non-host received dealer selection complete; ignoring');
       return;
@@ -13201,17 +13198,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }) : '';
   const handsPlayed = game.total_hands || 0;
 
-  // Find the host - use current_host if set, otherwise fallback to earliest player
-  const hostPlayer = [...players].filter(p => !p.is_bot).sort((a, b) => 
-    new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
-  )[0];
+  // Only the authoritative host UUID grants host controls.
   const currentHost = (game as any).current_host;
   const sessionHostPlayer = currentHost
     ? players.find((player) => player.user_id === currentHost)
-    : hostPlayer;
-  const sessionHostUserId = currentHost ?? sessionHostPlayer?.user_id ?? null;
+    : undefined;
+  const sessionHostUserId = currentHost ?? null;
   const sessionHostName = sessionHostPlayer?.profiles?.username ?? 'the session host';
-  const isCreator = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
+  const isCreator = Boolean(currentHost && currentHost === user?.id);
   const isWaitingTableStatus = !heldDice && !heldCanasta && !heldGolf && !heldRacePoker && !heldBattle31 && !heldQuintzee && !heldWords && !heldBoxdrop && !heldTripFlip && !heldTakeTwo && !heldRoyal && !heldEleven && !heldRun21 && !heldFarkle && !heldYahtzee && (game.status === 'waiting' || game.status === 'waiting_for_players');
   const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
@@ -13476,6 +13470,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameStatus={game.status}
         isPaused={game.is_paused === true}
         sessionHostUserId={sessionHostUserId}
+        sessionHostVersion={(game as any).host_version}
         sessionHostName={sessionHostName}
         configComplete={(game as any).config_complete ?? null}
         isViewerDealer={isDealer}

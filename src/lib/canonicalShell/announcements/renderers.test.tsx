@@ -13,6 +13,12 @@ vi.mock('@/components/LifecycleAnnouncement', () => ({
 
 import { renderAnnouncement } from './renderers';
 
+it('announces the committed host in the canonical rail', () => {
+  render(renderAnnouncement({ id: 'session:host:2', type: 'host_changed',
+    scope: { dealerGameId: 'session' }, payload: { hostName: 'Taylor' } }));
+  expect(screen.getByText('Taylor is now host')).not.toBeNull();
+});
+
 describe('solo showdown announcement', () => {
   it('keeps the hand call alongside its persistent pot context', () => {
     render(renderAnnouncement({

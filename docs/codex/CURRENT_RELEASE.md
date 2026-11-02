@@ -1,3 +1,14 @@
+# Host succession and inactivity — 2026-11-02 — local candidate only
+
+Isolated branch `codex/host-succession-inactivity` adds server-owned continuous
+table tenure, human-only host succession and a configurable limit of three fully
+missed dealer-games. Jeremy confirmed sitting-out hosts retain hosting until
+standing up. Eviction uses settled continuation and preserves financial rows.
+Canonical host announcements use host versions and defer through gameplay.
+No push, merge, deployment or production migration is authorized. Local proof,
+preservation boundaries and the historical-tenure rollout decision are recorded
+in [host succession qualification](HOST_SUCCESSION_INACTIVITY.md).
+
 # Sound Pass 2 final selections — 2026-11-02 — production authorized
 
 24 distinct sounds approved and integrated. Jeremy's saved final choices are

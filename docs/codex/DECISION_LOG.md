@@ -1,3 +1,14 @@
+## 2026-11-02 — Host succession follows continuous table tenure
+
+Jeremy confirmed that sitting out preserves host eligibility until standing up,
+and the default three-game inactivity limit counts only fully missed consecutive
+dealer-games. Private server records own tenure and exact dealer-game receipts;
+existing participation, presence grace and settled continuation own transitions.
+Canonical rail announcements consume host versions, and browser host fallback
+elections are removed. Jeremy selected rollout only after existing tables finish;
+the migration enforces that gate rather than inferring historical tenure. This
+remains a local candidate. See [qualification](HOST_SUCCESSION_INACTIVITY.md).
+
 ## 2026-11-02 — Async push follows match availability and current account activity
 
 The existing per-recipient match episode owns one zero-to-positive availability
