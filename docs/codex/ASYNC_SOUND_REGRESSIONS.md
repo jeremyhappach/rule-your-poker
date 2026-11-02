@@ -1,9 +1,9 @@
 # Async sound regression correction — November 2, 2026
 
-Local implementation and qualification authorized; production remains held for
-Jeremy's explicit **GO**. The isolated `codex/async-sound-regressions` branch is
-based on current main `fb6a0ef6a`. No main integration, push or deployment is part
-of this checkpoint. The original Golf checkout and both Sound Studio worktrees
+Jeremy explicitly provided production **GO** after local qualification. The
+isolated `codex/async-sound-regressions` branch is based on main `fb6a0ef6a`.
+The local runtime checkpoint is `fef218ec1601cea587c34107835d67829e2265cc`, tagged
+`local-async-sound-ready-20261102`. The original Golf checkout and both Sound Studio worktrees
 are preserved. Main already contains published V2 audio; its assets and owners
 are unchanged.
 
@@ -70,17 +70,28 @@ No dependency installation or customer-data mutation occurred.
   action, mute/unmute, page lifecycle recovery and the other player's next turn.
   There are zero page errors or escaped external requests.
 
-The candidate is locally qualified and committed for review; publication and
-physical/hosted gameplay acceptance remain separate, unopened gates.
+The candidate is locally qualified and production publication is authorized.
+Physical/hosted gameplay acceptance remains pending.
 
 The native fixture uses acknowledged synthetic Realtime channels. Closing its
 socket intentionally causes Arcade's existing recovery owner to suppress intro
 audio; this was corrected in the fixture, without changing product recovery.
 
 Browser qualification does not prove physical iPhone/Android speaker output or
-hosted two-player acceptance. Owner real-session smoke remains pending after a
-separately authorized release: fresh invitation/acceptance, both players' later
+hosted two-player acceptance. Owner real-session smoke remains pending after
+release: fresh invitation/acceptance, both players' later
 turns, exit/resume, refresh during intro and play, first placement after return,
 mute/unmute during sound, duplicate/recovery delivery and silent opponent reviews.
 Confirm one bell only for a fresh playable turn, each eligible new placement at
 its visible change, and unchanged scores, balances and continuation.
+
+## Publication authorization and receipt
+
+On November 2, 2026, Jeremy provided explicit GO for this qualified correction.
+Freshly fetched `origin/main` and clean local main still match `fb6a0ef6a`; no
+source reconciliation is needed. The release record adds documentation only to
+the tested runtime. The approved, unmodified main push helper publishes to the
+existing `ptown-poker` Vercel production project. No migration or infrastructure
+change is included. `release-async-sounds-20261102` identifies the publication
+commit; its `-verified` annotated tag records the exact SHA, Vercel READY identity
+and public-host checks once verified. Owner smoke is recorded separately.

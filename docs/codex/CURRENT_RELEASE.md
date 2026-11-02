@@ -1,4 +1,4 @@
-# Async sounds — 2026-11-02 — local correction; production held
+# Async sounds — 2026-11-02 — qualified; production authorized
 
 Run21 Async now connects its existing bell and approved placement/pass cues.
 TriTowers and Boxdrop Async admit their existing bell only for a freshly accepted
@@ -8,7 +8,10 @@ request/actor/segment/revision evidence without changing authority or finances.
 TypeScript, production bundle and 339 focused/new and Arcade/live tests pass.
 Native browser qualification and physical/hosted smoke boundaries are recorded in
 [Async sound evidence](ASYNC_SOUND_REGRESSIONS.md). Published V2 and the standalone
-Sound Studio are preserved. Local work only; explicit production GO is required.
+Sound Studio are preserved. Jeremy provided explicit production GO. Release
+checkpoint: `release-async-sounds-20261102`; its matching `-verified` tag records
+the exact published SHA and deployment evidence. Physical/hosted owner smoke
+remains pending. No migration or production-data correction is included.
 
 # Async push cycles and active-use suppression — 2026-11-02 — qualified; publication authorized
 
