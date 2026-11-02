@@ -1,4 +1,5 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useState, useRef } from 'react';
+import {useDecisionCountdownAudio} from '@/hooks/useDecisionCountdownAudio';
 import { createPortal } from 'react-dom';
 import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import {
@@ -190,16 +191,19 @@ export function ThreeFiveSevenDecisionReveal({
     };
   }, [clock, currentUserId, dealerPosition, eligiblePlayers, signature]);
 
-  if (!clock || typeof document === 'undefined') return null;
+  const soundSurface=useRef<HTMLDivElement>(null);
+  const frame = clock ? deriveThreeFiveSevenDecisionRevealFrame(clock, Date.now()) : null;
+  useDecisionCountdownAudio(clock,frame,placements.length>0&&!!bubble,soundSurface);
+  if (!clock || !frame || typeof document === 'undefined') return null;
   // The animation loop stops at expiry, but updated clocks still render.
   // Use current time so a cached frame cannot revive an expired reveal.
-  const frame = deriveThreeFiveSevenDecisionRevealFrame(clock, Date.now());
   if (!frame.active || placements.length === 0) return null;
   const stackDepth = revealStackDepthPx(cardCount);
   const bubbleText = frame.beat === 'hold' || frame.beat === 'locked' ? null : frame.beat;
 
   return createPortal(
     <div
+      ref={soundSurface}
       data-357-decision-reveal={clock.window.id}
       data-357-reveal-beat={frame.beat}
       data-357-reveal-game={clock.window.gameId}

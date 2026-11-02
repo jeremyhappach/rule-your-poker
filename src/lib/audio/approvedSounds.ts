@@ -17,10 +17,17 @@ import opponentLeg from '@/assets/audio/opponent-leg-a.wav?url';
 import sweep from '@/assets/audio/sweep-a.wav?url';
 import chucky from '@/assets/audio/chucky-a.wav?url';
 import cupRoll from '@/assets/audio/cup-roll-c.wav?url';
+import quintzeeRoll from '@/assets/audio/quintzee-roll-b2.wav?url';
+import dropCountdown from '@/assets/audio/drop-countdown-b.wav?url';
+import farkleBust from '@/assets/audio/farkle-bust-a.wav?url';
+import upperBonus from '@/assets/audio/upper-bonus-b.wav?url';
+import allFilled from '@/assets/audio/all-filled-b.wav?url';
+import chip from '@/assets/audio/chip-single.wav?url';
 
-const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, chucky, cupRoll};
+const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, chucky, cupRoll, quintzeeRoll, dropCountdown, farkleBust, upperBonus, allFilled, chip};
 export type ApprovedSound = keyof typeof files | 'cribbageHighlight';
 const cues = new Map<ApprovedSound, AudioCue>();
+const countdown = new Map<string, AudioCue>();
 let loading: Promise<void> | undefined;
 const policies = {
   slide: {priority: 10, group: 'cards', intervalMs: 160},
@@ -40,6 +47,12 @@ const policies = {
   sweep: {priority: 110, group: 'outcome', intervalMs: 0},
   chucky: {priority: 60, group: 'chucky', intervalMs: 30000},
   cupRoll: {priority: 25, group: 'rolling', intervalMs: 0},
+  quintzeeRoll: {priority: 25, group: 'rolling', intervalMs: 0},
+  dropCountdown: {priority: 35, group: 'countdown', intervalMs: 0},
+  farkleBust: {priority: 70, group: 'scoring', intervalMs: 0},
+  upperBonus: {priority: 75, group: 'scoring', intervalMs: 0},
+  allFilled: {priority: 75, group: 'scoring', intervalMs: 0},
+  chip: {priority: 15, group: 'chips', intervalMs: 160},
 };
 
 /** Fetch once without creating an AudioContext or touching the user's preference.
@@ -50,7 +63,10 @@ export function preloadApprovedSounds() {
     try {
       const response = await fetch(url);
       if (!response.ok) return;
-      const cue = pcmCue(decodePCM(await response.arrayBuffer()));
+      const pcm = decodePCM(await response.arrayBuffer());
+      const cue = pcmCue(pcm);
+      if (name === 'dropCountdown') ['3','2','1'].forEach((beat,i) =>
+        countdown.set(beat, {...pcmCue(pcm,i*900,180),policy:policies.dropCountdown}));
       cues.set(name as keyof typeof files, {...cue, policy: policies[name as keyof typeof files]});
     } catch { /* Audio availability cannot affect gameplay. */ }
   })).then(() => {});
@@ -79,6 +95,8 @@ export const cribbageHighlightCue: AudioCue = {
 export function approvedSound(name: ApprovedSound) {
   return name === 'cribbageHighlight' ? cribbageHighlightCue : cues.get(name);
 }
+/** Exact selected recording, sliced at its three approved tone onsets. */
+export function approvedCountdownBeat(beat:string) { return countdown.get(beat); }
 export function diceLandingSound(indices: readonly number[], diceCount: number): ApprovedSound | null {
   const count = new Set(indices.filter(i => Number.isInteger(i) && i >= 0 && i < diceCount)).size;
   return count === 0 ? null : count === 1 ? 'diceOne' : 'diceMany';

@@ -1,23 +1,58 @@
 {
   "selectedOn": "2026-11-02",
   "selectedBy": "Jeremy",
-  "source": "Explicit Yahtzee Take C selection in Sound Effect Ideas and Final Approval Audit request",
-  "phase": "local-integration-production-blocked",
-  "picks": [{
-    "id": "cup-roll-c",
-    "sha256": "d9ebfb685c53d1975836f78f3136c19f358f91eb30a9bc6d5817b9d036cdcc9c",
-    "approvedGames": ["yahtzee"],
-    "pendingGameReuse": ["horses", "ship-captain-crew"]
-  }],
-  "approvedExistingAssetReuse": [
-    {"id": "peg-wood", "event": "Box Drop visible ordinary/partial box placement"},
-    {"id": "peg-wood", "event": "Words successful local tile placement, live and Async"},
-    {"id": "deal-paper", "event": "HOLM visible fold commit"}
+  "source": "Jeremy: I have made my selections. All seven exact saved choices verified in the review.html DOM on 2026-11-02.",
+  "phase": "approved-integration-conditional-production-go",
+  "picks": [
+    {
+      "id": "quintzee-roll-b2",
+      "sha256": "23c5f970a661fb8aa5a17e9f16c2fcfcc6c0d9155cdc32304ae4508c04d7c3c0"
+    },
+    {
+      "id": "cup-roll-c",
+      "sha256": "d9ebfb685c53d1975836f78f3136c19f358f91eb30a9bc6d5817b9d036cdcc9c",
+      "approvedGames": [
+        "yahtzee",
+        "horses",
+        "ship-captain-crew"
+      ]
+    },
+    {
+      "id": "drop-countdown-b",
+      "sha256": "a4458dab75cac88196af2e5405df29b81b71a8625d34c98c6d03633e89fb70f7"
+    },
+    {
+      "id": "farkle-bust-a",
+      "sha256": "9366af890479c056907be7df76793db47e79bd93581341ddbfc05dbd8ad96e69"
+    },
+    {
+      "id": "upper-bonus-b",
+      "sha256": "61a097ae1579dc8d667c03c77bd813ce71977cbede973d54fa4aedafca3a719f"
+    },
+    {
+      "id": "all-filled-b",
+      "sha256": "c55f2f8799225db1567a99406c598c5a5df231f788dfa96ee9e9ecc2ce6354b6"
+    },
+    {
+      "id": "chip-single",
+      "sha256": "0353d44f5a3b5eebe227cff6f4a724b063ac939cf2fcc33a5b065047abfe9779"
+    }
   ],
-  "revisionAwaitingApproval": {
-    "id": "quintzee-roll-b2",
-    "sha256": "23c5f970a661fb8aa5a17e9f16c2fcfcc6c0d9155cdc32304ae4508c04d7c3c0"
-  },
+  "approvedExistingAssetReuse": [
+    {
+      "id": "peg-wood",
+      "event": "Box Drop visible ordinary/partial box placement"
+    },
+    {
+      "id": "peg-wood",
+      "event": "Words successful local tile placement, live and Async"
+    },
+    {
+      "id": "deal-paper",
+      "event": "HOLM visible fold commit"
+    }
+  ],
   "priorApprovalRecord": "owner-selection.json",
-  "authoritativeMatrix": "../../docs/codex/SOUND_PASS2_APPROVAL_MATRIX.md"
+  "authoritativeMatrix": "../../docs/codex/SOUND_PASS2_APPROVAL_MATRIX.md",
+  "pendingApprovals": []
 }

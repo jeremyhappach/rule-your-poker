@@ -29,6 +29,7 @@ import { chipTransportDbgUpsert } from './chipTransportDbg';
 import { captureWinnerChipEndpoint } from './winnerChipEndpointDbg';
 import { destReactionDbgUpsert, snapshotTargetElement } from './destReactionDbg';
 import { recordVisibleChipScan } from './visibleChipDbg';
+import {presentSound} from '@/lib/audio/presentationSound';
 
 interface MotionPreset {
   durationMs: number;
@@ -665,6 +666,10 @@ export function ChipTransportRuntime({
         }}
       >
         <div
+          onAnimationStart={event => {
+            if(event.target===event.currentTarget)
+              presentSound('chip',`chip-transfer:${chip.intent.soundIdentity??chip.intent.id}`,event.currentTarget);
+          }}
           style={{
             ...chip.preset.discStyle,
             animation: `${keyframeName} ${flightMs}ms ease-in-out ${chip.delayMs}ms forwards`,

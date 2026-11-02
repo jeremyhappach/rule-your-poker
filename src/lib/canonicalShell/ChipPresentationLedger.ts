@@ -583,6 +583,7 @@ export function useChipPresentationLedger(
           const isRecipientAward = entry.to.kind === 'player';
           const intent: ChipTransportIntent = {
             id: entry.id,
+            soundIdentity: batch.id,
             amount: entry.amount,
             from,
             to,

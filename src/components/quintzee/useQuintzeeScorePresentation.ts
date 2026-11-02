@@ -9,14 +9,18 @@ export function useQuintzeeScorePresentation(v:QuintzeeSnapshot,now:number,userI
  const b=v.state.board,base=b.baseScore??b.result?.rawSubtotal??0,bonus=b.upperBonusAwarded??b.result?.upperBonus??0;
  const prior=useRef({scope:v.scope,revision:v.revision,base,bonus,quintzee:b.scores.yahtzee,phase:b.phase,enabled,scores:{...b.scores}});
  const [queue,setQueue]=useState<Event[]>([]),[finalDelay,setFinalDelay]=useState(0);
+ const bonusAudio=useRef<{scope:string;id:string;upper:boolean;filled:boolean;filledAt:number}|null>(null);
  useLayoutEffect(()=>{const p=prior.current;prior.current={scope:v.scope,revision:v.revision,base,bonus,quintzee:b.scores.yahtzee,phase:b.phase,enabled,scores:{...b.scores}};
-  if(p.scope!==v.scope||!enabled||!p.enabled||document.hidden){setQueue([]);setFinalDelay(0);return;}
+  if(p.scope!==v.scope||!enabled||!p.enabled||document.hidden){bonusAudio.current=null;setQueue([]);setFinalDelay(0);return;}
   if(v.revision<=p.revision)return;
   const posted = Object.keys(b.scores).some(key => !(key in p.scores));
-  if(userId && posted) presentSound(p.quintzee === undefined && b.scores.yahtzee === 50 ? 'yahtzee' : 'scorePost',
+  const fresh=!(b.result&&now-b.result.completedAt>1500);
+  const upper=bonus>p.bonus&&fresh&&(!b.celebration||now<b.celebration.endsAt);
+  const filled=b.phase==='stage_complete'&&p.phase!=='stage_complete'&&(b.result?.clearBonus??0)>0&&fresh;
+  if(userId&&(upper||filled))bonusAudio.current={scope:v.scope,id:'quintzee:'+v.scope+':'+v.revision,upper,filled,filledAt:b.celebration?.endsAt??now};
+  if(userId && posted && !upper && !filled) presentSound(p.quintzee === undefined && b.scores.yahtzee === 50 ? 'yahtzee' : 'scorePost',
     'quintzee:'+v.scope+':'+v.revision, surface?.current ?? null);
   if(b.celebration&&b.rules.version==='quintzee/3'){setQueue([]);setFinalDelay(0);return;}
-  const fresh=!(b.result&&now-b.result.completedAt>1500);
   const next=queue.filter(e=>e.end>now);if(base>p.base&&fresh){const labels:string[]=[];
    if(bonus>p.bonus)labels.push('Upper bonus!');if(p.quintzee===undefined&&(b.scores.yahtzee??0)>0)labels.push('Quintzee!');
    const start=Math.max(now,next.at(-1)?.end??now),countAt=start+labels.length*QUINTZEE_CELEBRATION_MS;
@@ -25,11 +29,22 @@ export function useQuintzeeScorePresentation(v:QuintzeeSnapshot,now:number,userI
   if(b.phase==='stage_complete'&&p.phase!=='stage_complete')setFinalDelay(Math.max(0,(next.at(-1)?.end??b.result!.completedAt)-b.result!.completedAt));
   setQueue(next);
  },[v.scope,v.revision,base,bonus,b.phase,enabled]);
- useEffect(()=>{const retire=()=>{setQueue([]);setFinalDelay(0);prior.current.enabled=false;};const hidden=()=>{if(document.hidden)retire();};window.addEventListener('offline',retire);document.addEventListener('visibilitychange',hidden);return()=>{window.removeEventListener('offline',retire);document.removeEventListener('visibilitychange',hidden);};},[]);
+ useEffect(()=>{const retire=()=>{bonusAudio.current=null;setQueue([]);setFinalDelay(0);prior.current.enabled=false;};const hidden=()=>{if(document.hidden)retire();};window.addEventListener('offline',retire);document.addEventListener('visibilitychange',hidden);return()=>{window.removeEventListener('offline',retire);document.removeEventListener('visibilitychange',hidden);};},[]);
  const fixed=b.rules?.version==='quintzee/3'?b.celebration:undefined;
  const authoritative:Event|undefined=fixed&&now<fixed.endsAt?{id:v.scope+':'+fixed.id,from:fixed.from,to:fixed.to,start:fixed.startedAt,countAt:fixed.countAt,end:fixed.endsAt,labels:[fixed.label],authoritative:true}:undefined;
  const event=enabled?(authoritative??queue.find(e=>e.end>now)):undefined;
  const banner=event?.authoritative?event.labels[0]:event&&now<event.countAt?event.labels[Math.floor(Math.max(0,now-event.start)/QUINTZEE_CELEBRATION_MS)]:undefined;
+ useLayoutEffect(()=>{
+  const pending=bonusAudio.current;
+  if(!pending||pending.scope!==v.scope||!enabled||!userId)return;
+  if(pending.upper&&banner?.toLowerCase().includes('upper')){
+   pending.upper=false;presentSound('upperBonus',pending.id+':upper',surface?.current??null);
+  }
+  if(pending.filled&&!banner&&now>=pending.filledAt){
+   pending.filled=false;presentSound('allFilled',pending.id+':filled',surface?.current??null);
+  }
+  if(!pending.upper&&!pending.filled)bonusAudio.current=null;
+ },[banner,now,v.scope,v.revision,enabled,userId,surface]);
  // Per-category audio is a single committed posting cue; numeric motion is unchanged.
  const fraction=event?Math.max(0,Math.min(1,(now-event.countAt)/(event.end-event.countAt))):1;
  return {base:event?Math.round(event.from+(event.to-event.from)*fraction):base,banner,busy:!!event,finalDelay:fixed?0:finalDelay};

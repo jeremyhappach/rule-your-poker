@@ -1,17 +1,24 @@
-# Sound Pass 2 final audit — 2026-11-02 — local integration; production blocked
+# Sound Pass 2 final selections — 2026-11-02 — production authorized
 
-18 distinct sound approvals verified: original eight, nine V2 Take A selections,
-and Yahtzee Cup C. Local additions connect Cup C to the real Yahtzee roll, reuse
-Wooden Peg A for visible Box Drop/Words placement, and close HOLM's fold-slide gap.
-Quintzee B2 preserves pitch with slower, more staccato pulses and awaits approval.
-Seven unverified decisions are isolated at `http://localhost:4318/review.html`.
-No production push, migration or financial mutation. The owner's conditional GO
-remains blocked by those decisions; no new generic GO is requested.
+24 distinct sounds approved and integrated. Jeremy's saved final choices are
+Quintzee B2, Cup C for Yahtzee/Horses/SCC, 357 countdown B, Farkle A, Upper Bonus B,
+All Filled B and Single Chip. Wooden Peg A covers visible Box Drop/live and Async
+Words placement; HOLM folds use the approved slide. All original eight and nine V2
+selections are preserved. No sound approvals or mandatory coverage gaps remain.
+Sounds follow existing visual owners, authoritative awards and shared mute/dedupe.
+No rules, migrations, financial mutations, settlement or gameplay timing changes.
+Conditional production GO applies after final validation and clean main integration.
 See [authoritative approval matrix](SOUND_PASS2_APPROVAL_MATRIX.md) for evidence,
-exact pending selections, ownership, preservation and validation.
-Final validation: 3,606 application + 241 harness tests, typecheck and production
-build passed. Studio typecheck/build and focused real-renderer auditions passed.
-An initial WebSocket/Event test-runner exception did not recur on the full rerun.
+exact selected assets, ownership, preservation and validation. All selected copies
+match their audition hashes; all 51 earlier audition hashes remain unchanged.
+Final `npm run build` passed: TypeScript, 3,617 application tests across 499 files,
+241 harness tests across 12 files, and the production bundle. Studio typecheck
+and build also passed. The first run identified obsolete Quintzee landing assertions
+and a JSDOM animation-event mismatch; corrected focused tests and the complete
+rerun pass. No unrelated test infrastructure or product behavior was changed.
+Release checkpoint: `release-sound-pass2-final-20261102`; its matching `-verified`
+tag records the exact published SHA, deployment and public asset verification.
+Jeremy's physical-device listening and production smoke remain acceptance truth.
 
 # Sound Pass 2 consolidated studio — 2026-11-02 — local audition only
 

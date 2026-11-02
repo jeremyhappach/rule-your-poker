@@ -9,11 +9,13 @@ import type {TripFlipSnapshot} from '@/lib/tripFlip/model';
 import type {QuintzeeSnapshot} from '@/lib/quintzee/model';
 import {QUINTZEE_RUMBLE_MS} from './quintzee/useQuintzeeRumble';
 const sound=vi.hoisted(()=>vi.fn());
+const roll=vi.hoisted(()=>({start:vi.fn(),stop:vi.fn()}));
 vi.mock('@/lib/audio/presentationSound',()=>({presentSound:sound}));
+vi.mock('@/lib/audio/diceRollSound',()=>({startRollSound:roll.start}));
 vi.mock('@/components/PlayingCard',()=>({PlayingCard:()=>null}));
 vi.mock('@/components/triTowers/TriTowersPresentation',()=>({useTriRoundPresentation:()=>({fraction:0}),TriRoundIntro:()=>null,TriScorePill:()=>null}));
 vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:({children}:any)=><main data-fullscreen-board-slot>{children}<div data-canonical-felt-interaction-layer/></main>}));
-beforeEach(()=>{vi.useFakeTimers();sound.mockClear();vi.stubGlobal('ResizeObserver',class{observe(){}disconnect(){}});Object.defineProperty(document,'hidden',{configurable:true,value:false});Object.defineProperty(navigator,'onLine',{configurable:true,value:true});});
+beforeEach(()=>{vi.useFakeTimers();sound.mockClear();roll.start.mockReset().mockReturnValue(roll.stop);roll.stop.mockClear();vi.stubGlobal('ResizeObserver',class{observe(){}disconnect(){}});Object.defineProperty(document,'hidden',{configurable:true,value:false});Object.defineProperty(navigator,'onLine',{configurable:true,value:true});});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 const take:TakeTwoSnapshot={id:'game',scope:'round-1',revision:1,serverAt:1000,round:1,canAct:true,paused:false,finished:false,settled:false,solo:true,players:[{id:'u',name:'You',score:0,active:true}],board:{rules:{version:'take-two/1',stageMs:100000,introMs:2500,holdMs:6000,meterMax:500,meterMin:50,meterHoldMs:1000,meterStepsPerSecond:30,meterStep:5},phase:'playing',slots:[1,2,4,5],current:9,layout:[0,1,2,3].map(column=>({row:0,column,x:column*2})),legalPairs:[[0,1],[2,3]],exposed:[0,1,2,3],highScore:0,stockRemaining:23,samePairs:0,consecutivePairs:0,meterAt:1000,score:0,deadline:101000,event:{label:'',points:0}}};
 const trip:TripFlipSnapshot={id:'game',scope:'round-1',revision:1,serverAt:1000,round:1,canAct:true,paused:false,finished:false,settled:false,solo:true,players:[{id:'u',name:'You',score:0,active:true}],board:{rules:{version:'trip-flip/1',stageMs:180000,introMs:2500,holdMs:6000,dots:30,dotMs:6000,timePerDot:125},phase:'playing',columns:[[0,13],[],[],[]],cells:[null,null,null],fan:[26,5,52],special:[0,1,2],specialClaimed:false,legalMoves:[[7,0,26],[7,4,26],[0,1,13]],highScore:0,stockRemaining:49,trips:0,runs:0,suitedTotal:0,specialTotal:0,score:0,deadline:181000,event:{label:'',points:0}}};
@@ -36,13 +38,14 @@ it('Trip Flip uses its portaled plane; hidden-tab changes never catch up',()=>{
  ui.rerender(<TripFlipView {...props} activeTab="lobby" view={hidden}/>);
  ui.rerender(<TripFlipView {...props} activeTab="cards" view={hidden}/>);expect(sound).toHaveBeenCalledTimes(1);
 });
-it.each([1,5])('Quintzee lands %i actual unheld dice on its visible plane',count=>{
+it.each([1,5])('Quintzee sounds %i moving tiles on its visible plane and stops without a landing',count=>{
  const before=snap(),ui=render(<QuintzeeView {...props} actor="p" snapshot={before}/>);
  const next=structuredClone(before);next.revision++;next.state.board.rollSerial++;next.state.board.held=Array.from({length:5-count},(_,i)=>i);
  ui.rerender(<QuintzeeView {...props} actor="p" snapshot={next}/>);
- act(()=>vi.advanceTimersByTime(QUINTZEE_RUMBLE_MS-1));expect(sound).not.toHaveBeenCalled();
- act(()=>vi.advanceTimersByTime(1));expect(sound).toHaveBeenCalledTimes(1);expect(sound.mock.calls[0][0]).toBe(count===1?'diceOne':'diceMany');expect(sound.mock.calls[0][2].className).toBe('quintzee-plane');
- ui.rerender(<QuintzeeView {...props} actor="p" snapshot={next}/>);expect(sound).toHaveBeenCalledTimes(1);
+ expect(roll.start).toHaveBeenCalledTimes(1);expect(roll.start.mock.calls[0][0]).toBe('quintzeeRoll');expect(roll.start.mock.calls[0][2].className).toBe('quintzee-plane');
+ act(()=>vi.advanceTimersByTime(QUINTZEE_RUMBLE_MS-1));expect(roll.stop).not.toHaveBeenCalled();
+ act(()=>vi.advanceTimersByTime(1));expect(roll.stop).toHaveBeenCalledTimes(1);expect(sound).not.toHaveBeenCalled();
+ ui.rerender(<QuintzeeView {...props} actor="p" snapshot={next}/>);expect(roll.start).toHaveBeenCalledTimes(1);
 });
 it('Quintzee saved replay never sounds a changing roll',()=>{
  const before=snap(),ui=render(<QuintzeeView {...props} actor="p" snapshot={before} replay/>);

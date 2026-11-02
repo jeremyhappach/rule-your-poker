@@ -5,7 +5,7 @@ against accepted snapshots. `DelayedTurn` supplies its ephemeral Start admission
 and Run21 feedback to existing shared bell/card hooks; recovery/history cannot
 create this provenance. See `ASYNC_SOUND_REGRESSIONS.md`.
 
-`src/lib/audio/approvedSounds.ts` maps seventeen exact approved samples and the
+`src/lib/audio/approvedSounds.ts` maps twenty-three exact approved samples and the
 Cribbage highlight cue; `pcm.ts` caches decoded native buffers. The existing
 `AudioManager` owns preference, context lifecycle, dedupe and priority/grouping.
 `presentationSound.ts` admits only visible current events. Card flights attach
@@ -17,10 +17,16 @@ and the admitted Chucky deal wave using useLiveSoundEvent receipts. Sweep reserv
 its terminal generation against routine leg/winner cues. See
 SOUND_STUDIO_V2_INTEGRATION.md. None of these sounds advance gameplay or authorize settlement.
 Saved async reviews retain visual presentation with historical sound suppressed.
-Pass 2: `diceRollSound.ts` admits Yahtzee Cup C through the same manager and
-`DiceRollAnimation` cancels it at landing. `useHolmFoldAudio` covers HOLM's direct
+Pass 2: `diceRollSound.ts` admits Yahtzee/Horses/SCC Cup C through the same manager and
+`DiceRollAnimation` cancels it at landing. `useQuintzeeRollAudio` follows the actual
+rumble with B2 and no landing. `useDecisionCountdownAudio` follows visible 357
+3/2/1 frames; DROP stays silent. Farkle's existing blocking overlay owns its bust
+cue; Quintzee's score presentation owns authoritative Upper Bonus/All Filled cues.
+`ChipTransportRuntime` sounds the native flight start, deduped by the presentation
+ledger batch ID; chip amounts and financial/lifecycle ownership are unchanged.
+`useHolmFoldAudio` covers HOLM's direct
 fold commit; BoxdropView and PtownWordsView own visible placement clicks.
-Approval evidence and pending decisions: `SOUND_PASS2_APPROVAL_MATRIX.md`.
+Approval evidence and exact final selections: `SOUND_PASS2_APPROVAL_MATRIX.md`.
 The narrowed local audition entry is `dev/sound-studio-v2/review.html`.
 Local audition/browser qualification: `dev/sound-lab/`; coverage and smoke:
 `SOUND_EFFECTS_INTEGRATION.md`.

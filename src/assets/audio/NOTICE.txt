@@ -29,3 +29,14 @@ Kenney Vleugels, Casino Audio, CC0 1.0, with P-Town filtering/window edits.
 https://kenney.nl/assets/casino-audio
 Exact source recording, processing and hash: dev/sound-studio-v2/pass2-catalog.json
 and prepare-pass2.mjs. Identical to the owner-selected Cup C audition.
+
+Final Pass 2 selections, 2026-11-02: quintzee-roll-b2.wav,
+drop-countdown-b.wav, farkle-bust-a.wav, upper-bonus-b.wav, all-filled-b.wav.
+Original procedural P-Town compositions; no third-party recording or melody.
+Exact audition hashes: dev/sound-studio-v2/pass2-approved-selection.json.
+Generators: prepare-pass2.mjs and prepare-review.mjs.
+
+chip-single.wav: Kenney Vleugels, Casino Audio, CC0 1.0.
+https://kenney.nl/assets/casino-audio
+Identical to the selected original Sound Lab audition; provenance and processing
+remain in dev/sound-lab/catalog.json. Cup C reuse also approved for Horses/SCC.

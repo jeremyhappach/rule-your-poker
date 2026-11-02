@@ -12,7 +12,10 @@ it('admits the exact Yahtzee cue once without queueing and exposes the manager s
  expect(mocks.present).toHaveBeenCalledWith({userId:'user',id:'palette:cupRoll:yahtzee:uuid:round:roll',cue:mocks.cue},expect.any(Function));
  stop();expect(mocks.cancel).toHaveBeenCalledOnce();
 });
-it.each(['horses:uuid:roll','scc:uuid:roll',undefined])('does not integrate an unapproved roll mapping %s',id=>{
+it.each(['horses:uuid:roll','ship-captain-crew:uuid:roll'])('uses approved Cup C for %s',id=>{
+ startDiceRollSound(id,document.body);expect(mocks.present.mock.lastCall?.[0].cue).toBe(mocks.cue);
+});
+it.each(['farkle:uuid:roll',undefined])('does not change unrelated roll mapping %s',id=>{
  startDiceRollSound(id,document.body);expect(mocks.present).not.toHaveBeenCalled();
 });
 it('consumes an invisible edge without a cue',()=>{

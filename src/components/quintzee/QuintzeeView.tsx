@@ -1,5 +1,4 @@
-import {presentSound} from '@/lib/audio/presentationSound';
-import {diceLandingSound} from '@/lib/audio/approvedSounds';
+import {useQuintzeeRollAudio} from './useQuintzeeRollAudio';
 import {QuintzeeBonuses} from './QuintzeeBonuses';
 import {useQuintzeeScorePresentation} from './useQuintzeeScorePresentation';
 import {TriScorePill,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
@@ -20,11 +19,9 @@ export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineE
  const tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
  const s=v.state,b=s.board,active=s.players[s.turnIndex],mine=active===actor,at=v.pausedAt??now,clock=quintzeeClock(b,at);
  const playerName=(id:string,index:number)=>v.playerNames?.[id]?.trim()||`Player ${index+1}`;
- const rumble=useQuintzeeRumble(v.scope,b.rollSerial,b.dice.length,b.held,(b.phase==='playing'||b.result?.reason==='no_matches')&&!s.finished&&v.pausedAt===null&&at<b.deadline,(identity,indices)=>{
-  const sound=diceLandingSound(indices,b.dice.length);
-  if(sound&&!replay)presentSound(sound,identity,!sessionEnded&&!error&&tab==='cards'?viewport.current:null);
- });
+ const rumble=useQuintzeeRumble(v.scope,b.rollSerial,b.dice.length,b.held,(b.phase==='playing'||b.result?.reason==='no_matches')&&!s.finished&&v.pausedAt===null&&at<b.deadline);
  const ready=b.phase==='ready',v2=b.rules.version!=='quintzee/1',viewport=useRef<HTMLDivElement>(null);
+ useQuintzeeRollAudio(rumble,!replay&&!sessionEnded&&!error&&tab==='cards',viewport);
  const baseMotion=useQuintzeeScorePresentation(v,at,replay?'':userId,!sessionEnded&&!error&&v.pausedAt===null&&tab==='cards',viewport);
  const result=b.phase==='stage_complete'&&b.result?{...b.result,id:v.scope+':result',elapsed:Math.max(0,b.rules.resultMs-(b.deadline-at)),displayScore:b.result.score}:null;
  const resultSequence=useMemo(()=>({namespace:'quintzee',clearMs:0,clearCueAt:celebrationCueAt,seekOnRecovery:false,timeline:(elapsed:number)=>triResultTimeline(Math.max(0,elapsed-baseMotion.finalDelay)),countWindow:()=>{const w=triCountWindow();return {start:w.start+baseMotion.finalDelay,end:w.end+baseMotion.finalDelay};}}),[baseMotion.finalDelay]);

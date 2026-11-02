@@ -2,15 +2,19 @@ import {platformAudio} from './platformAudio';
 import {approvedSound} from './approvedSounds';
 import {isSoundSurfaceVisible} from './presentationSound';
 
-/** A discrete admitted visual roll, never a queued/catch-up timeline.
- * Cup C is approved for Yahtzee only. The exact 4-second recording covers its
- * 900ms animation; the renderer stops the complete graph on its landing frame. */
+/** Discrete admitted motion. The exact four-second samples cover the physical
+ * 900ms roll and Quintzee's bounded 300–2500ms rumble. Owners stop the complete
+ * graph at their visual boundary; muted/unloaded events never catch up. */
 export function startDiceRollSound(identity: string | undefined, surface: Element | null) {
+  if (!identity || !/^(yahtzee|horses|ship-captain-crew):/.test(identity)) return () => {};
+  return startRollSound('cupRoll',identity,surface);
+}
+export function startRollSound(name:'cupRoll'|'quintzeeRoll',identity:string,surface:Element|null) {
   let stop = () => {};
   const {userId} = platformAudio.getSnapshot();
-  if (!userId || !identity?.startsWith('yahtzee:')) return stop;
-  platformAudio.present({userId, id: `palette:cupRoll:${identity}`,
-    cue: isSoundSurfaceVisible(surface) ? approvedSound('cupRoll') : undefined},
+  if (!userId) return stop;
+  platformAudio.present({userId, id: `palette:${name}:${identity}`,
+    cue: isSoundSurfaceVisible(surface) ? approvedSound(name) : undefined},
     cancel => { stop = cancel; });
   return () => stop();
 }

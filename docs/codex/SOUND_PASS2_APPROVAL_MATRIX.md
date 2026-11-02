@@ -1,8 +1,8 @@
 # Sound Pass 2 — authoritative approval and implementation audit
 
 2026-11-02. This audit supersedes the proposal statuses in
-`SOUND_PASS2_COVERAGE.md`. No production push is authorized while the owner's
-conditional approval gates remain unresolved.
+`SOUND_PASS2_COVERAGE.md`. All sound decisions are resolved. The owner's conditional
+production GO covers publication after validation and clean main reconciliation.
 
 ## Approval evidence
 
@@ -18,15 +18,15 @@ authorization. That predates the additional 24 candidates and does not approve t
 
 “Sound Effect Ideas” (`6ae7d145-b7a0-83ea-ba3c-2435477dd957`) and the current
 request approve Yahtzee Cup C, request a revised Quintzee B, and permit suitable
-reuse of already approved sounds for Box Drop and Words. Reusing Cup C in Horses
-and SCC was an assistant suggestion, not an owner selection.
+reuse of already approved sounds for Box Drop and Words.
 
-The available in-app studio profile shows zero saved favorites. Inspection of the
-existing Chrome studio was interrupted by user input; Chrome-only favorites remain
-**unverified**, not disproved. No persisted record was rewritten. The nine committed
-selections in `owner-selection.json` agree with their original audition hashes.
+Jeremy then confirmed “I have made my selections.” The review page's saved DOM
+record showed all seven: Quintzee B2, Cup C reuse, countdown B, Farkle A, Upper
+Bonus B, All Filled B and Single Chip. These exact choices are now recorded in
+`dev/sound-studio-v2/pass2-approved-selection.json`; none was chosen on his behalf.
+The nine prior selections in `owner-selection.json` retain their original hashes.
 
-**Count: 18 distinct approved sounds** = 8 Pass 1 + 9 V2 + Yahtzee Cup C.
+**Count: 24 distinct approved sounds** = 8 Pass 1 + 9 V2 + Cup C + 6 final additions.
 Additional reuse mappings do not inflate the sound count. Existing Run21 and other
 baseline procedural effects are preserved, not counted as newly approved selections.
 
@@ -52,16 +52,16 @@ baseline procedural effects are preserved, not counted as newly approved selecti
 | Opponent leg | opponent-leg-a.wav | Approved | Integrated; UUID award receipt |
 | Sweep | sweep-a.wav | Approved | Integrated; terminal precedence |
 | Chucky wins | chucky-a.wav | Approved | Integrated; cooldown preserved |
-| Yahtzee physical roll | Exact cup-roll-c.wav | Approved | Added locally; first motion → landing, A/B follows |
-| Horses / SCC physical roll | Proposed same Cup C | Requires approval | Intentionally no new shake until selected |
-| Quintzee electronic roll | New quintzee-roll-b2.wav | Revision requested | Studio only; revised asset needs approval |
-| 357 3–2–1 Drop | drop-countdown A/B/C | Requires approval | Studio only; 900ms beat, DROP silent |
+| Yahtzee physical roll | Exact cup-roll-c.wav | Approved | First motion → landing, A/B follows |
+| Horses / SCC physical roll | Same Cup C | Approved | Same physical roll owner and held-die landing rules |
+| Quintzee electronic roll | quintzee-roll-b2.wav | Approved | Actual rumble start/stop; held tiles silent; no landing |
+| 357 3–2–1 Drop | drop-countdown-b.wav | Approved | Exact tone slices at visible 3/2/1; DROP silent |
 | Run21 Pass | Existing approved pass/flip mapping | Approved baseline | Preserved, including fresh Async event adapter |
 | Run21 exact 21 / bust | Existing feedback cues | Approved baseline | Preserved; optional replacements not selected or needed |
-| Farkle bust | farkle-bust A/B/C | Requires approval | Studio only; existing roll/landing unchanged |
-| Quintzee Upper Bonus +35 | upper-bonus A/B/C | Requires approval | Studio only |
-| Quintzee All Filled +35 | all-filled A/B/C | Requires approval | Studio only |
-| Taxes, reantes, chip transfers | chip-single / pot-gather candidates | Requires approval | No approved chip mapping found; no substitution |
+| Farkle bust | farkle-bust-a.wav | Approved | At admitted blocking overlay after dice settle |
+| Quintzee Upper Bonus +35 | upper-bonus-b.wav | Approved | Fresh authoritative award at its banner |
+| Quintzee All Filled +35 | all-filled-b.wav | Approved | Fresh positive clear award; after any Upper Bonus banner |
+| Taxes, reantes, chip transfers | chip-single.wav | Approved | Native chip flight start; one identity per ledger presentation batch |
 | Box Drop ordinary visible placement | Exact Wooden Peg A | Approved reuse authorized | Added locally at accepted box DOM commit |
 | Words successful local tile placement (live + Async) | Exact Wooden Peg A | Approved reuse authorized | Added locally after staged tile commits |
 | Hold toggles, rejected target/placement, drag, restored draft, history | None | Intentionally silent | No new audio |
@@ -69,12 +69,28 @@ baseline procedural effects are preserved, not counted as newly approved selecti
 
 ## Failure boundaries and preserve list
 
-Yahtzee's only production roll renderer is `DiceRollAnimation`, mounted by
+Yahtzee/Horses/SCC's production roll renderer is `DiceRollAnimation`, mounted by
 `DiceTableLayout`; it supplies game type + cache identity + roll key. The roll
 starts on its first RAF, stops synchronously before its landing commit, and
 cancels on replacement, unmount, offline, mute, or page interruption. A new
 optional manager cancellation callback exposes its existing graph stop; it creates
 no second context or preference owner. No queued unlock replay is introduced.
+
+Quintzee B2 follows the existing rumble identity and duration. A populated new
+round does not re-admit an old roll. The four-second recordings cover the existing
+900ms physical roll and all configured Quintzee durations (300–2500ms); the owner
+cancels them at the actual motion end. No gameplay timer changes or added landing.
+Fresh authoritative upper/clear awards own bonus audio; stale/recovered results
+are silent. If both awards occur together, their visible presentations sequence
+the cues instead of stacking them with routine score posting.
+
+357 arms at the existing locked lead-in and observes the real 3/2/1 frames.
+Hidden/offline/interrupted windows and mid-count mounts cannot replay missed beats.
+The exact B recording is sliced at its approved onsets; DROP remains silent.
+Farkle follows the existing admitted bust overlay after the dice presentation.
+Chip audio observes native flight start with a shared presentation batch identity;
+the low-priority cue cannot duplicate per player or compete with stronger outcomes.
+No amount, endpoint, ledger dispatch or settlement behavior changes.
 
 Box Drop's placed boxes currently appear atomically; only the next conveyor box
 has an arrival animation. A sound on the place button or on that conveyor animation
@@ -102,24 +118,22 @@ AudioManager/mobile session ownership; round/dealer/roll identities; landing A/B
 existing fresh Async sequencing, hidden/history suppression and baseline Run21
 sounds; rules, RPCs, chips, wallets, ledgers, settlement, eligibility and lifecycle.
 
-## Remaining owner decisions
+## Final owner decisions
 
 The isolated review is `http://localhost:4318/review.html`, also available on the
 same Wi-Fi at `http://192.168.1.242:4318/review.html`.
 
-1. `#quintzee`: B2 keeps 264Hz and harmonic mix, changes 44 → 34 pulses/sec,
+1. `#quintzee`: **B2 approved**; keeps 264Hz and harmonic mix, changes 44 → 34 pulses/sec,
    narrows the envelope and lowers the gaps. Stop follows the real rumble, no landing.
-2. `#cup`: reuse approved Yahtzee Cup C for Horses and SCC.
-3. `#drop-countdown`: 357 descending countdown.
-4. `#farkle-bust`: Farkle bust.
-5. `#upper-bonus`: Quintzee Upper Bonus.
-6. `#all-filled`: Quintzee All Filled.
-7. `#chips`: chip transfer recording. Original Pass 1 left both candidates unselected.
+2. `#cup`: **Cup C reuse approved** for Horses and SCC.
+3. `#drop-countdown`: **B approved**.
+4. `#farkle-bust`: **A approved**.
+5. `#upper-bonus`: **B approved**.
+6. `#all-filled`: **B approved**.
+7. `#chips`: **Single Chip approved**.
 
-These are missing/unverified approvals, not a request to reconsider the seventeen
-published choices. If a Chrome favorite already captures one, its exact exported
-selection resolves that row without re-audition. Production remains blocked until
-these are resolved, mapped, tested and merged onto clean synchronized main.
+No sound approvals remain. Box Drop and Words reuse the approved Wooden Peg A.
+Run21 retains its existing approved pass/21/bust mappings. No mandatory gap remains.
 
 ## Validation
 
@@ -141,8 +155,11 @@ of the application tests; no rules, RPCs, migrations, wallet/ledger or settlemen
 code changed and no database writes were performed. This is presentation-only
 regression evidence, not a new production financial proof.
 
-**18 distinct approved sounds are integrated and locally validated.** Four
-presentation mappings were added: Yahtzee roll, HOLM fold, Box Drop placement and
-Words placement. The seven unverified decisions above remain unintegrated.
-Physical iPhone/Android listening and Jeremy's production smoke are not inferred
-from local automated checks. Production remains at `5037d7fdf`; no push/deployment.
+The preceding validation covers the initial 18-sound audit commit. The final
+selected integration adds focused roll/cancellation, countdown, bonus, Farkle and
+chip-animation checks. All selected production WAVs match their audition hashes.
+Final release validation and publication are recorded in CURRENT_RELEASE.md and
+the `release-sound-pass2-final-20261102` / matching `-verified` checkpoint tags.
+All **24 distinct approved sounds are integrated**. Physical iPhone/Android
+listening and Jeremy's production smoke remain acceptance steps; neither is
+inferred from automated checks. No database or historical-session writes occurred.

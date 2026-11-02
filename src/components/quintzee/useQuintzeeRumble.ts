@@ -16,10 +16,13 @@ export function useQuintzeeRumble(scope:string,serial:number,diceCount:number,he
  const duration=useRef(durationMs);duration.current=durationMs;
  const identity=`${scope}:${serial}`;
  const previous=useRef(identity);
+ const previousScope=useRef(scope);
  const [animation,setAnimation]=useState<{identity:string;held:readonly number[]}|null>(null);
  useLayoutEffect(()=>{
   const changed=previous.current!==identity;
   previous.current=identity;
+  const sameScope=previousScope.current===scope;previousScope.current=scope;
+  if(!sameScope){setAnimation(null);return;}
   if(!playing||diceCount!==5){setAnimation(null);return;}
   if(!changed)return;
   interrupted.current=document.hidden||!navigator.onLine;

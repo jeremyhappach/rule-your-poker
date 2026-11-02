@@ -113,6 +113,8 @@ export function FarkleGameTable(props: FarkleGameTableProps) {
   const [farkleOverlayArm, setFarkleOverlayArm] = useState<FarkleBlockingOverlayReceipt | null>(null);
   useLiveSoundEvent(blockingOverlay?.eventType === 'banked' ? blockingOverlay.id : null, true, 'scorePost',
     () => tab === 'cards' && !isPaused && !error ? document.querySelector('[data-canonical-felt-interaction-layer]') : null);
+  useLiveSoundEvent(blockingOverlay?.eventType === 'farkle' ? blockingOverlay.id : null, true, 'farkleBust',
+    () => tab === 'cards' && !isPaused && !error ? document.querySelector('[data-farkle-blocking-overlay="farkle"]') : null);
   const activeOverlayRef = useRef<FarkleBlockingOverlayReceipt | null>(null);
   const pendingHotOverlayRef = useRef<FarkleBlockingOverlayReceipt | null>(null);
   const farkleOverlayArmRef = useRef<FarkleBlockingOverlayReceipt | null>(null);

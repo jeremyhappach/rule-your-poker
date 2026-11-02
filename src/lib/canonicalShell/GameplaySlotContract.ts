@@ -52,6 +52,8 @@ export interface ChipDestinationReaction {
 export interface ChipTransportIntent {
   /** Dedupe key — stable per intent across re-renders. */
   id: string;
+  /** Presentation-only grouping: one audible contact per admitted ledger batch. */
+  soundIdentity?: string;
   amount: number;
   from: ChipEndpointRef;
   to: ChipEndpointRef;

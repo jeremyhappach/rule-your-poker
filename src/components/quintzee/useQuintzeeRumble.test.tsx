@@ -27,6 +27,10 @@ describe('Quintzee roll presentation',()=>{
   rerender({scope:'two',serial:0,playing:false});expect(result.current).toBeNull();
   act(()=>vi.advanceTimersByTime(1500));expect(result.current).toBeNull();
  });
+ it('does not animate an already populated replacement scope',()=>{
+  const h=renderHook(({scope,serial})=>useQuintzeeRumble(scope,serial,5,[],true),{initialProps:{scope:'one',serial:3}});
+  h.rerender({scope:'two',serial:7});expect(h.result.current).toBeNull();
+ });
 });
 
 it('applies tuned duration to the next roll without extending or shortening an active roll',()=>{

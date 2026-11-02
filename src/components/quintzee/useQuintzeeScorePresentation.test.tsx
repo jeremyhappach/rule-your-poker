@@ -32,3 +32,17 @@ it('posts a committed zero once and never on scope replacement or replay',()=>{
  h.rerender({v:{...v,scope:'round:2'},on:true,user:'user'});expect(audio.post).toHaveBeenCalledTimes(1);
  h.rerender({v:{...snap(3,50,0,50),scope:'round:2'},on:true,user:''});expect(audio.post).toHaveBeenCalledTimes(1);
 });
+it('plays upper bonus instead of routine posting, then all-filled only after its overlay retires',()=>{
+ const h=renderHook(({v,now})=>useQuintzeeScorePresentation(v,now,'user',true),{initialProps:{v:snap(1,60),now:1000}});
+ const v=snap(2,140,35);v.state.board.scores={sixes:30};v.state.board.rules={version:'quintzee/3'} as any;
+ v.state.board.celebration={id:'upper',startedAt:1000,countAt:2500,endsAt:3100,from:60,to:140,label:'Upper Bonus +35'};
+ v.state.board.phase='stage_complete';v.state.board.result={completedAt:1000,clearBonus:35,upperBonus:35} as any;
+ h.rerender({v,now:1000});expect(audio.post.mock.calls.map(c=>c[0])).toEqual(['upperBonus']);
+ h.rerender({v,now:3099});expect(audio.post).toHaveBeenCalledOnce();
+ h.rerender({v,now:3100});expect(audio.post.mock.calls.map(c=>c[0])).toEqual(['upperBonus','allFilled']);
+ h.rerender({v,now:4000});expect(audio.post).toHaveBeenCalledTimes(2);
+});
+it('does not sound an unearned clear bonus or recovered historical bonuses',()=>{
+ const v=snap(2,100,35);v.state.board.phase='stage_complete';v.state.board.result={completedAt:0,clearBonus:35} as any;
+ renderHook(()=>useQuintzeeScorePresentation(v,5000,'user',true));expect(audio.post).not.toHaveBeenCalled();
+});

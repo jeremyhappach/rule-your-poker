@@ -9,6 +9,8 @@ import { FARKLE_BLOCKING_OVERLAY_TIMING_DEFAULTS, FARKLE_BLOCKING_OVERLAY_TIMING
 import { farkleTestState } from '@/lib/farkle/__fixtures__/testState';
 import type { FarkleDie, FarkleState } from '@/lib/farkle/types';
 import { FarkleGameTable, type FarkleParticipant } from './FarkleGameTable';
+const sounds=vi.hoisted(()=>vi.fn());
+vi.mock('@/lib/audio/presentationSound',()=>({presentSound:sounds}));
 
 vi.mock('@/lib/canonicalShell/ShellOwnedFeltHost', () => ({ usePublishShellFelt: vi.fn() }));
 vi.mock('@/lib/canonicalShell/ShellTimerRail', () => ({ useShellTimer: vi.fn(), ShellTimerRail: () => null }));
@@ -61,6 +63,14 @@ function mount(before: FarkleState, userId: string) {
 }
 
 beforeEach(() => vi.useFakeTimers());
+it('sounds a fresh Farkle only when its blocking overlay is visible, never on history or repeated state',()=>{
+ const before=farkleTestState(),next=terminalRoll(before,[{index:0,value:2}]);
+ const ui=mount(before,'user-0');ui.update(next);expect(sounds.mock.calls.some(c=>c[0]==='farkleBust')).toBe(false);
+ act(()=>vi.advanceTimersByTime(1100));
+ const calls=sounds.mock.calls.filter(c=>c[0]==='farkleBust');expect(calls).toHaveLength(1);expect(calls[0][2]?.getAttribute('data-farkle-blocking-overlay')).toBe('farkle');
+ ui.update(next);expect(sounds.mock.calls.filter(c=>c[0]==='farkleBust')).toHaveLength(1);ui.unmount();
+ sounds.mockClear();mount(next,'user-0');act(()=>vi.advanceTimersByTime(2000));expect(sounds.mock.calls.filter(c=>c[0]==='farkleBust')).toHaveLength(0);
+});
 afterEach(() => {
   cleanup();
   _setFromRemote(FARKLE_BLOCKING_OVERLAY_TIMING_KEY, FARKLE_BLOCKING_OVERLAY_TIMING_DEFAULTS, { isInitialFetch: true, rowExists: false });
