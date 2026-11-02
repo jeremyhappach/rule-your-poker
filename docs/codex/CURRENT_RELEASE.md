@@ -1,3 +1,13 @@
+# Sound effects audition — 2026-11-01 — local review only
+
+Isolated `codex/sound-effects-lab` adds 21 sourced/original WAV candidates,
+three winner alternatives, nine unchanged reference cues and a development-only
+Sound Lab reusing the existing audio manager/speaker with a local preference.
+No game, audio-control, account, database or production route changes. Playback,
+mute/cancellation/replay/priority checks and 80 focused regressions pass; physical
+phone listening and the sound palette await Jeremy. No push or production
+publication is authorized. See [audit and audition](SOUND_EFFECTS_AUDITION.md).
+
 # Async UI smoke layout correction — 2026-11-01 — qualified; production authorized
 
 Create New Game now stretches to the combined Async/Arcade button height with
