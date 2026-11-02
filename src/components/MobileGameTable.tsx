@@ -154,6 +154,7 @@ import { HolmChuckyRevealCard } from "./HolmChuckyRevealCard";
 import { ChoppedAnimation } from "./ChoppedAnimation";
 import {useHolmCrackedResult} from '@/hooks/useHolmCrackedResult';
 import {presentSound} from '@/lib/audio/presentationSound';
+import {useHolmFoldAudio} from '@/hooks/useHolmFoldAudio';
 import { ChatBubble } from "./ChatBubble";
 import { ChatInput } from "./ChatInput";
 import { MobileChatPanel } from "./MobileChatPanel";
@@ -3321,6 +3322,7 @@ export const MobileGameTable = ({
   
   // Table container ref for ante animation
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  useHolmFoldAudio(gameType === 'holm-game' ? handContextId : null, players, activeTab === 'cards', tableContainerRef);
   
   // Delayed pot display - only update when chips arrive at pot box
   const potMemoryKey = gameId ?? 'unknown-game';

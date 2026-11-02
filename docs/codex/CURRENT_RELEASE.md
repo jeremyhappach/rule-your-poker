@@ -1,3 +1,18 @@
+# Sound Pass 2 final audit — 2026-11-02 — local integration; production blocked
+
+18 distinct sound approvals verified: original eight, nine V2 Take A selections,
+and Yahtzee Cup C. Local additions connect Cup C to the real Yahtzee roll, reuse
+Wooden Peg A for visible Box Drop/Words placement, and close HOLM's fold-slide gap.
+Quintzee B2 preserves pitch with slower, more staccato pulses and awaits approval.
+Seven unverified decisions are isolated at `http://localhost:4318/review.html`.
+No production push, migration or financial mutation. The owner's conditional GO
+remains blocked by those decisions; no new generic GO is requested.
+See [authoritative approval matrix](SOUND_PASS2_APPROVAL_MATRIX.md) for evidence,
+exact pending selections, ownership, preservation and validation.
+Final validation: 3,606 application + 241 harness tests, typecheck and production
+build passed. Studio typecheck/build and focused real-renderer auditions passed.
+An initial WebSocket/Event test-runner exception did not recur on the full rerun.
+
 # Sound Pass 2 consolidated studio — 2026-11-02 — local audition only
 
 Reconciled against published main 5037d7fdf, preserving all 27 original candidates

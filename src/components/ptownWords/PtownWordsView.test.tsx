@@ -2,6 +2,8 @@
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import type {WordsSnapshot} from '@/lib/ptownWords/model';
+const placementSound=vi.hoisted(()=>vi.fn());
+vi.mock('@/lib/audio/presentationSound',()=>({presentSound:placementSound}));
 vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:({children,actions,scores}:any)=><div>{scores}{children}{actions}</div>}));
 import {PtownWordsView} from './PtownWordsView';
 import {shuffleRack,isInvalidWord} from '@/lib/ptownWords/rackPresentation';
@@ -9,6 +11,19 @@ const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,ser
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
 beforeEach(()=>{localStorage.clear();vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});intent.mockReset();intent.mockResolvedValue(true);});afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 function tap(cell:Element){fireEvent.click(cell,{detail:1,clientX:100,clientY:100});}
+it.each([false,true])('sounds only new visible tile staging in live/Async mode (%s)',asyncMode=>{
+ placementSound.mockClear();
+ const ui=render(<PtownWordsView {...props} asyncDraftUserId={asyncMode?'u1':undefined}/>);
+ fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));expect(placementSound).not.toHaveBeenCalled();
+ fireEvent.click(ui.container.querySelector('[data-square="112"]')!);expect(placementSound).toHaveBeenCalledOnce();
+ expect(placementSound.mock.lastCall?.[0]).toBe('peg');expect(placementSound.mock.lastCall?.[2]?.classList.contains('is-staged')).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'A, 1 points'}));fireEvent.click(ui.container.querySelector('[data-square="113"]')!);expect(placementSound).toHaveBeenCalledTimes(2);
+ fireEvent.click(screen.getByRole('button',{name:'Blank, 0 points'}));expect(placementSound).toHaveBeenCalledTimes(2);
+ fireEvent.click(screen.getByRole('button',{name:'T'}));expect(placementSound).toHaveBeenCalledTimes(3);
+ ui.rerender(<PtownWordsView {...props} error="ptown_words:invalid_word:CAT" asyncDraftUserId={asyncMode?'u1':undefined}/>);expect(placementSound).toHaveBeenCalledTimes(3);
+ ui.unmount();placementSound.mockClear();
+ render(<PtownWordsView {...props} asyncDraftUserId={asyncMode?'u1':undefined}/>);expect(placementSound).not.toHaveBeenCalled();
+});
 it('auto-places a blank after two draft tiles, and removing to one resets direction without rack zoom',()=>{
  const {container}=render(<PtownWordsView {...props}/>);fireEvent.click(container.querySelector('[data-square="112"]')!);fireEvent.click(container.querySelector('[data-square="112"]')!);
  fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);

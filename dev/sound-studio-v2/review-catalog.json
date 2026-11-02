@@ -1,0 +1,20 @@
+[
+  {
+    "id": "quintzee-roll-b2",
+    "category": "quintzee-roll",
+    "title": "B2 · slower, sharper pulses",
+    "priority": 25,
+    "file": "quintzee-roll-b2.wav",
+    "durationMs": 4000,
+    "peakDb": -29,
+    "sha256": "23c5f970a661fb8aa5a17e9f16c2fcfcc6c0d9155cdc32304ae4508c04d7c3c0",
+    "recipe": {
+      "carrierHz": 264,
+      "harmonic": 0.24,
+      "pulseHz": 34,
+      "floor": 0.025,
+      "power": 5
+    },
+    "approval": "revision requested; awaits owner audition"
+  }
+]

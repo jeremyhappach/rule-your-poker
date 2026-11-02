@@ -11,6 +11,7 @@ import {boxdropRoundPresentation} from '@/lib/boxdrop/roundPresentation';
 import {BoxdropScorePill} from './BoxdropScorePill';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {boxdropCue} from '@/lib/boxdrop/audio';
+import {presentSound} from '@/lib/audio/presentationSound';
 import './boxdrop.css';
 function Crate({box}:{box:BoxdropBox}){return <span className="box-crate" data-color={box.recycled?'white':box.color}><i aria-hidden="true">▧</i><b data-digits={String(box.value).length}>{box.value}</b></span>;}
 export function BoxdropLoading({solo=false,error,onReconnect,activeTab,setActiveTab}:{solo?:boolean;error:string;onReconnect:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void}){
@@ -28,10 +29,15 @@ export function BoxdropView({replay=false,view:v,userId,now,pending,error,epoch,
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
  useEffect(()=>{setTarget(null);},[v.scope,v.revision,epoch]);
  const prior=useRef({scope:v.scope,revision:v.revision,epoch});
- useEffect(()=>{const p=prior.current;prior.current={scope:v.scope,revision:v.revision,epoch};
-  if(p.scope!==v.scope||p.epoch!==epoch||p.revision>=v.revision||!connected||error||v.paused||tab!=='cards'||document.hidden||b.phase!=='playing')return;
+ useLayoutEffect(()=>{const p=prior.current;prior.current={scope:v.scope,revision:v.revision,epoch};
+  if(p.scope!==v.scope||p.epoch!==epoch||p.revision>=v.revision||!connected||error||v.paused||tab!=='cards'||document.hidden||replay||sessionEnded||b.phase!=='playing')return;
+  if(b.event.label==='Box placed'||b.event.label==='Full scale · partial score'){
+   const box=b.event.box,scale=b.event.scale;
+   const surface=box&&scale!==undefined?viewportRef.current?.querySelector('[data-box-scale="'+scale+'"] [data-box-id="'+box.id+'"]'):null;
+   presentSound('peg',`boxdrop:landing:${v.scope}:${v.revision}`,surface??null);return;
+  }
   return platformAudio.request({userId,id:`boxdrop:${v.scope}:${v.revision}`,expiresAt:performance.now()+500,cue:boxdropCue(b.event.label)});
- },[v.scope,v.revision,epoch,connected,error,v.paused,tab,b.phase,b.event.label,userId]);
+ },[v.scope,v.revision,epoch,connected,error,v.paused,tab,b.phase,b.event.label,userId,replay,sessionEnded]);
  const canAct=v.canAct&&connected&&!v.paused&&!error&&window.playable&&tab==='cards'&&!sessionEnded&&!pending&&!submitting;
  const send=(intent:BoxdropIntent,destination:number)=>{if(!canAct||flight.current)return;flight.current=true;setSubmitting(true);setTarget(destination);void Promise.resolve(onIntent(intent)).finally(()=>{flight.current=false;setSubmitting(false);setTarget(null);});};
  const active=v.players.find(p=>p.active),displayScore=result?(presentation?.displayScore??result.score):b.score;
@@ -46,9 +52,9 @@ export function BoxdropView({replay=false,view:v,userId,now,pending,error,epoch,
  <div className="box-pipework" aria-hidden="true"/><div className="box-conveyor"><span className="box-arrow" aria-hidden="true">⇧</span><div className="box-current" key={`${v.scope}:${b.current.id}`} aria-label={`Current box ${b.current.value}${b.current.recycled?', recycled':''}`}><Crate box={b.current}/></div><span className="box-belt"/></div>
  <button className="box-recycle" disabled={!canAct} data-pending={target===-1} onClick={()=>send({type:'recycle',items:[b.current.id]},-1)} aria-label={`Recycle current box. ${b.queue.length} of 6 slots occupied. Potential bonus ${b.recycleIndicator}`}><span>♻</span><b>{b.recycleIndicator.toLocaleString()}</b><small>RECYCLE</small></button>
  <div className="box-queue" aria-label="Recycling queue, oldest first">{Array.from({length:6},(_,i)=><span key={i}>{b.queue[i]?<Crate box={b.queue[i]}/>:<i/>}</span>)}</div>
- <div className="box-scales">{b.scales.map((s,i)=><button key={i} className="box-shaft" data-stage={s.stage} data-status={s.status} data-pending={target===i} disabled={!canAct||s.status!=='active'} onClick={()=>send({type:'place',items:[i,b.current.id]},i)} aria-label={`Scale ${i+1}, ${s.status}, ${Math.max(0,s.target-s.sum)} remaining to ${s.target}, ${s.boxes.length} of ${s.limit} boxes`}>
+ <div className="box-scales">{b.scales.map((s,i)=><button key={i} className="box-shaft" data-box-scale={i} data-stage={s.stage} data-status={s.status} data-pending={target===i} disabled={!canAct||s.status!=='active'} onClick={()=>send({type:'place',items:[i,b.current.id]},i)} aria-label={`Scale ${i+1}, ${s.status}, ${Math.max(0,s.target-s.sum)} remaining to ${s.target}, ${s.boxes.length} of ${s.limit} boxes`}>
  <span className="box-duct" aria-hidden="true"/><span className="box-sign">{s.status==='closed'?'✓':s.status==='broken'?'✕':s.status==='short'?'FULL':s.target-s.sum}</span>
- <span className="box-stack">{s.boxes.map((box,j)=><span className="box-stack-item" key={`${box.id}:${j}`}><Crate box={box}/></span>)}</span>
+ <span className="box-stack">{s.boxes.map((box,j)=><span className="box-stack-item" data-box-id={box.id} key={`${box.id}:${j}`}><Crate box={box}/></span>)}</span>
  <span className="box-platform"/><span className="box-piston"/><span className="box-control">▼</span>
  <span className="box-scale-state">{s.status==='closed'?'COMPLETE':s.status==='broken'?'OVERLOAD':s.status==='short'?'FULL':`${s.target} ORDER`}</span></button>)}</div>
  {window.phase==='intro'&&<div className="box-overlay"><TriRoundIntro remaining={window.remaining} roundLabel={v.round===3?'BONUS ROUND EARNED':`ROUND ${v.round}`} turnLabel={v.solo?'':v.canAct?'YOUR TURN':`${active?.name??'Player'}’S TURN`} paused={v.paused}/></div>}

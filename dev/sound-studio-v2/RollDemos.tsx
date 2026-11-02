@@ -9,14 +9,14 @@ import {pcmCue,type PCM} from '../sound-lab/pcm';
 import type {AudioCue} from '@/lib/audio/audioManager';
 import './rollDemos.css';
 type Sample={id:string;category?:string;title:string;priority:number};
-type Props={samples:Sample[];pcm:Map<string,PCM>;conductor:LabConductor;volume:number;disabled:boolean;beforePlay:()=>void};
+type Props={samples:Sample[];pcm:Map<string,PCM>;conductor:LabConductor;volume:number;disabled:boolean;beforePlay:()=>void;fixed?:{kind:string;take:string}};
 const values=[2,5,3,6,4];
 function QuintzeeRoll({serial,held,active,land}:{serial:number;held:number[];active:boolean;land:()=>void}){
  const rumble=useQuintzeeRumble('studio-roll',serial,5,held,active,land);
  return <div className="studio-dice-row" data-quintzee-rolling={!!rumble}>{values.map((v,i)=><div key={i} className="studio-die-box" data-held={held.includes(i)} data-rolling={!!rumble&&!held.includes(i)}><QuintzeeDie value={v} rolling={!!rumble&&!held.includes(i)}/><small>{held.includes(i)?'HELD':' '}</small></div>)}</div>;
 }
-export function RollDemos({samples,pcm,conductor,volume,disabled,beforePlay}:Props){
- const [kind,setKind]=useState('quintzee-roll'),[take,setTake]=useState('a'),[held,setHeld]=useState<number[]>([]);
+export function RollDemos({samples,pcm,conductor,volume,disabled,beforePlay,fixed}:Props){
+ const [kind,setKind]=useState(fixed?.kind??'quintzee-roll'),[take,setTake]=useState(fixed?.take??'a'),[held,setHeld]=useState<number[]>([]);
  const [run,setRun]=useState<{kind:string;id:string;serial:number;held:number[]}|null>(null),[serial,setSerial]=useState(0),[phase,setPhase]=useState('Ready'),[count,setCount]=useState<number|null>(null);
  const surface=useRef<HTMLDivElement>(null),current=useRef(run),frame=useRef(0);current.current=run;
  const stopLoop=useRef<()=>void>(()=>{});
@@ -41,8 +41,8 @@ export function RollDemos({samples,pcm,conductor,volume,disabled,beforePlay}:Pro
  function countdown(){beforePlay();platformAudio.unlock(true);const s=samples.find(x=>x.id==='drop-countdown-'+take)!;conductor.play({id:s.id,priority:35,group:'countdown',cooldownMs:0,cue:pcmCue(scaled(s.id)),onStart:()=>{
   const start=performance.now(),beat=THREE_FIVE_SEVEN_DECISION_REVEAL_TIMING.countBeatMs;setPhase('3–2–1 Drop');const tick=()=>{const elapsed=performance.now()-start;setCount(elapsed>=3*beat?0:3-Math.floor(elapsed/beat));if(elapsed<3*beat)frame.current=requestAnimationFrame(tick);else setPhase('DROP — silent');};tick();
  }});}
- return <section className="roll-demos" id="rolling-demos"><p className="eyebrow">LISTEN IN MOTION</p><h2>Two rolls. Two personalities.</h2><p>Real Quintzee dice and rumble owner ({QUINTZEE_RUMBLE_MS} ms default), or the real shared physical-dice renderer (900 ms). Try holding four dice to hear Landing B.</p>
-  <div className="roll-controls"><label>Experience<select aria-label="Roll experience" value={kind} onChange={e=>{beforePlay();setKind(e.target.value);}}><option value="quintzee-roll">Quintzee · electronic trill</option><option value="cup-roll">Yahtzee / Horses / SCC · cup</option></select></label><label>Take<select aria-label="Roll take" value={take} onChange={e=>{beforePlay();setTake(e.target.value);}}>{['a','b','c'].map(t=><option key={t} value={t}>Take {t.toUpperCase()}</option>)}</select></label></div>
+ return <section className="roll-demos" id={fixed?fixed.kind+'-demo':'rolling-demos'}><p className="eyebrow">LISTEN IN MOTION</p><h2>{fixed?(fixed.kind==='quintzee-roll'?'Quintzee · revised B2':'Physical dice · Cup C'):'Two rolls. Two personalities.'}</h2><p>{fixed?.kind==='quintzee-roll'?`Real Quintzee rumble (${QUINTZEE_RUMBLE_MS} ms). No landing sound.`:fixed?'Real physical-dice roll (900 ms). Hold four dice to hear Landing B.':`Real Quintzee rumble (${QUINTZEE_RUMBLE_MS} ms), or the shared physical-dice renderer (900 ms). Hold four dice to hear Landing B.`}</p>
+  {!fixed&&<div className="roll-controls"><label>Experience<select aria-label="Roll experience" value={kind} onChange={e=>{beforePlay();setKind(e.target.value);}}><option value="quintzee-roll">Quintzee · electronic trill</option><option value="cup-roll">Yahtzee / Horses / SCC · cup</option></select></label><label>Take<select aria-label="Roll take" value={take} onChange={e=>{beforePlay();setTake(e.target.value);}}>{['a','b','c'].map(t=><option key={t} value={t}>Take {t.toUpperCase()}</option>)}</select></label></div>}
   <div className="rolling-felt" ref={surface} data-demo-phase={phase}>
    {kind==='quintzee-roll'?<QuintzeeRoll serial={serial} held={run?.held??held} active={run?.kind==='quintzee-roll'} land={()=>latestFinish.current()}/>:<>
     {run?.kind==='cup-roll'?<DiceRollAnimation dice={values.map((value,i)=>({value,isHeld:held.includes(i)}))} animatingIndices={values.map((_,i)=>i).filter(i=>!run.held.includes(i))} targetPositions={values.map((_,i)=>({x:(i-2)*43,y:4,rotate:(i-2)*7})).filter((_,i)=>!run.held.includes(i))} originPosition={{x:0,y:-65}} scatterYOffset={0} runKey={run.id} revealOnLanding showWildHighlight={false} onComplete={()=>{}}/>:null}
@@ -50,6 +50,6 @@ export function RollDemos({samples,pcm,conductor,volume,disabled,beforePlay}:Pro
    </>}{count!==null&&<div className="countdown-demo" data-countdown={count}>{count||'DROP'}</div>}
   </div>
   <div className="hold-controls" aria-label="Held dice">{values.map((_,i)=><label key={i}><input type="checkbox" aria-label={'Hold die '+(i+1)} checked={held.includes(i)} disabled={!!run} onChange={()=>setHeld(h=>h.includes(i)?h.filter(n=>n!==i):[...h,i])}/> Hold {i+1}</label>)}</div>
-  <div className="example-buttons"><button disabled={disabled||held.length===5} onClick={start}>▶ Roll selected take</button><button onClick={beforePlay}>Cancel roll</button><button disabled={disabled} onClick={countdown}>▶ 3–2–1 countdown</button></div><p className="demo-status" aria-live="polite">{phase}</p><p className="fine">The cup variations are edits of one real CC0 dice recording. Quintzee has no landing or tail. Held dice stay still. Speaker, Stop, leaving the page and interruption cancel the whole preview. These are studio demonstrations; gameplay has not been changed.</p>
+  <div className="example-buttons"><button disabled={disabled||held.length===5} onClick={start}>▶ Roll selected take</button><button onClick={beforePlay}>Cancel roll</button>{!fixed&&<button disabled={disabled} onClick={countdown}>▶ 3–2–1 countdown</button>}</div><p className="demo-status" aria-live="polite">{phase}</p><p className="fine">The cup variations are edits of one real CC0 dice recording. Quintzee has no landing or tail. Held dice stay still. Speaker, Stop, leaving the page and interruption cancel the whole preview. These are isolated studio demonstrations.</p>
  </section>;
 }

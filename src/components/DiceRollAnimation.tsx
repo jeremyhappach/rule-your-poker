@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import {diceLandingSound} from '@/lib/audio/approvedSounds';
 import {presentSound} from '@/lib/audio/presentationSound';
+import {startDiceRollSound} from '@/lib/audio/diceRollSound';
 import {isFiveOnes} from '@/lib/audio/achievementSounds';
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { SCCDie as SCCDieType } from "@/lib/sccGameLogic";
@@ -68,8 +69,9 @@ export function DiceRollAnimation({
   const [landedIdentity, setLandedIdentity] = useState<string | undefined>();
   const soundSurface = useRef<HTMLDivElement>(null);
   const soundInterrupted = useRef(false);
+  const stopRollSound = useRef<() => void>(() => {});
   useEffect(() => {
-    const retire = () => { soundInterrupted.current = true; };
+    const retire = () => { soundInterrupted.current = true; stopRollSound.current(); };
     const hidden = () => { if (document.hidden) retire(); };
     document.addEventListener('visibilitychange', hidden); window.addEventListener('offline', retire);
     return () => { document.removeEventListener('visibilitychange', hidden); window.removeEventListener('offline', retire); };
@@ -145,9 +147,11 @@ export function DiceRollAnimation({
     startTimeRef.current = null;
 
     const animate = (timestamp: number) => {
-      if (!startTimeRef.current) {
+      if (startTimeRef.current === null) {
         startTimeRef.current = timestamp;
         perfRef.current.lastRafTs = timestamp;
+        if (animatingIndices.some((index, i) => !!dice[index] && !!targetPositions[i]))
+          stopRollSound.current = startDiceRollSound(audioIdentity, soundInterrupted.current ? null : soundSurface.current);
       }
 
       // Detect RAF gaps (usually means main thread was blocked)
@@ -168,6 +172,7 @@ export function DiceRollAnimation({
       }
 
       // Land, then signal completion. Keep rendering until parent clears indices.
+      stopRollSound.current();
       setPhase("landing");
       if (!completedRef.current) {
         completedRef.current = true;
@@ -184,6 +189,7 @@ export function DiceRollAnimation({
     animationRef.current = requestAnimationFrame(animate);
 
     return () => {
+      stopRollSound.current();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
       if (completionTimeoutRef.current) {
         clearTimeout(completionTimeoutRef.current);
@@ -193,7 +199,7 @@ export function DiceRollAnimation({
 
     // IMPORTANT: depend on the signature so parent rerenders don't restart the animation,
     // but real animation runs (different dice indices) do.
-  }, [animKey, runKey]);
+  }, [animKey, runKey, audioIdentity]);
 
   if (animatingIndices.length === 0) return null;
   if (tumbleData.length < animatingIndices.length) return null;

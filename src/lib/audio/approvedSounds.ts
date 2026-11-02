@@ -16,8 +16,9 @@ import myLeg from '@/assets/audio/my-leg-a.wav?url';
 import opponentLeg from '@/assets/audio/opponent-leg-a.wav?url';
 import sweep from '@/assets/audio/sweep-a.wav?url';
 import chucky from '@/assets/audio/chucky-a.wav?url';
+import cupRoll from '@/assets/audio/cup-roll-c.wav?url';
 
-const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, chucky};
+const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, chucky, cupRoll};
 export type ApprovedSound = keyof typeof files | 'cribbageHighlight';
 const cues = new Map<ApprovedSound, AudioCue>();
 let loading: Promise<void> | undefined;
@@ -38,6 +39,7 @@ const policies = {
   opponentLeg: {priority: 70, group: 'outcome', intervalMs: 0},
   sweep: {priority: 110, group: 'outcome', intervalMs: 0},
   chucky: {priority: 60, group: 'chucky', intervalMs: 30000},
+  cupRoll: {priority: 25, group: 'rolling', intervalMs: 0},
 };
 
 /** Fetch once without creating an AudioContext or touching the user's preference.

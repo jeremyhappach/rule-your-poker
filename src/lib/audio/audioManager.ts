@@ -229,13 +229,13 @@ export class AudioManager {
   }
 
   /** Consume a discrete visual edge immediately, even while muted or unloaded. */
-  present(event: {userId: string; id: string; cue?: AudioCue}) {
+  present(event: {userId: string; id: string; cue?: AudioCue}, scheduled?: (stop: () => void) => void) {
     const key = `ptown-audio:${event.userId}:${event.id}`;
     if (event.userId !== this.userId || this.hasPlayed(key)) return false;
     this.remember(key);
     if (!event.cue || this.enabled !== true) return false;
     this.unlock();
-    return this.schedule(event.cue, this.env.now() + event.cue.durationMs + 25);
+    return this.schedule(event.cue, this.env.now() + event.cue.durationMs + 25, scheduled);
   }
 
   request(event: AudioEvent) {

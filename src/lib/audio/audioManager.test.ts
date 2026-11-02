@@ -10,6 +10,15 @@ const event = (id = 'round1:player1', remaining = 2500) => ({ userId: 'user', id
 beforeEach(() => { vi.useFakeTimers(); sessionStorage.clear(); h = audioHarness(); });
 afterEach(() => { h.dispose(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
+it('cancellable discrete audio stops its graph immediately and never replays the consumed edge',async()=>{
+ await ready();let stop=()=>{};
+ const cue={...boxingBellCue,policy:{priority:25,group:'rolling',intervalMs:0}};
+ h.manager.present({userId:'user',id:'roll:one',cue},cancel=>{stop=cancel;});
+ const count=h.starts().length;expect(count).toBeGreaterThan(0);stop();
+ expect(h.nodes.filter(n=>n.kind==='oscillator').every(n=>n.stop.mock.calls.length>0)).toBe(true);
+ h.manager.present({userId:'user',id:'roll:one',cue});expect(h.starts()).toHaveLength(count);
+});
+
 it('unlocks synchronously before a game mounts and reuses one context for rounds and other cues', async () => {
   h.ctx.state = 'suspended'; h.manager.unlock();
   expect(h.createContext).toHaveBeenCalledTimes(1); expect(h.ctx.resume).toHaveBeenCalledTimes(1);
