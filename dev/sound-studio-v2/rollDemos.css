@@ -1,0 +1,15 @@
+@tailwind utilities;
+.roll-demos{border:1px solid #68816a;padding:28px;border-radius:16px;margin-top:32px;background:#17372b}
+.roll-demos h2{font:34px Georgia;margin:0 0 12px}.roll-demos>p{font-size:13px;line-height:1.8;color:#b7c8b9}
+.roll-controls{display:flex;gap:16px;flex-wrap:wrap}.roll-controls label{display:flex;flex-direction:column;gap:8px;font-size:12px;flex:1}.roll-controls select{width:100%;min-width:0;min-height:44px;border-radius:6px;background:#102b20;color:#eee4d0;padding:8px;border:1px solid #63806a}
+.rolling-felt{position:relative;height:185px;margin:20px 0;border-radius:14px;background:radial-gradient(ellipse,#306247,#163b29);overflow:hidden;--foreground:145 30% 15%;--card:40 30% 96%;--muted:120 10% 80%;--muted-foreground:120 10% 35%;--border:130 15% 65%}
+.studio-dice-row{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:7px}
+.studio-die-box{width:36px;display:flex;align-items:center;flex-direction:column;gap:8px}.studio-die-box small{height:12px;font-size:8px;color:#d6bd78}
+.studio-die-box[data-held=true] .q-die{box-shadow:0 0 0 3px #d5b56c}
+.q-die{width:36px;height:36px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:6px;gap:2px;background:#f3eedb;border-radius:7px;box-shadow:0 3px 6px #0004}.q-die i{background:#193b2b;border-radius:50%}
+.studio-die-box[data-rolling=true] .q-die{animation:studio-rumble .1s linear infinite alternate}
+@keyframes studio-rumble{from{transform:rotate(-9deg) translateY(-2px)}to{transform:rotate(9deg) translateY(2px)}}
+.hold-controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.hold-controls label{font-size:11px;display:flex;align-items:center;gap:5px;min-height:44px}.hold-controls input{width:18px;height:18px;accent-color:#d5b56c}
+.countdown-demo{position:absolute;inset:0;display:grid;place-items:center;font:64px Georgia;color:#e6c781;background:#173b29f5}
+.roll-demos .demo-status{color:#e5c785;min-height:24px}
+@media(max-width:500px){.roll-demos{padding:16px}.roll-controls{flex-direction:column}.roll-demos h2{font-size:27px}}

@@ -1,3 +1,11 @@
+# Sound Pass 2 consolidated studio — 2026-11-02 — local audition only
+
+Reconciled against published main 5037d7fdf, preserving all 27 original candidates
+and nine integrated Take A selections. Adds 24 audition candidates, real roll
+renderer demonstrations, held-die/landing and countdown controls, plus complete
+game/mode coverage. No new gameplay changes, migration, push or deployment.
+Selections and separate production GO remain required. See [coverage and handoff](SOUND_PASS2_COVERAGE.md).
+
 # Async sounds — 2026-11-02 — qualified; production authorized
 
 Run21 Async now connects its existing bell and approved placement/pass cues.

@@ -1,0 +1,659 @@
+[
+  {
+    "id": "quintzee-roll-a",
+    "category": "quintzee-roll",
+    "categoryTitle": "Quintzee — Constant-pitch arcade roll",
+    "title": "Velvet motor",
+    "description": "220 Hz fixed carrier, 36 pulses/second. Tone and texture vary; pitch never climbs.",
+    "trigger": "Start with the admitted rumble; stop with its visible end. No landing.",
+    "priority": 25,
+    "file": "quintzee-roll-a.wav",
+    "durationMs": 4000,
+    "peakDb": -29,
+    "rmsDb": -36.4,
+    "playbackGain": 1,
+    "bytes": 256044,
+    "sha256": "3a41fa9527ef1537090f47b640195bcc22e09a73f1909b68ff68efbcd7e1e95a",
+    "recipe": {
+      "fundamental": 220,
+      "pulseHz": 36,
+      "loop": true,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "quintzee-roll-b",
+    "category": "quintzee-roll",
+    "categoryTitle": "Quintzee — Constant-pitch arcade roll",
+    "title": "Pocket arcade",
+    "description": "264 Hz fixed carrier, 44 pulses/second. Tone and texture vary; pitch never climbs.",
+    "trigger": "Start with the admitted rumble; stop with its visible end. No landing.",
+    "priority": 25,
+    "file": "quintzee-roll-b.wav",
+    "durationMs": 4000,
+    "peakDb": -29,
+    "rmsDb": -36.7,
+    "playbackGain": 1,
+    "bytes": 256044,
+    "sha256": "eea386149140ed0a50510f115c02873a35b6e3ff005e74d1da3cade9b7bf9b53",
+    "recipe": {
+      "fundamental": 264,
+      "pulseHz": 44,
+      "loop": true,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "quintzee-roll-c",
+    "category": "quintzee-roll",
+    "categoryTitle": "Quintzee — Constant-pitch arcade roll",
+    "title": "Soft electric purr",
+    "description": "330 Hz fixed carrier, 52 pulses/second. Tone and texture vary; pitch never climbs.",
+    "trigger": "Start with the admitted rumble; stop with its visible end. No landing.",
+    "priority": 25,
+    "file": "quintzee-roll-c.wav",
+    "durationMs": 4000,
+    "peakDb": -29,
+    "rmsDb": -36.3,
+    "playbackGain": 1,
+    "bytes": 256044,
+    "sha256": "fdab0a5bf686afd6e549a14b8fad5e0a144d6e9e4558acf193493498c0f560fd",
+    "recipe": {
+      "fundamental": 330,
+      "pulseHz": 52,
+      "loop": true,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "cup-roll-a",
+    "category": "cup-roll",
+    "categoryTitle": "Yahtzee / Horses / SCC — Dice in a cup",
+    "title": "Soft cup",
+    "description": "Softened recorded rattle, rounded contact.",
+    "trigger": "Shake through the moving dice; stop at landing, then approved A/B.",
+    "priority": 25,
+    "file": "cup-roll-a.wav",
+    "durationMs": 4000,
+    "peakDb": -27,
+    "rmsDb": -59,
+    "playbackGain": 1,
+    "bytes": 256044,
+    "sha256": "a47c457e2a0898d3d8d60808f5cb9b4209cdb6ac25197045b5408ef1af02c872",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": true,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Kenney Vleugels; P-Town edits",
+      "license": "CC0 1.0",
+      "url": "https://kenney.nl/assets/casino-audio",
+      "file": "dev/sound-lab/sources/dice-shake-1.ogg",
+      "sha256": "ba603441c857204dbe3ff3345902c7e1c3f523bf1bd314acf088609bc6c1e4e5",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "cup-roll-b",
+    "category": "cup-roll",
+    "categoryTitle": "Yahtzee / Horses / SCC — Dice in a cup",
+    "title": "Dry cup",
+    "description": "Brighter recorded contacts with a lighter cup character.",
+    "trigger": "Shake through the moving dice; stop at landing, then approved A/B.",
+    "priority": 25,
+    "file": "cup-roll-b.wav",
+    "durationMs": 4000,
+    "peakDb": -27,
+    "rmsDb": -57.7,
+    "playbackGain": 1,
+    "bytes": 256044,
+    "sha256": "ab796a39ca01492ff16389d4f174ff401c7345f72e9490bca9ca13f5ac69e739",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": true,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Kenney Vleugels; P-Town edits",
+      "license": "CC0 1.0",
+      "url": "https://kenney.nl/assets/casino-audio",
+      "file": "dev/sound-lab/sources/dice-shake-1.ogg",
+      "sha256": "ba603441c857204dbe3ff3345902c7e1c3f523bf1bd314acf088609bc6c1e4e5",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "cup-roll-c",
+    "category": "cup-roll",
+    "categoryTitle": "Yahtzee / Horses / SCC — Dice in a cup",
+    "title": "Deep cup",
+    "description": "Lower, cushioned recorded rattle.",
+    "trigger": "Shake through the moving dice; stop at landing, then approved A/B.",
+    "priority": 25,
+    "file": "cup-roll-c.wav",
+    "durationMs": 4000,
+    "peakDb": -27,
+    "rmsDb": -58,
+    "playbackGain": 1,
+    "bytes": 256044,
+    "sha256": "d9ebfb685c53d1975836f78f3136c19f358f91eb30a9bc6d5817b9d036cdcc9c",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": true,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Kenney Vleugels; P-Town edits",
+      "license": "CC0 1.0",
+      "url": "https://kenney.nl/assets/casino-audio",
+      "file": "dev/sound-lab/sources/dice-shake-1.ogg",
+      "sha256": "ba603441c857204dbe3ff3345902c7e1c3f523bf1bd314acf088609bc6c1e4e5",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "drop-countdown-a",
+    "category": "drop-countdown",
+    "categoryTitle": "357 — 3–2–1 Drop",
+    "title": "Descending felt",
+    "description": "Short, rounded and understated.",
+    "trigger": "One descending tone per displayed number; DROP itself stays silent.",
+    "priority": 35,
+    "file": "drop-countdown-a.wav",
+    "durationMs": 2700,
+    "peakDb": -29,
+    "rmsDb": -43.6,
+    "playbackGain": 1,
+    "bytes": 172844,
+    "sha256": "59052ee64697f22b36548516ad4abea813dea2bcbfc5faf7beaa37f5d0803220",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "drop-countdown-b",
+    "category": "drop-countdown",
+    "categoryTitle": "357 — 3–2–1 Drop",
+    "title": "Three soft bells",
+    "description": "A softer alternative with a little more space.",
+    "trigger": "One descending tone per displayed number; DROP itself stays silent.",
+    "priority": 35,
+    "file": "drop-countdown-b.wav",
+    "durationMs": 2700,
+    "peakDb": -29,
+    "rmsDb": -43.5,
+    "playbackGain": 1,
+    "bytes": 172844,
+    "sha256": "a4458dab75cac88196af2e5405df29b81b71a8625d34c98c6d03633e89fb70f7",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "drop-countdown-c",
+    "category": "drop-countdown",
+    "categoryTitle": "357 — 3–2–1 Drop",
+    "title": "Mellow steps",
+    "description": "Distinct timbre, kept below signature celebrations.",
+    "trigger": "One descending tone per displayed number; DROP itself stays silent.",
+    "priority": 35,
+    "file": "drop-countdown-c.wav",
+    "durationMs": 2700,
+    "peakDb": -29,
+    "rmsDb": -43.9,
+    "playbackGain": 1,
+    "bytes": 172844,
+    "sha256": "0aada41df95736ad53642a3550dc384aee55ed7ddbef3250e850417fabc101d7",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "exact-21-a",
+    "category": "exact-21",
+    "categoryTitle": "Run21 — Exactly 21 (optional)",
+    "title": "Twenty-one glow",
+    "description": "Short, rounded and understated.",
+    "trigger": "New accepted exact-21 result at its visible accent; replace, never stack.",
+    "priority": 55,
+    "file": "exact-21-a.wav",
+    "durationMs": 450,
+    "peakDb": -28,
+    "rmsDb": -37.7,
+    "playbackGain": 1,
+    "bytes": 28844,
+    "sha256": "325914a3a4584aa446e09fc13ecb98b15db6584f4ed5a545cfa63db3786d2c1a",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "exact-21-b",
+    "category": "exact-21",
+    "categoryTitle": "Run21 — Exactly 21 (optional)",
+    "title": "Little orbit",
+    "description": "A softer alternative with a little more space.",
+    "trigger": "New accepted exact-21 result at its visible accent; replace, never stack.",
+    "priority": 55,
+    "file": "exact-21-b.wav",
+    "durationMs": 450,
+    "peakDb": -28,
+    "rmsDb": -37.6,
+    "playbackGain": 1,
+    "bytes": 28844,
+    "sha256": "9ff8ee31c8d79a35326ff12600ecacf043d7022293f92b33644a6a95d1cfa339",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "exact-21-c",
+    "category": "exact-21",
+    "categoryTitle": "Run21 — Exactly 21 (optional)",
+    "title": "Clear answer",
+    "description": "Distinct timbre, kept below signature celebrations.",
+    "trigger": "New accepted exact-21 result at its visible accent; replace, never stack.",
+    "priority": 55,
+    "file": "exact-21-c.wav",
+    "durationMs": 450,
+    "peakDb": -28,
+    "rmsDb": -37.9,
+    "playbackGain": 1,
+    "bytes": 28844,
+    "sha256": "067d88010862f9f2daf7a0b39e2492977e856651cea22c0b38d07bfda4503584",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "run21-bust-a",
+    "category": "run21-bust",
+    "categoryTitle": "Run21 — Bust (optional)",
+    "title": "Soft landing",
+    "description": "Short, rounded and understated.",
+    "trigger": "Confirmed bust, once per visible outcome; compare with existing failure cue.",
+    "priority": 45,
+    "file": "run21-bust-a.wav",
+    "durationMs": 380,
+    "peakDb": -30,
+    "rmsDb": -39,
+    "playbackGain": 1,
+    "bytes": 24364,
+    "sha256": "0c2464d97ebbbab157deddc43891f927b040e6220ea72e28dd904b581948ad12",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "run21-bust-b",
+    "category": "run21-bust",
+    "categoryTitle": "Run21 — Bust (optional)",
+    "title": "Low orbit",
+    "description": "A softer alternative with a little more space.",
+    "trigger": "Confirmed bust, once per visible outcome; compare with existing failure cue.",
+    "priority": 45,
+    "file": "run21-bust-b.wav",
+    "durationMs": 380,
+    "peakDb": -30,
+    "rmsDb": -38.8,
+    "playbackGain": 1,
+    "bytes": 24364,
+    "sha256": "17dc4183325cb421258a1cae8839ef0be0c9517bad8efbd6a2702fb1b6460fde",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "run21-bust-c",
+    "category": "run21-bust",
+    "categoryTitle": "Run21 — Bust (optional)",
+    "title": "Dusk tap",
+    "description": "Distinct timbre, kept below signature celebrations.",
+    "trigger": "Confirmed bust, once per visible outcome; compare with existing failure cue.",
+    "priority": 45,
+    "file": "run21-bust-c.wav",
+    "durationMs": 380,
+    "peakDb": -30,
+    "rmsDb": -39.2,
+    "playbackGain": 1,
+    "bytes": 24364,
+    "sha256": "327dfbe3cd8d0874bfada081f232b1c2f3a6e8b46933607c681ae2469cb73e74",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "farkle-bust-a",
+    "category": "farkle-bust",
+    "categoryTitle": "Farkle — Bust",
+    "title": "Empty cup",
+    "description": "Short, rounded and understated.",
+    "trigger": "Confirmed farkle overlay; no inference from an intermediate roll.",
+    "priority": 45,
+    "file": "farkle-bust-a.wav",
+    "durationMs": 420,
+    "peakDb": -29,
+    "rmsDb": -38.4,
+    "playbackGain": 1,
+    "bytes": 26924,
+    "sha256": "9366af890479c056907be7df76793db47e79bd93581341ddbfc05dbd8ad96e69",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "farkle-bust-b",
+    "category": "farkle-bust",
+    "categoryTitle": "Farkle — Bust",
+    "title": "Felt pause",
+    "description": "A softer alternative with a little more space.",
+    "trigger": "Confirmed farkle overlay; no inference from an intermediate roll.",
+    "priority": 45,
+    "file": "farkle-bust-b.wav",
+    "durationMs": 420,
+    "peakDb": -29,
+    "rmsDb": -38.3,
+    "playbackGain": 1,
+    "bytes": 26924,
+    "sha256": "4d66f0bbd6a504b99a91459c2e8809f3587f21554c698dead9f19958ce958a23",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "farkle-bust-c",
+    "category": "farkle-bust",
+    "categoryTitle": "Farkle — Bust",
+    "title": "Quiet tumble",
+    "description": "Distinct timbre, kept below signature celebrations.",
+    "trigger": "Confirmed farkle overlay; no inference from an intermediate roll.",
+    "priority": 45,
+    "file": "farkle-bust-c.wav",
+    "durationMs": 420,
+    "peakDb": -29,
+    "rmsDb": -38.6,
+    "playbackGain": 1,
+    "bytes": 26924,
+    "sha256": "5035f654ce907383385c76827698076c1e72d416a6e5cf95b4dc410fb0204587",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "upper-bonus-a",
+    "category": "upper-bonus",
+    "categoryTitle": "Quintzee — Upper Bonus +35",
+    "title": "Upper glint",
+    "description": "Short, rounded and understated.",
+    "trigger": "New authoritative bonus highlight identity; silent restored highlight.",
+    "priority": 60,
+    "file": "upper-bonus-a.wav",
+    "durationMs": 550,
+    "peakDb": -27,
+    "rmsDb": -35.8,
+    "playbackGain": 1,
+    "bytes": 35244,
+    "sha256": "2454ff7c01b5fa04f5726b288d3f8f2c9833f8f153f52915836316d9682cf483",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "upper-bonus-b",
+    "category": "upper-bonus",
+    "categoryTitle": "Quintzee — Upper Bonus +35",
+    "title": "Warm thirty-five",
+    "description": "A softer alternative with a little more space.",
+    "trigger": "New authoritative bonus highlight identity; silent restored highlight.",
+    "priority": 60,
+    "file": "upper-bonus-b.wav",
+    "durationMs": 550,
+    "peakDb": -27,
+    "rmsDb": -35.7,
+    "playbackGain": 1,
+    "bytes": 35244,
+    "sha256": "61a097ae1579dc8d667c03c77bd813ce71977cbede973d54fa4aedafca3a719f",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "upper-bonus-c",
+    "category": "upper-bonus",
+    "categoryTitle": "Quintzee — Upper Bonus +35",
+    "title": "Bonus bloom",
+    "description": "Distinct timbre, kept below signature celebrations.",
+    "trigger": "New authoritative bonus highlight identity; silent restored highlight.",
+    "priority": 60,
+    "file": "upper-bonus-c.wav",
+    "durationMs": 550,
+    "peakDb": -27,
+    "rmsDb": -36.1,
+    "playbackGain": 1,
+    "bytes": 35244,
+    "sha256": "5e4face2fa4b37c2efa81b08230b5c7565aba6bb3f69509bceb24d801c212299",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "all-filled-a",
+    "category": "all-filled",
+    "categoryTitle": "Quintzee — All Filled +35",
+    "title": "Full card",
+    "description": "Short, rounded and understated.",
+    "trigger": "Committed board clear bonus at the existing all-filled highlight.",
+    "priority": 60,
+    "file": "all-filled-a.wav",
+    "durationMs": 650,
+    "peakDb": -26,
+    "rmsDb": -34.3,
+    "playbackGain": 1,
+    "bytes": 41644,
+    "sha256": "8bb4fc989ca79605ac5054aa72e00e345244a9acff8ac92bfae936825a54a42b",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "all-filled-b",
+    "category": "all-filled",
+    "categoryTitle": "Quintzee — All Filled +35",
+    "title": "All in place",
+    "description": "A softer alternative with a little more space.",
+    "trigger": "Committed board clear bonus at the existing all-filled highlight.",
+    "priority": 60,
+    "file": "all-filled-b.wav",
+    "durationMs": 650,
+    "peakDb": -26,
+    "rmsDb": -34.2,
+    "playbackGain": 1,
+    "bytes": 41644,
+    "sha256": "c55f2f8799225db1567a99406c598c5a5df231f788dfa96ee9e9ecc2ce6354b6",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  },
+  {
+    "id": "all-filled-c",
+    "category": "all-filled",
+    "categoryTitle": "Quintzee — All Filled +35",
+    "title": "Final square",
+    "description": "Distinct timbre, kept below signature celebrations.",
+    "trigger": "Committed board clear bonus at the existing all-filled highlight.",
+    "priority": 60,
+    "file": "all-filled-c.wav",
+    "durationMs": 650,
+    "peakDb": -26,
+    "rmsDb": -34.5,
+    "playbackGain": 1,
+    "bytes": 41644,
+    "sha256": "754196eefb2f80332aa41b1792f7a58535390904d2b1af6365668d5f203c9288",
+    "recipe": {
+      "fundamental": null,
+      "pulseHz": null,
+      "loop": false,
+      "seed": 261102
+    },
+    "source": {
+      "author": "Original P-Town procedural sound design",
+      "license": "Project original; no third-party recording or melody",
+      "generator": "prepare-pass2.mjs"
+    }
+  }
+]

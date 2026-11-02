@@ -5,13 +5,13 @@ import {createHash} from 'node:crypto';
 const origin=process.env.STUDIO_V2_URL??'http://127.0.0.1:4318';
 const root='dev/sound-studio-v2/',out='qualification.local/sound-studio-v2';
 mkdirSync(out,{recursive:true});
-const catalog=JSON.parse(readFileSync(root+'catalog.json','utf8'));
+const catalog=[...JSON.parse(readFileSync(root+'catalog.json','utf8')),...JSON.parse(readFileSync(root+'pass2-catalog.json','utf8'))];
 const pass1=JSON.parse(readFileSync('dev/sound-lab/catalog.json','utf8'));
 const ids=['deal-paper','flip-soft','dice-land','dice-land-soft','peg-wood','holm-glass-recorded','winner-a'];
 const approved=pass1.filter(s=>ids.includes(s.id)),checks=[];
-assert.equal(catalog.length,27);assert.equal(new Set(catalog.map(s=>s.category)).size,9);
+assert.equal(catalog.length,51);assert.equal(new Set(catalog.map(s=>s.category)).size,17);
 for(const category of new Set(catalog.map(s=>s.category)))assert.equal(catalog.filter(s=>s.category===category).length,3);
-assert.equal(new Set(catalog.map(s=>s.sha256)).size,27);
+assert.equal(new Set(catalog.map(s=>s.sha256)).size,51);
 for(const s of [...catalog,...approved]){
  const b=readFileSync((catalog.includes(s)?root:'dev/sound-lab/')+'assets/'+s.file);
  assert.equal(createHash('sha256').update(b).digest('hex'),s.sha256,s.id+' hash');
@@ -23,7 +23,7 @@ for(const s of [...catalog,...approved]){
  assert.equal(b.readInt16LE(44),0);assert.equal(b.readInt16LE(b.length-2),0);
  if(s.id.startsWith('chucky'))assert(s.durationMs>=700&&s.durationMs<=1500);
 }
-checks.push('Nine categories × three distinct WAVs; all 34 files hash-match, decode as mono PCM16/32k, have documented duration/levels, silent edges and peak headroom');
+checks.push('17 categories × three distinct WAVs; all 58 files hash-match, decode as mono PCM16/32k, have documented duration/levels, silent edges and peak headroom');
 const browser=await chromium.launch({channel:'msedge'});
 try{
  const context=await browser.newContext({viewport:{width:1440,height:1100}}),errors=[],external=[];
@@ -44,7 +44,7 @@ try{
  await page.goto(origin);await page.getByRole('status').filter({hasText:'Ready.'}).waitFor();assert.equal(await count(),0);
  for(const s of catalog){const before=await count();await page.getByRole('button',{name:'Play '+s.title,exact:true}).click();await page.waitForFunction(n=>window.studioProbe.starts>n,before);await stop();}
  for(const s of approved){const before=await count();await page.getByRole('button',{name:'Reference '+s.title,exact:true}).click();await page.waitForFunction(n=>window.studioProbe.starts>n,before);await stop();}
- checks.push('All 27 candidates and seven approved references schedule real Web Audio from explicit clicks; Stop cancels them');
+ checks.push('All 51 candidates and seven approved references schedule real Web Audio from explicit clicks; Stop cancels them');
  let before=await count();await page.getByRole('button',{name:'Replay last',exact:false}).click();await page.waitForFunction(n=>window.studioProbe.starts>n,before);await stop();
  before=await count();await page.getByRole('button',{name:'Replay Velvet villain',exact:true}).click();await page.waitForFunction(n=>window.studioProbe.starts>n,before);await stop();
  checks.push('Global replay and per-candidate replay create fresh deliberate auditions');
@@ -93,7 +93,7 @@ try{
  assert(receipts.first>receipts.before);assert.equal(receipts.second,receipts.first);assert.equal(receipts.suppressed,false);
  checks.push('Exact event receipt prevents a duplicate; group cooldown suppresses rapid automatic repeats; dice-to-score sequence reaches its second cue');
  // Layout and native playback checks use the LAN-safe path with randomUUID absent.
- await page.getByRole('button',{name:'All nine moments',exact:true}).click();
+ await page.getByRole('button',{name:'All moments',exact:true}).click();
  for(const [width,height] of [[1440,1100],[390,844],[320,740],[844,390]]){
   await page.setViewportSize({width,height});await page.evaluate(()=>scrollTo(0,0));
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'viewport overflow '+width);
