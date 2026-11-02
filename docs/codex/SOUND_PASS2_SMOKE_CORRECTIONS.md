@@ -124,3 +124,30 @@ headroom, identical-beat, beep-preservation and mute checks pass. The focused
 studio TypeScript check and Vite build pass. The repository's suggested `tsgo`
 command was unavailable; validation used the already-installed TypeScript compiler.
 No production push or final sound choice is authorized by this follow-up.
+
+## Natural heartbeat revision — 2026-11-02
+
+Jeremy rejected the revised heartbeat timbre as too artificial/arcade-like and
+requested a real heartbeat. Both heartbeat candidates now use one actual
+resting-heart lub-dub recorded by Andy Jack, published by JonasTisell under CC0:
+https://freesound.org/people/JonasTisell/sounds/670465/.
+
+The public high-quality preview supplies a 400 ms pair. A fixed mono PCM16
+excerpt and source/license/hash provenance are committed under
+`dev/sound-smoke/sources/`. Preparation applies an 80 Hz rumble filter, short
+boundary fades and level adjustment. It adds no tones/harmonics, pitch shifts,
+distortion or time stretching. The natural spacing inside the pair is retained;
+the pair repeats at the existing Chucky/357 intervals. The other two candidates
+are byte-identical, and no game audio assignment or timing changes are included.
+
+The former 300 Hz signal proxy encouraged added upper harmonics and did not
+establish natural timbre. Qualification now checks useful recorded-heart body
+above 120 Hz, safe peaks, identical countdown pairs, source identity and
+preservation of both other candidates. Browser playback and technical checks
+cannot accept the sound aesthetically; Jeremy's listening remains the gate.
+The studio labels now identify the real recording and credit its source.
+All 16 desktop/phone-width previews pass before and after reload, with mute,
+signal/headroom, identical countdown pairs and preservation checks passing.
+Focused studio TypeScript and Vite build pass. Physical-device listening remains
+unverified; this is a replacement audition, not an approved sound selection.
+No final selection or production deployment is authorized.

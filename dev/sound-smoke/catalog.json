@@ -3,9 +3,11 @@
     "id": "chucky-heartbeat",
     "title": "Chucky — Slow Heartbeat",
     "durationMs": 6000,
-    "sha256": "be27e55c3d2b715187be892537dd432112462a8f93edac9759f1f04bf25cca31",
-    "peak": 0.16491382739106347,
-    "source": "Original procedural sound; no third-party recording"
+    "sha256": "1a8b764a44724d415a6d0156921e6652474c94d4aa753c05d0bd19dd29ce99ce",
+    "peak": 0.24,
+    "source": "Real heartbeat recorded by Andy Jack, published by JonasTisell (CC0); trimmed, filtered and level-adjusted",
+    "sourceUrl": "https://freesound.org/people/JonasTisell/sounds/670465/",
+    "license": "CC0-1.0"
   },
   {
     "id": "chucky-sting",
@@ -27,8 +29,10 @@
     "id": "357-heartbeat",
     "title": "357 — Double Heartbeat",
     "durationMs": 2700,
-    "sha256": "825749adc3fc2d03ffe852e2e918ba78b06fb7ba3858877634ae8a009dcd1df4",
-    "peak": 0.16491382739106347,
-    "source": "Original procedural sound; no third-party recording"
+    "sha256": "d0db2894b8d332cbcad84c4f0da9d10bea27003cfb8290f64292393c67ba07ce",
+    "peak": 0.24,
+    "source": "Real heartbeat recorded by Andy Jack, published by JonasTisell (CC0); trimmed, filtered and level-adjusted",
+    "sourceUrl": "https://freesound.org/people/JonasTisell/sounds/670465/",
+    "license": "CC0-1.0"
   }
 ]
