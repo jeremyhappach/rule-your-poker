@@ -1,3 +1,16 @@
+# Focused pause/resume — 2026-11-02 — local candidate, not published
+
+Setup now exposes the existing host Pause/Resume action inside its blocking
+modal and respects paused setup clocks. Gin and Cribbage receive canonical pause
+state, gate hand controls and action callbacks, and resume Cribbage automatic Go.
+Shipped recovery/terminal ownership is preserved. No database migration, production
+data/cron change, host-succession work, sound change, push or deployment.
+
+Focused component, touch-emulated browser and local SQL evidence, plus explicit
+full-suite, financial and physical-device gaps, are recorded in
+[focused results](../../e2e/pauseAudit/FOCUSED_RESULTS.md). This is not an all-game
+or production acceptance checkpoint.
+
 # Sound Pass 2 final selections — 2026-11-02 — production authorized
 
 24 distinct sounds approved and integrated. Jeremy's saved final choices are

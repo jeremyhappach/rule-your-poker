@@ -219,6 +219,7 @@ function CribbageFeltAdapter(props: {
 
 
 interface CribbageMobileGameTableProps {
+  isPaused?: boolean;
   gameId: string;
   /**
    * SESSION ENDED TABLE PHASE (shared, client-local, read-only).
@@ -582,6 +583,7 @@ function DealClippedOpponentSeatLayer(props: {
 
 
 export const CribbageMobileGameTable = ({
+  isPaused = false,
   gameId,
   sessionEndedPhase = false,
   roundId,
@@ -617,6 +619,8 @@ export const CribbageMobileGameTable = ({
   dealerChatMessages: externalDealerChatMessages,
   onInjectDealerChatMessage,
 }: CribbageMobileGameTableProps) => {
+  const pauseRef = useRef(isPaused);
+  pauseRef.current = isPaused;
   // SHELL LC: mount marker for comparative branch-swap evidence.
   useLifecycleMount('CribbageMobileGameTable');
   const { getTableColors, getCardBackColors } = useVisualPreferences();
@@ -1668,7 +1672,7 @@ export const CribbageMobileGameTable = ({
   ]);
   const currentWriterAdmission = evaluateWriterIdentity('render');
   const writerMatchesAuth = currentWriterAdmission.checks.writerMatchesAuth;
-  const interactionsAllowed = currentWriterAdmission.ok;
+  const interactionsAllowed = currentWriterAdmission.ok && !isPaused;
 
   // ══ Always-on: crib:interaction_gate_blocked ══════════════════════════
   // Persists when the local interaction gate is closed while phase is
@@ -2476,7 +2480,7 @@ export const CribbageMobileGameTable = ({
     chatFlashing: chatAttentionTabProps.chatFlashing,
     chatIndicator: chatAttentionTabProps.chatIndicator,
     onOpenChat: handleOpenChatTab,
-    isPaused: false,
+    isPaused,
   });
   const shellAnchors = useRequiredSeatAnchors('cribbage');
   const playerSlotById = useMemo(() => {
@@ -5693,6 +5697,7 @@ export const CribbageMobileGameTable = ({
     cardIndices: number[],
     sourceRects?: Array<{ x: number; y: number; width: number; height: number } | null>,
   ) => {
+    if (pauseRef.current) return;
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
     // ── Centralized stale-action containment (Phase 2) ──
@@ -6189,6 +6194,7 @@ export const CribbageMobileGameTable = ({
     cardIndex: number,
     sourceRect?: { x: number; y: number; width: number; height: number } | null,
   ) => {
+    if (pauseRef.current) return;
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
     if (authoritativeCutPresentation.isPeggingPresentationBlocked) {
       return;
@@ -6477,6 +6483,7 @@ export const CribbageMobileGameTable = ({
   }, [authoritativeCutPresentation.isPeggingPresentationBlocked, cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity, peggingBoundaryBlocked, playCardIntent, boundaryEventId, lastReleasedBoundaryEventId, thirtyOneDelayActive, heldSequenceSnapshot, renderHandKey, currentHandNumber, releasePlayWriterLock]);
 
   const handleGo = useCallback(async () => {
+    if (pauseRef.current) return;
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
     if (authoritativeCutPresentation.isPeggingPresentationBlocked) {
       return;
@@ -6577,7 +6584,7 @@ export const CribbageMobileGameTable = ({
 
   // Uses ref to avoid stale closure issues - ensures eventCtx is always current
   useEffect(() => {
-    if (!cribbageState || !currentPlayerId) return;
+    if (isPaused || !cribbageState || !currentPlayerId) return;
     const autoCtx = { gameId, roundId: currentRoundId ?? null, handNumber: currentHandNumber, actorPlayerId: currentPlayerId };
     const peg = cribbageState.pegging;
     const myState = cribbageState.playerStates[currentPlayerId];
@@ -6618,7 +6625,7 @@ export const CribbageMobileGameTable = ({
         ...baseDeps, hand: myState.hand,
       });
     }
-  }, [authoritativeCutPresentation.isPeggingPresentationBlocked, autoGoIdentity, isProcessing]);
+  }, [authoritativeCutPresentation.isPeggingPresentationBlocked, autoGoIdentity, isProcessing, isPaused]);
 
   const countingProgressQueueRef = useRef<ReturnType<
     typeof createCribbageCountingProgressQueue
@@ -9237,7 +9244,7 @@ export const CribbageMobileGameTable = ({
                   cribbageState={stateForRender}
                   currentPlayerId={currentPlayerId}
                   playerCount={players.length}
-                  isProcessing={isProcessing}
+                  isProcessing={isProcessing || isPaused}
                   onDiscard={handleDiscard}
                   onPlayCard={handlePlayCard}
                   currentPlayer={currentPlayer}

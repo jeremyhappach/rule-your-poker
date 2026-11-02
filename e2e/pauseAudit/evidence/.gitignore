@@ -1,0 +1,6 @@
+*
+!.gitignore
+!.gitkeep
+!focused-browser.json
+!focused-sql.json
+!focused-legacy-sql.json

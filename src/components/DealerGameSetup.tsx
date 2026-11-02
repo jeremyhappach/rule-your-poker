@@ -158,6 +158,8 @@ interface DealerGameSetupProps {
   dealerPlayerId: string;
   dealerPosition: number;
   configDeadline: string | null;
+  isPaused?: boolean;
+  onTogglePause?: () => void | Promise<void>;
   previousGameType?: string; // The last game type played
   previousGameConfig?: PreviousGameConfig | null; // The previous game's actual config
   sessionGameConfigs?: SessionGameConfigs; // Session-specific configs per game type
@@ -193,6 +195,8 @@ const DealerGameSetupInner = ({
   dealerPlayerId,
   dealerPosition,
   configDeadline,
+  isPaused = false,
+  onTogglePause,
   previousGameType,
   previousGameConfig,
   sessionGameConfigs,
@@ -205,6 +209,11 @@ const DealerGameSetupInner = ({
   onSessionEnd,
   onSitOut,
 }: DealerGameSetupProps) => {
+  const pauseRef = useRef(isPaused);
+  pauseRef.current = isPaused;
+  const clockScope = `${gameId}|${dealerPosition}|${configDeadline}|${isPaused}`;
+  const clockScopeRef = useRef(clockScope);
+  clockScopeRef.current = clockScope;
   const run21Allowed = useRun21Access(gameId);
   const triTowersAllowed = useTriTowersTestAccess(gameId);
   const elevenAllowed = useElevenUpAccess(gameId);
@@ -399,7 +408,7 @@ const DealerGameSetupInner = ({
 
   // Handle dealer timeout - mark as sitting out and re-evaluate
   const handleDealerTimeout = async () => {
-    if (hasSubmittedRef.current) return;
+    if (hasSubmittedRef.current || pauseRef.current) return;
 
     // P0 CONTAINMENT: Re-fetch authoritative game state and abort if the game
     // has already advanced past configuration. Prevents stale local timers
@@ -407,9 +416,11 @@ const DealerGameSetupInner = ({
     try {
       const { data: guardData, error: guardErr } = await supabase
         .from('games')
-        .select('status, current_game_uuid, config_complete, config_deadline')
+        .select('status, current_game_uuid, config_complete, config_deadline, is_paused')
         .eq('id', gameId)
         .maybeSingle();
+
+      if (pauseRef.current || guardData?.is_paused) return;
 
       const allowedStatuses = new Set(['dealer_selection', 'configuring', 'game_selection']);
       const statusOk = guardData && allowedStatuses.has(guardData.status);
@@ -544,9 +555,10 @@ const DealerGameSetupInner = ({
       configTimeoutRef.current = null;
     }
 
+    if (pauseRef.current) return;
     const delay = Math.max(0, deadlineMs - Date.now());
     configTimeoutRef.current = setTimeout(() => {
-      if (!hasSubmittedRef.current) {
+      if (!hasSubmittedRef.current && !pauseRef.current) {
         handleDealerTimeoutRef.current();
       }
     }, delay + 50);
@@ -556,7 +568,11 @@ const DealerGameSetupInner = ({
   // directly; the focus/visibility fetch below is only a resync and can never
   // gate the timer or the form on optional defaults/network reads.
   useEffect(() => {
-    if (isBot || !configDeadline) return;
+    if (configTimeoutRef.current) {
+      clearTimeout(configTimeoutRef.current);
+      configTimeoutRef.current = null;
+    }
+    if (isPaused || isBot || !configDeadline) return;
     const deadlineMs = new Date(configDeadline).getTime();
     if (!Number.isFinite(deadlineMs)) return;
     const remaining = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
@@ -565,16 +581,19 @@ const DealerGameSetupInner = ({
     if (remaining <= 0 && !hasSubmittedRef.current) {
       handleDealerTimeoutRef.current();
     }
-  }, [configDeadline, isBot, scheduleConfigTimeout]);
+  }, [configDeadline, isBot, isPaused, scheduleConfigTimeout]);
 
   const syncWithServerDeadline = useCallback(async () => {
-    if (isBot) return;
+    if (isBot || pauseRef.current) return;
+    const requestScope = clockScopeRef.current;
 
     const { data: gameData, error } = await supabase
       .from('games')
-      .select('config_deadline')
+      .select('config_deadline, is_paused')
       .eq('id', gameId)
       .maybeSingle();
+
+    if (requestScope !== clockScopeRef.current || pauseRef.current || gameData?.is_paused) return;
 
     if (error) {
       console.error('[DEALER SETUP] Failed to fetch server deadline:', error);
@@ -637,7 +656,7 @@ const DealerGameSetupInner = ({
   // edge/cron enforcement is TERTIARY. An active client visibly seeing the deadline
   // expire must never depend on background polling.
   useEffect(() => {
-    if (isBot) return;
+    if (isBot || isPaused) return;
     if (timeLeft === null) return; // Wait for initial sync
 
     const timer = setInterval(() => {
@@ -656,7 +675,7 @@ const DealerGameSetupInner = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isBot, timeLeft !== null]);
+  }, [isBot, isPaused, timeLeft !== null]);
 
 
   // Bot dealers use the same exact-identity authority path as human dealers.
@@ -859,6 +878,14 @@ const DealerGameSetupInner = ({
   }
 
   const isHolmGame = selectedGameType === 'holm-game';
+  // The setup scrim intentionally blocks the table header. Reuse its host-only
+  // route action here so touch and keyboard users have the same pause access.
+  const pauseControl = (isPaused || onTogglePause) ? (
+    <div className="flex shrink-0 items-center justify-end gap-2">
+      {isPaused && <Badge variant="secondary">Paused</Badge>}
+      {onTogglePause && <Button variant="outline" size="sm" aria-label={isPaused ? 'Resume game' : 'Pause game'} onClick={() => void onTogglePause()}>{isPaused ? 'Resume' : 'Pause'}</Button>}
+    </div>
+  ) : null;
 
   const getGameDisplayName = (id:string) => findGame(id)?.name??id;
 
@@ -1139,6 +1166,7 @@ const DealerGameSetupInner = ({
       >
         <Card className="w-full max-w-2xl border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[100%] overflow-y-auto">
           <CardContent className="p-3 space-y-3 sm:p-5">
+            {pauseControl}
             {/* Header with Timer */}
             <div className="flex items-center justify-between">
               <div>
@@ -1231,6 +1259,7 @@ const DealerGameSetupInner = ({
     };
     return <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4" style={{ zIndex: SHELL_Z.MODAL_OVERLAY }} data-dealer-game-setup-step="config" data-dealer-game-setup-selected-game="farkle">
       <Card className="w-full max-w-md border-poker-gold bg-poker-felt"><CardContent className="space-y-4 p-6">
+        {pauseControl}
         <h2 className="text-xl font-bold text-poker-gold">Farkle Setup</h2>
         <FarkleDealerFields value={farkleDraft} onChange={setFarkleDraft} />
         <p className="text-sm text-amber-200">{localTest ? 'TEST ONLY: isolated local scoring configuration.' : 'Scoring rules are frozen when this game starts.'}</p>
@@ -1271,6 +1300,7 @@ const DealerGameSetupInner = ({
           {/* Viewport-safe dialog: header + footer pinned, body scrolls. */}
           <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
             <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
+              {pauseControl}
               {/* Header with Timer */}
               <div className="flex shrink-0 items-center justify-between">
                 <div>
@@ -1497,6 +1527,7 @@ const DealerGameSetupInner = ({
     >
       <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
         <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
+          {pauseControl}
           {/* Header with Timer */}
           <div className="flex shrink-0 items-center justify-between">
 

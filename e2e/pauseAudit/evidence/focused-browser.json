@@ -1,0 +1,127 @@
+{
+  "engine": "Chromium",
+  "syntheticTransport": true,
+  "physicalPhone": false,
+  "reports": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "kind": "selection",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "kind": "simple",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "kind": "card",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "kind": "farkle",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "kind": "selection",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "kind": "simple",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "kind": "card",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "kind": "farkle",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "kind": "selection",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "kind": "simple",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "kind": "card",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "kind": "farkle",
+      "pointerAndTouch": true,
+      "headerBlocked": true,
+      "keyboardOriginal": true
+    }
+  ]
+}

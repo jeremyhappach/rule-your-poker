@@ -1,7 +1,7 @@
 import {act,cleanup,render} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {appendFileSync} from 'node:fs';
-const f=vi.hoisted(()=>({rpc:vi.fn(),fetch:vi.fn(),emit:vi.fn(),identity:{dealerGameId:'dealer',roundId:'round',handNumber:1},attention:{notifyActiveTab:()=>{},markChatRead:()=>{},attentionState:{}},announcements:null as any}));
+const f=vi.hoisted(()=>({controls:null as any,rpc:vi.fn(),fetch:vi.fn(),emit:vi.fn(),identity:{dealerGameId:'dealer',roundId:'round',handNumber:1},attention:{notifyActiveTab:()=>{},markChatRead:()=>{},attentionState:{}},announcements:null as any}));
 vi.mock('@/lib/persistSyncDebugEvent',()=>({persistSyncDebugEvent:()=>undefined}));
 vi.mock('@/lib/ginRummySyncDiagnostics',()=>({checkStaleHandRender:()=>undefined,checkPhaseRenderMismatch:()=>undefined,checkResultRenderMismatch:()=>undefined,checkRegressiveHandIdentity:()=>undefined,resetGinRummyTracking:()=>undefined,logGinResultDisplay:()=>undefined}));
 vi.mock('@/lib/livePlayTiming',()=>({recordGinTableCommit:()=>undefined,clearLiveTimingContext:()=>undefined}));
@@ -10,7 +10,7 @@ vi.mock('@/lib/canonicalShell/lifecycleDebug',()=>({useLifecycleMount:()=>undefi
 vi.mock('@/lib/canonicalShell/shellLifecycleLog',()=>({useChangeTracker:()=>undefined,useUnmountSnapshot:()=>undefined}));
 vi.mock('@/lib/ginStartupTrace',()=>({ginTrace:()=>undefined}));
 vi.mock('@/components/GinRummyFeltContent',()=>({GinRummyFeltContent:()=>null}));
-vi.mock('@/components/GinRummyMobileCardsTab',()=>({GinRummyMobileCardsTab:()=>null}));
+vi.mock('@/components/GinRummyMobileCardsTab',()=>({GinRummyMobileCardsTab:(p:any)=>{f.controls=p;return null;}}));
 vi.mock('@/components/GinRummyDealOrchestrator',()=>({GinRummyDealOrchestrator:()=>null}));
 vi.mock('@/components/GinAnchoredSlot',()=>({GinAnchoredSlot:()=>null}));
 vi.mock('@/components/GinRummyPegBoard',()=>({GinRummyPegBoard:()=>null}));
@@ -77,4 +77,12 @@ it('CONTROL Gin remount restarts exact failed successor',async()=>{
  await act(async()=>resolveNext({data:null,error:{message:'Failed to fetch'}}));h.unmount();mount();await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(1600));expect(calls()).toHaveLength(2);expect(calls()[1][1]).toEqual(calls()[0][1]);
  await act(async()=>resolveNext({data:{outcome:'already_started',round_id:'next',hand_number:2,state:{...fixture(),handNumber:2}},error:null}));
  await act(()=>vi.advanceTimersByTimeAsync(16000));expect(calls()).toHaveLength(2);
+});
+
+it('gin active turn publishes disabled controls through pause and restores them on resume',async()=>{
+ f.controls=null;f.fetch.mockResolvedValue({...createInitialGinRummyState('a','b',2,100),phase:'playing',currentTurnPlayerId:'b',handNumber:1,actionCount:2});const p={gameId:'session',roundId:'round',dealerGameId:'dealer',handNumber:1,players,currentUserId:'u1',dealerPosition:1,anteAmount:2,pot:4,isHost:false,onGameComplete:()=>{},entryMode:'historical-entry' as const};const ui=render(<GinRummyGameTable {...p}/>);await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
+ expect(f.controls).not.toBeNull();expect(f.controls.isProcessing).toBe(false);
+ ui.rerender(<GinRummyGameTable {...p} isPaused/>);expect(f.controls.isProcessing).toBe(true);
+ const rpcCount=f.rpc.mock.calls.length;await act(async()=>{await f.controls.onDrawStock();await f.controls.onDiscard(0);});expect(f.rpc.mock.calls).toHaveLength(rpcCount);
+ ui.rerender(<GinRummyGameTable {...p}/>);expect(f.controls.isProcessing).toBe(false);
 });

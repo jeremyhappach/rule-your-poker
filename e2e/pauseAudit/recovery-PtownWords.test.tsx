@@ -9,7 +9,7 @@ function setup(role='actor'){
  if('PtownWords'==='Battle31')value.board.rules.version='battle-31/1';
  if('PtownWords'==='PtownWords'){value.board=Array(225).fill(null);value.rack=[];}
  let status!:(v:boolean)=>void;const off=vi.fn();const transport={load:vi.fn(async()=>value),send:vi.fn(async()=>value),subscribe:vi.fn((_refresh:any,s:any)=>{status=s;return off;})};
- return {transport,off,status:(v:boolean)=>status(v),resume:()=>{value={...value,paused:false,pausedAt:null,revision:2,serverAt:31000,board:Array.isArray(value.board)?value.board:{...value.board,deadline:130000},deadline:130000};}};
+ return {transport,off,status:(v:boolean)=>status(v),pause:()=>{value={...value,paused:true,pausedAt:value.serverAt,revision:value.revision+1};},resume:()=>{value={...value,paused:false,pausedAt:null,revision:value.revision+1,serverAt:31000,board:Array.isArray(value.board)?value.board:{...value.board,deadline:130000},deadline:130000};}};
 }
 beforeEach(()=>{vi.useFakeTimers({toFake:['setTimeout','clearTimeout','setInterval','clearInterval','Date','performance']});Object.defineProperty(document,'hidden',{configurable:true,value:false});Object.defineProperty(navigator,'onLine',{configurable:true,value:true});});
 afterEach(()=>{cleanup();vi.useRealTimers();});
@@ -31,4 +31,15 @@ it('CONTRACT failed subscription is rebuilt after successful focus snapshot',asy
  await act(async()=>window.dispatchEvent(new Event('focus')));expect(hook.result.current.snapshot?.paused).toBe(false);
  record('subscription-recovery',{subscribes:f.transport.subscribe.mock.calls.length,revision:hook.result.current.snapshot?.revision,connected:(hook.result.current as any).connected??null,error:hook.result.current.error,commands:f.transport.send.mock.calls.length});
  expect(f.transport.subscribe).toHaveBeenCalledTimes(2);
+});
+
+for(const role of ['actor','observer'])it('active-turn '+role+' pause gates actions, reconnect restores only actor actionability',async()=>{
+ const f=setup(role),h=renderHook(()=>usePtownWords('dealer',role,f.transport as any));await act(async()=>{});await act(async()=>f.status(true));
+ await act(async()=>h.result.current.act({type:'pass'} as any));expect(f.transport.send).not.toHaveBeenCalled();
+ f.resume();await act(async()=>window.dispatchEvent(new Event('offline')));await act(async()=>window.dispatchEvent(new Event('online')));await act(async()=>f.status(true));
+ expect(h.result.current.snapshot?.paused).toBe(false);expect(h.result.current.snapshot?.canAct).toBe(role==='actor');
+ await act(async()=>h.result.current.act({type:'pass'} as any));expect(f.transport.send).toHaveBeenCalledTimes(role==='actor'?1:0);
+ f.pause();await act(async()=>dispatchAuthoritativeRecoverySnapshot('realtime_fallback'));expect(h.result.current.snapshot?.paused).toBe(true);
+ await act(async()=>h.result.current.act({type:'pass'} as any));expect(f.transport.send).toHaveBeenCalledTimes(role==='actor'?1:0);
+ f.resume();await act(async()=>dispatchAuthoritativeRecoverySnapshot('realtime_fallback'));await act(async()=>h.result.current.act({type:'pass'} as any));expect(f.transport.send).toHaveBeenCalledTimes(role==='actor'?2:0);
 });
