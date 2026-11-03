@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-03",
+  "base": "df7684668",
+  "branch": "codex/mega-card-golf-multiplayer-async",
+  "uniqueFocusedTests": 178,
+  "typecheck": "tsc -p tsconfig.app.json --noEmit: passed",
+  "bundle": "vite build: passed",
+  "database": "rollback financial, earned service, idempotent installed migration and two-connection race proofs passed",
+  "browser": "four viewports, actual replay gate, interrupted/skip/reopen and expanded landscape scroll passed",
+  "hostedChanges": false,
+  "admission": "closed",
+  "pending": [
+    "hosted rollback and deployment verification",
+    "physical iPhone/Android owner smoke"
+  ]
+}

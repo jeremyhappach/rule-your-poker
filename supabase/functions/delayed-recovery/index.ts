@@ -1,4 +1,5 @@
 import {synchronize} from '../../../server/delayed/service.ts';
+import {synchronizeMegaMatch} from '../../../server/megaCardGolf/multiplayer.ts';
 declare const Deno:{env:{get(name:string):string|undefined};serve(handler:(request:Request)=>Promise<Response>):void};
 Deno.serve(async request=>{
  if(request.method!=='POST')return new Response(null,{status:405});
@@ -8,7 +9,10 @@ Deno.serve(async request=>{
  if(!url||!key)return new Response(null,{status:503});
  const rpc=async(name:string,args:Record<string,unknown>)=>{
   const response=await fetch(`${url}/rest/v1/rpc/${name}`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify(args),signal:AbortSignal.timeout(10000)});
-  if(!response.ok){const failure=await response.json().catch(()=>null);throw Error(typeof failure?.message==='string'&&failure.message.startsWith('delayed:')?failure.message:'delayed:recovery_database_rejected');}
+  if(!response.ok){const failure=await response.json().catch(()=>null);
+   // Registration may follow worker publication. Missing new RPC means no Mega matches can exist yet.
+   if(name==='mega_live_recovery_claim'&&response.status===404&&failure?.code==='PGRST202')return [];
+   throw Error(typeof failure?.message==='string'&&failure.message.startsWith('delayed:')?failure.message:'delayed:recovery_database_rejected');}
   const body=await response.text();return body?JSON.parse(body):null;
  };
  try{
@@ -16,7 +20,10 @@ Deno.serve(async request=>{
   // Independent parents may progress concurrently; SQL serializes shared ones.
   const results=await Promise.allSettled(records.map((row:any)=>synchronize(rpc,row,null)));
   for(const result of results)if(result.status==='rejected'&&!['delayed:removed_or_unavailable','delayed:not_active','delayed:held'].includes(result.reason?.message))failures++;
+  const mega=await rpc('mega_live_recovery_claim',{p_token:token});
+  const live=await Promise.allSettled(mega.map((row:any)=>synchronizeMegaMatch(rpc,row,null,token)));
+  failures+=live.filter(result=>result.status==='rejected').length;
   await rpc('delayed_recovery_complete',{p_token:token,p_failure:failures?'delayed:recovery_failed':null});
-  return Response.json({processed:records.length,failures},{status:failures?503:200});
+  return Response.json({processed:records.length+mega.length,failures},{status:failures?503:200});
  }catch{return new Response(null,{status:503});}
 });

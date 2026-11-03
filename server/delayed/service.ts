@@ -17,11 +17,13 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
  if(!['state','action'].includes(body.op)||!isUuid(body.childId??''))throw Error('delayed:invalid_request');
  if(body.op==='action'&&(!isUuid(body.requestId??'')||!Number.isSafeInteger(body.revision)||!Number.isSafeInteger(body.segment)))throw Error('delayed:invalid_command');
  const intent=body.intent as Intent;
- if(body.op==='action'&&(!intent||!['start','place','pass','collect','remove','draw','take_score','recycle','roll','score','score_zero'].includes(intent.type)||
+ if(body.op==='action'&&(!intent||!['start','place','pass','collect','remove','draw','take_score','recycle','roll','score','score_zero','open','replace','discard','stand-pat'].includes(intent.type)||
   intent.type==='place'&&(!('items'in intent)&&(!Number.isInteger(intent.column)||intent.column<0||intent.column>4))||
   intent.type==='remove'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>27)))throw Error('delayed:invalid_action');
  let row:RecordRow=await rpc('delayed_load',{p_child:body.childId,p_actor:userId,p_request:body.op==='action'?body.requestId:null});
  if(body.op==='action'){
+  if(intent.type==='replace'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>5))throw Error('delayed:invalid_action');
+  if(intent.type==='open'&&(!Array.isArray(intent.indices)||intent.indices.length<1||intent.indices.length>5||new Set(intent.indices).size!==intent.indices.length||intent.indices.some(i=>!Number.isInteger(i)||i<0||i>5)))throw Error('delayed:invalid_action');
   if('items'in intent&&(!Array.isArray(intent.items)||intent.items.length>5||intent.items.some(i=>!Number.isInteger(i)||i<0||i>2147483647)))throw Error('delayed:invalid_items');
   if(row.game_type==='run21'&&intent.type==='place'&&!('column'in intent))throw Error('delayed:invalid_action');
   if((row.game_type==='boxdrop'&&['place','recycle'].includes(intent.type)||row.game_type==='quintzee'&&['roll','score','score_zero'].includes(intent.type))&&!('items'in intent))throw Error('delayed:invalid_items');

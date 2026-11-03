@@ -4,6 +4,7 @@ import {SCORE_HOLD,SCORE_FLIGHT,SCORE_AFTER} from '@/lib/ptownWords/scorePresent
 import {triCountWindow,TRI_ROUND_TIMELINE} from '@/lib/triTowers/roundTimeline';
 import type {ReviewEvent} from './reviews';
 import type {Home} from './client';
+import {savedHolePresentation} from '@/lib/megaCardGolf/presentation';
 export const ASYNC_SCORE_HOLD_MS=3000;
 /** Only acknowledged earlier contributions plus the one currently being revealed.
  * Saved board totals may include other unseen rounds and are never the baseline. */
@@ -17,6 +18,10 @@ export function reviewScoreContext(event:ReviewEvent,events:ReviewEvent[],home:H
 export function reviewSchedule(event:ReviewEvent){
  const b=event.board,r=b?.result,rules=b?.rules??event.receipt.rules;
  if(!b)return {duration:SCORE_HOLD+SCORE_AFTER,countStart:0,countEnd:SCORE_HOLD,presentationEnd:SCORE_HOLD+SCORE_AFTER,medal:0};
+ if(event.receipt.game==='mega-card-golf'){
+  const event=savedHolePresentation(b,0).events[0];
+  return {duration:event.end,countStart:b.results.at(-1).hidden.length*500,countEnd:event.end-4200,presentationEnd:event.end,medal:0};
+ }
  if(event.receipt.game==='run21'){
   const medal=r?.score>0&&(r.aggregate===104||r.aggregate===105)?medalDuration(rules as Config,r.aggregate):0;
   return {duration:medal+SCORE_PRESENTATION_MS,countStart:medal,countEnd:medal+SCORE_PRESENTATION_MS,presentationEnd:medal+SCORE_PRESENTATION_MS,medal};

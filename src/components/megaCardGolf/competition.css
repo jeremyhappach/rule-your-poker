@@ -1,0 +1,34 @@
+.mega-competition-scorecard{position:relative;color:#fff4d0;max-inline-size:100%;font-size:.8rem}
+.mega-competition-summary{display:block;inline-size:100%;border:1px solid #e0c68166;border-radius:.55rem;background:#173e35e8;padding:.35rem .6rem;text-align:left;color:inherit}
+.mega-competition-summary>span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.mega-competition-summary table,.mega-competition-expanded table{inline-size:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.mega-competition-summary :is(th,td){padding:.1rem .3rem;text-align:right}
+.mega-competition-summary :is(th,td):nth-child(2){text-align:left;max-inline-size:9em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.mega-competition-summary small{display:block;text-align:center;opacity:.8}
+.mega-competition-expanded{position:absolute;inset-inline:0;inset-block-start:100%;z-index:4;background:#f2e5c1;color:#26352e;border:2px solid #b99a58;border-radius:.5rem;padding:.5rem;overflow:auto;max-block-size:28rem;box-shadow:0 .5rem 1rem #0008}
+.mega-competition-expanded :is(th,td){padding:.3rem .2rem;text-align:center;border-block-end:1px solid #667c6b44}
+.mega-competition-expanded th:first-child{text-align:left;max-inline-size:8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mega-competition-expanded>button{display:block;margin-inline-start:auto;text-decoration:underline}
+.mega-competition-expanded p{font-size:.75rem;margin-block:.5rem 0}
+.mega-competition-config{display:flex;flex-wrap:wrap;gap:.7rem}
+.mega-competition-config label{display:grid;gap:.25rem;flex:1 1 10rem}
+.mega-competition-config select{min-inline-size:0;max-inline-size:100%;padding:.5rem;border:1px solid #a98e57;border-radius:.35rem;background:#173e35;color:#fff4d0}
+.mega-competition-scorecard{z-index:3;container:mega-competition-scorecard/inline-size}
+.mega-competition-summary table{table-layout:fixed}
+.mega-competition-summary th:first-child{width:15%}
+.mega-competition-summary th:nth-child(2){width:45%}
+.mega-competition-summary th:nth-child(3),.mega-competition-summary th:nth-child(4){width:20%}
+.mega-competition-expanded .golf-pencil-score{height:1.6rem;max-inline-size:100%;width:auto}
+.mega-competition-expanded .mega-pencil-plus{height:1.6rem;width:.65rem}
+.mega-scene:has(.mega-competition-scorecard){container:mega-competition-scene/size}
+.mega-competition-expanded{max-block-size:min(28rem,60cqh);overscroll-behavior:contain}
+@container mega-competition-scorecard (min-width:36rem){
+ .mega-competition-summary table{display:block}
+ .mega-competition-summary thead{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%)}
+ .mega-competition-summary tbody{display:flex;gap:1rem;flex-wrap:wrap}
+ .mega-competition-summary tr{display:flex;align-items:center;gap:.35rem;min-inline-size:0;flex:1}
+ .mega-competition-summary :is(th,td){width:auto!important}
+ .mega-competition-summary th:nth-child(2){flex:1;max-inline-size:14em}
+ .mega-competition-summary td:last-child::before{content:'Thru ';font-size:.7em}
+}
+.mega-competition-replay-label{position:absolute;inset-inline-start:3%;inset-block-start:2%;z-index:3;padding:.3rem .6rem;border-radius:.4rem;background:#173e35;color:#fff4d0}

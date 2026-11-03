@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "checks": [
+    "closed candidate compiles against captured owner definitions",
+    "live and async admission default closed",
+    "browser cannot read private decks or submit state",
+    "configuration, immutable outcomes, winner/tie and canonical financial rollback matrix",
+    "candidate and synthetic data rolled back"
+  ]
+}

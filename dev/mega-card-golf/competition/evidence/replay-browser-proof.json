@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "checks": [
+    "actual ReviewGate: refresh keeps replay unseen despite old elapsed lease; skip ACKs once; acknowledged reopening proceeds to turn",
+    "expanded 18-hole landscape scorecard scrolls within the canonical shell"
+  ],
+  "errors": []
+}

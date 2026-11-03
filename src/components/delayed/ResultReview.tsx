@@ -1,4 +1,6 @@
 import {AsyncSessionName} from './AsyncSessionName';
+import {MegaHoleReplay} from '@/components/megaCardGolf/MegaHoleReplay';
+import {MegaCompetitionScorecard} from '@/components/megaCardGolf/MegaCompetitionScorecard';
 import {RunbackLink} from './RunbackLink';
 import boxingWinner from '@/assets/async-finale/boxing-winner-cash-v1.jpg';
 import {AsyncTurnStage} from './AsyncTurnStage';
@@ -64,19 +66,20 @@ export function ReviewGate({childId,matchId,userId,home,children}:Identity&{home
 function AttemptReview({event,events,home,onDone,childId,matchId,userId}:Identity&{event:ReviewEvent;events:ReviewEvent[];home:Home;onDone:()=>void|Promise<void>}){
  const [scores]=useState(()=>reviewScoreContext(event,events,home,childId,userId));
  const schedule=reviewSchedule(event),reduced=useReduced(),intro=event.receipt.game==='ptown-words'?0:3000,total=intro+(reduced?0:schedule.presentationEnd)+ASYNC_SCORE_HOLD_MS,[prior,setPrior]=useState<number|null>(null),activeView=useVisible(),duration=prior===null?total:Math.max(ASYNC_SCORE_HOLD_MS,total-prior),{elapsed,done,active}=usePlayback(duration,event.id+':'+prior),busy=useRef(false),[error,setError]=useState(''),[beginRetry,setBeginRetry]=useState(0);
- useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(event.seen?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry]);
+ useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(event.seen||event.receipt.game==='mega-card-golf'?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry]);
  const acknowledge=useCallback(async()=>{if(prior===null||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;try{await delayedRpc('delayed_review_ack',{p_event:event.id});await onDone();}catch{setError('Result saved. Unable to confirm viewing; retry safely.');busy.current=false;}},[event.id,onDone,prior]);
  useEffect(()=>{if(prior!==null&&done&&!error)void acknowledge();},[prior,done,error,acknowledge]);
  if(prior===null)return <AsyncTurnStage matchId={matchId} title={error||'Showing '+(event.actorName??home.players.find(p=>p.id===event.actor)?.name??'')+"'s results"}>{error&&<button onClick={()=>{setError('');setBeginRetry(n=>n+1);}}>Retry</button>}</AsyncTurnStage>;
  if(elapsed+prior<intro)return <AsyncTurnStage matchId={matchId} title={'Showing '+(event.actorName??home.players.find(p=>p.id===event.actor)?.name??'')+"'s results"}/>;
  const shown=Math.max(0,elapsed+prior-intro);
- return <div className="async-result-review async-turn"><div className="delayed-turn-nav"><Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link><span>{event.actorName??'Opponent'} · Round {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
+ return <div className="async-result-review async-turn"><div className="delayed-turn-nav"><Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link><span>{event.actorName??'Opponent'} · {event.receipt.game==='mega-card-golf'?'Hole':'Round'} {event.round} · {Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
+  {event.receipt.game==='mega-card-golf'&&<button className="delayed-secondary" disabled={!active} onClick={()=>void acknowledge()}>Skip Animation</button>}
   {!active&&<p role="status">Return online to finish reviewing.</p>}{error&&<p role="alert">{error}<button onClick={()=>void acknowledge()}>Retry</button></p>}
-  <SnapshotBoundary><SavedBoard key={event.id+':'+prior} event={event} scores={scores} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
+  <SnapshotBoundary><SavedBoard key={event.id+':'+prior} event={event} scores={scores} holeResults={home.lineup.find(c=>c.id===childId)?.holeResults??[]} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
  </div>;
 }
 
-function SavedBoard({event,scores,childId,userId,elapsed}:{event:ReviewEvent;scores:ReturnType<typeof reviewScoreContext>;childId:string;userId:string;elapsed:number}){
+function SavedBoard({event,scores,childId,userId,elapsed,holeResults}:{holeResults:{actor:string;hole:number;score:number;at:number}[];event:ReviewEvent;scores:ReturnType<typeof reviewScoreContext>;childId:string;userId:string;elapsed:number}){
  const scoreRoot=useRef<HTMLDivElement>(null);
  const [tab,setTab]=useState<ShellTabId>('cards'),[playId]=useState(()=>crypto.randomUUID()),actor=event.actor??userId,name=event.actorName??'Opponent',scope='review:'+event.id+':'+playId,schedule=reviewSchedule(event),active=useVisible();
  const origin=1_000_000,now=origin+elapsed;
@@ -84,6 +87,7 @@ function SavedBoard({event,scores,childId,userId,elapsed}:{event:ReviewEvent;sco
  const runView=event.receipt.game==='run21'&&board?{config:event.receipt.rules,roundId:scope,roundNumber:event.round,viewerId:userId,boards:{[actor]:board},players:scores.players,active_player_id:null,liveBoards:true,revealed:true,cumulative:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),scorePresentation:{playerId:actor,startedAt:origin+schedule.countStart,endsAt:origin+schedule.countEnd,from:scores.before,to:scores.after},presentationKey:scope}:undefined;
  // Saved-result animation is read-only history; do not re-admit its audio.
  if(!board)return <main className="delayed-page"><p>Historic board replay is unavailable.</p><strong>{event.score?.toLocaleString()} points</strong></main>;
+ if(event.receipt.game==='mega-card-golf')return <MegaHoleReplay view={event.board} elapsed={elapsed} identity={scope} userId={userId} actorName={name} players={scores.players} sound={!event.seen} results={[...holeResults.filter(r=>r.actor!==actor||r.hole!==event.round),...event.board.results.filter((r:any)=>r.hole===event.round&&elapsed>=schedule.countEnd).map((r:any)=>({actor,hole:r.hole,score:r.score,at:r.startedAt}))]}/>;
  const players=scores.players.map(p=>p.id),base={navigation:<nav aria-label="Saved result information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>,activeTab:tab,setActiveTab:setTab,pending:false,error:'',onReconnect:noop,onIntent:noop};
  if(event.receipt.game==='quintzee')return <QuintzeeView replay {...base} actor={userId} userId={userId} now={now} snapshot={{id:childId,revision:1,scope,serverAt:origin,theme:'modern',pausedAt:null,status:'completed',outcome:'active',playerNames:Object.fromEntries(scores.players.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),round:event.round,turnIndex:players.indexOf(actor),qualified:[],results:[],finished:false,board}} as any}/>;
  if(event.receipt.game==='boxdrop')return <BoxdropView replay {...base} userId={userId} now={now} epoch={0} view={{id:childId,revision:1,scope,serverAt:origin,round:event.round,board,canAct:false,paused:false,pausedAt:null,finished:false,settled:false,solo:false,players:scores.players} as any}/>;
@@ -111,6 +115,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
   {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>
   <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+' banked the $'+child.stake+' stake':'Tie · $0'}</strong>
+  {child.game==='mega-card-golf'&&<MegaCompetitionScorecard course={(child.config as any).course.name} holes={(child.config as any).course.holes} hole={(child.config as any).course.holes} players={home.players} results={child.holeResults??[]}/>}
  </div></FullscreenGameShell></div>;
 }
 

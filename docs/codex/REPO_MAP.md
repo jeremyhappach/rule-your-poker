@@ -1496,3 +1496,5 @@ Installed migration and release evidence: [ASYNC_WORDS_RELEASE.md](ASYNC_WORDS_R
 - `src/components/ptownWords/PtownWordsView.tsx`: shared three-scale camera and existing board gesture owner.
 - `src/components/quintzee/QuintzeeBonuses.tsx`: authoritative final bonus designations, admitted by shared QuintzeeView count timing.
 - `dev/async-combined/live-preview.mjs`: loopback-only interactive fixture preview; related live/bell browser scripts qualify local behavior.
+
+Mega competition: `src/lib/megaCardGolf/competition.ts` adapts the shared reducer; `server/megaCardGolf/multiplayer.ts` and `api/mega-golf.ts` own live orchestration/transport. `MegaTable`, `MegaCompetitionBoard`, `MegaCompetitionScorecard` and `MegaHoleReplay` reuse canonical slots and Arcade presentation. Async is an adapter in `server/delayed/adapter.ts`; the existing delayed worker handles recovery. Closed SQL registration and proofs: `supabase/mega-card-golf/competition-*`, migration `20261103191500`, `dev/mega-card-golf/competition/`. See `MEGA_CARD_GOLF_COMPETITION.md`.

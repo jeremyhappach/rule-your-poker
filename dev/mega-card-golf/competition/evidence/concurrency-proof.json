@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "checks": [
+    "registered migration is idempotent, stays closed and passes the installed rollback financial matrix",
+    "two independent database connections race the same earned final-hole request: one receipt, result and balanced settlement"
+  ]
+}

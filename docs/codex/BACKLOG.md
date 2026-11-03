@@ -1,3 +1,13 @@
+## Queued — Mega Card Golf competition release and owner smoke — 2026-11-03
+
+Local implementation is isolated on `codex/mega-card-golf-multiplayer-async`;
+publication is explicitly held per Jeremy’s implementation request. Complete the
+hosted rollback/registration, matching worker/API/client verification and physical
+iPhone/Android multi-client smoke before either new admission flag is enabled.
+Provenance: Jeremy’s Mega multiplayer + async attachment and confirmed signed-score
+and match-level async settlement choices. See [scope and evidence](MEGA_CARD_GOLF_COMPETITION.md).
+Do not activate this item without release authorization; preserve intervening work.
+
 ## Pending smoke — 3-5-7 Hand Strength bot repeatedly stays — November 2, 2026
 
 Jeremy reported during production smoke after Sound Pass 2 publication that a

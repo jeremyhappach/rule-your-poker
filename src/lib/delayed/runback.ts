@@ -1,8 +1,10 @@
 import type {Home} from './client';
+import {competitionConfig,type MegaCompetitionConfig} from '@/lib/megaCardGolf/competition';
+import type {CourseConfig} from '@/lib/megaCardGolf/config';
 
 export type InvitePerson={id:string;name:string;isHuman:boolean};
 export type InviteEntry={key:string;game:string;stake:string;config?:unknown};
-export type Capabilities={enabled:boolean;fake_money_only:boolean;max_children:number;games:{id:string;stake?:number;rules?:unknown}[]};
+export type Capabilities={enabled:boolean;fake_money_only:boolean;max_children:number;games:{id:string;stake?:number;rules?:unknown;courses?:CourseConfig[]}[]};
 export type RunbackDraft={source:string;lineup:InviteEntry[];opponent:InvitePerson;realMoney:boolean;policyVersion:string;submission?:Record<string,unknown>;sent?:boolean};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,6 +31,12 @@ function canonical(value:unknown):string{
 export function configurationIssue(entry:InviteEntry,caps:Capabilities):string|null{
  const supported=caps.games.find(g=>g.id===entry.game);
  if(!supported)return 'This game is no longer available. Choose another game or remove it.';
+ if(entry.game==='mega-card-golf'&&entry.config!==undefined){
+  try{
+   const saved=entry.config as MegaCompetitionConfig,current=supported.rules as MegaCompetitionConfig,course=supported.courses?.find(c=>c.id===saved.course.id);
+   if(course&&saved.version===current.version&&canonical(saved)===canonical(competitionConfig(course,saved.course.holes,current.version)))return null;
+  }catch{/* The generic saved-configuration explanation below keeps the draft. */}
+ }
  if(entry.config!==undefined&&canonical(entry.config)!==canonical(supported.rules)){
   const old=entry.config as {version?:string;id?:string}|null;
   const current=supported.rules as Record<string,unknown>|null;

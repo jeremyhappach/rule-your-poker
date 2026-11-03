@@ -3111,3 +3111,7 @@ Jeremy selected existing editable fields and frozen rules, without new notes or
 gameplay-option editors. Incompatible current admission settings require explicit
 resolution; unknown defaults cannot silently replace historical rules or stakes.
 Release remains explicitly held. See [candidate and evidence](ASYNC_RUNBACK_LOCAL.md).
+
+# 2026-11-03 — Mega competition reuses signed scores and async parent settlement
+
+Jeremy confirmed existing signed card scores, without inventing par/stroke data. Live and async use the shared versioned Arcade reducer and registry, with frozen course revision and 3/6/9/18-hole selection. Async completion records the child outcome; the established parent owns the single net financial settlement after all invitation games finish. Saved-hole presentation and per-viewer acknowledgement never score or settle. Local registration stays closed pending release authorization and hosted/owner smoke. See `MEGA_CARD_GOLF_COMPETITION.md`.

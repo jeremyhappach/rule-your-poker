@@ -86,3 +86,23 @@ export function presentationFrame(state:MegaPresentation,at:number,reduced=false
  return {view,locked:false,replacement:null,opening:null,stockRevealing:false,scoring:result?{tally:result.score,finished:true,indices:[],points:null,revealing:false}:null,transition:null,cue:null};
 }
 export type MegaFrame=NonNullable<ReturnType<typeof presentationFrame>>;
+
+/** Replays an immutable committed result using the exact Arcade timeline. */
+export function savedHolePresentation(view:MegaView,start:number,key=view.id+'/hole/'+view.hole):MegaPresentation {
+ const result=view.results.find(r=>r.hole===view.hole);
+ if(!result||view.phase!=='scoring')throw Error('Missing saved hole result');
+ const end=start+result.hidden.length*500+scoreSteps(result.cards).length*900+MEGA_HOLE_RESULT_MS;
+ return {latest:view,events:[{kind:'scoring',key,start,end,view:structuredClone(view),result:structuredClone(result)}]};
+}
+
+/** Keep an admitted result on the felt while another participant is admitted. */
+export function receiveCompetitionPresentation(state:MegaPresentation,next:MegaView,at:number,intent?:Intent):MegaPresentation {
+ if(state.latest?.id===next.id){
+  const received=receivePresentation(state,next,at,false,intent);
+  // Match completion belongs to the canonical multiplayer/async result owner.
+  return {...received,events:received.events.filter(e=>e.kind!=='final')};
+ }
+ const retained=state.events.filter(e=>e.end>at),start=Math.max(at,retained.at(-1)?.end??at);
+ const fresh=next.phase==='scoring'?savedHolePresentation(next,start):receivePresentation(emptyPresentation(),next,start,false,undefined,true);
+ return {...fresh,events:[...retained,...fresh.events]};
+}

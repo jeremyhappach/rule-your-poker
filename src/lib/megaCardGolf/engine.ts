@@ -13,6 +13,19 @@ function deal(s:MegaRun,at:number){
  s.cards=s.decks[s.hole-1].slice(0,6);s.exposed=Array(6).fill(false);
  s.draws=0;s.discards=0;s.pending=null;s.discardTop=null;s.phase=s.config.initialExposed?'opening':'playing';s.deadline=at+s.config.completionSeconds*1000;
 }
+/** Orchestration boundary: start only the next hole, with its normal full clock.
+ * Arcade continues to use recoverRun's automatic progression. Competitive modes
+ * call this after their participant/turn owner admits the next hole. */
+export function startNextHole(input:MegaRun,at:number):MegaRun {
+ if(input.status!=='active'||input.phase!=='scoring'||input.results.length!==input.hole||input.hole>=input.config.holes)throw Error('No next hole');
+ if(!Number.isFinite(at)||at<input.results.at(-1)!.startedAt)throw Error('Invalid hole start');
+ const s=structuredClone(input);s.hole++;deal(s,at);s.revision++;return s;
+}
+/** Resolve one admitted hole, never consume another player's availability. */
+export function recoverHole(input:MegaRun,at:number):MegaRun {
+ if(input.status!=='active'||input.phase==='scoring'||at<input.deadline)return structuredClone(input);
+ return recoverRun(input,input.deadline);
+}
 export function createRun(id:string,owner:string,config:CourseConfig,decks:number[][],at:number,ruleset:MegaRuleset=MEGA_RULESET):MegaRun {
  if(ruleset!==MEGA_RULESET&&ruleset!==MEGA_SEQUENTIAL_RULESET&&ruleset!==MEGA_STAND_PAT_RULESET&&ruleset!==MEGA_ANYTIME_STAND_PAT_RULESET)throw Error('Unsupported Mega ruleset');
  if(decks.length!==config.holes||decks.some(d=>d.length!==52||new Set(d).size!==52||d.some(c=>!Number.isInteger(c)||c<0||c>51)))throw Error('Invalid private decks');

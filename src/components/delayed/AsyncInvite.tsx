@@ -2,6 +2,8 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
 import {ArrowDownAZ,History} from 'lucide-react';
 import {delayedRpc,gameName,type Home} from '@/lib/delayed/client';
+import {MegaCompetitionSettings} from '@/components/megaCardGolf/MegaCompetitionConfig';
+import type {MegaCompetitionConfig} from '@/lib/megaCardGolf/competition';
 import {toast} from '@/hooks/use-toast';
 import {configurationIssue,readRunback,reconstructRunback,runbackReturn,saveRunback,validDraftId,type Capabilities,type InviteEntry,type InvitePerson,type RunbackDraft} from '@/lib/delayed/runback';
 
@@ -63,7 +65,7 @@ export function AsyncInvite({userId=''}:{userId?:string}){
   busy.current=true;setPending(true);setError('');request.current??=source?draftId:crypto.randomUUID();
   try{
    const payload=draft?.submission??{p_request:request.current,p_opponent:opponent!.id,p_real_money:realMoney,
-    p_lineup:lineup.map(({game,stake,config})=>({game,stake:Number(stake),...(source?{config}:{} )}))};
+    p_lineup:lineup.map(({game,stake,config})=>({game,stake:Number(stake),...(source||game==='mega-card-golf'?{config}:{} )}))};
    if(source&&draft){const sending={...draft,lineup,opponent:opponent!,realMoney,submission:payload};saveRunback(userId,draftId,sending);setDraft(sending);}
    await delayedRpc<string>('delayed_create',payload);
    if(source&&draft)saveRunback(userId,draftId,{...draft,lineup,opponent:opponent!,realMoney,submission:payload,sent:true});
@@ -92,12 +94,13 @@ export function AsyncInvite({userId=''}:{userId?:string}){
   </fieldset>
   <fieldset className="delayed-form-card" disabled={locked}><legend>Your lineup</legend>
    {lineup.map((c,index)=><div className="delayed-builder-child" key={c.key}>
-    <label>Game {index+1}<select aria-label={'Game '+(index+1)} value={c.game} onChange={e=>change(c.key,{game:e.target.value,stake:source?c.stake:defaultStake(e.target.value),...(source?{config:currentConfig(e.target.value)}:{})})}>{!games.includes(c.game)&&<option value={c.game}>{gameName(c.game)} (unavailable)</option>}{games.map(g=><option key={g} value={g}>{gameName(g)}</option>)}</select></label>
+    <label>Game {index+1}<select aria-label={'Game '+(index+1)} value={c.game} onChange={e=>change(c.key,{game:e.target.value,stake:source?c.stake:defaultStake(e.target.value),config:source||e.target.value==='mega-card-golf'?currentConfig(e.target.value):undefined})}>{!games.includes(c.game)&&<option value={c.game}>{gameName(c.game)} (unavailable)</option>}{games.map(g=><option key={g} value={g}>{gameName(g)}</option>)}</select></label>
+    {c.game==='mega-card-golf'&&!!c.config&&<MegaCompetitionSettings courses={caps.games.find(g=>g.id===c.game)?.courses??[]} value={c.config as MegaCompetitionConfig} disabled={locked} onChange={config=>change(c.key,{config})}/>}
     {realMoney||source?<label>Stake<input aria-label={'Stake '+(index+1)} aria-invalid={!/^[1-9][0-9]{0,3}$/.test(c.stake)} aria-describedby={'stake-help-'+c.key} type="number" min="1" max="9999" step="1" value={c.stake} onChange={e=>change(c.key,{stake:e.target.value})}/><small id={'stake-help-'+c.key}>Enter a whole-number stake from 1 to 9,999.</small></label>:<small>Play-money stake: {c.stake}</small>}
     {source&&issues[index]&&<p role="alert">Game {index+1}: {issues[index]} {games.includes(c.game)&&<button onClick={()=>change(c.key,{config:currentConfig(c.game)})}>Use current rules for game {index+1}</button>}</p>}
     <div className="delayed-actions"><button disabled={index===0||locked} aria-label={'Move game '+(index+1)+' up'} onClick={()=>{request.current=null;setLineup(old=>{const copy=[...old];[copy[index-1],copy[index]]=[copy[index],copy[index-1]];return copy;});}}>Move up</button>
      <button disabled={lineup.length===1||locked} aria-label={'Remove game '+(index+1)} onClick={()=>{request.current=null;setLineup(old=>old.filter(v=>v.key!==c.key));}}>Remove</button></div></div>)}
-   <button disabled={lineup.length>=maxChildren||!games.length||locked} onClick={()=>{request.current=null;setLineup(old=>[...old,{key:crypto.randomUUID(),game:games[0],stake:defaultStake(games[0]),...(source?{config:currentConfig(games[0])}:{})}]);}}>Add game</button>
+   <button disabled={lineup.length>=maxChildren||!games.length||locked} onClick={()=>{request.current=null;setLineup(old=>[...old,{key:crypto.randomUUID(),game:games[0],stake:defaultStake(games[0]),...(source||games[0]==='mega-card-golf'?{config:currentConfig(games[0])}:{})}]);}}>Add game</button>
    <small>{lineup.length} of {maxChildren} games · Repeats allowed</small>
    {lineup.length>maxChildren&&<p role="alert">Only {maxChildren} games are currently supported. Remove games before sending.</p>}
   </fieldset>

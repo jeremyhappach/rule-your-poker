@@ -3,8 +3,11 @@ import {scoreBoard} from '../../src/lib/run21/rules.js';
 import {assertSharedRules} from '../../src/lib/run21/rulesets.js';
 import {shuffleRound} from '../../src/lib/run21/shuffle.server.js';
 import type {Board,Config,DeckEvidence} from '../../src/lib/run21/model.js';
+import {startPlayerHole,playPlayerHole,completedHole,competitionWinner,projectPlayerHole,type MegaCompetitionConfig} from '../../src/lib/megaCardGolf/competition.js';
+import {megaDecks} from '../../src/lib/megaCardGolf/shuffle.server.js';
+import type {MegaRun} from '../../src/lib/megaCardGolf/engine.js';
 
-export type Game='run21'|'tri-towers'|'quintzee'|'boxdrop';
+export type Game='run21'|'tri-towers'|'quintzee'|'boxdrop'|'mega-card-golf';
 export type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
 export interface Attempt {
  actor:string; round:number; score:number; at:number;
@@ -25,6 +28,7 @@ export interface Child {
  outcome?:{winner:string|null;reason:string;organizer_delta:number;opponent_delta:number}|null;
 }
 export type Intent={type:'start'|'tick'|'collect'|'pass'|'draw'|'take_score'}|
+ {type:'discard'|'stand-pat'}|{type:'replace';index:number}|{type:'open';indices:number[]}|
  {type:'place';column:number}|{type:'remove';index:number}|{type:'place'|'recycle'|'roll'|'score'|'score_zero';items:number[]};
 
 export function initial(row:Child):State {
@@ -42,7 +46,7 @@ const actor=(s:State)=>s.players[s.turn];
 /** Only scheduling differs from synchronous play. Board rules are shared. */
 async function complete(s:State,row:Child,at:number,rpc:Rpc){
  const player=actor(s),board=s.board!;
- const score=s.game==='run21'?(board as Board).result!.score:Number((board as Record<string,any>).score)-s.totals[player];
+ const score=s.game==='mega-card-golf'?completedHole(board as MegaRun)!.score:s.game==='run21'?(board as Board).result!.score:Number((board as Record<string,any>).score)-s.totals[player];
  if(!Number.isSafeInteger(score))throw Error('delayed:invalid_score');
  s.totals[player]+=score;
  s.attempts.push({actor:player,round:s.round,score,at,board:structuredClone(board),...(s.deck?{evidence:s.deck}:{})});
@@ -71,8 +75,9 @@ async function complete(s:State,row:Child,at:number,rpc:Rpc){
    s.turn++;if(s.turn===2){s.turn=0;s.round++;}
   }
  }
+ if(s.game==='mega-card-golf'&&s.turn===0&&s.round>(row.config as MegaCompetitionConfig).course.holes)s.completed=true;
  if(s.completed){
-  const [a,b]=s.players;s.winner=s.totals[a]===s.totals[b]?null:s.totals[a]>s.totals[b]?a:b;
+  const [a,b]=s.players;s.winner=s.game==='mega-card-golf'?(competitionWinner(s.totals).length===1?competitionWinner(s.totals)[0]:null):s.totals[a]===s.totals[b]?null:s.totals[a]>s.totals[b]?a:b;
  }
 }
 
@@ -90,8 +95,9 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
   at=due;
   if(s.game==='run21'){
    const b=s.board as Board;b.result=scoreBoard(b,row.config as Config,'timeout',due);
-  }else s.board=await sqlBoard(s,'reduce',row.config,due,rpc,{type:'tick'});
-  if(s.game==='run21'||(s.board as Record<string,any>).phase==='stage_complete'){await complete(s,row,due,rpc);advanced=true;}
+  }else if(s.game==='mega-card-golf')s.board=playPlayerHole(s.board as MegaRun,{type:'tick'},due);
+  else s.board=await sqlBoard(s,'reduce',row.config,due,rpc,{type:'tick'});
+  if(s.game==='run21'||s.game==='mega-card-golf'&&completedHole(s.board as MegaRun)||(s.board as Record<string,any>).phase==='stage_complete'){await complete(s,row,due,rpc);advanced=true;}
   // An intro boundary may only release the ready phase. Do not apply a command
   // against a state the client has not observed; retry from the new revision.
   return {state:s,advanced,at,forfeit:false};
@@ -104,6 +110,9 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
    const config=row.config as Config;
    s.deck=await shuffleRound({sessionId:row.match_id,dealerGameId:row.id,handNumber:s.round},row.id+':'+row.segment,actor(s));
    const b=emptyBoard(actor(s),config);startBoardClock(b,config,now);presentBoardCard(b,s.deck.cards);s.board=b;
+  }else if(s.game==='mega-card-golf'){
+   const cfg=row.config as MegaCompetitionConfig,previous=s.attempts.filter(a=>a.actor===actor(s)).at(-1)?.board as MegaRun|undefined;
+   s.board=startPlayerHole(row.id+':'+actor(s),actor(s),cfg,previous??null,previous?null:megaDecks(cfg.course.holes),now);
   }else s.board=await sqlBoard(s,'deal',row.config,now,rpc);
   return {state:s,advanced:false,at,forfeit:false};
  }
@@ -117,6 +126,10 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
   else {reason=moveBoardCard(b,config,action.type==='place'?action:{type:'pass'},now);if(!reason&&!presentBoardCard(b,s.deck!.cards))reason='exhausted';}
   b.revision++;
   if(reason){b.result=scoreBoard(b,config,reason,now);await complete(s,row,now,rpc);advanced=true;}
+ }else if(s.game==='mega-card-golf'){
+  if(!['open','draw','replace','discard','stand-pat'].includes(intent.type))throw Error('delayed:invalid_action');
+  s.board=playPlayerHole(s.board as MegaRun,intent as import('../../src/lib/megaCardGolf/engine.js').Intent,now);
+  if(completedHole(s.board as MegaRun)){await complete(s,row,now,rpc);advanced=true;}
  }else{
   const allowed=s.game==='tri-towers'?['remove','draw','take_score']:s.game==='boxdrop'?['place','recycle','take_score']:['roll','score','score_zero'];
   if(!allowed.includes(intent.type))throw Error('delayed:invalid_action');
@@ -134,11 +147,12 @@ export async function project(row:Child,viewer:string,rpc:Rpc){
  const totals=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&disclosed(p,a)).reduce((n,a)=>n+a.score,0)]));
  const pendingResults=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&!disclosed(p,a)).length]));
  let board:unknown=null;
- if(viewer===row.actor&&s.board)board=s.game==='run21'?structuredClone(s.board):await sqlBoard(s,'visible',row.config,row.server_at,rpc);
+ if(viewer===row.actor&&s.board)board=s.game==='mega-card-golf'?projectPlayerHole(s.board as MegaRun,Number(row.server_at)):s.game==='run21'?structuredClone(s.board):await sqlBoard(s,'visible',row.config,row.server_at,rpc);
  return {id:row.id,matchId:row.match_id,game:row.game_type,config:row.config,revision:row.revision,segment:row.segment,
   actor:row.actor,round:s.round,board,totals,pendingResults,reviewRevision:row.reviewed?.length??0,terminal:row.terminal,held:!!row.held,expiresAt:row.expires_at,serverAt:Number(row.server_at),
-  ownResults:await Promise.all(s.attempts.filter(a=>a.actor===viewer).map(async a=>({round:a.round,score:a.score,at:a.at,result:a.board.result,
-   board:s.game==='run21'?a.board:await sqlBoard({...s,board:a.board},'visible',row.config,row.server_at,rpc)}))),
+  holeResults:s.game==='mega-card-golf'?s.attempts.filter(a=>disclosed(a.actor,a)).map(a=>({actor:a.actor,hole:a.round,score:a.score,at:a.at})):[],
+  ownResults:await Promise.all(s.attempts.filter(a=>a.actor===viewer).map(async a=>({round:a.round,score:a.score,at:a.at,result:s.game==='mega-card-golf'?completedHole(a.board as MegaRun):a.board.result,
+   board:s.game==='mega-card-golf'?projectPlayerHole(a.board as MegaRun,Number(row.server_at)):s.game==='run21'?a.board:await sqlBoard({...s,board:a.board},'visible',row.config,row.server_at,rpc)}))),
   winner:row.terminal?row.outcome?.winner??null:null,
   result:row.terminal&&row.outcome?{reason:row.outcome.reason,winner:row.outcome.winner,
    delta:viewer===row.organizer?row.outcome.organizer_delta:row.outcome.opponent_delta}:null};

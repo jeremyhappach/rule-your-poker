@@ -16,7 +16,7 @@ export interface CourseConfig extends CourseSettings {id:CourseId;configId:strin
 // Shared catalog identity; gameplay admission is independently enforced by the server.
 export const MEGA_CATALOG_IDENTITY = {
  id:'mega-card-golf',defaultsKey:'mega-card-golf',name:'Mega Card Golf',category:'cards',
- family:'megatouch',modes:['arcade'],
+ family:'megatouch',modes:['arcade','multiplayer'],
 } satisfies Pick<GameDescriptor,'id'|'defaultsKey'|'name'|'category'|'family'|'modes'>;
 export const COURSE_COPY:Record<CourseId,string>={
  'sunny-meadows':'A little sunshine. Plenty of second chances.',

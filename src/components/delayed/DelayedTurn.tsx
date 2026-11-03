@@ -1,4 +1,6 @@
 import {AsyncSessionName} from './AsyncSessionName';
+import {MegaCompetitionBoard} from '@/components/megaCardGolf/MegaCompetitionBoard';
+import {MegaCompetitionScorecard} from '@/components/megaCardGolf/MegaCompetitionScorecard';
 import {playingTopic,roundGameplayRunning,usePlayingPresence} from '@/lib/delayed/playingPresence';
 import {admitTurnSnapshot} from '@/lib/delayed/turnSnapshot';
 import {localTurnPresentation} from '@/lib/delayed/turnAudio';
@@ -111,7 +113,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const resultTimelineEnd=useCallback((at:number)=>{if(attemptKey)setQuintEnd(previous=>previous?.key===attemptKey&&previous.at===at?previous:{key:attemptKey,at});},[attemptKey]);
  const schedule=ended&&result&&board?reviewSchedule({board,receipt:{game:snapshot!.game,rules:snapshot!.config}} as any):null;
  const animationEnd=runPresentation?.endsAt??(snapshot?.game==='quintzee'?(quintEnd?.key===attemptKey?quintEnd.at:null):schedule?board.deadline-schedule.duration+schedule.presentationEnd:null);
- const resultUntil=ended&&result&&firstPresented.current&&(reduced||animationEnd!==null)?Math.max(reduced?0:animationEnd!,firstPresented.current.at)+ASYNC_SCORE_HOLD_MS:null;
+ const resultUntil=snapshot?.game!=='mega-card-golf'&&ended&&result&&firstPresented.current&&(reduced||animationEnd!==null)?Math.max(reduced?0:animationEnd!,firstPresented.current.at)+ASYNC_SCORE_HOLD_MS:null;
  const due=snapshot&&!snapshot.terminal&&!ended?Math.min(board?.deadline??Infinity,Date.parse(snapshot.expiresAt)):null;
  useEffect(()=>{if(due===null||!Number.isFinite(due)||request.current)return;
   const timer=setTimeout(()=>void refresh(),Math.max(0,due-clock.current.at));return()=>clearTimeout(timer);
@@ -156,13 +158,18 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   {!snapshot?null:ended?<><h2>{snapshot.terminal?'Game complete':'Turn complete'}</h2>{result&&<p>Your round {result.round} score: {result.score.toLocaleString()}.</p>}
    <p>The result is provisional until every game in the match finishes.</p>{home}</>:<><p>Availability deadline: {new Date(snapshot.expiresAt).toLocaleString()}. Starting now also starts the normal gameplay clock.</p>
     {snapshot.held&&<p role="status">This match is on hold during a platform incident.</p>}
-    <button disabled={snapshot.held||pending||!!error||snapshot.actor!==userId||now>=Date.parse(snapshot.expiresAt)} onClick={()=>void act({type:'start'})}>Begin round {snapshot.round}</button></>}
+    <button disabled={snapshot.held||pending||!!error||snapshot.actor!==userId||now>=Date.parse(snapshot.expiresAt)} onClick={()=>void act({type:'start'})}>Begin {snapshot.game==='mega-card-golf'?'hole':'round'} {snapshot.round}</button></>}
  </>}
  </AsyncTurnStage>;
  if(snapshot.game==='quintzee'){
   const players=Object.keys(snapshot.totals),value:QuintzeeSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,theme:'modern',pausedAt:snapshot.held?snapshot.serverAt:null,status:snapshot.terminal?'completed':'active',outcome:'active',playerNames:Object.fromEntries(scores.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:snapshot.totals,round:displayRound!,turnIndex:players.indexOf(ended?userId:snapshot.actor),qualified:[],results:[],finished:snapshot.terminal,board}};
   return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><QuintzeeView onResultTimelineEnd={resultTimelineEnd} awaitingStart={awaitingStart} navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} snapshot={value} actor={userId} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} onIntent={i=>void act({...i})} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
  }
+ if(snapshot.game==='mega-card-golf')return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · Hole {displayRound}</span></div>
+  {error&&<p role="alert">{error}<button onClick={()=>void refresh()}>Reconnect</button></p>}
+  <MegaCompetitionBoard view={board} userId={userId} now={now} pending={pending} canAct={canAct} onIntent={i=>act(i)} activeTab={tab} setActiveTab={setTab} navigation={<nav>{home}<button onClick={()=>setTab('lobby')}>Rules</button></nav>}
+   onPresentationDone={()=>{if(ended)navigate('/delayed/'+matchId+(snapshot.terminal?'?review='+childId+'&finished=1':''),{replace:true});}}
+   scorecard={frame=><MegaCompetitionScorecard course={board.config.name} holes={board.config.holes} hole={displayRound!} players={participants} results={(snapshot.holeResults??[]).filter(r=>r.actor!==userId||r.hole<frame.view.hole||frame.scoring?.finished)} write={frame.scoring?.finished?{actor:userId,hole:frame.view.hole}:undefined}/>}/></div>;
  if(snapshot.game==='boxdrop'){
   const value:BoxdropSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,round:displayRound!,board,canAct,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:Object.keys(snapshot.totals).map(id=>({id,name:participants.find(p=>p.id===id)?.name??(id===userId?'You':'Opponent'),score:snapshot.totals[id],active:id===(ended?userId:snapshot.actor)}))};
   return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><BoxdropView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={audio.epoch} liveEntry={audio.liveEntry} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;

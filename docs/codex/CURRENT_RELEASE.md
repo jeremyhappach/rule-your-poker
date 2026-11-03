@@ -1,3 +1,13 @@
+# Mega Card Golf multiplayer + async — 2026-11-03 — local, publication held
+
+Isolated implementation on `codex/mega-card-golf-multiplayer-async` adds shared
+Arcade-rule live and async competition, course/hole configuration and saved-hole
+replay. Both production admission flags remain closed. No hosted migration, push
+or deployment was performed. Local rules, database financial/replay/recovery,
+concurrent settlement and browser evidence are recorded in
+[the implementation and release gate](MEGA_CARD_GOLF_COMPETITION.md).
+Hosted multi-client and physical-device acceptance remains pending.
+
 # Async Match Lobby polish — 2026-11-03 — qualified, publication pending
 
 Individual match metadata is one compact slate-blue Match Info card with a dynamic

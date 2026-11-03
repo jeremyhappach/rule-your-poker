@@ -20,6 +20,12 @@ export function resolveExactRunBackConfig(gameType: string, value: unknown, deal
     const holes=config.holes??rules?.holes??9;
     return isGolfHoleCount(holes)?{ante_amount:config.ante_amount,holes}:null;
   }
+  if (gameType === 'mega-card-golf') {
+    const rules=config.rules as Record<string,unknown>|undefined;
+    const course=rules?.course as Record<string,unknown>|undefined;
+    return rules?.version==='mega-card-golf/4'&&course&&[3,6,9,18].includes(Number(course.holes))
+      ? {ante_amount:config.ante_amount,mega:{version:rules.version,course}} : null;
+  }
   if (gameType === 'gin-rummy') return resolveExactGinRummyRunBackConfig(config);
   if (['horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers','race-poker','battle-31','ptown-words','boxdrop','trip-flip','take-two', 'royal-flash', 'eleven-up'].includes(gameType)) return { ante_amount: config.ante_amount };
   if (gameType === 'cribbage') {

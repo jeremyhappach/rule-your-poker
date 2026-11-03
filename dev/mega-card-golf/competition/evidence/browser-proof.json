@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "checks": [
+    "1280×900: shared opening, stock, stand pat, 18-hole scorecard, no horizontal overflow or covered cards",
+    "390×844: shared opening, stock, stand pat, 18-hole scorecard, no horizontal overflow or covered cards",
+    "412×915: shared opening, stock, stand pat, 18-hole scorecard, no horizontal overflow or covered cards",
+    "844×390: shared opening, stock, stand pat, 18-hole scorecard, no horizontal overflow or covered cards",
+    "saved replay has no legal action path"
+  ],
+  "errors": []
+}

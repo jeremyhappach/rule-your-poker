@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "checks": [
+    "2 players: earned holes, private randomness, duplicate/late/conflicting replay, outsider denial, settlement, continuation",
+    "zero clients: existing authenticated dispatcher admits first hole; expired token cannot replay",
+    "3 players: earned holes, private randomness, duplicate/late/conflicting replay, outsider denial, settlement, continuation",
+    "fake async: two earned courses, one hole per segment, durable review/duplicate ack, one final parent settlement",
+    "real async: two earned courses, one hole per segment, durable review/duplicate ack, one final parent settlement",
+    "36-hour expiration forfeits exactly once through existing outcome and parent settlement"
+  ]
+}
