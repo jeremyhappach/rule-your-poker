@@ -13829,6 +13829,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
                     configDeadline={game.config_deadline ?? null}
+                    isPaused={game.is_paused === true}
+                    onTogglePause={isCreator ? handleTogglePause : undefined}
                     previousGameType={(previousGameConfig?.game_type ?? game.game_type) || undefined}
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}
@@ -14164,6 +14166,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerPlayerId={dealerPlayer?.id || ''}
                     dealerPosition={game.dealer_position || 1}
                     configDeadline={game.config_deadline ?? null}
+                    isPaused={game.is_paused === true}
+                    onTogglePause={isCreator ? handleTogglePause : undefined}
                     previousGameType={(previousGameConfig?.game_type ?? game.game_type) || undefined}
                     previousGameConfig={previousGameConfig}
                     sessionGameConfigs={sessionGameConfigs}
@@ -14646,6 +14650,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
             return (
               <CribbageMobileGameTable sessionEndedPhase={_sessionEndedTableActive}
+                isPaused={game.is_paused === true}
                 gameId={gameId!}
                 roundId={cribbageRoundId}
                 dealerGameId={cribbageDealerGameId}
@@ -14723,6 +14728,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <>
 
                 <GinRummyGameTable
+                  isPaused={game.is_paused === true}
                   key={_ginEffDealerGameId ?? 'none'}
                   gameId={gameId!}
                   roundId={_ginEffRoundId}

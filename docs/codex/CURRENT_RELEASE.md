@@ -1,3 +1,23 @@
+# Focused pause/resume — 2026-11-03 — release approved
+
+Jeremy approved publishing candidate 2c661c537. It is integrated with current
+main 38f9088cd, retaining the already-published sound and 357 bot corrections.
+Only the focused pause/resume branch is added; host succession, activity-aware
+recovery and other unreleased workstreams remain separate. The only merge
+conflict was this release-note header; both records are preserved.
+
+Setup exposes the existing host Pause/Resume inside its modal and freezes its
+clocks while paused. Gin and Cribbage gate controls/captured actions using the
+canonical pause flag; Cribbage automatic Go resumes without another snapshot.
+No new migration, production data/cron change or financial authority change.
+
+Candidate qualification passed 3,617 source tests, 241 harness tests, 182 focused
+pause tests, app typecheck, build, 12 simulated browser checks and 10 local SQL
+proofs plus the extra-roll negative control. Integration checks and the exact
+publication receipt are recorded in the release checkpoint tags. The owner-only
+phone checklist remains in [focused results](../../e2e/pauseAudit/FOCUSED_RESULTS.md).
+Phone smoke is pending; automated checks do not establish device acceptance.
+
 # 357 bot Hand Strength — 2026-11-02 — qualified, release approved
 
 Jeremy approved the diagnosed correction. Production's server recovery owner

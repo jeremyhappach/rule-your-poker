@@ -1,7 +1,7 @@
 import {act,cleanup,render} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {appendFileSync} from 'node:fs';
-const f=vi.hoisted(()=>({counting:null as any,rpc:vi.fn(),fetch:vi.fn(),emit:vi.fn(),identity:{dealerGameId:'dealer',roundId:'round',handNumber:1},attention:{notifyActiveTab:()=>{},markChatRead:()=>{},attentionState:{}},announcements:null as any}));
+const f=vi.hoisted(()=>({counting:null as any,controls:null as any,rpc:vi.fn(),fetch:vi.fn(),emit:vi.fn(),identity:{dealerGameId:'dealer',roundId:'round',handNumber:1},attention:{notifyActiveTab:()=>{},markChatRead:()=>{},attentionState:{}},announcements:null as any}));
 vi.mock('@/components/CribbageFeltContent',()=>({CribbageFeltContent:()=>null}));
 vi.mock('@/components/CribbageAnchoredCribCutMount',()=>({CribbageAnchoredCribCutMount:()=>null}));
 vi.mock('@/components/CribbageDiscardToCribAnimation',()=>({CribbageDiscardToCribAnimation:()=>null}));
@@ -9,7 +9,7 @@ vi.mock('@/components/CribbagePlayCardAnimation',()=>({CribbagePlayCardAnimation
 vi.mock('@/lib/cribbage/forensicTrace',()=>({recordCribbageActiveHand:()=>undefined,recordCribbageActiveHandContradiction:()=>undefined,recordCribbageForensicEvent:()=>undefined,setCribbageDealIdentityAmbient:()=>undefined,setCribbageForensicIdentity:()=>undefined}));
 vi.mock('@/components/CribbageAnchoredPeggingRowMount',()=>({CribbageAnchoredPeggingRowMount:()=>null}));
 vi.mock('@/components/CribbagePegBoard',()=>({CribbagePegBoard:()=>null}));
-vi.mock('@/components/CribbageMobileCardsTab',()=>({CribbageMobileCardsTab:()=>null}));
+vi.mock('@/components/CribbageMobileCardsTab',()=>({CribbageMobileCardsTab:(p:any)=>{f.controls=p;return null;}}));
 vi.mock('@/components/CribbagePlayingCard',()=>({CribbagePlayingCard:()=>null}));
 vi.mock('@/components/CribbageCountingPhase',()=>({CribbageCountingPhase:(p:any)=>{f.counting=p;return null;}}));
 vi.mock('@/components/CribbageTurnSpotlight',()=>({CribbageTurnSpotlight:()=>null}));
@@ -79,4 +79,21 @@ it('CONTRACT Cribbage failed counting completion retries after shared recovery',
  await act(async()=>{resolveComplete({data:null,error:{message:'Failed to fetch'}});await done;});
  const before=f.fetch.mock.calls.length;await act(async()=>dispatchAuthoritativeRecoverySnapshot('realtime_fallback'));expect(f.fetch.mock.calls.length).toBeGreaterThan(before);
  await act(()=>vi.advanceTimersByTimeAsync(16000));appendFileSync('e2e/pauseAudit/evidence/phase3-observations.jsonl',JSON.stringify({game:'cribbage',scenario:'failed-counting-then-shared-recovery',calls:calls(),scope:'actual parent callback; child completion explicitly supplied; no real counting animation/SQL'})+'\n');expect(calls()).toHaveLength(2);
+});
+
+it('cribbage active turn publishes disabled controls through pause and restores them on resume',async()=>{
+ f.controls=null;f.fetch.mockResolvedValue({...state(),phase:'discarding',playerStates:Object.fromEntries(['a','b'].map(playerId=>[playerId,{playerId,hand:[...cards,{rank:'3',suit:'clubs',value:3},{rank:'5',suit:'hearts',value:5}],pegScore:0,hasCalledGo:false,discardedToCrib:[]}]))});const p={gameId:'session',roundId:'round',dealerGameId:'dealer',handNumber:1,players,currentUserId:'u1',dealerPosition:1,anteAmount:2,pot:4,isHost:false,onGameComplete:()=>{},entryMode:'historical-entry' as const};const ui=render(<CribbageMobileGameTable {...p}/>);await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
+ expect(f.controls).not.toBeNull();expect(f.controls.isProcessing).toBe(false);
+ ui.rerender(<CribbageMobileGameTable {...p} isPaused/>);expect(f.controls.isProcessing).toBe(true);
+ const rpcCount=f.rpc.mock.calls.length;await act(async()=>{await f.controls.onDiscard([0,1]);await f.controls.onPlayCard(0);});expect(f.rpc.mock.calls).toHaveLength(rpcCount);
+ ui.rerender(<CribbageMobileGameTable {...p}/>);expect(f.controls.isProcessing).toBe(false);
+});
+
+it('Cribbage auto-Go waits while paused and wakes on resume without a new card snapshot',async()=>{
+ f.rpc.mockImplementation(()=>{const request=Promise.resolve({data:{outcome:'applied'},error:null}) as any;request.abortSignal=()=>request;return request;});
+ const s=state();f.fetch.mockResolvedValue({...s,phase:'pegging',pegging:{...s.pegging,currentTurnPlayerId:'b',currentCount:30,goCalledBy:[]},playerStates:{...s.playerStates,b:{...s.playerStates.b,hand:[cards[0]]}}});
+ const p={gameId:'session',roundId:'round',dealerGameId:'dealer',handNumber:1,players,currentUserId:'u1',dealerPosition:1,anteAmount:2,pot:4,isHost:false,onGameComplete:()=>{},entryMode:'historical-entry' as const};
+ const ui=render(<CribbageMobileGameTable {...p} isPaused/>);await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
+ const goCalls=()=>f.rpc.mock.calls.filter(([name])=>name==='cribbage_apply_pegging_action');expect(goCalls()).toHaveLength(0);
+ ui.rerender(<CribbageMobileGameTable {...p}/>);await act(()=>vi.advanceTimersByTimeAsync(600));expect(goCalls()).toHaveLength(1);
 });

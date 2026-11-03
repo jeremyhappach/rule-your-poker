@@ -56,3 +56,9 @@ for(const game of ['horses','ship-captain-crew'])for(const role of ['actor','obs
   expect(calls()[1][1]).toEqual(calls()[0][1]);
  });
 }
+
+for(const game of ['horses','ship-captain-crew'])for(const role of ['actor','observer'])it(game+' '+role+' active roll stays gated during pause and recovers on resume',async()=>{
+ const {h,start,update}=mount(game,role);await act(async()=>{});update(true,start);await act(async()=>h.result.current.handleRoll());
+ const rolls=()=>fixture.rpc.mock.calls.filter(([name])=>name==='horses_scc_apply_action');expect(rolls()).toHaveLength(0);
+ update(false,start);await act(async()=>h.result.current.handleRoll());expect(rolls()).toHaveLength(role==='actor'?1:0);
+});

@@ -1,0 +1,366 @@
+{
+  "database": "focused_pause_1793655752334",
+  "template": "transition_assurance_current_1793324266197",
+  "localOnly": true,
+  "fixtureRepairs": [
+    "missing harnesses_mode row: disabled before each proof opts in",
+    "replay_sequence_v1: 20260914192806_gin_replay_v1.sql"
+  ],
+  "authority": [
+    {
+      "schema": "private",
+      "proname": "advance_due_cribbage_state",
+      "arguments": "",
+      "hash": "23ee186579f8920c5cebe0c2f4f703bd"
+    },
+    {
+      "schema": "private",
+      "proname": "advance_horses_scc_expired_turn",
+      "arguments": "p_round_id uuid, p_now timestamp with time zone",
+      "hash": "23897b1c9ed74d6eeec986f87bf0d978"
+    },
+    {
+      "schema": "private",
+      "proname": "secure_random_int",
+      "arguments": "p_bound integer",
+      "hash": "9bd34a25d992fe4c6f4c469e719a6f65"
+    },
+    {
+      "schema": "public",
+      "proname": "configure_dealer_game",
+      "arguments": "p_game_id uuid, p_dealer_player_id uuid, p_expected_dealer_position integer, p_game_type text, p_config jsonb, p_expected_config_deadline timestamp with time zone",
+      "hash": "cd7e21dc835c35e3df967482022ca598"
+    },
+    {
+      "schema": "public",
+      "proname": "cribbage_apply_discard",
+      "arguments": "_round_id uuid, _player_id uuid, _card_indices integer[]",
+      "hash": "40dac32b1320e478dff07bebf1feefd7"
+    },
+    {
+      "schema": "public",
+      "proname": "cribbage_settle_game",
+      "arguments": "p_game_id uuid, p_round_id uuid, p_dealer_game_id uuid, p_hand_number integer",
+      "hash": "5e55f3521587df3912f0c8c24f1cda11"
+    },
+    {
+      "schema": "public",
+      "proname": "gin_rummy_apply_action",
+      "arguments": "_round_id uuid, _player_id uuid, _action text, _card jsonb, _meld_index integer, _expected_action_count bigint",
+      "hash": "18c884f4600fdd10cf08d7a0d9b14316"
+    },
+    {
+      "schema": "public",
+      "proname": "gin_rummy_settle_game",
+      "arguments": "p_game_id uuid, p_round_id uuid, p_dealer_game_id uuid, p_hand_number integer",
+      "hash": "65d42b368f350f26b6810c3516f5a787"
+    },
+    {
+      "schema": "public",
+      "proname": "gin_rummy_settle_game_legacy",
+      "arguments": "p_game_id uuid, p_round_id uuid, p_dealer_game_id uuid, p_hand_number integer",
+      "hash": "3a8a7b8a673fd8169a76803c6b1c96a5"
+    },
+    {
+      "schema": "public",
+      "proname": "horses_scc_advance_completed_round",
+      "arguments": "p_game_id uuid, p_round_id uuid, p_dealer_game_id uuid, p_hand_number integer",
+      "hash": "124e6cf84d5c37f720ca78997f1d051f"
+    },
+    {
+      "schema": "public",
+      "proname": "set_game_paused",
+      "arguments": "p_game_id uuid, p_paused boolean",
+      "hash": "b86f571f88d909be542dc412e3e6b05b"
+    },
+    {
+      "schema": "public",
+      "proname": "set_game_paused",
+      "arguments": "p_game_id uuid, p_paused boolean, p_expected_dealer_game_id uuid, p_expected_pause_version bigint",
+      "hash": "1fa2220c33734d1cf14c11f3eaef432b"
+    },
+    {
+      "schema": "public",
+      "proname": "yahtzee_settle_game",
+      "arguments": "p_game_id uuid, p_round_id uuid, p_dealer_game_id uuid, p_hand_number integer",
+      "hash": "56c70274fd57515bdd0aa6296c6dfbb0"
+    }
+  ],
+  "reports": [
+    {
+      "file": "seven_game_pause_rollback_proof",
+      "sha256": "de653765e6de0a8ebfb5998b579853081fb4bf5e8cfeedb6c8c392e9c3f8dff5",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 17,
+        "players": 33,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "yahtzee_authority_rollback_proof",
+      "sha256": "4cfe509d9e0b0281ea088f413d7c6e804e8688d08b067eddf3ffc3483fd9726b",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 14,
+        "players": 28,
+        "results": 17,
+        "batches": 10,
+        "snapshots": 38
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "horses_scc_connected_authority_rollback_proof",
+      "sha256": "71f818ebb6ee277f88363fe5a431d79e6c459289dd33c5ee089879d0809c488f",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 14,
+        "players": 28,
+        "results": 20,
+        "batches": 12,
+        "snapshots": 38
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "horses_scc_disconnect_settlement_proof",
+      "sha256": "8ae4d7fa74137bf0f0473aedbb2e2335211985a427cbef5cd350d63c8d704e52",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 13,
+        "players": 26,
+        "results": 21,
+        "batches": 12,
+        "snapshots": 40
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "gin_rummy_authority_rollback_proof",
+      "sha256": "7f816becd9be58be32f89ab7fc07dd572571954e8c925100b0f8898543bd3e91",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 10,
+        "players": 20,
+        "results": 18,
+        "batches": 9,
+        "snapshots": 34
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "gin_atomic_postgame_rollback_proof",
+      "sha256": "7a7fd531b94e5e3d33bfb5eac732807e5b3ca7dfefca1ec7271ad76be61e31e0",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 10,
+        "players": 20,
+        "results": 18,
+        "batches": 9,
+        "snapshots": 34
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "cribbage_authority_rollback_proof",
+      "sha256": "d78de1ca90b7ff6995fcc60b4cf0c83c60477adf3987d46f7ba57fd15c6f51b3",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 10,
+        "players": 20,
+        "results": 16,
+        "batches": 9,
+        "snapshots": 34
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "cribbage_atomic_postgame_rollback_proof",
+      "sha256": "c8713f4510b558fcf4beda870c483bb9c6ae535c8f6859e962c2129f4fa84001",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 10,
+        "players": 20,
+        "results": 16,
+        "batches": 9,
+        "snapshots": 34
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "dealer_game_setup_handoff_rollback_proof",
+      "sha256": "953388be9d389b0aece925e3491e537667dd89773f65d5156cf60aed29aa8650",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 19,
+        "players": 38,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "session_intent_and_setup_rollback_proof",
+      "sha256": "c66b1b6dc10688709516627edbd3a87873128a55efd7eaabbe8a35afed8491f7",
+      "status": "passed",
+      "before": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "inside": {
+        "games": 10,
+        "players": 21,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "after": {
+        "games": 9,
+        "players": 18,
+        "results": 15,
+        "batches": 8,
+        "snapshots": 32
+      },
+      "rollbackVerified": true
+    },
+    {
+      "file": "horses_partial_roll_negative_control",
+      "status": "passed",
+      "rejectedMutation": "three rolls instead of persisted rollsRemaining"
+    }
+  ]
+}

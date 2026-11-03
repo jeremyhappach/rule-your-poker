@@ -1,0 +1,15 @@
+export const useRun21Access=()=>true;
+export const useTriTowersTestAccess=()=>true;
+export const useElevenUpAccess=()=>true;
+export const useRoyalFlashAccess=()=>true;
+export const useTakeTwoAccess=()=>true;
+export const useTripFlipAccess=()=>true;
+export const useBoxdropAccess=()=>true;
+export const useQuintzeeAccess=()=>true;
+export const usePtownWordsAccess=()=>true;
+export const useCanastaAccess=()=>true;
+export const useGolfAccess=()=>true;
+export const useRacePokerAccess=()=>true;
+export const useBattle31Access=()=>true;
+export const useActiveHarnessInfo=()=>({active:false});
+export const useActiveHarnessMap=()=>({});

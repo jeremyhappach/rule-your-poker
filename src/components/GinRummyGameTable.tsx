@@ -384,6 +384,7 @@ function GinDealClippedOpponentSeatLayer(props: {
 
 
 interface GinRummyGameTableProps {
+  isPaused?: boolean;
   gameId: string;
   roundId: string;
   dealerGameId: string | null;
@@ -413,6 +414,7 @@ type AcceptedGinPresentation = {
 } | null;
 
 export const GinRummyGameTable = ({
+  isPaused = false,
   gameId,
   roundId: propRoundId,
   dealerGameId,
@@ -431,6 +433,8 @@ export const GinRummyGameTable = ({
   chatInputValue,
   onChatInputChange,
 }: GinRummyGameTableProps) => {
+  const pauseRef = useRef(isPaused);
+  pauseRef.current = isPaused;
   useLifecycleMount('GinRummyGameTable');
   useStartupMountTrace('GinRummyGameTable', { gameId, dealerGameId: dealerGameId ?? null, propRoundId: propRoundId ?? null });
   useStartupRenderTrace('GinRummyGameTable', {
@@ -759,7 +763,7 @@ export const GinRummyGameTable = ({
   // Single framework-owned predicate covering frozen / contract / identity-stale.
   // Action handlers and the bot loop short-circuit when interactionsAllowed=false
   // so stale local paths cannot write through to the new round.
-  const interactionsAllowed = ginSync.interactionsAllowed;
+  const interactionsAllowed = ginSync.interactionsAllowed && !isPaused;
   const interactionsAllowedRef = useRef(interactionsAllowed);
   useEffect(() => { interactionsAllowedRef.current = interactionsAllowed; }, [interactionsAllowed]);
   const isIdentityStaleRef = useRef(ginSync.isIdentityStale);
@@ -1205,6 +1209,7 @@ export const GinRummyGameTable = ({
     chatFlashing: chatAttentionTabProps.chatFlashing,
     chatIndicator: chatAttentionTabProps.chatIndicator,
     onOpenChat: handleOpenChatTab,
+    isPaused,
   });
 
   // Canonical table-surface max-height token (single configurable contract).
@@ -2357,7 +2362,7 @@ export const GinRummyGameTable = ({
     // Writer-audit gate: refuse to write if the framework says we cannot interact
     // (frozen / visual contract active / identity stale). Prevents stale local
     // action paths from clobbering the new round after a peer advanced the hand.
-    if (isIdentityStaleRef.current || !interactionsAllowedRef.current) {
+    if (pauseRef.current || isIdentityStaleRef.current || !interactionsAllowedRef.current) {
       persistSyncDebugEvent({
         gameId, gameType: 'gin-rummy',
         handNumber: currentHandNumber ?? null,
@@ -2526,6 +2531,7 @@ export const GinRummyGameTable = ({
   };
 
   const handleDrawStock = async () => {
+    if (pauseRef.current) return;
     const tid = newTraceId();
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
@@ -2557,6 +2563,7 @@ export const GinRummyGameTable = ({
   };
 
   const handleDrawDiscard = async () => {
+    if (pauseRef.current) return;
     const tid = newTraceId();
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
@@ -2592,6 +2599,7 @@ export const GinRummyGameTable = ({
     index: number,
     sourceRect?: { x: number; y: number; width: number; height: number } | null,
   ) => {
+    if (pauseRef.current) return;
     const tid = newTraceId();
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
@@ -2614,6 +2622,7 @@ export const GinRummyGameTable = ({
   };
 
   const handleKnock = async (index: number) => {
+    if (pauseRef.current) return;
     if (!ginState || !currentPlayerId || isProcessing) return;
     const card = ginState.playerStates[currentPlayerId]?.hand[index];
     if (!card) return;
@@ -2682,6 +2691,7 @@ export const GinRummyGameTable = ({
   };
 
   const handleTakeFirstDraw = async () => {
+    if (pauseRef.current) return;
     const tid = newTraceId();
     if (!currentPlayerId) {
       return;
@@ -2722,6 +2732,7 @@ export const GinRummyGameTable = ({
   };
 
   const handlePassFirstDraw = async () => {
+    if (pauseRef.current) return;
     if (!currentPlayerId || isProcessing) return;
     try {
       const current = viewState;
@@ -2736,6 +2747,7 @@ export const GinRummyGameTable = ({
   };
 
   const handleLayOff = async (cardIndex: number, meldIndex: number) => {
+    if (pauseRef.current) return;
     if (!ginState || !currentPlayerId || isProcessing) return;
     const card = ginState.playerStates[currentPlayerId]?.hand[cardIndex];
     if (!card) return;
@@ -2748,6 +2760,7 @@ export const GinRummyGameTable = ({
   };
 
   const handleFinishLayingOff = async () => {
+    if (pauseRef.current) return;
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
       const newState = finishLayingOff(ginState, currentPlayerId);
@@ -3037,7 +3050,7 @@ export const GinRummyGameTable = ({
                 cardBackColors={cardBackColors}
                 onDrawStock={handleDrawStock}
                 onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
-                isProcessing={isProcessing}
+                isProcessing={isProcessing || isPaused}
                 isPlayable={isPlayable}
                 handContextId={handContextId}
                 withheldDiscardTop={withheldDiscardTop}
@@ -3169,7 +3182,7 @@ export const GinRummyGameTable = ({
                     setSelectedCardIndex(null);
                   }
                 }}
-                isProcessing={isProcessing}
+                isProcessing={isProcessing || isPaused}
               />
             )}
 
@@ -3326,7 +3339,7 @@ export const GinRummyGameTable = ({
               <GinRummyMobileCardsTab
                 ginState={viewState}
                 currentPlayerId={currentPlayerId}
-                isProcessing={isProcessing}
+                isProcessing={isProcessing || isPaused}
                 onDrawStock={handleDrawStock}
                 onDrawDiscard={handleDrawDiscard}
                 onDiscard={handleDiscard}

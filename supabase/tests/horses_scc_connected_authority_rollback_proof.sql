@@ -11,6 +11,7 @@ DECLARE
   v_outsider uuid := gen_random_uuid();
   v_game uuid := gen_random_uuid();
   v_dealer_game uuid := gen_random_uuid();
+  v_later_dealer_game uuid := gen_random_uuid();
   v_round uuid;
   v_winner uuid;
   v_other uuid;
@@ -247,9 +248,12 @@ BEGIN
   END IF;
 
   -- A later dealer game cannot be cleared by an old postgame replay.
+  -- The current dealer identity must reference a real row in this session.
+  INSERT INTO public.dealer_games (id, session_id, dealer_user_id, game_type)
+  VALUES (v_later_dealer_game, v_game, v_users[1], 'horses');
   UPDATE public.games
      SET status = 'in_progress',
-         current_game_uuid = gen_random_uuid(),
+         current_game_uuid = v_later_dealer_game,
          total_hands = 7,
          current_round = 1
    WHERE id = v_game;
@@ -257,6 +261,7 @@ BEGIN
     v_game, v_round, v_dealer_game, 1
   ) INTO v_replay;
   IF v_replay->>'outcome' <> 'already_advanced'
+     OR (SELECT current_game_uuid FROM public.games WHERE id = v_game) IS DISTINCT FROM v_later_dealer_game
      OR (SELECT total_hands FROM public.games WHERE id = v_game) <> 7
      OR (SELECT status FROM public.games WHERE id = v_game) <> 'in_progress' THEN
     RAISE EXCEPTION 'horses_scc_connected_proof:late_postgame_crossed_boundary:%', v_replay;

@@ -1,0 +1,44 @@
+{
+  "database": "focused_pause_1793654030166",
+  "template": "transition_assurance_current_1793324266197",
+  "localOnly": true,
+  "authority": [
+    {
+      "proname": "horses_scc_advance_completed_round",
+      "hash": "124e6cf84d5c37f720ca78997f1d051f"
+    },
+    {
+      "proname": "set_game_paused",
+      "hash": "b86f571f88d909be542dc412e3e6b05b"
+    },
+    {
+      "proname": "set_game_paused",
+      "hash": "1fa2220c33734d1cf14c11f3eaef432b"
+    },
+    {
+      "proname": "yahtzee_settle_game",
+      "hash": "56c70274fd57515bdd0aa6296c6dfbb0"
+    }
+  ],
+  "reports": [
+    {
+      "file": "seven_game_pause_rollback_proof",
+      "sha256": "de653765e6de0a8ebfb5998b579853081fb4bf5e8cfeedb6c8c392e9c3f8dff5",
+      "status": "passed"
+    },
+    {
+      "file": "yahtzee_authority_rollback_proof",
+      "sha256": "4cfe509d9e0b0281ea088f413d7c6e804e8688d08b067eddf3ffc3483fd9726b",
+      "status": "passed"
+    },
+    {
+      "file": "horses_scc_disconnect_settlement_proof",
+      "sha256": "278dc9c780f6eca91847a4cb52a1295398216b5aac30639f7cb3b67432884064",
+      "status": "failed",
+      "error": {
+        "message": "horses_scc_disconnect_proof:partial_turn_received_extra_roll:{\"status\": \"settled\", \"result_id\": \"26481088-01f5-4ccc-ad57-14b55e20a49e\", \"winner_player_id\": \"6c0b1328-6815-4dd3-b1a3-90b97eda2c73\", \"terminal_disposition\": \"game_over\"}",
+        "code": "P0001"
+      }
+    }
+  ]
+}

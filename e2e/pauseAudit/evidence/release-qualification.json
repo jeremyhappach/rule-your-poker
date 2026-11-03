@@ -1,0 +1,66 @@
+{
+  "qualifiedAt": "2026-11-02T21:42:30.830Z",
+  "baseMain": "6411bb674a592d49cc6ed87fc0ae49a56a2f5361",
+  "productCommit": "fc3b9aa4b20908f0da354683f2275a383ae19921",
+  "results": [
+    {
+      "suite": "source",
+      "success": true,
+      "files": 499,
+      "tests": 3617,
+      "passed": 3617,
+      "failed": 0,
+      "pending": 0,
+      "startTime": "2026-11-02T21:32:54.777Z",
+      "reportSha256": "3388f3ab601708c4da0006f89b042687fe3db24e33fc5743b592d1630d54dc15"
+    },
+    {
+      "suite": "harness",
+      "success": true,
+      "files": 12,
+      "tests": 241,
+      "passed": 241,
+      "failed": 0,
+      "pending": 0,
+      "startTime": "2026-11-02T21:38:43.955Z",
+      "reportSha256": "2f1178482035774f12ad4bce9987d7bb767f29916b58d0002b870ac5601b5e31"
+    },
+    {
+      "suite": "audit",
+      "success": true,
+      "files": 34,
+      "tests": 182,
+      "passed": 182,
+      "failed": 0,
+      "pending": 0,
+      "startTime": "2026-11-02T21:38:08.833Z",
+      "reportSha256": "d54a66287bf6e4595f51d327b06042b23a8e8359ad61400985dce052bac748a5"
+    }
+  ],
+  "typecheck": {
+    "command": "node node_modules/typescript/bin/tsc -p tsconfig.app.json --noEmit",
+    "exitCode": 0
+  },
+  "build": {
+    "status": "passed on productCommit; no later product/build changes"
+  },
+  "browser": {
+    "cases": 12,
+    "passed": 12,
+    "physicalDevice": false,
+    "evidence": "focused-browser.json"
+  },
+  "sql": {
+    "proofs": 10,
+    "passed": 10,
+    "negativeControls": 1,
+    "passedNegativeControls": 1,
+    "evidence": "focused-sql.json",
+    "localOnly": true
+  },
+  "newRegressions": [],
+  "reproducedPreexistingFailures": [],
+  "unresolvedLocalBlockers": [],
+  "productionSmoke": "pending owner physical phones",
+  "release": "ready for coordinated authorization; not pushed or deployed"
+}
