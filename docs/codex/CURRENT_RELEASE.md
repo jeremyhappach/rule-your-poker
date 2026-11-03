@@ -6,11 +6,14 @@ with freshly fetched main `46a7b1f6e`, preserving its pause/resume, sound and 35
 changes. Only the release-note header conflicted; the existing records below are
 preserved. Activity-aware recovery remains excluded.
 
-The unapplied host migration is resequenced to `20261103143632` after the installed
-357 migration. Production's initial read-only check found zero nonterminal
-sessions; the same exact predicate is checked again before installation and under
-the migration's table locks. No live game is closed or financially changed to
-satisfy it. Local and deployed receipts will be recorded at the release checkpoint.
+Migration `20261103144601` is installed after the 357 migration. Three read-only
+checks and the locked migration gate found zero nonterminal sessions. All seven
+triggers and the three-game default are verified; browser access to private
+counters is denied. Historical players/results/transfers/account-entry counts
+are unchanged. No live game was closed or financially changed to satisfy the gate.
+Local qualification passes 62 host tests, 182 pause tests, typecheck, build and 21
+database groups. See [release evidence](HOST_SUCCESSION_RELEASE.md); exact-SHA
+publication will be recorded at the release checkpoint.
 Earlier staging requirements in the historical readiness note are superseded by
 this explicit release authorization. Hosted multi-client/device smoke is pending.
 

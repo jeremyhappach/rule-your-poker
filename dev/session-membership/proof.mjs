@@ -18,7 +18,7 @@ const db=await connect(),peer=await connect(),checks=[];
 const query=(s,a=[],c=db)=>c.query(s,a);
 const val=async(s,a=[],c=db)=>(await query(s,a,c)).rows[0]?.v;
 const pass=s=>{checks.push(s);console.log('PASS',s);};
-const migration=read('supabase/migrations/20261103143632_session_host_succession_and_inactivity.sql','utf8');
+const migration=read('supabase/migrations/20261103144601_session_host_succession_and_inactivity.sql','utf8');
 const flags="SELECT set_config('app.three_five_seven_authoritative_write','on',false),set_config('app.cribbage_authoritative_write','on',false),set_config('app.gin_rummy_authoritative_write','on',false),set_config('app.yahtzee_authoritative_write','on',false)";
 async function actor(id,c=db){await query("SELECT set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',jsonb_build_object('sub',$1::text,'role','authenticated')::text,false)",[id],c);}
 async function asUser(id,sql,args=[],c=db){await actor(id,c);await query('SET ROLE authenticated',[],c);try{return await val(sql,args,c);}finally{await query('RESET ROLE',[],c).catch(()=>{});}}

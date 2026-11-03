@@ -3,7 +3,7 @@
 **2026-11-03 supersession:** Jeremy authorized production release without a
 staging environment or preview. The following describes the earlier checkpoint,
 not an additional approval requirement. The release combines current remote main
-`46a7b1f6e` and resequences the unapplied migration to `20261103143632`. Current
+`46a7b1f6e`; installed migration version is `20261103144601`. Current
 checks and publication receipts are recorded in `HOST_SUCCESSION_RELEASE.md`.
 
 **NOT READY for production installation.** The code is locally qualified; hosted

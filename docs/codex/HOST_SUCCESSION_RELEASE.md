@@ -11,8 +11,9 @@ Release branch: `codex/host-succession-release-20261103`, in its own worktree.
 It combines `48ac2026b` and `c41f05f0b` with that main. Runtime hunks merged
 cleanly; the release-note header retains both records. Newer pause/resume, sound
 and 357 changes are preserved. Activity-aware recovery is excluded.
-The unapplied migration was resequenced to `20261103143632` after the installed
-357 migration `20261103000630`; its runtime SQL is otherwise unchanged.
+The unapplied migration was resequenced after installed 357 migration
+`20261103000630`. Supabase recorded it as `20261103144601`; the repository filename
+matches that actual version. Its runtime SQL is otherwise unchanged.
 
 ## Local qualification
 
@@ -59,9 +60,16 @@ The observed prior latest migration is `20261103000630`; the exact affected owne
 hashes still match their captured preimages. The preserved 357 recovery MD5 is
 `4c45cfbc7e4afdab3fefae46534ec391`.
 
-Installation/deployment receipt will be recorded at the release checkpoint.
-Pre-install history counts: players 1,136; results 33,708; transfer batches 30,881;
-account entries 494. No production gameplay or financial test mutation is planned.
+The final read-only gate was also zero. Production migration
+`20261103144601_session_host_succession_and_inactivity` applied successfully. All
+seven candidate triggers are enabled; all three private tables have RLS and deny
+authenticated SELECT/INSERT/UPDATE/DELETE. The setting is three dealer-games;
+the end fallback is removed and transfer eligibility is installed. The 357 owner
+hash is unchanged. No historical tenure was fabricated (zero seeded tenures).
+Pre/post-install counts are identical: players 1,136; results 33,708; transfer
+batches 30,881; account entries 494. No production gameplay or financial test
+mutation was performed. Exact commit/deployment receipt is recorded in the local
+`release-host-succession-20261103` and matching `-verified` tags.
 
 ## Remaining owner smoke
 
