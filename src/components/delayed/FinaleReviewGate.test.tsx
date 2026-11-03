@@ -51,10 +51,13 @@ beforeEach(()=>{
 afterEach(()=>{cleanup();vi.useRealTimers();});
 it('reproduces three children: selected Tri replay precedes home, final Run replay precedes finale',async()=>{
  mount();await flush();expect(screen.getAllByRole('link',{name:'View Results'})).toHaveLength(2);
+ expect(document.querySelectorAll('[data-completed]')).toHaveLength(1);
  fireEvent.click(screen.getAllByRole('link',{name:'View Results'})[1]);await flush();
  expect(screen.getByText("Showing Opponent's results")).toBeTruthy();expect(screen.queryByRole('img',{name:/wins the match/})).toBeNull();
  await advance(16000);await advance(6100);expect(acks()).toEqual(['tri-attempt','tri-child']);
  expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(screen.getAllByRole('link',{name:'View Results'})).toHaveLength(1);
+ expect(document.querySelectorAll('[data-completed]')).toHaveLength(2);
+ expect(screen.getByRole('button',{name:/Tri Towers.*L.*\$5/}).getAttribute('aria-expanded')).toBe('false');
  expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_finale_ack')).toBe(false);
  fireEvent.click(screen.getByRole('link',{name:'View Results'}));await flush();await advance(16000);await advance(6100);
  expect(acks()).toEqual(['tri-attempt','tri-child','run-attempt','run-child']);

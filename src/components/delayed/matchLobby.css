@@ -1,0 +1,32 @@
+/* Individual match lobby only; shared game/notification behavior is unchanged. */
+.delayed-match-home .async-match-info{display:grid;gap:.4rem;padding:.5rem .75rem;border:1px solid #61768d;border-radius:.8rem;background:#283b50;min-width:0}
+.async-match-info-heading{display:flex;align-items:center;gap:.5rem;min-width:0}
+.async-match-info-heading h2{flex:1;min-width:0;font-size:1.2rem;font-weight:800;overflow-wrap:anywhere}
+.delayed-match-page .async-match-info-trigger{display:grid;place-items:center;flex:none;width:2.75rem;height:2.75rem;margin:0;padding:0;border:0;color:#f5d376;background:transparent;border-radius:50%}
+.async-match-info .async-current-net{background:transparent;border:0;border-radius:0;padding:0;gap:.15rem;font-size:.95rem}
+.async-match-info .async-current-net-heading{justify-content:space-between;flex-wrap:wrap;gap:.15rem .5rem;font-size:.75rem}
+.async-match-info .async-current-net-player>span{white-space:normal;overflow-wrap:anywhere}
+.async-match-timing{font-size:.78rem;color:#d2dde6}
+.delayed-match-home .async-match-info [aria-label="Match push notifications"]{display:block;margin:0;padding:0;border:0;border-top:1px solid #60748a;border-radius:0}
+.async-match-info [aria-label="Match push notifications"]>div:first-child{gap:.5rem}
+.delayed-match-page .async-match-info [aria-label="Notification details"]{margin:0;padding:0;min-width:2.75rem;min-height:2.75rem;border:0}
+.async-match-info [aria-label="Match push notifications"]>div[hidden]{margin:0}
+.async-match-info [aria-label="Match push notifications"]>div:not(:first-child):not([hidden]){padding-bottom:.5rem}
+.async-match-info-dialog[role=dialog]{width:calc(100% - 2rem);max-width:24rem;border-radius:.8rem;padding:1.25rem;gap:.75rem;background:#283b50;color:#f4f0df;border-color:#61768d;font-size:.9rem}
+.async-match-info-dialog dl{display:grid;gap:.4rem}
+.async-match-info-dialog dl>div{display:flex;justify-content:space-between;gap:.75rem}
+.async-match-info-dialog dt{color:#d2dde6}
+.async-match-info-dialog dd{text-align:right;font-weight:700}
+.async-match-info-dialog p{color:#d2dde6}
+.async-match-info-close{min-height:2.75rem;border:1px solid #b9f2df;border-radius:.5rem;background:#9ee5ce;color:#102d24;font-weight:750}
+.delayed-match-home .delayed-game-card[data-completed]{padding:0;gap:0;overflow:hidden}
+.delayed-game-heading.async-brand-heading[data-collapsible]{display:block;min-height:0;margin:0;padding:0;border-radius:0}
+.async-brand-heading[data-collapsible] h3{display:block}
+.delayed-match-page .async-completed-toggle{display:flex;align-items:center;gap:.5rem;width:100%;min-height:3.25rem;margin:0;padding:.35rem .75rem;border:0;border-radius:0;text-align:left}
+.async-completed-toggle .async-brand-title{flex:1;max-width:none}
+.async-completed-outcome{flex:none;font-size:.95rem;font-weight:750;white-space:nowrap;font-variant-numeric:tabular-nums}
+.async-completed-toggle>svg{flex:none;transition:transform .15s}
+.async-completed-toggle[aria-expanded=true]>svg{transform:rotate(180deg)}
+.async-completed-details:not([hidden]){display:grid;gap:.5rem;padding:.75rem}
+.delayed-match-page .async-completed-toggle:focus-visible{outline-offset:-3px}
+@media(prefers-reduced-motion:reduce){.async-completed-toggle>svg{transition:none}}

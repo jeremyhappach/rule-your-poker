@@ -1,3 +1,12 @@
+## Individual Async Match Lobby presentation
+
+`src/components/delayed/MatchInfo.tsx` and `matchLobby.css` own the compact metadata
+card/dialog and scoped lobby geometry. `src/lib/delayed/lobbyPresentation.ts`
+derives stable visual ordering and reviewed completion from existing server fields.
+`Delayed.tsx` owns transient single-open expansion; `AsyncGameHeader.tsx` reuses
+branding for accessible disclosure rows. Review/financial/notification authority
+is unchanged. See [qualification](ASYNC_MATCH_LOBBY_POLISH.md).
+
 ## Async Run It Back
 
 `src/lib/delayed/runback.ts` reconstructs/persists editable archive drafts;

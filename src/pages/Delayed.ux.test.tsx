@@ -66,7 +66,8 @@ it('preserves the unified parent and simultaneous child turns, pending results a
  mount();await screen.findByText('Your turn');expect(screen.getByText('Opponent’s turn')).toBeTruthy();
  expect(screen.getByText('Pending')).toBeTruthy();expect(screen.getAllByRole('link',{name:'Take Turn'})).toHaveLength(1);
  expect(document.querySelectorAll('.delayed-game-card')).toHaveLength(3);expect(document.querySelectorAll('.delayed-turn-status time')).toHaveLength(2);
- expect(screen.getByLabelText('Real money').textContent).toBe('$');expect(screen.getByText('W')).toBeTruthy();
+ expect(screen.getByLabelText('Real money').textContent).toBe('$');
+ expect(screen.getByRole('button',{name:/Quintzee.*W.*\$5/}).getAttribute('aria-expanded')).toBe('false');
 });
 it('keeps one lobby parent card and navigation to setup, archive and multiplayer',async()=>{
  mount('/delayed');await screen.findByRole('link',{name:/vs. Opponent/});

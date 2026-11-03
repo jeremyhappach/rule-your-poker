@@ -1,3 +1,18 @@
+# Async Match Lobby polish — 2026-11-03 — qualified, publication pending
+
+Individual match metadata is one compact slate-blue Match Info card with a dynamic
+details dialog. Games sort by viewer actionability; only server-acknowledged final
+results collapse into single-open branded outcome rows. Existing review timing,
+per-user persistence, finances, notifications, progression and Run It Back remain
+unchanged. No migration. Identical 390px metadata is 41% shorter.
+
+App typecheck, application regressions (full run plus corrected assertion rerun),
+241 harness tests, production bundle and five-width browser fixture checks pass.
+Physical iPhone/Android and hosted gameplay smoke remain pending. See
+[scope, qualification and owner smoke](ASYNC_MATCH_LOBBY_POLISH.md).
+Checkpoint: `release-async-match-lobby-polish-20261103`; exact production receipt
+is recorded on its matching `-verified` tag after publication.
+
 # Async Run It Back — 2026-11-03 — production release authorized
 
 Jeremy authorized release with all intervening publications preserved. Fresh main
