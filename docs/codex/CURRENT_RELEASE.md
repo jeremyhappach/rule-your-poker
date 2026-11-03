@@ -1,12 +1,12 @@
-# Async Run It Back — 2026-11-03 — local candidate, release held
+# Async Run It Back — 2026-11-03 — production release authorized
 
-Dedicated branch codex/async-run-it-back adds participant-checked archive templates,
-a single authoritative last-viewer finale shortcut, editable historical invitation
-drafts and durable send retries. Existing acceptance and financial owners remain
-unchanged. Typecheck/build, 3,651 application tests, 241 harness tests, 66 focused
-tests, 13 local database groups, 26 financial groups and 10 mobile browser groups
-pass. No production writes, migration,
-merge, push or deployment. See [scope, schema, limits and smoke](ASYNC_RUNBACK_LOCAL.md).
+Jeremy authorized release with all intervening publications preserved. Fresh main
+and production remain at 31df2a89d, already included by the approved candidate.
+Migration 20261103165747 is installed; complete candidate and installed hosted
+rollback proofs pass, including existing financial/acceptance regression checks.
+Historical match, child, player, result, settlement and account counts are unchanged.
+Client publication is the remaining release step; exact evidence is recorded in
+[the release record](ASYNC_RUNBACK_RELEASE.md). Physical iPhone smoke is pending.
 
 # Host succession and inactivity — 2026-11-03 — production release authorized
 

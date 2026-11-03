@@ -1,4 +1,4 @@
-# Async Run It Back — local candidate, 2026-11-03
+# Async Run It Back — candidate qualification, 2026-11-03
 
 Implemented on `codex/async-run-it-back`, based on `origin/main` `31df2a89d`.
 The original Six-Card Golf checkout and all its local changes are untouched.
@@ -75,14 +75,13 @@ explicit user choice; no default replacement occurs. Finale ACKs already fully
 consumed before installation are not backfilled with an invented shortcut owner;
 both participants retain the archive action. No historical rows are mutated.
 
-## Release hold and manual smoke
+## Production authorization and manual smoke
 
-No push, merge, deployment, production migration or production-state write is
-authorized or performed. The SQL is an uninstalled candidate, not a registered
-migration. Release must register/package this transaction, recheck its exact
-deployed preimages, install it before publishing the client, and verify installed
-authority under explicit release authorization. No new staging environment is
-required.
+Jeremy subsequently authorized production release, including the scoped migration
+and main integration/publication while preserving intervening releases. The prior
+local hold is superseded. Migration 20261103165747 is installed and the hosted
+rollback proofs passed before and after installation. See
+[production evidence](ASYNC_RUNBACK_RELEASE.md). No new staging environment is needed.
 
 1. Complete a match with two humans. First viewer sees Back to Lobby only;
    second viewer sees Run It Back plus Back to Lobby. Reconnect and retry ACKs.
