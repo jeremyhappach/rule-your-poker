@@ -1,6 +1,6 @@
-import {golfPublicValue} from '../golf/scoring';
-import {acceptView,type MegaView,type Intent,type HoleResult} from './engine';
-import {usesSequentialOpening} from './config';
+import {golfPublicValue} from '../golf/scoring.js';
+import {acceptView,type MegaView,type Intent,type HoleResult} from './engine.js';
+import {usesSequentialOpening} from './config.js';
 
 export const formatGolfScore=(score:number|null|undefined)=>score==null?'—':score===0?'E':score>0?'+'+score:String(score);
 export function scoreSteps(cards:number[]){

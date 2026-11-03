@@ -1,4 +1,4 @@
-import type {GameDescriptor} from '../gameCatalog/types';
+import type {GameDescriptor} from '../gameCatalog/types.js';
 export const MEGA_RULESET = 'mega-card-golf/1' as const;
 // Sequential opening is opt-in for newly admitted v2 runs; v1 remains compatible.
 export const MEGA_SEQUENTIAL_RULESET = 'mega-card-golf/2' as const;
