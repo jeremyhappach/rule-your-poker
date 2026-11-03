@@ -1,9 +1,10 @@
-# Async Words opponent-turn inspection — local, unreleased
+# Async Words opponent-turn inspection — production release approved
 
 2026-11-03. Requested implementation is isolated on
 `codex/async-words-view-only`, based on `origin/main` at `0524b20bf`.
-No push, deployment, hosted migration or customer-data mutation is authorized
-or performed. The original Six-Card Golf checkout remains untouched.
+Jeremy subsequently authorized production installation, integration, push and
+deployment verification. Main remains at the same base, so integration is a
+conflict-free fast-forward. The original Six-Card Golf checkout remains untouched.
 
 ## Behavior and authority
 
@@ -27,10 +28,32 @@ separate authenticated, STABLE inspection RPC is required to satisfy passive
 viewing, including overdue turns. `supabase/delayed/words-inspect.sql` reuses
 `private.delayed_actor` and the existing membership/removal/private-rack projection;
 it adds no table, worker, action, deadline, notification or financial owner.
-The Supabase CLI is not installed in this environment: this is a named SQL
-candidate, not an installed or registered migration. On an explicit future
-release, generate the migration with the CLI, install/prove it before the client,
-and verify publication. Do not publish the client alone.
+The connected Supabase migration tool installed it as `20261103213012` before
+client publication. The exact server-generated migration version is mirrored in
+`supabase/migrations/20261103213012_async_words_read_only_inspection.sql`.
+The CLI remains unavailable; no tooling was installed and no migration version
+was invented locally.
+
+## Hosted release qualification
+
+`supabase/delayed/words-inspect-hosted-proof.sql` passed before installation with
+candidate DDL rolled back, and after installation inside `BEGIN READ ONLY`.
+Both participants in an existing active match received the committed board,
+their own rack, scores, deadline and correct turn ownership. Outsider membership
+and anonymous identity were rejected; anon/service-role execution is denied.
+PostgreSQL transaction write counters remained identical across all auth/public/
+private tables. No historical rows, customer balances, deadlines or notifications
+were mutated. Terminal, overdue and replay cases remain covered by local proof.
+
+The security advisor reports the intentional authenticated SECURITY DEFINER
+endpoint. It follows the existing private-projection boundary with explicit
+authenticated membership checks and a locked search path; the hosted proof
+verifies its restricted execution and private-rack behavior. See
+[advisor rule](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+
+Checkpoint: `release-async-words-view-only-20261103`. Its matching `-verified`
+annotated tag records the exact production SHA, Vercel deployment, public
+manifests and release-publication receipt after the approved helper push.
 
 ## Validation
 
