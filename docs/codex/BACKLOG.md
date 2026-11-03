@@ -1,14 +1,14 @@
-## Blocked — Mega Card Golf hosted qualification and guarded release — 2026-11-03
+## In progress — Mega Card Golf hosted qualification and guarded release — 2026-11-03
 
 Jeremy authorized closed production deployment and sequential live then async
 activation after each hosted gate passes, with no additional approval between
 phases. Implementation `a606959d8` is pushed on its isolated branch. Production
-remains unchanged because the hosted proof gate is MISSING: existing Mega runners
-modify local-only health/recovery fixtures, and no exact-session qualification
-lane admits hosted setup/async acceptance while global flags stay closed.
-Prepare production-safe rollback qualification and scoped synthetic-session
-testing before resuming the authorized release. Do not open global admission to
-obtain evidence or use customer balances. Physical iPhone/Android audio, push and
+now has closed Mega registration and recovery worker v2 after passing safe
+candidate and installed rollback proofs. The authorized exact-account/session/
+request allowlists are implemented, fake-only and expiring. Publish app/API and
+complete hosted gameplay gates, then activate live followed by async with phase
+smoke. Do not open global admission to obtain evidence or use customer balances.
+Physical iPhone/Android audio, push and
 multi-client owner smoke remain pending. Provenance: Jeremy’s guarded release
 request and explicit two-phase continuation on November 3. See
 [scope, evidence and release blocker](MEGA_CARD_GOLF_COMPETITION.md).

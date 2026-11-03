@@ -1,4 +1,4 @@
-# Mega Card Golf multiplayer + async — 2026-11-03 — hosted qualification blocked
+# Mega Card Golf multiplayer + async — 2026-11-03 — closed hosted qualification
 
 Jeremy authorized a guarded production release, followed by live activation/smoke
 and then async activation/smoke without another approval between successful phases.
@@ -6,12 +6,12 @@ Implementation `a606959d8fa753830a63ba09edc80e06f6815a12` was pushed on
 `codex/mega-card-golf-multiplayer-async`. All 18 captured database owners match
 production; main and production remain at `df7684668`.
 
-Hosted financial/recovery qualification gate: **MISSING**. The committed proof
-runners are local-only, and Mega has no exact-session qualification grant for
-hosted setup/acceptance with global admission closed. Do not point local runners
-at production or substitute broad admission. Migration, worker publication,
-main integration and activation are held. Mega registration is absent on hosted
-Supabase; no Mega gameplay was activated. Existing sessions were not changed.
+Jeremy authorized implementing the missing scoped test capability. Pre-migration
+safety is **PASS**, including safe candidate and installed hosted rollback proofs.
+The closed migration and recovery worker v2 are installed. Exact synthetic UUID,
+fake-money, session/request and expiry allowlists preserve closed public admission.
+App/API publication and hosted gameplay qualification are in progress; both
+public flags remain false. Existing customer sessions were not changed.
 See [release attempt and remaining proof](MEGA_CARD_GOLF_COMPETITION.md).
 Hosted multi-client and physical-device acceptance remain pending.
 

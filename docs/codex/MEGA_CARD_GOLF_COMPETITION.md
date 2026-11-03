@@ -95,12 +95,28 @@ Local screenshots and detailed outputs are in ignored
 
 ## Release and acceptance still required
 
-The guarded release is authorized as recorded below. Before release, compare
-current deployed owners to the
-captured baseline, rerun the complete hosted rollback proof, register the closed
-migration, publish the matching client/API/recovery worker, and verify the exact
-deployment. Preserve all intervening releases. Enable either admission flag only
-under an explicit release authorization after its financial and recovery gate.
+The guarded release is authorized. The release order is:
+
+1. **Before migration:** verify shared-owner hashes, actual conflict indexes,
+   closed defaults and private permissions. Run local full financial, service,
+   recovery and independent-connection proofs. Run the production-safe candidate
+   rollback proof with isolated synthetic identities, fake chips, actual financial
+   triggers and no shared health/recovery overrides. Verify complete rollback.
+2. **Closed registration:** install the exact guarded migration with both flags
+   false, rerun the installed rollback proof, then publish the matching app/API
+   and recovery worker. Verify the exact production commit and worker version.
+3. **Hosted qualification after migration:** provision operator-owned exact
+   synthetic account/session/request grants, restricted to fake money and a fixed
+   expiry. Verify real Auth, RLS, API, Realtime, browser, replay and zero-client
+   recovery against committed isolated fixtures. Public flags stay false.
+4. **Sequential activation:** after hosted gates pass, enable live only and smoke
+   it; then enable async and smoke it. Close the affected admission on failure.
+   Revoke synthetic admission, disable synthetic accounts and retain auditable
+   synthetic results. No customer finances or historical sessions are modified.
+
+Hosted gameplay is deliberately a post-migration gate: it requires the installed
+API and recovery path. Passing pre-migration safety permits closed installation,
+and does not by itself permit public gameplay.
 
 Jeremy's hosted multi-client and physical iPhone/Android smoke remains acceptance
 truth. Exercise dealer/default overrides and Run It Back; two and three-plus
@@ -110,6 +126,9 @@ sound/mute plus notification suppression/deduplication on physical devices.
 Local Chromium emulation does not certify native iOS/Android audio or push delivery.
 
 ## Guarded release attempt — November 3, 2026
+
+The initial blocker below is superseded by the authorized implementation following
+it; it is retained as an evidence boundary, not a current approval requirement.
 
 Jeremy authorized pushing the implementation, closed production registration and
 publication, hosted verification without customer balances or financial smoke
@@ -152,3 +171,32 @@ existing sessions and closed public admission. Do not reuse local-only runners
 against hosted Supabase or waive the gate. Hosted gameplay/replay/reconnect,
 actual recovery, notification deduplication and settlement checks remain
 unverified, as do physical iPhone/Android audio, touch/layout and push delivery.
+
+## Scoped hosted qualification implementation — November 3, 2026
+
+`competition-qualification.sql` adds operator-only account, exact live-session
+and exact async-request allowlists, with a maximum 24-hour lifetime. Actual hosted
+grants use one hour. Accounts require a server-owned Auth application metadata
+marker plus an active profile. No browser/service grant writer exists. Live
+qualification requires all admitted humans in the exact fake-money session;
+restrictive games/players RLS hides it from outsiders, and triggers reject roster
+intrusion and real-money conversion. Async grants bind the exact organizer,
+opponent and create-request UUID, are consumed into one parent UUID and allow at
+most four Mega children. Acceptance checks that parent and the expiry. Existing
+identity, consent, liveness, stake, immutable-result and settlement owners remain.
+Expiry blocks new admission while admitted obligations retain their owners.
+
+Pre-migration safety: PASS. All 18 owner hashes and actual receipt/transfer indexes
+match. Updated local financial, earned-course/replay/recovery, independent-connection
+race, TypeScript and production build pass. `hosted-proof.mjs` generates safe
+candidate/installed SQL payloads; both passed on production with public flags false
+and verified rollback to zero synthetic accounts. It exercises real RLS outsider
+denial, fake-only/expiry/request restrictions, signed-score winner/tie canonical
+settlement, duplicate setup/settlement and injected after-chip rollback. It neither
+modifies shared health nor stubs network/recovery. Real-money proofs remain local;
+hosted smoke uses only isolated synthetic fake-money fixtures.
+
+Closed migration is installed. Recovery worker `delayed-recovery` version 2 is
+ACTIVE with the existing dispatch-token authorization and JWT gateway setting.
+App/API publication and post-migration hosted gameplay verification are in progress.
+Public live and async flags are false. No physical-device acceptance is claimed.

@@ -3,6 +3,74 @@ CREATE TABLE private.mega_competition_release(singleton boolean PRIMARY KEY DEFA
 INSERT INTO private.mega_competition_release DEFAULT VALUES;
 ALTER TABLE private.mega_competition_release ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON private.mega_competition_release FROM PUBLIC,anon,authenticated,service_role;
+-- Operator-only, short-lived qualification. No browser or service grant writer.
+CREATE TABLE private.mega_test_accounts(
+ user_id uuid PRIMARY KEY REFERENCES auth.users(id),created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+ expires_at timestamptz NOT NULL CHECK(expires_at>created_at AND expires_at<=created_at+interval '24 hours')
+);
+CREATE TABLE private.mega_test_live(
+ game_id uuid NOT NULL REFERENCES public.games(id) DEFERRABLE INITIALLY DEFERRED,
+ user_id uuid NOT NULL REFERENCES private.mega_test_accounts(user_id),
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),expires_at timestamptz NOT NULL,
+ PRIMARY KEY(game_id,user_id),CHECK(expires_at>created_at AND expires_at<=created_at+interval '24 hours')
+);
+CREATE TABLE private.mega_test_async(
+ actor uuid NOT NULL REFERENCES private.mega_test_accounts(user_id),request_id uuid NOT NULL,
+ opponent uuid NOT NULL REFERENCES private.mega_test_accounts(user_id),
+ match_id uuid UNIQUE REFERENCES private.delayed_matches(id) DEFERRABLE INITIALLY DEFERRED,
+ created_at timestamptz NOT NULL DEFAULT clock_timestamp(),expires_at timestamptz NOT NULL,
+ PRIMARY KEY(actor,request_id),CHECK(actor<>opponent),CHECK(expires_at>created_at AND expires_at<=created_at+interval '24 hours')
+);
+ALTER TABLE private.mega_test_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE private.mega_test_live ENABLE ROW LEVEL SECURITY;
+ALTER TABLE private.mega_test_async ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.mega_test_accounts,private.mega_test_live,private.mega_test_async FROM PUBLIC,anon,authenticated,service_role;
+
+CREATE FUNCTION private.mega_test_actor(who uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT EXISTS(SELECT FROM private.mega_test_accounts a JOIN auth.users u ON u.id=a.user_id JOIN public.profiles p ON p.id=a.user_id
+ WHERE a.user_id=who AND a.expires_at>statement_timestamp() AND p.is_active AND u.raw_app_meta_data->>'mega_synthetic'='true')
+$$;
+CREATE FUNCTION private.mega_test_live_allowed(who uuid,session_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT private.mega_test_actor(who) AND EXISTS(SELECT FROM private.mega_test_live q JOIN public.games g ON g.id=q.game_id
+ WHERE q.user_id=who AND q.game_id=session_id AND q.expires_at>statement_timestamp() AND g.real_money IS FALSE)
+$$;
+CREATE FUNCTION private.mega_test_async_allowed(who uuid,other uuid,request uuid,match uuid,money boolean) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT money IS FALSE AND private.mega_test_actor(who) AND private.mega_test_actor(other)
+ AND EXISTS(SELECT FROM private.mega_test_async q WHERE q.actor=who AND q.opponent=other AND q.expires_at>statement_timestamp()
+ AND ((request IS NOT NULL AND q.request_id=request AND q.match_id IS NULL) OR (match IS NOT NULL AND q.match_id=match)))
+$$;
+-- Restrictive policies keep isolated sessions out of other players' lobby/reads.
+CREATE FUNCTION private.mega_test_visible(session_id uuid,who uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT NOT EXISTS(SELECT FROM private.mega_test_live WHERE game_id=session_id)
+ OR EXISTS(SELECT FROM private.mega_test_live WHERE game_id=session_id AND user_id=who)
+$$;
+CREATE POLICY mega_test_games_isolated ON public.games AS RESTRICTIVE FOR ALL TO authenticated
+ USING(private.mega_test_visible(id,(SELECT auth.uid()))) WITH CHECK(private.mega_test_visible(id,(SELECT auth.uid())));
+CREATE POLICY mega_test_players_isolated ON public.players AS RESTRICTIVE FOR ALL TO authenticated
+ USING(private.mega_test_visible(game_id,(SELECT auth.uid()))) WITH CHECK(private.mega_test_visible(game_id,(SELECT auth.uid())));
+CREATE FUNCTION private.mega_test_game_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF EXISTS(SELECT FROM private.mega_test_live WHERE game_id=NEW.id) AND NEW.real_money IS DISTINCT FROM false THEN RAISE EXCEPTION 'mega:test_fake_only';END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER mega_test_game_guard BEFORE INSERT OR UPDATE OF real_money ON public.games FOR EACH ROW EXECUTE FUNCTION private.mega_test_game_guard();
+CREATE FUNCTION private.mega_test_player_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF EXISTS(SELECT FROM private.mega_test_live WHERE game_id=NEW.game_id) AND (NEW.is_bot OR NOT EXISTS(SELECT FROM private.mega_test_live WHERE game_id=NEW.game_id AND user_id=NEW.user_id)) THEN RAISE EXCEPTION 'mega:test_roster';END IF;
+ IF EXISTS(SELECT FROM private.mega_test_accounts WHERE user_id=NEW.user_id) AND EXISTS(SELECT FROM public.games WHERE id=NEW.game_id AND real_money IS DISTINCT FROM false) THEN RAISE EXCEPTION 'mega:test_fake_only';END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER mega_test_player_guard BEFORE INSERT OR UPDATE OF user_id,game_id,is_bot ON public.players FOR EACH ROW EXECUTE FUNCTION private.mega_test_player_guard();
+CREATE FUNCTION private.mega_test_async_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ IF EXISTS(SELECT FROM private.mega_test_accounts WHERE user_id IN(NEW.organizer,NEW.opponent)) AND
+ (NEW.real_money IS DISTINCT FROM false OR NOT EXISTS(SELECT FROM private.mega_test_async WHERE match_id=NEW.id AND actor=NEW.organizer AND opponent=NEW.opponent)) THEN RAISE EXCEPTION 'mega:test_offer_scope';END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER mega_test_async_guard BEFORE INSERT OR UPDATE OF organizer,opponent,real_money ON private.delayed_matches FOR EACH ROW EXECUTE FUNCTION private.mega_test_async_guard();
+REVOKE ALL ON FUNCTION private.mega_test_actor(uuid),private.mega_test_live_allowed(uuid,uuid),private.mega_test_async_allowed(uuid,uuid,uuid,uuid,boolean),private.mega_test_visible(uuid,uuid),private.mega_test_game_guard(),private.mega_test_player_guard(),private.mega_test_async_guard() FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION private.mega_test_visible(uuid,uuid) TO authenticated;
+
 ALTER TABLE public.game_defaults ADD COLUMN mega_course text NOT NULL DEFAULT 'sunny-meadows',ADD COLUMN mega_holes integer NOT NULL DEFAULT 9 CHECK(mega_holes IN(3,6,9,18));
 INSERT INTO public.game_defaults(game_type,ante_amount) VALUES('mega-card-golf',5) ON CONFLICT(game_type) DO NOTHING;
 UPDATE public.game_defaults SET presentation_mode='fullscreen' WHERE game_type='mega-card-golf';
@@ -26,7 +94,7 @@ CREATE FUNCTION public.mega_competition_catalog(p_game uuid DEFAULT NULL) RETURN
 BEGIN
  IF NOT EXISTS(SELECT FROM public.profiles WHERE id=auth.uid() AND is_active) THEN RAISE EXCEPTION 'mega:authentication_required' USING ERRCODE='42501';END IF;
  RETURN jsonb_build_object('courses',private.mega_competition_courses(),'defaults',private.mega_competition_config(),'enabled',
-  (SELECT live_enabled FROM private.mega_competition_release WHERE singleton) AND (p_game IS NULL OR EXISTS(SELECT FROM public.players WHERE game_id=p_game AND user_id=auth.uid() AND status<>'left')));
+  ((SELECT live_enabled FROM private.mega_competition_release WHERE singleton) OR private.mega_test_live_allowed(auth.uid(),p_game)) AND (p_game IS NULL OR EXISTS(SELECT FROM public.players WHERE game_id=p_game AND user_id=auth.uid() AND status<>'left')));
 END $$;
 REVOKE ALL ON FUNCTION private.mega_competition_config(jsonb),private.mega_competition_courses(),public.mega_competition_catalog(uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.mega_competition_catalog(uuid) TO authenticated;
@@ -68,10 +136,10 @@ DO $$BEGIN IF EXISTS(SELECT FROM pg_publication WHERE pubname='supabase_realtime
 
 CREATE FUNCTION private.mega_live_actor_allowed(actor uuid,session_id uuid DEFAULT NULL,match_id uuid DEFAULT NULL) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT EXISTS(SELECT FROM public.profiles WHERE id=actor AND is_active) AND ((SELECT live_enabled FROM private.mega_competition_release WHERE singleton)
- OR EXISTS(SELECT FROM public.dealer_games d WHERE d.session_id=mega_live_actor_allowed.session_id AND d.game_type='mega-card-golf' AND (match_id IS NULL OR d.id=match_id)))
+ OR private.mega_test_live_allowed(actor,session_id) OR EXISTS(SELECT FROM public.dealer_games d WHERE d.session_id=mega_live_actor_allowed.session_id AND d.game_type='mega-card-golf' AND (match_id IS NULL OR d.id=match_id)))
 $$;
 CREATE FUNCTION private.mega_live_admission_allowed(actor uuid,session_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- SELECT EXISTS(SELECT FROM public.profiles WHERE id=actor AND is_active) AND (SELECT live_enabled FROM private.mega_competition_release WHERE singleton)
+ SELECT EXISTS(SELECT FROM public.profiles WHERE id=actor AND is_active) AND ((SELECT live_enabled FROM private.mega_competition_release WHERE singleton) OR private.mega_test_live_allowed(actor,session_id)) AND (NOT EXISTS(SELECT FROM private.mega_test_accounts WHERE user_id=actor) OR private.mega_test_live_allowed(actor,session_id))
 $$;
 CREATE FUNCTION private.mega_live_supported_rules(rules jsonb) RETURNS boolean LANGUAGE sql IMMUTABLE SET search_path='' AS $$
  SELECT rules->>'version' IN('mega-card-golf/1','mega-card-golf/2','mega-card-golf/3','mega-card-golf/4') AND rules#>'{course,holes}' IN('3'::jsonb,'6'::jsonb,'9'::jsonb,'18'::jsonb) AND rules->'holes'=rules#>'{course,holes}'
@@ -695,11 +763,15 @@ BEGIN
   WHEN 'quintzee' THEN cfg:=private.quintzee_default_rules();
   WHEN 'boxdrop' THEN cfg:=private.boxdrop_rules();
   WHEN 'mega-card-golf' THEN
-   IF NOT (SELECT async_enabled FROM private.mega_competition_release WHERE singleton) THEN RAISE EXCEPTION 'delayed:admission_closed';END IF;
+   IF NOT ((SELECT async_enabled FROM private.mega_competition_release WHERE singleton) OR private.mega_test_async_allowed(actor_i,p_opponent,p_request,NULL,p_real_money)) THEN RAISE EXCEPTION 'delayed:admission_closed';END IF;
    cfg:=private.mega_competition_config(item->'config');END CASE;
   IF item ? 'config' AND item->'config' IS DISTINCT FROM cfg THEN RAISE EXCEPTION 'delayed:unsupported_configuration'; END IF;
   frozen:=frozen||jsonb_build_array(item||jsonb_build_object('config',cfg));
  END LOOP;
+ IF EXISTS(SELECT FROM private.mega_test_accounts WHERE user_id IN(actor_i,p_opponent)) THEN
+  IF NOT private.mega_test_async_allowed(actor_i,p_opponent,p_request,NULL,p_real_money) OR jsonb_array_length(p_lineup)>4 OR EXISTS(SELECT FROM jsonb_array_elements(p_lineup) x WHERE x->>'game'<>'mega-card-golf') THEN RAISE EXCEPTION 'mega:test_offer_scope';END IF;
+  UPDATE private.mega_test_async SET match_id=parent WHERE actor=actor_i AND request_id=p_request AND match_id IS NULL;
+ END IF;
  INSERT INTO private.delayed_matches(id,organizer,opponent,real_money,offer,offer_hash)
  VALUES(parent,actor_i,p_opponent,p_real_money,frozen,md5(frozen::text));
  FOR item IN SELECT value FROM jsonb_array_elements(frozen) LOOP
@@ -739,7 +811,7 @@ BEGIN
   PERFORM private.delayed_actor(m.organizer);
   IF EXISTS(SELECT FROM public.system_settings WHERE key='maintenance_mode' AND value->>'enabled'='true') THEN RAISE EXCEPTION 'delayed:maintenance'; END IF;
   IF NOT EXISTS(SELECT FROM private.delayed_release WHERE singleton AND admission_enabled) OR private.delayed_held(m.id) THEN RAISE EXCEPTION 'delayed:admission_closed'; END IF;
-  IF EXISTS(SELECT FROM private.delayed_children WHERE match_id=m.id AND game_type='mega-card-golf') AND NOT (SELECT async_enabled FROM private.mega_competition_release WHERE singleton) THEN RAISE EXCEPTION 'delayed:admission_closed';END IF;
+  IF EXISTS(SELECT FROM private.delayed_children WHERE match_id=m.id AND game_type='mega-card-golf') AND NOT ((SELECT async_enabled FROM private.mega_competition_release WHERE singleton) OR private.mega_test_async_allowed(m.organizer,m.opponent,NULL,m.id,m.real_money)) THEN RAISE EXCEPTION 'delayed:admission_closed';END IF;
  IF m.real_money AND NOT EXISTS(SELECT FROM private.delayed_release WHERE singleton AND real_qualified) THEN RAISE EXCEPTION 'delayed:real_money_closed';END IF;
   IF NOT private.delayed_multi_enabled() AND ((SELECT count(*) FROM private.delayed_children WHERE match_id=m.id)<>1 OR EXISTS(SELECT FROM private.delayed_children WHERE match_id=m.id AND game_type<>'ptown-words')) THEN RAISE EXCEPTION 'delayed:scope_closed';END IF;
   FOR c IN SELECT * FROM private.delayed_children WHERE match_id=m.id ORDER BY ordinal FOR UPDATE LOOP
@@ -775,7 +847,7 @@ AS $function$
  jsonb_build_object('id','run21','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='run21'),'rules',(SELECT config FROM private.gameplay_rulesets WHERE id='run21/3' AND game='run21')),
  jsonb_build_object('id','tri-towers','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='tri-towers'),'rules',private.tri_towers_rules()),
  jsonb_build_object('id','quintzee','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='quintzee'),'rules',private.quintzee_default_rules()),
- jsonb_build_object('id','boxdrop','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='boxdrop'),'rules',private.boxdrop_rules()))||CASE WHEN (SELECT async_enabled FROM private.mega_competition_release WHERE singleton) THEN jsonb_build_array(jsonb_build_object('id','mega-card-golf','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='mega-card-golf'),'rules',private.mega_competition_config(),'courses',private.mega_competition_courses())) ELSE '[]'::jsonb END END) WHERE auth.uid() IS NOT NULL
+ jsonb_build_object('id','boxdrop','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='boxdrop'),'rules',private.boxdrop_rules()))||CASE WHEN (SELECT async_enabled FROM private.mega_competition_release WHERE singleton) OR (private.mega_test_actor(auth.uid()) AND EXISTS(SELECT FROM private.mega_test_async WHERE actor=auth.uid() AND expires_at>statement_timestamp() AND match_id IS NULL)) THEN jsonb_build_array(jsonb_build_object('id','mega-card-golf','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='mega-card-golf'),'rules',private.mega_competition_config(),'courses',private.mega_competition_courses())) ELSE '[]'::jsonb END END) WHERE auth.uid() IS NOT NULL
 $function$
 ;
 

@@ -13,6 +13,7 @@ const q=async(sql,args=[],client=db)=>(await client.query(sql,args)).rows[0]?.v;
 const rpc=client=>async(name,args)=>q('SELECT public.'+name+'('+Object.keys(args).map((k,i)=>k+'=>$'+(i+1)).join(',')+') v',Object.values(args).map(v=>v&&typeof v==='object'?JSON.stringify(v):v),client);
 try{
  await db.query('BEGIN');
+ await db.query('ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_app_meta_data jsonb');
  const golf=read('supabase/six-card-golf/rules.sql','utf8');await db.query(golf.slice(golf.indexOf('CREATE OR REPLACE FUNCTION private.golf_points'),golf.indexOf('CREATE OR REPLACE FUNCTION private.golf_integrity')));
  if(!await q("SELECT to_regclass('private.arcade_mega_configs') v"))await db.query(read('supabase/mega-card-golf/candidate.sql','utf8'));
  await db.query("INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('mega-card-golf/4','mega-card-golf','{}',true) ON CONFLICT(id) DO UPDATE SET enabled=true");

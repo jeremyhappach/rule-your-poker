@@ -17,6 +17,7 @@ async function rejects(fn,pattern){await db.query('SAVEPOINT denied');try{await 
 const pass=s=>{checks.push(s);console.log('PASS',s);};
 try{
  await db.query('BEGIN');
+ await db.query('ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS raw_app_meta_data jsonb');
  const golf=read('supabase/six-card-golf/rules.sql','utf8');
  await db.query(golf.slice(golf.indexOf('CREATE OR REPLACE FUNCTION private.golf_points'),golf.indexOf('CREATE OR REPLACE FUNCTION private.golf_integrity')));
  if(!await q("SELECT to_regclass('private.arcade_mega_configs') v"))await db.query(read('supabase/mega-card-golf/candidate.sql','utf8'));
