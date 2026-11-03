@@ -1,4 +1,5 @@
 import {AsyncSessionName} from './AsyncSessionName';
+import {RunbackLink} from './RunbackLink';
 import boxingWinner from '@/assets/async-finale/boxing-winner-cash-v1.jpg';
 import {AsyncTurnStage} from './AsyncTurnStage';
 import boxingDraw from '@/assets/async-finale/boxing-draw-v1.jpg';
@@ -115,9 +116,9 @@ export function ChildResults({childId,matchId,userId}:Identity){
 
 function Confetti({identity,userId,winner}:{identity:string;userId:string;winner:string}){const active=useVisible();useEffect(()=>{celebrateCanonicalWinner(identity,userId,[winner],active,false);},[identity,userId,winner,active]);return <div className="async-confetti" aria-hidden="true"/>;}
 export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
- const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[imageReady,setImageReady]=useState(false),[ackError,setAckError]=useState(''),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(7500,home&&imageReady?matchId:'loading'),busy=useRef(false);
- useEffect(()=>{let alive=true;setHome(null);setImageReady(false);setError('');setAckError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!mayViewFinale(h)){navigate('/delayed/'+matchId+(h.removedAt?'?history=1':''),{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;};},[matchId,navigate]);
- const acknowledgeFinale=useCallback(()=>{if(!home||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;setAckError('');void (home.removedAt?Promise.resolve():delayedRpc('delayed_finale_ack',{p_match:matchId})).catch(()=>{busy.current=false;setAckError('Unable to confirm viewing. Your saved results remain available.');});},[home,matchId]);
+ const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[imageReady,setImageReady]=useState(false),[ackError,setAckError]=useState(''),[runbackEligible,setRunbackEligible]=useState(false),ackGeneration=useRef(0),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(7500,home&&imageReady?matchId:'loading'),busy=useRef(false);
+ useEffect(()=>{let alive=true;ackGeneration.current++;setRunbackEligible(false);setHome(null);setImageReady(false);setError('');setAckError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!mayViewFinale(h)){navigate('/delayed/'+matchId+(h.removedAt?'?history=1':''),{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;ackGeneration.current++;};},[matchId,navigate]);
+ const acknowledgeFinale=useCallback(()=>{if(!home||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;setAckError('');const generation=ackGeneration.current;void (home.removedAt?Promise.resolve():delayedRpc('delayed_finale_ack',{p_match:matchId})).then(()=>delayedRpc<Home>('delayed_history_detail',{p_match:matchId})).then(fresh=>{if(generation===ackGeneration.current)setRunbackEligible(fresh.runbackEligible===true&&!fresh.removedAt);}).catch(()=>{if(generation!==ackGeneration.current)return;busy.current=false;setAckError('Unable to confirm viewing. Your saved results remain available.');});},[home,matchId]);
  useEffect(()=>{if(imageReady&&play.done)acknowledgeFinale();},[imageReady,play.done,acknowledgeFinale]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home)return <AsyncTurnStage matchId={matchId} title="Loading match finale…"/>;
@@ -131,6 +132,6 @@ export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
   </figure><strong>{winner?home.players.find(p=>p.id===winner)?.name+' wins '+money(Math.abs(home.net)):'Draw · $0'}</strong>
   {home.realMoney&&home.receipt&&<p>Balances have been settled</p>}
   <ol className="async-finale-breakdown">{home.lineup.map(c=><li key={c.id}>{c.ordinal}. {c.game} · {c.result?.delta?c.result.delta>0?'W':'L':'T'} {money(c.result?.delta??0)}</li>)}</ol>
-  {imageReady&&play.elapsed>=7500&&<div className="async-finale-exit">{ackError&&<p role="alert">{ackError} <button onClick={acknowledgeFinale}>Retry acknowledgement</button></p>}<Link className="delayed-primary" to="/">Back to Lobby</Link></div>}
+  {imageReady&&play.elapsed>=7500&&<div className="async-finale-exit">{ackError&&<p role="alert">{ackError} <button onClick={acknowledgeFinale}>Retry acknowledgement</button></p>}<div className="delayed-actions">{runbackEligible&&<RunbackLink matchId={matchId} returnTo={'/delayed/'+matchId+'?finale=1'} primary/>}<Link className={runbackEligible?'delayed-secondary':'delayed-primary'} to="/">Back to Lobby</Link></div></div>}
  </div></FullscreenGameShell></div>;
 }

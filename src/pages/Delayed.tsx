@@ -27,9 +27,9 @@ export default function Delayed(){
  if(!isReady||!user)return <AsyncTurnEntry/>;
  if(childId&&matchId)return <ChildTurn key={childId} childId={childId} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('review'))return <ChildResults key={matchId+':'+query.get('review')} childId={query.get('review')!} matchId={matchId} userId={user.id}/>;
- if(matchId&&query.has('finale'))return <MatchFinale matchId={matchId} userId={user.id}/>;
+ if(matchId&&query.has('finale'))return <MatchFinale key={user.id+':'+matchId} matchId={matchId} userId={user.id}/>;
  return <main className="delayed-page delayed-match-page"><header><Link to="/">Lobby</Link><h1>Async Matches</h1><GameplaySoundButton/><NotificationBell/></header>
-  {matchId==='new'?<AsyncInvite/>:matchId?<MatchHome key={matchId} id={matchId} userId={user.id}/>:<MatchList userId={user.id}/>}</main>;
+  {matchId==='new'?<AsyncInvite key={user.id+':'+(query.get('runback')??'new')+':'+(query.get('draft')??'')} userId={user.id}/>:matchId?<MatchHome key={matchId} id={matchId} userId={user.id}/>:<MatchList userId={user.id}/>}</main>;
 }
 function useUpdates(userId:string,refresh:()=>void){
  useEffect(()=>{const channel=supabase.channel('delayed-home:'+userId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>{refresh();})

@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
-import {Link} from 'react-router-dom';
+import {Link,useLocation} from 'react-router-dom';
+import {RunbackLink} from './RunbackLink';
 import {delayedRpc} from '@/lib/delayed/client';
 import {money} from '@/lib/delayed/reviews';
 import {supabase} from '@/integrations/supabase/client';
@@ -8,6 +9,7 @@ import '@/lib/delayed/delayed.css';
 
 type Entry={id:string;opponent:string;startedAt:string;completedAt:string;count:number;net:number;realMoney:boolean};
 export function AsyncHistory({profileId,balance=false,viewerName}:{profileId?:string;balance?:boolean;viewerName?:string}){
+ const location=useLocation();
  const [name,setName]=useState(viewerName??'You');
  const [rows,setRows]=useState<Entry[]>([]),[error,setError]=useState(''),[more,setMore]=useState(false),[pending,setPending]=useState(false),generation=useRef(0),busy=useRef(false);
  const load=async(older=false)=>{if(busy.current)return;busy.current=true;setPending(true);const epoch=++generation.current,last=older?rows.at(-1):undefined;
@@ -23,5 +25,6 @@ export function AsyncHistory({profileId,balance=false,viewerName}:{profileId?:st
   {!balance&&<small>Started {new Date(r.startedAt).toLocaleString()}</small>}
   <b>{r.net>0?'W':r.net<0?'L':'Draw'} {money(r.net)}</b>{r.realMoney&&<small>Balances have been settled</small>}
   <Link className="async-see-results" to={'/delayed/'+r.id+'?finale=1'}>See Results</Link>
+  {!balance&&<RunbackLink matchId={r.id} returnTo={location.pathname+location.search} label={'Run It Back against '+r.opponent+' · '+new Date(r.completedAt).toLocaleString()}/>}
  </article>)}{pending&&<p role="status">Loading async history…</p>}{more&&<button disabled={pending} onClick={()=>void load(true)}>Load older async matches</button>}</section>;
 }

@@ -146,3 +146,11 @@ it('completed final results survive background/foreground without replay or anot
  Object.defineProperty(document,'hidden',{configurable:true,value:false});await act(async()=>document.dispatchEvent(new Event('visibilitychange')));await advance(1000);
  expect(ui.container.querySelector('.async-finale')?.getAttribute('data-phase')).toBe('breakdown');expect(screen.getByRole('link',{name:'Back to Lobby'})).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_finale_ack')).toHaveLength(1);
 });
+it.each([false,true])('only server-qualified last viewer receives the finale shortcut (%s)',async eligible=>{
+ const rpc=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation(async(name,args)=>name==='delayed_history_detail'?{...mock.home,runbackEligible:eligible}:rpc(name,args));
+ const view=mount(<MatchFinale matchId='match' userId='me'/>);await flush();
+ expect(screen.queryByRole('link',{name:'Run It Back'})).toBeNull();fireEvent.load(screen.getByRole('img'));await advance(7600);await flush();
+ expect(!!screen.queryByRole('link',{name:'Run It Back'})).toBe(eligible);expect(screen.getByRole('link',{name:'Back to Lobby'})).toBeTruthy();
+ if(eligible)expect(screen.getByRole('link',{name:'Run It Back'}).getAttribute('href')).toContain('runback=match');
+ view.unmount();
+});

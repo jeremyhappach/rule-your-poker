@@ -53,3 +53,9 @@
 .delayed-money-switch input:checked+span{background:#16a34a}.delayed-money-switch input:checked+span:after{transform:translateX(1.25rem)}
 .delayed-money-switch input:focus-visible+span{outline:2px solid #fcd34d;outline-offset:3px}.delayed-money-switch input:disabled+span{opacity:.5}
 .delayed-turn-nav{flex-wrap:wrap}.delayed-turn-nav>a{min-width:0;overflow-wrap:anywhere}
+/* Shared archive and final-result runback controls remain container-relative. */
+.delayed-history-card .delayed-secondary{justify-self:start;display:inline-flex;align-items:center;min-height:2.75rem;padding:.5rem .8rem;border:1px solid #718597;border-radius:.5rem;text-decoration:none}
+.async-finale-exit{width:min(100%,30rem)}
+.async-finale-exit .delayed-actions a{display:flex;align-items:center;justify-content:center;min-height:2.75rem;padding:.65rem .8rem;border:1px solid #718597;border-radius:.5rem;text-align:center;text-decoration:none}
+.async-finale-exit .delayed-primary{background:#9ee5ce;color:#102d24;font-weight:750}
+.async-finale-exit .delayed-secondary{background:#111e2b;color:#e1eaf1;margin:.2rem}

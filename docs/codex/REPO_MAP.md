@@ -1,3 +1,12 @@
+## Async Run It Back (unreleased candidate)
+
+`src/lib/delayed/runback.ts` reconstructs/persists editable archive drafts;
+`RunbackLink.tsx` shares entry navigation across history and final results.
+`AsyncInvite.tsx` retains the existing send owner. The uninstalled
+`supabase/delayed/runback.candidate.sql` extends the parent-locked finale ACK,
+participant history projection and existing invitation configuration validation.
+Qualification and release hold: [Async Run It Back](ASYNC_RUNBACK_LOCAL.md).
+
 ## Session host succession and inactivity
 
 `20261103144601_session_host_succession_and_inactivity.sql` extends the existing

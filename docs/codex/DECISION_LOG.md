@@ -3100,3 +3100,14 @@ See [release and authority evidence](ASYNC_WORDS_RELEASE.md).
 ## 2026-10-30 — Local async presentation candidate; publication held
 
 Owner authorized a local preview for exact-child playing presence/live cards and shared three-scale Words zoom, then added Quintzee final bonus labels and hiding bells on async routes. Presence is advisory, authenticated per child/current actor/availability window; canonical update notices and permitted projections alone change cards. The new private Realtime policy candidate is local only and needs hosted authorization/protocol qualification before an approved publication. Words uses the existing shared view and deferred gesture gate, with navigation before placement until closest scale. Quintzee uses revealed authoritative result bonuses at the existing count window across all callers. The notification provider remains mounted while its bell is route-hidden. No accounting, rules, deadlines, money-mode or production changes. See ASYNC_LIVE_WORDS_ZOOM_LOCAL.md.
+
+## 2026-11-03 — Async Run It Back local candidate
+
+An async runback is an editable invitation draft reconstructed from the
+participant-checked archive. It uses the existing invitation creation/acceptance
+and financial owners. The existing parent-locked finale ACK records one immutable
+last-viewer shortcut recipient; this never limits repeated archive reuse.
+Jeremy selected existing editable fields and frozen rules, without new notes or
+gameplay-option editors. Incompatible current admission settings require explicit
+resolution; unknown defaults cannot silently replace historical rules or stakes.
+Release remains explicitly held. See [candidate and evidence](ASYNC_RUNBACK_LOCAL.md).
