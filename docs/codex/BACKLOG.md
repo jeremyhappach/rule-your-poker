@@ -1,12 +1,17 @@
-## Queued — Mega Card Golf competition release and owner smoke — 2026-11-03
+## Blocked — Mega Card Golf hosted qualification and guarded release — 2026-11-03
 
-Local implementation is isolated on `codex/mega-card-golf-multiplayer-async`;
-publication is explicitly held per Jeremy’s implementation request. Complete the
-hosted rollback/registration, matching worker/API/client verification and physical
-iPhone/Android multi-client smoke before either new admission flag is enabled.
-Provenance: Jeremy’s Mega multiplayer + async attachment and confirmed signed-score
-and match-level async settlement choices. See [scope and evidence](MEGA_CARD_GOLF_COMPETITION.md).
-Do not activate this item without release authorization; preserve intervening work.
+Jeremy authorized closed production deployment and sequential live then async
+activation after each hosted gate passes, with no additional approval between
+phases. Implementation `a606959d8` is pushed on its isolated branch. Production
+remains unchanged because the hosted proof gate is MISSING: existing Mega runners
+modify local-only health/recovery fixtures, and no exact-session qualification
+lane admits hosted setup/async acceptance while global flags stay closed.
+Prepare production-safe rollback qualification and scoped synthetic-session
+testing before resuming the authorized release. Do not open global admission to
+obtain evidence or use customer balances. Physical iPhone/Android audio, push and
+multi-client owner smoke remain pending. Provenance: Jeremy’s guarded release
+request and explicit two-phase continuation on November 3. See
+[scope, evidence and release blocker](MEGA_CARD_GOLF_COMPETITION.md).
 
 ## Pending smoke — 3-5-7 Hand Strength bot repeatedly stays — November 2, 2026
 

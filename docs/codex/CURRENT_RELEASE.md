@@ -1,12 +1,19 @@
-# Mega Card Golf multiplayer + async — 2026-11-03 — local, publication held
+# Mega Card Golf multiplayer + async — 2026-11-03 — hosted qualification blocked
 
-Isolated implementation on `codex/mega-card-golf-multiplayer-async` adds shared
-Arcade-rule live and async competition, course/hole configuration and saved-hole
-replay. Both production admission flags remain closed. No hosted migration, push
-or deployment was performed. Local rules, database financial/replay/recovery,
-concurrent settlement and browser evidence are recorded in
-[the implementation and release gate](MEGA_CARD_GOLF_COMPETITION.md).
-Hosted multi-client and physical-device acceptance remains pending.
+Jeremy authorized a guarded production release, followed by live activation/smoke
+and then async activation/smoke without another approval between successful phases.
+Implementation `a606959d8fa753830a63ba09edc80e06f6815a12` was pushed on
+`codex/mega-card-golf-multiplayer-async`. All 18 captured database owners match
+production; main and production remain at `df7684668`.
+
+Hosted financial/recovery qualification gate: **MISSING**. The committed proof
+runners are local-only, and Mega has no exact-session qualification grant for
+hosted setup/acceptance with global admission closed. Do not point local runners
+at production or substitute broad admission. Migration, worker publication,
+main integration and activation are held. Mega registration is absent on hosted
+Supabase; no Mega gameplay was activated. Existing sessions were not changed.
+See [release attempt and remaining proof](MEGA_CARD_GOLF_COMPETITION.md).
+Hosted multi-client and physical-device acceptance remain pending.
 
 # Async Match Lobby polish — 2026-11-03 — qualified, publication pending
 

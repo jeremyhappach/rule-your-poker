@@ -1,9 +1,10 @@
-# Mega Card Golf competition — local implementation, 2026-11-03
+# Mega Card Golf competition — implementation and guarded release, 2026-11-03
 
 Branch: `codex/mega-card-golf-multiplayer-async`, based on `df7684668`.
-The original checkout and its unrelated changes are preserved. Publication and
-hosted schema installation have not been performed. Both new admission flags
-default to false; this is not production activation or owner smoke acceptance.
+The original checkout and its unrelated changes are preserved. The implementation
+branch is pushed; production publication and hosted schema installation have not
+been performed. Both new admission flags default to false; this is not production
+activation or owner smoke acceptance.
 
 ## Confirmed product choices
 
@@ -94,8 +95,8 @@ Local screenshots and detailed outputs are in ignored
 
 ## Release and acceptance still required
 
-This work is ready for review as a closed local candidate, not authorized for
-production activation. Before release, compare current deployed owners to the
+The guarded release is authorized as recorded below. Before release, compare
+current deployed owners to the
 captured baseline, rerun the complete hosted rollback proof, register the closed
 migration, publish the matching client/API/recovery worker, and verify the exact
 deployment. Preserve all intervening releases. Enable either admission flag only
@@ -107,3 +108,47 @@ players; scorecard totals; pause during play and terminal presentation; reconnec
 saved replay, skip and repeated reopening; final results and Session Ended; and
 sound/mute plus notification suppression/deduplication on physical devices.
 Local Chromium emulation does not certify native iOS/Android audio or push delivery.
+
+## Guarded release attempt — November 3, 2026
+
+Jeremy authorized pushing the implementation, closed production registration and
+publication, hosted verification without customer balances or financial smoke
+transactions, then live activation/smoke followed by async activation/smoke.
+Each phase depends on successful verification; a failing mode must close new
+admission. No additional approval is required between successful phases.
+
+- Implementation `a606959d8fa753830a63ba09edc80e06f6815a12` is pushed to
+  `origin/codex/mega-card-golf-multiplayer-async`.
+- Main, origin/main and production agree at `df768466813291ffcc3c38dcde4f303c59a2115e`.
+  Production deployment `dpl_3pXWZtCZfDxYVeYYuH2cA2Cz3NGJ` is READY.
+- All 18 captured shared-function hashes match hosted definitions. The guarded
+  migration still defaults both admissions false and retains its drift guards.
+  Hosted `private.mega_competition_release` is absent. The read-only inventory
+  found zero nonterminal live sessions and one active async match; no session,
+  health record, account, balance or admission setting was changed.
+- The branch push triggered Vercel preview
+  `dpl_FMC9jJtwHD8vWv6zNqVi4FxMzGtD` for the exact implementation SHA. Its bounded
+  follow-up check still reported BUILDING; no successful hosted build is claimed.
+
+Hosted financial/recovery qualification gate: **MISSING**, not PASS. The local
+proofs remain valid local evidence, but are not production-safe hosted runners:
+`proof.mjs` reconstructs local prerequisites; `service-proof.mjs` rewrites captured
+definitions and health state, replaces `net.http_post`, and adjusts synthetic
+clocks/guards; `concurrency-proof.mjs` provisions a disposable local database.
+The SQL matrix also changes shared health configuration in its local transaction.
+None was executed against production.
+
+Unlike Golf's exact-session qualification grants, Mega's new setup admission and
+async invitation creation/acceptance require the global release booleans. There
+is no committed, scoped hosted qualification mechanism for those entry points.
+A seeded match alone would not verify their real hosted admission path. Opening
+global flags to obtain evidence would violate the requested rollout order.
+
+The complete hosted candidate rollback proof required above is therefore missing.
+Main integration, migration, recovery-worker publication and both activation
+phases are held. The next required work is a production-safe rollback proof and
+scoped synthetic-session qualification procedure that preserves live health,
+existing sessions and closed public admission. Do not reuse local-only runners
+against hosted Supabase or waive the gate. Hosted gameplay/replay/reconnect,
+actual recovery, notification deduplication and settlement checks remain
+unverified, as do physical iPhone/Android audio, touch/layout and push delivery.
