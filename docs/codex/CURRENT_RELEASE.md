@@ -1,10 +1,13 @@
-# Async Words View board link — 2026-11-03 — local, unreleased
+# Async Words View board link — 2026-11-03 — production release approved
 
 The opponent-turn card uses the existing teal, underlined link style without a
 separate button background. It stays left-aligned below the letters count with a
 44px tap height. The gold panel and navigation are unchanged. Four focused tests
 and browser checks at 320px, 390px and 1280px pass, including view-only entry,
 zoom/pan, frozen viewing and authoritative reentry. Physical-device smoke pending.
+Product commit: `78a54b2bc8fada0286753a0e8219e3ca6d987ab9`. Publication uses the
+approved main push helper; exact production verification is recorded on
+`release-async-words-link-polish-20261103-verified` after deployment.
 
 # Async Words opponent-turn inspection — 2026-11-03 — production release approved
 
