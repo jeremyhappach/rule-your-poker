@@ -44,7 +44,7 @@ it('does not let a late prior-board response replace the new course record',asyn
 it('preserves server order/tied ranks and requests both periods with exact board isolation',async()=>{
  const request=vi.fn(async()=>({rows:[row(-8,'B'),row(-8,'A')],self:null,personalBest:-8}));
  render(<MegaLeaderboard course="coastal-links" boardId="board-2" request={request as any}/>);
- await screen.findByText('B');expect([...document.querySelectorAll('tbody tr')].map(e=>e.textContent)).toEqual(['1B-8','1A-8']);
+ await screen.findByText('B');expect([...document.querySelectorAll('tbody tr')].map(e=>[...e.querySelectorAll('td')].map(cell=>cell.textContent))).toEqual([['1','B','—','-8'],['1','A','—','-8']]);
  fireEvent.click(screen.getByRole('button',{name:'All Time'}));
  await waitFor(()=>expect(request).toHaveBeenLastCalledWith({op:'leaderboard',courseId:'coastal-links',boardId:'board-2',window:'all'}));
  expect(request).toHaveBeenCalledWith({op:'leaderboard',courseId:'coastal-links',boardId:'board-2',window:'30'});

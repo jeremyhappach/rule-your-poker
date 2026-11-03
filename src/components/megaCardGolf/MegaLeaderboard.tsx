@@ -1,4 +1,5 @@
 import {formatGolfScore} from '@/lib/megaCardGolf/presentation';
+import {AchievementTime} from '@/components/arcade/AchievementTime';
 import {useEffect,useState} from 'react';
 import type {CourseId} from '@/lib/megaCardGolf/config';
 import type {MegaRequest,ScoreRow} from './CourseSelection';
@@ -9,7 +10,7 @@ export function MegaLeaderboard({course,boardId,request}:{course:CourseId;boardI
  return <section className="mega-leaderboard" aria-label="Course leaderboard"><div className="mega-leaderboard-heading"><h2>Top Ten</h2><span>Lowest score wins</span></div>
   <div className="mega-periods" role="group" aria-label="Leaderboard period">{(['30','all'] as const).map(value=><button key={value} aria-pressed={period===value} onClick={()=>setPeriod(value)}>{value==='30'?'Last 30 Days':'All Time'}</button>)}</div>
   {error&&<p role="alert">{error}</p>}{!board&&!error&&<p role="status">Loading leaderboard…</p>}
-  {board&&<>{board.rows.length?<table><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Score</th></tr></thead><tbody>{board.rows.slice(0,10).map(row=><tr key={row.runId}><td>{row.rank}</td><td>{row.name}</td><td>{formatGolfScore(row.score)}</td></tr>)}</tbody></table>:<p className="mega-empty">No completed courses in this period.</p>}
+  {board&&<>{board.rows.length?<table className="arcade-score-table"><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Achieved</th><th scope="col">Score</th></tr></thead><tbody>{board.rows.slice(0,10).map(row=><tr key={row.runId}><td>{row.rank}</td><td className="leaderboard-player" title={row.name}>{row.name}</td><td className="leaderboard-achieved"><AchievementTime completedAt={row.completedAt}/></td><td>{formatGolfScore(row.score)}</td></tr>)}</tbody></table>:<p className="mega-empty">No completed courses in this period.</p>}
    <p className="mega-personal">Personal best: <strong>{board.personalBest==null?'No completed course yet':formatGolfScore(board.personalBest)}</strong>{board.self&&!board.rows.slice(0,10).some(row=>row.runId===board.self!.runId)&&<span> · Your rank: {board.self.rank} · {formatGolfScore(board.self.score)}</span>}</p>
   </>}
  </section>;

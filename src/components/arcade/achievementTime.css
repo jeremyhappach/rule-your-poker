@@ -1,0 +1,12 @@
+/* Intrinsic rank/date/score columns leave the remaining space for the name.
+   Existing table colors, padding, line heights and right score edges stay intact. */
+.arcade-leaderboard .arcade-score-table,
+.mega-course-board .arcade-score-table{table-layout:auto}
+.arcade-leaderboard .arcade-score-table th:first-child,
+.arcade-leaderboard .arcade-score-table th:last-child,
+.mega-course-board .arcade-score-table th:first-child,
+.mega-course-board .arcade-score-table th:last-child{width:1%}
+.arcade-score-table th,.arcade-score-table td{white-space:nowrap}
+.arcade-score-table .leaderboard-player{max-width:0;overflow:hidden;text-overflow:ellipsis}
+.arcade-score-table .leaderboard-achieved{width:1%}
+.leaderboard-achieved time,.leaderboard-achieved>span{font-size:.72rem;font-weight:400;font-variant-numeric:tabular-nums}

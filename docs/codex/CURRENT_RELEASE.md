@@ -1,3 +1,23 @@
+# Arcade achievement timestamps — 2026-11-03 — production release approved
+
+Both leaderboard periods across all nine Arcade games now show the stored
+achievement instant between player and score as `MM/DD/YY h:mm AM/PM` in the
+viewer's local timezone. Mega Card Golf course archives use the same formatter.
+Missing, invalid or timezone-less legacy values show an accessible dash.
+Names truncate while timestamps and scores remain visible; existing row heights,
+colors, rank order and score right edges remain intact. No query, schema,
+qualification, 30-day filtering, scoring, gameplay or financial changes.
+
+App TypeScript, 27 focused tests, production bundle and 77 browser checks pass.
+The browser matrix covers every game/both periods at 320, 390, 844 and 1280px,
+three Golf courses and archives, 2024–2027 years, three viewer timezones,
+missing/invalid values, refresh stability, long names and eight-digit scores.
+Evidence: `dev/arcade-timestamps/`; local screenshots in
+`test-results/arcade-timestamps/`. Physical-device owner smoke remains pending:
+open both periods on phone and desktop and confirm dates, names and scores.
+Publication uses the approved main push helper; exact commit/deployment evidence
+is recorded on `release-arcade-achievement-times-20261103-verified` after release.
+
 # Async Words View board link — 2026-11-03 — production release approved
 
 The opponent-turn card uses the existing teal, underlined link style without a

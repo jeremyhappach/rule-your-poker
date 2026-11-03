@@ -1,4 +1,5 @@
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
+import {AchievementTime} from '@/components/arcade/AchievementTime';
 import {NotificationBell} from '@/components/delayed/NotificationBell';
 import {useQuintzeeTheme} from '@/hooks/useQuintzeeTheme';
 import {Switch} from '@/components/ui/switch';
@@ -83,7 +84,7 @@ export function GameBoard({game,userId}:{userId:string;game:'run21'|'tri-towers'
  {error&&<p role="alert">{error}</p>}
  <section id="arcade-ranking" role="tabpanel" aria-labelledby={'arcade-period-'+window} className="arcade-leaderboard"><h2>Top 10 verified scores</h2>
  {!board?<p role="status">Loading scores…</p>:board.rows.length===0?<p>No qualifying games yet. Set the first score.</p>:
- <table><thead><tr><th>Rank</th><th>Player</th><th>Score</th></tr></thead><tbody>{board.rows.map(({rank:position,...row})=><tr key={row.runId} data-self={row.userId===board.self?.userId}><td>{position}</td><td>{row.name}</td><td>{row.score.toLocaleString()}</td></tr>)}</tbody></table>}
+ <table className="arcade-score-table"><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Achieved</th><th scope="col">Score</th></tr></thead><tbody>{board.rows.map(({rank:position,...row})=><tr key={row.runId} data-self={row.userId===board.self?.userId}><td>{position}</td><td className="leaderboard-player" title={row.name}>{row.name}</td><td className="leaderboard-achieved"><AchievementTime completedAt={row.completedAt}/></td><td>{row.score.toLocaleString()}</td></tr>)}</tbody></table>}
  {board?.self&&!board.rows.some(row=>row.runId===board.self?.runId)&&<p className="arcade-your-rank">You · #{board.self.rank.toLocaleString()} · {board.self.score.toLocaleString()}</p>}
  </section>
  </main>;

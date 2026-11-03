@@ -1,0 +1,59 @@
+{
+  "checks": 77,
+  "layoutCases": 72,
+  "games": [
+    "run21",
+    "tri-towers",
+    "eleven-up",
+    "boxdrop",
+    "trip-flip",
+    "take-two",
+    "royal-flash",
+    "quintzee",
+    "mega-card-golf"
+  ],
+  "widths": [
+    320,
+    390,
+    844,
+    1280
+  ],
+  "periods": [
+    "30",
+    "all"
+  ],
+  "timezoneChecks": [
+    {
+      "timezoneId": "America/New_York",
+      "expected": "11/02/26 9:42 PM"
+    },
+    {
+      "timezoneId": "Asia/Tokyo",
+      "expected": "11/03/26 11:42 AM"
+    }
+  ],
+  "golfCourseArchives": [
+    {
+      "course": 0,
+      "archive": true
+    },
+    {
+      "course": 1,
+      "archive": true
+    },
+    {
+      "course": 2,
+      "archive": true
+    }
+  ],
+  "rowHeightPreserved": true,
+  "allDatesAndScoresFit": true,
+  "requests": 76,
+  "errors": [],
+  "environment": "Installed Edge; actual leaderboard components, local read-only API fixtures; no production writes; physical-device smoke pending",
+  "validation": [
+    "App TypeScript passed",
+    "27 focused tests passed",
+    "Production Vite bundle passed"
+  ]
+}

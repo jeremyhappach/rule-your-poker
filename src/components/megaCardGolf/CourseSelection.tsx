@@ -1,7 +1,7 @@
 import {formatGolfScore} from '@/lib/megaCardGolf/presentation';
 import {useEffect,useState,type CSSProperties} from 'react';
 import {COURSE_IDS,type CourseConfig,type CourseId} from '@/lib/megaCardGolf/config';
-export interface ScoreRow {runId:string;name:string;score:number;rank:number;configId?:string}
+export interface ScoreRow {runId:string;name:string;score:number;rank:number;configId?:string;completedAt?:string|null}
 export type MegaRequest = <T>(body:object)=>Promise<T>;
 export const courseTheme=(id:CourseId)=>'theme-'+COURSE_IDS.indexOf(id);
 export function courseArtwork(id:CourseId):CSSProperties {

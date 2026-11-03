@@ -1,3 +1,12 @@
+## Arcade achievement timestamp display
+
+`src/components/arcade/AchievementTime.tsx` and `achievementTime.css` render the
+existing `completedAt` instant and intrinsic leaderboard columns in `Arcade.tsx`,
+`MegaLeaderboard.tsx` and archived `CourseClubhouse.tsx` boards.
+`src/lib/arcade/achievementTime.ts` formats viewer-local calendar dates without
+inferring missing timestamps. `dev/arcade-timestamps/` verifies the display using
+local read-only fixtures; database ranking/filtering ownership is unchanged.
+
 ## Individual Async Match Lobby presentation
 
 `src/components/delayed/MatchInfo.tsx` and `matchLobby.css` own the compact metadata
