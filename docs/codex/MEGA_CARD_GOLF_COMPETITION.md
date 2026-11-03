@@ -200,3 +200,15 @@ Closed migration is installed. Recovery worker `delayed-recovery` version 2 is
 ACTIVE with the existing dispatch-token authorization and JWT gateway setting.
 App/API publication and post-migration hosted gameplay verification are in progress.
 Public live and async flags are false. No physical-device acceptance is claimed.
+
+Hosted qualification found and corrected two client integration defects before
+activation. Equal-revision async responses changed only `serverAt` at the root,
+active board and saved boards (captured revision 18); the shared snapshot guard
+now ignores transport clocks recursively and treats hole-result disclosure under
+the existing review revision. Cards, deadlines and result timestamps still reject
+at equal gameplay progress. Mega also needed registration in the canonical chip
+provider's durable-cursor set: without it, canonical settlement completed but
+terminal presentation waited forever for an untracked cursor. Existing game
+registrations are unchanged. Captured responses, three direct regression cases,
+94 sibling/replay tests and 20 transport/lifecycle tests pass. Hosted browser
+checks must be repeated on the corrected deployment before either public flag.

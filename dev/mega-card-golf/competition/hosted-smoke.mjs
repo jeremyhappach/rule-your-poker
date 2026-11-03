@@ -15,14 +15,19 @@ try{
   if(!g.matchId){const args={p_game_id:g.id,p_dealer_player_id:g.players[0].id,p_expected_dealer_position:4,p_game_type:'mega-card-golf',p_config:{ante_amount:5,mega:config(g.course,g.holes)},p_expected_config_deadline:f.deadline};
    const setup=await rpc(c,'mega_configure',args);g.matchId=setup.dealer_game.id;save(f);assert((await rpc(c,'mega_configure',args)).deduped);
    for(const p of g.players.slice(1))await rpc(a.byUser[p.user],'submit_ante_decision',{p_game_id:g.id,p_expected_dealer_game_id:g.matchId,p_player_id:p.id,p_decision:'ante_up'});
-   const update=await c.client.from('games').update({pending_session_end:true}).eq('id',g.id);assert(!update.error,update.error?.message);
   }
+  const identity=await c.client.from('games').select('current_game_uuid,timer_generation').eq('id',g.id).single();assert(!identity.error);
+  await rpc(c,'request_session_end',{p_game_id:g.id,p_expected_dealer_game_id:identity.data.current_game_uuid,p_expected_timer_generation:identity.data.timer_generation});
   let v=await api(c,'mega-golf',{op:'state',matchId:g.matchId}),first;
   await assert.rejects(()=>api(a.clients[3],'mega-golf',{op:'state',matchId:g.matchId}),/participant_required/);
   const read=await a.clients[3].client.from('games').select('id').eq('id',g.id);assert(!read.error);assert.equal(read.data.length,0);
   while(!v.settled){
    if(v.phase!=='playing'){await sleep(v.deadline-Date.now()+120);v=await api(c,'mega-golf',{op:'state',matchId:g.matchId});continue;}
    const actor=a.byUser[g.players.find(p=>p.id===v.actor).user];
+   if(['closed','live-only'].includes(phase)&&g.course===1&&g.holes===3&&v.results.length===g.holes*g.players.length-1){
+    v=await action(actor,'mega-golf',v,{type:'open',indices:[0]});v=await action(actor,'mega-golf',v,{type:'open',indices:[1]});
+    g.recoveryPending={deadline:v.deadline};save(f);record('zero-client final-hole fixture armed; no further client calls for this match');return;
+   }
    for(const intent of [{type:'open',indices:[0]},{type:'open',indices:[1]},{type:'stand-pat'}])v=await action(actor,'mega-golf',v,intent);
    first??=v.results.length;
   }
@@ -43,20 +48,21 @@ try{
   await Promise.all(children.map(async child=>{
    let v=await api(a.clients[0],'delayed',{op:'state',childId:child.id}),played=0;
    while(!v.terminal){const actor=a.byUser[v.actor],reviews=await rpc(actor,'delayed_reviews',{p_child:child.id});
-    for(const event of reviews.events.filter(x=>x.kind==='attempt'&&!x.seen)){await rpc(actor,'delayed_review_begin',{p_event:event.id});await rpc(actor,'delayed_review_ack',{p_event:event.id});await rpc(actor,'delayed_review_ack',{p_event:event.id});}
+    if(!prepare)for(const event of reviews.events.filter(x=>x.kind==='attempt'&&!x.seen)){await rpc(actor,'delayed_review_begin',{p_event:event.id});await rpc(actor,'delayed_review_ack',{p_event:event.id});await rpc(actor,'delayed_review_ack',{p_event:event.id});}
     v=await api(actor,'delayed',{op:'state',childId:child.id});
     if(!v.board)v=await action(actor,'delayed',v,{type:'start'});
     for(const intent of [{type:'open',indices:[0]},{type:'open',indices:[1]},{type:'stand-pat'}])v=await action(actor,'delayed',v,intent);
     played++;
-    if(prepare){f.replay={match:item.id,child:child.id,viewer:v.actor};save(f);record('hosted invitation, acceptance and first saved opponent hole');return;}
+    if(prepare&&played===4){f.replay={match:item.id,child:child.id,viewer:v.actor};save(f);record('hosted invitation, acceptance and multiple unviewed opponent holes');return;}
    }
    record('async '+item.course+'/'+child.config.course.holes+' holes: turn/review ACK and duplicate actions');
   }));
   if(!prepare){home=await rpc(a.clients[0],'delayed_home',{p_match:item.id});assert(home.lineup.every(c=>c.terminal));assert.equal(home.status,'settled');item.completed=true;save(f);e.async.push({match:item.id,children:home.lineup.length,net:home.net,receipt:!!home.receipt});}
  }
- if(phase==='replay')await invitation(f.async[0],true);
+ if(phase==='replay')await invitation(f.async.find(x=>x.phase==='browser')??f.async[0],true);
  else {
-  await Promise.all([...f.live.filter(g=>g.phase===phase&&!g.completed).map(live),...f.async.filter(i=>i.phase===phase&&!i.completed).map(i=>invitation(i))]);
+  const results=await Promise.allSettled([...f.live.filter(g=>g.phase===(phase==='live-only'?'closed':phase)&&!g.completed).map(g=>live(g).catch(error=>{console.error('FAIL live '+g.id+': '+error.message);throw error;})),...f.async.filter(i=>i.phase===phase&&!i.completed).map(i=>invitation(i))]);
+  const failures=results.filter(x=>x.status==='rejected').map(x=>x.reason.message);assert.deepEqual(failures,[]);
  }
  e.passed=true;
 }catch(error){e.error=error.message;console.error(error.stack);process.exitCode=1;}
