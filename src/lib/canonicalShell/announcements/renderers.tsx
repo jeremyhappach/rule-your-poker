@@ -127,6 +127,8 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
         />
       );
     }
+    case 'host_changed':
+      return <LifecycleAnnouncement title={`${typeof p.hostName === 'string' ? p.hostName : 'Player'} is now host`} />;
     case 'dealer_selected': {
       const x = p as DealerSelectedPayload;
       return (

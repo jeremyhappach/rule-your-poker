@@ -24,6 +24,7 @@ export type AnnouncementType =
   | 'round_win'
   | 'chip_award'
   | 'dealer_selected'
+  | 'host_changed'
   | 'peg_notice'
   | 'gameplay_notice'
   | 'dealing_next_hand'
@@ -123,6 +124,7 @@ export type AnnouncementRetireReason =
 export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   match_win: 100,
   dealer_selected: 90,
+  host_changed: 45,
   round_win: 80,
   chip_award: 60,
   peg_notice: 55,
@@ -146,6 +148,7 @@ export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = 
   round_win: 'enqueue',
   chip_award: 'enqueue',
   dealer_selected: 'enqueue',
+  host_changed: 'enqueue',
   peg_notice: 'enqueue',
   gameplay_notice: 'enqueue',
   dealing_next_hand: 'enqueue',
@@ -167,6 +170,7 @@ export const DEFAULT_TTL_MS: Partial<Record<AnnouncementType, number>> = {
   round_win: 3000,
   chip_award: 2200,
   dealer_selected: 2500,
+  host_changed: 2500,
   peg_notice: 1500,
   gameplay_notice: 1500,
   dealing_next_hand: 1500,

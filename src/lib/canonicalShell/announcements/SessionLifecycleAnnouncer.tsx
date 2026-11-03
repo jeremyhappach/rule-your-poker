@@ -44,6 +44,7 @@
 import { useEffect, useRef } from 'react';
 import { useAnnouncements, useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { getBotAlias } from '@/lib/botAlias';
+import { observeHost, type HostCursor } from './hostSuccession';
 
 interface Player {
   id: string;
@@ -75,6 +76,7 @@ export interface SessionLifecycleAnnouncerProps {
   sessionHostUserId: string | null | undefined;
   /** Presentation-only host label resolved from the authoritative player row. */
   sessionHostName: string | null | undefined;
+  sessionHostVersion?: number;
   /** `(game as any).config_complete` — dealer-config-complete latch. */
   configComplete: boolean | null | undefined;
   /** Viewer is the current dealer for the dealer-config phase. */
@@ -104,6 +106,7 @@ export function SessionLifecycleAnnouncer({
   isPaused,
   sessionHostUserId,
   sessionHostName,
+  sessionHostVersion,
   configComplete,
   isViewerDealer,
   allowBotDealers,
@@ -116,6 +119,26 @@ export function SessionLifecycleAnnouncer({
   const ctx = useAnnouncementContext();
   const lastAmbientIdRef = useRef<string | null>(null);
   const lastDealerSelectedTransientRef = useRef<string | null>(null);
+  const hostCursor = useRef<HostCursor | null>(null);
+
+  useEffect(() => {
+    if (!gameId || sessionHostVersion == null) return;
+    const host = players.find(p => p.user_id === sessionHostUserId && !p.is_bot);
+    // Defer during gameplay/terminal presentation. Multiple departures collapse
+    // to the latest committed host before the next passive table phase.
+    const safe = isPaused || ['waiting', 'waiting_for_players', 'game_selection', 'configuring', 'ante_decision'].includes(gameStatus ?? '');
+    const observed = observeHost(hostCursor.current, gameId, sessionHostVersion, host?.user_id, safe);
+    hostCursor.current = observed.cursor;
+    if (!observed.announce) return;
+    const transientScope = `${gameId}:session-host`;
+    announcements.retireTransientScope(transientScope);
+    announcements.emit({
+      id: `${gameId}:session-host:${sessionHostVersion}`,
+      type: 'host_changed', scope: { dealerGameId: gameId },
+      payload: { hostName: host?.profiles?.username || 'Player' },
+      transientScope,
+    });
+  }, [gameId, sessionHostVersion, sessionHostUserId, gameStatus, isPaused, players, announcements]);
 
   // Cribbage owns its own passive lifecycle rail (see CribbageMobileGameTable).
   // Hard-skip to prevent double-emission / ownership ambiguity.

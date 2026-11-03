@@ -132,11 +132,7 @@ export function useWaitingRoomActions({
   const isObserver = !currentPlayer;
 
   const humanPlayers = players.filter((p) => !p.is_bot && p.position != null && p.status !== 'left' && p.status !== 'observer');
-  const sortedByJoinTime = [...humanPlayers].sort((a, b) => {
-    if (!a.created_at || !b.created_at) return 0;
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-  });
-  const hostPlayer = humanPlayers.find(p => p.user_id === currentHost) ?? sortedByJoinTime[0];
+  const hostPlayer = humanPlayers.find(p => p.user_id === currentHost);
   const isHost = !!currentPlayer && hostPlayer?.user_id === currentUserId;
 
   // Physical seating and next-game eligibility are deliberately separate.

@@ -1,3 +1,19 @@
+# Host succession and inactivity — 2026-11-03 — production release authorized
+
+Jeremy authorized direct production release without staging or preview. The
+isolated release candidate combines the host implementation and readiness proofs
+with freshly fetched main `46a7b1f6e`, preserving its pause/resume, sound and 357
+changes. Only the release-note header conflicted; the existing records below are
+preserved. Activity-aware recovery remains excluded.
+
+The unapplied host migration is resequenced to `20261103143632` after the installed
+357 migration. Production's initial read-only check found zero nonterminal
+sessions; the same exact predicate is checked again before installation and under
+the migration's table locks. No live game is closed or financially changed to
+satisfy it. Local and deployed receipts will be recorded at the release checkpoint.
+Earlier staging requirements in the historical readiness note are superseded by
+this explicit release authorization. Hosted multi-client/device smoke is pending.
+
 # Focused pause/resume — 2026-11-03 — release approved
 
 Jeremy approved publishing candidate 2c661c537. It is integrated with current

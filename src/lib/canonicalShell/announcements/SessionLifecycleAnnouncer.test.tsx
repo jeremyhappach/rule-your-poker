@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const announcementMocks = vi.hoisted(() => ({
   emit: vi.fn(),
   clearAmbient: vi.fn(),
+  retireTransientScope: vi.fn(),
   ambient: null as { id: string; type: string } | null,
 }));
 
@@ -12,12 +13,33 @@ vi.mock('./CanonicalAnnouncementProvider', () => ({
   useAnnouncements: () => ({
     emit: announcementMocks.emit,
     clearAmbient: announcementMocks.clearAmbient,
+    retireTransientScope: announcementMocks.retireTransientScope,
   }),
   useAnnouncementContext: () => ({ ambient: announcementMocks.ambient }),
 }));
 
 import { SessionLifecycleAnnouncer } from './SessionLifecycleAnnouncer';
 import { DEFAULT_BEHAVIOR } from './types';
+
+it('two mounted clients defer host changes until the safe phase and announce each version once', () => {
+  announcementMocks.emit.mockReset();
+  const props = { gameId: 'multi', gameType: 'holm', isPaused: false, sessionHostName: 'Taylor',
+    configComplete: true, isViewerDealer: false, allowBotDealers: false, dealerPlayer: null,
+    players: [{ id: 'a', user_id: 'a', position: 1, profiles: { username: 'Alex' } },
+      { id: 'b', user_id: 'b', position: 2, profiles: { username: 'Taylor' } }],
+    dealerSelectionCards: [], dealerSelectionWinnerPosition: null };
+  const clients = [0, 1].map(() => render(<SessionLifecycleAnnouncer {...props} gameStatus="in_progress" sessionHostUserId="a" sessionHostVersion={0} />));
+  for (const client of clients) client.rerender(<SessionLifecycleAnnouncer {...props} gameStatus="in_progress" sessionHostUserId="b" sessionHostVersion={1} />);
+  expect(announcementMocks.emit.mock.calls.filter(([e]) => e.type === 'host_changed')).toHaveLength(0);
+  for (const client of clients) {
+    client.rerender(<SessionLifecycleAnnouncer {...props} gameStatus="waiting" sessionHostUserId="b" sessionHostVersion={1} />);
+    client.rerender(<SessionLifecycleAnnouncer {...props} gameStatus="waiting" sessionHostUserId="b" sessionHostVersion={1} />);
+  }
+  const events = announcementMocks.emit.mock.calls.filter(([e]) => e.type === 'host_changed');
+  expect(events).toHaveLength(2);
+  expect(events[0][0]).toMatchObject({ id: 'multi:session-host:1', payload: { hostName: 'Taylor' } });
+  clients.forEach(client => client.unmount());
+});
 
 const players = [{
   id: 'player-host',
