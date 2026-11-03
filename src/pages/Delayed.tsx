@@ -32,12 +32,12 @@ export default function Delayed(){
  return <main className="delayed-page delayed-match-page"><header><Link to="/">Lobby</Link><h1>Async Matches</h1><GameplaySoundButton/><NotificationBell/></header>
   {matchId==='new'?<AsyncInvite key={user.id+':'+(query.get('runback')??'new')+':'+(query.get('draft')??'')} userId={user.id}/>:matchId?<MatchHome key={user.id+':'+matchId+':'+query.has('history')} id={matchId} userId={user.id}/>:<MatchList userId={user.id}/>}</main>;
 }
-function useUpdates(userId:string,refresh:()=>void){
- useEffect(()=>{const channel=supabase.channel('delayed-home:'+userId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>{refresh();})
+function useUpdates(userId:string,refresh:()=>void,enabled=true){
+ useEffect(()=>{if(!enabled)return;const channel=supabase.channel('delayed-home:'+userId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>{refresh();})
   .subscribe(status=>{if(status==='SUBSCRIBED')refresh();});const focus=()=>{if(!document.hidden)refresh();};
   window.addEventListener('online',focus);document.addEventListener('visibilitychange',focus);
   return()=>{void supabase.removeChannel(channel);window.removeEventListener('online',focus);document.removeEventListener('visibilitychange',focus);};
- },[userId,refresh]);
+ },[userId,refresh,enabled]);
 }
 function MatchList({userId}:{userId:string}){
  const [rows,setRows]=useState<Home[]>([]),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);
@@ -98,7 +98,8 @@ function MatchHome({id,userId}:{id:string;userId:string}){
      home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
-      {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}</div>:<p>Waiting for acceptance</p>}</>}
+      {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}
+      {!ours&&c.game==='ptown-words'&&!home.held&&<Link className="delayed-secondary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
    </li>;})}</ul>
   {!historical&&home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
    <p>The first player in each game is selected randomly.</p>
@@ -124,8 +125,9 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const [home,setHome]=useState<Home|null>(null),[error,setError]=useState('');const navigate=useNavigate();
  const epoch=useRef(0);
  const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home>('delayed_home',{p_match:matchId}).then(v=>{if(generation!==epoch.current)return;if(v.removedAt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(old=>old&&old.revision>v.revision?old:v);}).catch(e=>{if(generation===epoch.current)setError(e.message);});},[matchId,navigate]);
- useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
+ useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);
  const child=home?.lineup.find(c=>c.id===childId);
+ useUpdates(userId,refresh,child?.game!=='ptown-words');
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
- return child.game==='ptown-words'?<WordsTurn childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
+ return child.game==='ptown-words'?<WordsTurn key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

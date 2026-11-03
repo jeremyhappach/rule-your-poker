@@ -115,6 +115,12 @@ Saved async round score context: `src/lib/delayed/reviewPresentation.ts` project
 
 ## Combined async
 
+- `WordsTurn.tsx` admits Words from a fresh `delayed_words_inspect` read and mounts
+  either passive inspection or existing active gameplay. The local unreleased
+  RPC candidate is `supabase/delayed/words-inspect.sql`; proof and browser runners
+  are `dev/async-words/inspect-proof.mjs` and `inspect-browser.mjs`. See
+  `ASYNC_WORDS_INSPECTION.md` for the release hold.
+
 - `src/components/delayed/AsyncTurnEntry.tsx`: presentation-only entry continuity across App lazy loading, async release checking and auth/home loading; match/child-keyed hints come from `src/lib/delayed/notifications.ts`.
 - `src/components/delayed/NotificationBell.tsx`: persistent notification presentation and participant-checked inviter-name resolution through existing match projections.
 - `dev/async-combined/entry-app-browser.mjs`: full compiled App entry qualification with loopback-only synthetic transport; see `ASYNC_ENTRY_CONTINUITY_LOCAL.md`.

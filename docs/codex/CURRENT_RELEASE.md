@@ -1,3 +1,14 @@
+# Async Words opponent-turn inspection — 2026-11-03 — local, unreleased
+
+Opponent-owned Words offers View board with a compact view-only banner, committed
+board, own rack, scores and existing zoom/pan. A separate read-only entry RPC
+avoids expiry and command replay; the view stays fixed until exit/reentry. Normal
+turn play and existing lobby refresh remain authoritative. No production changes.
+278 focused regressions, app typecheck, bundle, local rollback SQL and five browser
+viewports pass. The SQL candidate must be registered/installed before any future
+client release; physical-device and hosted smoke remain pending. See
+[scope, proof and release hold](ASYNC_WORDS_INSPECTION.md).
+
 # Mega Card Golf multiplayer + async — 2026-11-03 — production enabled
 
 Both public admission flags are **true**, after closed hosted qualification,

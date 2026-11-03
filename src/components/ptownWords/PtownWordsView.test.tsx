@@ -11,6 +11,18 @@ const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,ser
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
 beforeEach(()=>{localStorage.clear();vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});intent.mockReset();intent.mockResolvedValue(true);});afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 function tap(cell:Element){fireEvent.click(cell,{detail:1,clientX:100,clientY:100});}
+it('view-only immediately retires a staged blank/dialog and permits navigation even with a stale actionable snapshot',()=>{
+ const {container,rerender}=render(<PtownWordsView {...props} asyncDraftUserId="u1"/>);
+ fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);
+ fireEvent.click(screen.getByRole('button',{name:'Blank, 0 points'}));fireEvent.click(container.querySelector('[data-square="113"]')!);
+ expect(screen.getByRole('dialog')).toBeTruthy();
+ rerender(<PtownWordsView {...props} asyncDraftUserId="u1" readOnly/>);
+ expect(screen.queryByRole('dialog')).toBeNull();expect(container.querySelectorAll('.is-staged')).toHaveLength(0);
+ expect(screen.getByText("Opponent's Turn — View Only")).toBeTruthy();
+ fireEvent.click(container.querySelector('[data-square="113"]')!);expect(container.querySelector('.words-scroll')?.getAttribute('data-zoom')).toBe('1');
+ expect((screen.getByRole('button',{name:'Pass'}) as HTMLButtonElement).disabled).toBe(true);expect(intent).not.toHaveBeenCalled();
+ rerender(<PtownWordsView {...props} asyncDraftUserId="u1"/>);expect(screen.queryByText("Opponent's Turn — View Only")).toBeNull();
+});
 it.each([false,true])('sounds only new visible tile staging in live/Async mode (%s)',asyncMode=>{
  placementSound.mockClear();
  const ui=render(<PtownWordsView {...props} asyncDraftUserId={asyncMode?'u1':undefined}/>);

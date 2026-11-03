@@ -65,7 +65,7 @@ it('Run21 presence begins at startedAt before any placement, then stops at hando
 });
 it('Words presence is active before submission and stops when authority hands off',async()=>{
  mock.snapshot=words();mount(true);await flush();expect(presence.publish.mock.lastCall?.[0]).toBe('delayed-playing:match:child:me:129600000');
- expect(mock.words.mock.calls.every(([name])=>name==='delayed_words_snapshot')).toBe(true);
+ expect(mock.words.mock.calls.every(([name])=>['delayed_words_inspect','delayed_words_snapshot'].includes(name))).toBe(true);
  await receive(wordFinish());expect(presence.publish.mock.lastCall?.[0]).toBeNull();
 });
 describe('actual async shell sibling audit',()=>{
@@ -119,15 +119,15 @@ describe('actual async shell sibling audit',()=>{
  it('Words: own word receipt counts then returns through actual async shell',async()=>{
   mock.snapshot=words();const ui=mount(true);await flush();expect(ui.container.querySelector('[data-fullscreen-game-shell]')).toBeTruthy();
   await receive(wordFinish());expect(ui.queryByText('Match destination')).toBeNull();await tick(7000);expect(ui.queryByText('Match destination')).toBeNull();await tick(3000);expect(ui.getByText('Match destination')).toBeTruthy();
-  expect(mock.words.mock.calls.every(([name])=>name==='delayed_words_snapshot')).toBe(true);
+  expect(mock.words.mock.calls.every(([name])=>['delayed_words_inspect','delayed_words_snapshot'].includes(name))).toBe(true);
  });
  it('Words: duplicate and late receipt return without an action replay',async()=>{
   mock.snapshot=words();const ui=mount(true);await flush();await receive(wordFinish());await receive({...wordFinish(),serverAt:20000});await tick(100);expect(ui.queryByText('Match destination')).toBeNull();await tick(3000);
-  expect(ui.getByText('Match destination')).toBeTruthy();expect(mock.words.mock.calls.every(([name])=>name==='delayed_words_snapshot')).toBe(true);
+  expect(ui.getByText('Match destination')).toBeTruthy();expect(mock.words.mock.calls.every(([name])=>['delayed_words_inspect','delayed_words_snapshot'].includes(name))).toBe(true);
  });
  it('Words: fresh terminal and timeout-forfeit reentry returns',async()=>{
   mock.snapshot={...wordFinish(),finished:true,phase:'complete',outcome:{reason:'timeout_forfeit',winner:'other',delta:-5}};
-  const ui=mount(true);await flush();expect(ui.getByText('Match destination')).toBeTruthy();expect(mock.words.mock.calls.every(([name])=>name==='delayed_words_snapshot')).toBe(true);
+  const ui=mount(true);await flush();expect(ui.getByText('Match destination')).toBeTruthy();expect(mock.words.mock.calls.every(([name])=>['delayed_words_inspect','delayed_words_snapshot'].includes(name))).toBe(true);
  });
  it('Words: submitted winning word retains its count-up before final child return',async()=>{
   mock.snapshot=words();const ui=mount(true);await flush();

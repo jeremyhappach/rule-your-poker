@@ -55,3 +55,7 @@
 /* Medium lies halfway between fitted cells and the existing 48px close view. */
 .is-overview .words-grid{width:min(100cqw,100cqh,736px);height:min(100cqw,100cqh,736px)}
 .words-scroll[data-zoom="1"] .words-grid{--words-focus-cell:calc((min(100cqw,100cqh,736px) - 16px)/30 + 24px)}
+
+/* Passive Async inspection keeps private letters legible and navigation free. */
+.words-view-only{flex-shrink:0;border:1px solid #62768a;border-radius:5px;background:#29394b;color:#f6da76;padding:.2rem .5rem;font-size:.75rem;text-align:center}
+.words-rack[data-view-only=true] button{opacity:1;filter:none}
