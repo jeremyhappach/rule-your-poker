@@ -350,7 +350,7 @@ contradictions.
 | Setup/config | `src/components/DealerGameSetup.tsx`: opening ante, rollover, leg value, legs to win, optional Pussy Tax/value, optional pot cap/value, and reveal-at-showdown. |
 | State/actions | Client adapters in `src/lib/gameLogic.ts` submit exact identity and intent to the `three_five_seven_*` RPCs; hand ranking is server-owned with matching presentation helpers in `src/lib/cardUtils.ts:evaluateHand`. |
 | Atomic seam | `supabase/migrations/20260816213000_three_five_seven_authority_cutover.sql` owns bootstrap, decision/resolution, continuation, settlement, postgame, and recovery. `20260817131736_fix_357_leg_reserve_and_setup_decline.sql` owns leg-reserve accounting and setup-owner decline. |
-| Bots | `src/lib/botPlayer.ts:makeBotDecisions` and `src/lib/botHandStrength.ts:getBotFoldProbability`; scheduling in `src/pages/Game.tsx`. |
+| Bots | `private.three_five_seven_recover_game` owns decisions and calls `private.three_five_seven_bot_fold_probability` with exact-round private cards and profile aggression; migration `20261103000630_three_five_seven_bot_hand_strength.sql`. The old browser policy is a parity reference only. |
 | State acceptance | `src/lib/gameStateSync/threeFiveSevenProgress.ts:getThreeFiveSevenProgress`. |
 | Terminal | `public.three_five_seven_settle_game` owns exact terminal settlement for normal leg wins and instant sweeps; presentation owner `src/components/ThreeFiveSevenTerminalController.tsx`. |
 | Presentation | `src/components/MobileGameTable.tsx`, `src/components/ThreeFiveSevenDealOrchestrator.tsx`, `src/components/ThreeFiveSevenAnchoredSlot.tsx`, and `src/components/ThreeFiveSevenProofCardsAnimation.tsx`. |
@@ -401,8 +401,11 @@ contradictions.
   together. When disabled, that transfer and announcement remain immediate and
   no reveal dwell runs. An identity-guarded `show-cards` broadcast is
   presentation only.
-- Bots use the same Stay/Fold action with hand-strength/aggression probability
-  and staggered connected-client scheduling.
+- Server recovery locks each eligible bot's Stay/Fold decision once. Hand
+  Strength uses the canonical hand scorer and the established per-round
+  aggression probabilities; fixed fold percentage applies only when disabled.
+  Missing or invalid exact-round cards leave the bot undecided for the existing
+  recovery/deadline path. Connected clients do not write 357 bot decisions.
 
 ### Contradictions and risk
 

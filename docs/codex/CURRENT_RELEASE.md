@@ -1,3 +1,35 @@
+# 357 bot Hand Strength — 2026-11-02 — qualified, release approved
+
+Jeremy approved the diagnosed correction. Production's server recovery owner
+ignored Hand Strength and used the hidden fixed 0% fold setting, guaranteeing
+Stay. Migration `20261103000630_three_five_seven_bot_hand_strength.sql` is
+installed on `xvhmbuppghwmwpwrkzao`. Its private probability helper restores
+the established round/wild-card/aggression policy using the canonical scorer
+and each eligible bot's own exact-round cards. Fixed percentages apply only
+when Hand Strength is off. Existing locked decisions and historical sessions
+are preserved; missing or invalid cards cannot invent a bot decision.
+
+The focused rollback proof passes 100 independent legacy-policy fixtures,
+fixed 0%/100%, missing cards, pause/seat eligibility, human isolation, private
+access and replay. The complete 357 authority/financial/continuation rollback
+proof passed before installation and again against the installed functions.
+Two independent database sessions (1134859/1134861) exercised concurrent
+recovery: the second waited 2465 ms and exactly one bot action persisted, with
+the human untouched and all 200 fixture chips preserved. Both temporary auth
+users/profiles and the game/players/rounds were removed and absence verified.
+Installed recovery definition MD5: `4c45cfbc7e4afdab3fefae46534ec391`.
+
+Validation passes typechecking, 3,635 application tests, 241 harness tests and
+the production build. Focused proof:
+`supabase/tests/three_five_seven_bot_hand_strength_rollback_proof.sql`;
+parity fixtures are generated from the retired browser policy by
+`supabase/tests/three_five_seven_bot_policy_cases.mjs`.
+Checkpoint: `release-357-bot-hand-strength-20261102`; its matching
+`-verified` tag records the exact-SHA deployment and public verification.
+Jeremy's production smoke remains pending: play fresh decisions in Hand
+Strength mode and confirm weak hands can drop while strong hands favor Stay.
+Normal randomness still permits individual weak hands to stay.
+
 # Holm heartbeat independent clock — 2026-11-02 — qualified, release approved
 
 Jeremy approved the correction after the failed production smoke below. The

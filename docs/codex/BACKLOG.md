@@ -1,4 +1,4 @@
-## Diagnosed — 3-5-7 Hand Strength bot repeatedly stays — November 2, 2026
+## Pending smoke — 3-5-7 Hand Strength bot repeatedly stays — November 2, 2026
 
 Jeremy reported during production smoke after Sound Pass 2 publication that a
 3-5-7 bot configured as Hand Strength stayed approximately 20 times in a row.
@@ -9,11 +9,11 @@ The initial report was an owner observation; the read-only diagnosis below
 confirms the policy defect without attributing it to the sound release.
 Preserve historical sessions. Investigation
 was queued behind the Holm heartbeat smoke correction, then activated by Jeremy's
-explicit request to diagnose it. No bot code or production state has changed.
+explicit request to diagnose it. Jeremy subsequently approved the correction.
 Provenance: Jeremy's two-item smoke report
 in this chat on 2026-11-02; published sound checkpoint `07081b3cf`.
 
-Read-only production evidence from `xvhmbuppghwmwpwrkzao`: the `3-5-7` defaults
+Read-only evidence before correction from `xvhmbuppghwmwpwrkzao`: the `3-5-7` defaults
 have `bot_use_hand_strength=true`, `bot_fold_probability=0`, and decision delay
 0.1 seconds. The actual deployed owner, `private.three_five_seven_recover_game`,
 ignores the hand-strength flag, cards and aggression. It locks every eligible
@@ -33,7 +33,7 @@ The scheduled entry `private.advance_due_three_five_seven_state` converges on
 the same recovery owner. The other generic fold-probability match belongs to
 Holm's deadline fallback, not a second 357 decision writer.
 
-Recommended correction, awaiting approval: implement the existing per-round
+Approved and installed correction: restore the existing per-round
 hand-strength/aggression policy in the server-owned 357 decision path, using
 only each bot's own cards for the exact locked round and the authoritative
 `private.three_five_seven_score_hand` evaluator. When Hand Strength is disabled,
@@ -42,7 +42,16 @@ private card/decision disclosure, secure randomness, exact game/dealer-game/
 hand/round identity, pause and seat eligibility, already-locked decisions,
 canonical settlement and zero-client recovery. No historical repairs.
 
-Approval scope should include the focused database migration and server proofs:
+Migration `20261103000630_three_five_seven_bot_hand_strength.sql` is installed.
+The focused proof passes 100 legacy-policy cases plus integration guards; the
+full authority/financial/continuation proof passes before and after installation.
+Concurrent sessions prove one action with a 2465 ms lock wait; all synthetic
+rows, auth users and profiles were removed. Typechecking, 3,876 existing tests
+and the production build pass. Release checkpoint:
+`release-357-bot-hand-strength-20261102`; exact publication is recorded by
+its matching `-verified` tag. Historical sessions were not repaired.
+
+Approved scope includes the focused database migration and server proofs:
 weak/strong hands in all three rounds, wild ranks, aggression, fixed mode,
 duplicate/replay/concurrent recovery, missing or stale cards, authorization and
 unchanged settlement. Production acceptance: with Hand Strength enabled, a

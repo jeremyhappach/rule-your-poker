@@ -1047,10 +1047,12 @@ reconciliation.
   `src/lib/cardUtils.ts:evaluateHand`; seam helpers in
   `src/lib/threeFiveSeven/advanceRound.ts`. These client functions now submit
   intent and exact identity to the server-authority RPCs.
-- Bots: `botPlayer.ts:makeBotDecisions` with
-  `botHandStrength.ts:getBotFoldProbability`; the browser submits human intent,
-  while `three_five_seven_recover_game` owns disconnected/bot expiry and
-  progression.
+- Bots: `private.three_five_seven_recover_game` owns decisions, expiry and
+  progression. Its private `three_five_seven_bot_fold_probability` helper uses
+  exact-round private cards, the canonical scorer and profile aggression
+  (migration `20261103000630_three_five_seven_bot_hand_strength.sql`).
+  `botPlayer.ts` exits for 357; `botHandStrength.ts` is only the policy parity
+  reference. The browser submits human intent through the authority RPCs.
 - Authority: `supabase/migrations/20260816213000_three_five_seven_authority_cutover.sql`
   guards public gameplay rows and adds atomic `three_five_seven_begin_game`,
   exact decision/expiry, resolution/continuation, settlement/reveal, durable
