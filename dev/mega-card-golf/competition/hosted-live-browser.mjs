@@ -2,7 +2,7 @@ import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {writeFileSync as write} from 'node:fs';
 import {login,origin,dir} from './hosted-support.mjs';
-const a=await login(),g=a.f.live[0],e={passed:false,checks:[],errors:[]};let browser;const pages=[];
+const a=await login(),g=a.f.live[Number(process.argv[2]??0)],e={passed:false,checks:[],errors:[]};let browser;const pages=[];
 try{
  browser=await chromium.launch({channel:'chrome',headless:true});
  for(const [i,c] of a.clients.slice(0,2).entries()){

@@ -53,13 +53,13 @@ try{
     if(!v.board)v=await action(actor,'delayed',v,{type:'start'});
     for(const intent of [{type:'open',indices:[0]},{type:'open',indices:[1]},{type:'stand-pat'}])v=await action(actor,'delayed',v,intent);
     played++;
-    if(prepare&&played===4){f.replay={match:item.id,child:child.id,viewer:v.actor};save(f);record('hosted invitation, acceptance and multiple unviewed opponent holes');return;}
+    if(prepare&&played===4){f.replay={match:item.id,child:child.id,viewer:v.actor};save(f);write(dir+'hosted-browser-fixture.json',JSON.stringify(f.replay));record('hosted invitation, acceptance and multiple unviewed opponent holes');return;}
    }
    record('async '+item.course+'/'+child.config.course.holes+' holes: turn/review ACK and duplicate actions');
   }));
   if(!prepare){home=await rpc(a.clients[0],'delayed_home',{p_match:item.id});assert(home.lineup.every(c=>c.terminal));assert.equal(home.status,'settled');item.completed=true;save(f);e.async.push({match:item.id,children:home.lineup.length,net:home.net,receipt:!!home.receipt});}
  }
- if(phase==='replay')await invitation(f.async.find(x=>x.phase==='browser')??f.async[0],true);
+ if(phase==='replay'||phase==='B-replay')await invitation(phase==='B-replay'?f.async.find(x=>x.phase==='B'):f.async.find(x=>x.phase==='browser')??f.async[0],true);
  else {
   const results=await Promise.allSettled([...f.live.filter(g=>g.phase===(phase==='live-only'?'closed':phase)&&!g.completed).map(g=>live(g).catch(error=>{console.error('FAIL live '+g.id+': '+error.message);throw error;})),...f.async.filter(i=>i.phase===phase&&!i.completed).map(i=>invitation(i))]);
   const failures=results.filter(x=>x.status==='rejected').map(x=>x.reason.message);assert.deepEqual(failures,[]);

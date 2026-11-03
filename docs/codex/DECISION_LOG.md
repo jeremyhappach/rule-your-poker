@@ -1,3 +1,16 @@
+## 2026-11-03 — Mega closed installation precedes scoped hosted qualification
+
+Jeremy authorized exact-account/session/request synthetic admission while both
+public flags remain closed. Operator-only grants expire within 24 hours, require
+server-marked isolated accounts, and permit fake money only; existing auth,
+consent, rule, stake and financial authorities remain mandatory. Live RLS keeps
+the test sessions hidden from outsiders. Pre-migration rollback safety permits
+closed installation; hosted gameplay qualification follows installed API/worker
+deployment and precedes sequential live then async activation. Never open public
+flags merely to obtain missing hosted evidence. Expire grants and disable test
+accounts afterward; retain isolated canonical financial audit records. See
+`MEGA_CARD_GOLF_COMPETITION.md`.
+
 ## 2026-11-02 — Host succession follows continuous table tenure
 
 Jeremy confirmed that sitting out preserves host eligibility until standing up,

@@ -211,4 +211,53 @@ provider's durable-cursor set: without it, canonical settlement completed but
 terminal presentation waited forever for an untracked cursor. Existing game
 registrations are unchanged. Captured responses, three direct regression cases,
 94 sibling/replay tests and 20 transport/lifecycle tests pass. Hosted browser
-checks must be repeated on the corrected deployment before either public flag.
+checks were repeated successfully on the corrected deployment before activation.
+
+## Verified production release — November 3, 2026, 21:04 UTC
+
+Product commit `6ff9f58ad4368e8502d5a3626c06234de97673de` is published at
+`https://holm357.com`; Vercel `dpl_EZ1MEYKgvnnTYSjnB2V4VEsW8tMR` is READY and
+the production build manifest matches. Installed migration: `20261103203945`,
+`mega_card_golf_competition`. Recovery worker v2 is ACTIVE; its real scheduled
+execution completed the final-hole timeout fixture with no further client calls.
+
+The initial combined runner's live checks failed because its test harness tried
+an unauthorized direct games update. It now uses canonical `request_session_end`;
+no authorization was weakened. The async matrix from that run passed; the repaired
+live matrix and final committed-result proof passed separately. Failed browser
+checks led to the snapshot/cursor fixes above. No failing attempt is counted as a
+successful overall run.
+
+- Closed hosted gates: all three courses at 3, 6, 9 and 18 holes in each mode;
+  actual catalog/default and override admission; ordered hole progression, signed
+  totals, final standings, duplicate concurrent action requests and outsider RLS
+  denial. Signed winner/tie and rollback atomicity also pass the hosted rollback
+  matrix. Live fixtures include two and three players.
+- Live browser: two authenticated production clients, expandable scorecards,
+  390px and desktop layout, reconnect, connected Session Ended and fresh ended
+  mount to lobby. A fresh three-hole fixture repeated this after activation.
+- Async browser: actual invitation/acceptance, two unseen opponent hole results,
+  reload during unfinished replay without acknowledgement, natural score animation,
+  Skip Animation, ordered acknowledgements and scorecard writes; no snapshot
+  error or browser exception. Mobile portrait and landscape were captured.
+- Phase A: live true / async false at **21:01:35 UTC**; production live smoke passed.
+  Phase B: both true at **21:03:33 UTC**; invitation, browser replay/scorecard,
+  remaining turns and existing parent-level settlement passed.
+- Final read-only proof: **14 settled live games, four settled async parents**
+  (13 completed async children), exact canonical chip movement, zero-sum outcomes,
+  one balanced transfer batch for each nonzero settlement, one immutable result,
+  final snapshots, and no duplicate notification keys or synthetic-table broadcasts.
+  Two incomplete replay-only parents were cancelled through canonical removal.
+- Cleanup: all synthetic grants expired; four profiles disabled, Auth accounts
+  banned and Auth sessions revoked. Canonical audit rows and restrictive session
+  scopes remain. No real customer balance, transaction or historical session was
+  used or modified. No physical push delivery was attempted.
+
+Sanitized evidence: `dev/mega-card-golf/competition/evidence/hosted-release-20261103.json`.
+Checkpoint: `release-mega-card-golf-enabled-20261103`. Runtime product is unchanged
+by the final evidence/documentation commit.
+
+Remaining manual acceptance: Jeremy's physical iPhone/Android audio and mute,
+touch/rotation, background/foreground reconnect, native push delivery/suppression,
+and multi-client human gameplay (including pause/resume and Run It Back). Browser
+emulation and hosted RPC proofs do not certify those physical-device behaviors.

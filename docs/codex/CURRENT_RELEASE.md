@@ -1,19 +1,25 @@
-# Mega Card Golf multiplayer + async — 2026-11-03 — closed hosted qualification
+# Mega Card Golf multiplayer + async — 2026-11-03 — production enabled
 
-Jeremy authorized a guarded production release, followed by live activation/smoke
-and then async activation/smoke without another approval between successful phases.
-Implementation `a606959d8fa753830a63ba09edc80e06f6815a12` was pushed on
-`codex/mega-card-golf-multiplayer-async`. All 18 captured database owners match
-production; main and production remain at `df7684668`.
+Both public admission flags are **true**, after closed hosted qualification,
+live-only activation/smoke, then async activation/smoke. Product commit
+`6ff9f58ad4368e8502d5a3626c06234de97673de` is production READY in
+`dpl_EZ1MEYKgvnnTYSjnB2V4VEsW8tMR`. Migration `20261103203945` and recovery
+worker v2 are installed. Pre-migration safety and installed rollback proofs pass.
 
-Jeremy authorized implementing the missing scoped test capability. Pre-migration
-safety is **PASS**, including safe candidate and installed hosted rollback proofs.
-The closed migration and recovery worker v2 are installed. Exact synthetic UUID,
-fake-money, session/request and expiry allowlists preserve closed public admission.
-App/API publication and hosted gameplay qualification are in progress; both
-public flags remain false. Existing customer sessions were not changed.
-See [release attempt and remaining proof](MEGA_CARD_GOLF_COMPETITION.md).
-Hosted multi-client and physical-device acceptance remain pending.
+All three courses at 3/6/9/18 holes passed in both modes. Two production browser
+clients passed live reconnect, scorecards and Session Ended. Async browser smoke
+passed natural opponent scoring, skip, multiple pending results, unfinished-replay
+reload and scorecard writes. Canonical proofs cover 14 live settlements, four net
+async settlements, duplicate races, real worker timeout recovery and notification
+isolation. Only synthetic fake money was used; customer sessions/balances were
+not mutated. All test grants are expired, four synthetic accounts disabled and
+their Auth sessions revoked. Audit records remain isolated and retained.
+
+Hosted qualification found and fixed transport-clock snapshot conflicts and a
+missing canonical chip cursor registration before activation. See
+[release evidence and manual acceptance](MEGA_CARD_GOLF_COMPETITION.md).
+Jeremy's physical iPhone/Android audio, touch/rotation, background reconnect,
+push delivery and manual multi-client smoke remain unverified.
 
 # Async Match Lobby polish — 2026-11-03 — qualified, publication pending
 

@@ -1,5 +1,15 @@
 # Stable checkpoints — do not reopen without a new repro
 
+2026-11-03 Mega Card Golf automated hosted qualification passed at product commit
+`6ff9f58ad4368e8502d5a3626c06234de97673de`: all course/length configurations,
+two-client live terminal/reconnect, async replay/ack/skip, canonical settlement
+and real zero-client recovery. Live enabled at 21:01:35 UTC; async enabled at
+21:03:33 UTC after live smoke passed. Final proof: 14 live and four async net
+settlements; no duplicate scoring, settlement or notifications. Synthetic scopes
+expired and accounts disabled. Checkpoint tag: `release-mega-card-golf-enabled-20261103`.
+Physical-device and Jeremy's manual acceptance remain pending. See
+`MEGA_CARD_GOLF_COMPETITION.md`; this is automated qualification, not owner smoke.
+
 2026-10-28 Jeremy confirmed the published live Words smoke passed and authorized
 human real-money opening. Existing /2 play, banks and pause controls are stable;
 the real-money admission qualification does not alter those gameplay owners.

@@ -1,0 +1,367 @@
+{
+  "date": "2026-11-03",
+  "productSha": "6ff9f58ad4368e8502d5a3626c06234de97673de",
+  "deployment": "dpl_EZ1MEYKgvnnTYSjnB2V4VEsW8tMR",
+  "migration": "20261103203945",
+  "workerVersion": 2,
+  "flags": {
+    "live_enabled": true,
+    "async_enabled": true
+  },
+  "phaseAEnabledAt": "2026-11-03T21:01:35Z",
+  "phaseBEnabledAt": "2026-11-03T21:03:33Z",
+  "closedAsync": {
+    "checks": [
+      "async 0/3 holes: turn/review ACK and duplicate actions",
+      "async 2/3 holes: turn/review ACK and duplicate actions",
+      "async 1/3 holes: turn/review ACK and duplicate actions",
+      "async 1/6 holes: turn/review ACK and duplicate actions",
+      "async 2/6 holes: turn/review ACK and duplicate actions",
+      "async 0/6 holes: turn/review ACK and duplicate actions",
+      "async 2/9 holes: turn/review ACK and duplicate actions",
+      "async 0/9 holes: turn/review ACK and duplicate actions",
+      "async 1/9 holes: turn/review ACK and duplicate actions",
+      "async 1/18 holes: turn/review ACK and duplicate actions",
+      "async 0/18 holes: turn/review ACK and duplicate actions",
+      "async 2/18 holes: turn/review ACK and duplicate actions"
+    ],
+    "matches": [
+      {
+        "match": "5101e4f6-8736-4491-9870-f266fbe4b5b8",
+        "children": 4,
+        "net": -10,
+        "receipt": true
+      },
+      {
+        "match": "af95eaed-f607-4af3-bb30-15990ac84fad",
+        "children": 4,
+        "net": -10,
+        "receipt": true
+      },
+      {
+        "match": "3a349cfb-cf5d-43dd-90f7-e3c5944c87d2",
+        "children": 4,
+        "net": -20,
+        "receipt": true
+      }
+    ]
+  },
+  "closedLive": {
+    "phase": "live-only",
+    "passed": true,
+    "checks": [
+      "zero-client final-hole fixture armed; no further client calls for this match",
+      "live 2/3 holes: duplicate race, totals, balances, terminal",
+      "live 0/3 holes: duplicate race, totals, balances, terminal",
+      "live 1/6 holes: duplicate race, totals, balances, terminal",
+      "live 2/6 holes: duplicate race, totals, balances, terminal",
+      "live 0/6 holes: duplicate race, totals, balances, terminal",
+      "live 1/9 holes: duplicate race, totals, balances, terminal",
+      "live 0/9 holes: duplicate race, totals, balances, terminal",
+      "live 2/9 holes: duplicate race, totals, balances, terminal",
+      "live 1/18 holes: duplicate race, totals, balances, terminal",
+      "live 0/18 holes: duplicate race, totals, balances, terminal",
+      "live 2/18 holes: duplicate race, totals, balances, terminal"
+    ],
+    "live": [
+      {
+        "game": "cce77f03-1fda-4877-9965-e4260314ec03",
+        "match": "f70045da-4c0b-4c27-8e28-fbdd150ceff2",
+        "holes": 3,
+        "course": 2,
+        "players": 2,
+        "scores": {
+          "5f2438fb-ba42-4f2e-9531-1c29a98eb6b1": 85,
+          "af9c3e2e-0bc0-40d2-9ff1-5f8df5184ec7": 82
+        },
+        "settlement": {
+          "5f2438fb-ba42-4f2e-9531-1c29a98eb6b1": -5,
+          "af9c3e2e-0bc0-40d2-9ff1-5f8df5184ec7": 5
+        }
+      },
+      {
+        "game": "6114470f-fe3a-4753-9396-244f17750619",
+        "match": "03e71b93-c399-470a-801e-5362b61281d5",
+        "holes": 3,
+        "course": 0,
+        "players": 3,
+        "scores": {
+          "2cac51a6-b672-4631-b1a1-fad81f6d311f": 104,
+          "9772424e-2eda-44bb-9bdc-7e9c50477935": 102,
+          "a2fedf05-4e95-4edf-bf23-99bb6656fdc7": 81
+        },
+        "settlement": {
+          "2cac51a6-b672-4631-b1a1-fad81f6d311f": -5,
+          "9772424e-2eda-44bb-9bdc-7e9c50477935": -5,
+          "a2fedf05-4e95-4edf-bf23-99bb6656fdc7": 10
+        }
+      },
+      {
+        "game": "8a901c0f-04b2-451a-a24a-a8a4bd7e4c06",
+        "match": "591e01b7-4cc6-443f-b5d6-7146431041c2",
+        "holes": 6,
+        "course": 1,
+        "players": 2,
+        "scores": {
+          "ab71945c-b4e0-4308-9af3-d40215da7122": 175,
+          "bec308db-0814-4ab8-8281-c46706a002bf": 187
+        },
+        "settlement": {
+          "ab71945c-b4e0-4308-9af3-d40215da7122": 5,
+          "bec308db-0814-4ab8-8281-c46706a002bf": -5
+        }
+      },
+      {
+        "game": "3dd339f0-9808-431d-800c-411243936fc1",
+        "match": "c4d29a23-fc13-4ef7-91d8-3a0db4cb42d6",
+        "holes": 6,
+        "course": 2,
+        "players": 2,
+        "scores": {
+          "5f45f620-258d-4403-804f-47054dfb2c89": 186,
+          "63e8ad35-82cd-4649-8310-e180aed066f3": 217
+        },
+        "settlement": {
+          "5f45f620-258d-4403-804f-47054dfb2c89": 5,
+          "63e8ad35-82cd-4649-8310-e180aed066f3": -5
+        }
+      },
+      {
+        "game": "f7a78612-b2fd-4cb0-865b-2354be6f5a03",
+        "match": "988ac1ad-65af-4de7-b3e5-10193a4cbe22",
+        "holes": 6,
+        "course": 0,
+        "players": 2,
+        "scores": {
+          "56a1dba0-b11f-4309-b8c5-11f837439471": 188,
+          "8ce0667c-c5d9-4f48-95e0-d9b794bec8d3": 222
+        },
+        "settlement": {
+          "56a1dba0-b11f-4309-b8c5-11f837439471": 5,
+          "8ce0667c-c5d9-4f48-95e0-d9b794bec8d3": -5
+        }
+      },
+      {
+        "game": "3e227b2a-ca73-4aef-b306-c471c50621e1",
+        "match": "de6da819-1607-4744-9f74-dd9305cc679d",
+        "holes": 9,
+        "course": 1,
+        "players": 2,
+        "scores": {
+          "06599814-dc23-4af7-8371-5ad3718acbb0": 299,
+          "d6583c6e-40f7-4dd4-a903-c4cfba057913": 263
+        },
+        "settlement": {
+          "06599814-dc23-4af7-8371-5ad3718acbb0": -5,
+          "d6583c6e-40f7-4dd4-a903-c4cfba057913": 5
+        }
+      },
+      {
+        "game": "15f6a954-37c3-44f9-bc0b-42ad9db59126",
+        "match": "2baca364-0690-42a5-9788-6e16a165d23c",
+        "holes": 9,
+        "course": 0,
+        "players": 2,
+        "scores": {
+          "1208d868-e472-4f43-9765-6d693f760ac4": 256,
+          "86bced27-0d42-4027-9619-397b8641908f": 271
+        },
+        "settlement": {
+          "1208d868-e472-4f43-9765-6d693f760ac4": 5,
+          "86bced27-0d42-4027-9619-397b8641908f": -5
+        }
+      },
+      {
+        "game": "bb1b1708-a2d0-4de4-8e03-b7d677c3c732",
+        "match": "971ba79c-cdf8-47da-8004-a1596f20c7a1",
+        "holes": 9,
+        "course": 2,
+        "players": 2,
+        "scores": {
+          "1f95bc9b-fbc8-40ca-aa9b-27786d61e627": 252,
+          "ada5fd01-4177-4d2f-b576-b61906153290": 276
+        },
+        "settlement": {
+          "1f95bc9b-fbc8-40ca-aa9b-27786d61e627": 5,
+          "ada5fd01-4177-4d2f-b576-b61906153290": -5
+        }
+      },
+      {
+        "game": "d941f8ce-71dd-4e5e-9daf-55bcf45ae9dd",
+        "match": "cd55424f-c894-4db8-b69e-d16df95beac6",
+        "holes": 18,
+        "course": 1,
+        "players": 2,
+        "scores": {
+          "ae01cd2b-361c-49c2-bad1-a0cb98f251b2": 540,
+          "c9842351-04fd-4508-8584-8a563a9d27a3": 583
+        },
+        "settlement": {
+          "ae01cd2b-361c-49c2-bad1-a0cb98f251b2": 5,
+          "c9842351-04fd-4508-8584-8a563a9d27a3": -5
+        }
+      },
+      {
+        "game": "ed00f443-e499-4e0f-943e-0e50c00bc16e",
+        "match": "bd391368-8805-424b-8852-2e8988021d35",
+        "holes": 18,
+        "course": 0,
+        "players": 2,
+        "scores": {
+          "34c8d2e6-b982-48ab-9453-31fea72db4c1": 559,
+          "8131afa8-cfba-4063-85d8-9082e70882c2": 570
+        },
+        "settlement": {
+          "34c8d2e6-b982-48ab-9453-31fea72db4c1": 5,
+          "8131afa8-cfba-4063-85d8-9082e70882c2": -5
+        }
+      },
+      {
+        "game": "75399279-890b-4056-89f8-2d105cee06e5",
+        "match": "12d85ca4-82de-4b72-b908-b0eb4af07ad3",
+        "holes": 18,
+        "course": 2,
+        "players": 2,
+        "scores": {
+          "2cfd41ed-cb11-4afb-a3c9-65841bc13e46": 528,
+          "f3bf5d02-eed9-40c1-bee4-1b3951ecdc55": 590
+        },
+        "settlement": {
+          "2cfd41ed-cb11-4afb-a3c9-65841bc13e46": 5,
+          "f3bf5d02-eed9-40c1-bee4-1b3951ecdc55": -5
+        }
+      }
+    ],
+    "async": [],
+    "sha": "f567f78199a6e246e8a391bf9c68c6d86902706f"
+  },
+  "closedTerminalRetest": {
+    "phase": "ui",
+    "passed": true,
+    "checks": [
+      "live 0/3 holes: duplicate race, totals, balances, terminal"
+    ],
+    "live": [
+      {
+        "game": "320edbef-856f-4e13-b263-e0c7afe43aef",
+        "match": "bbf2ce3a-d8c1-4e43-bb9e-da9635201164",
+        "holes": 3,
+        "course": 0,
+        "players": 2,
+        "scores": {
+          "43a40b52-6a60-40f3-98e8-574d84207c2c": 92,
+          "7f7f7fe9-61e4-48d1-a57a-7efcf43f256c": 123
+        },
+        "settlement": {
+          "43a40b52-6a60-40f3-98e8-574d84207c2c": 5,
+          "7f7f7fe9-61e4-48d1-a57a-7efcf43f256c": -5
+        }
+      }
+    ],
+    "async": [],
+    "sha": "6ff9f58ad4368e8502d5a3626c06234de97673de"
+  },
+  "phaseA": {
+    "phase": "A",
+    "passed": true,
+    "checks": [
+      "live 0/3 holes: duplicate race, totals, balances, terminal"
+    ],
+    "live": [
+      {
+        "game": "b1bbd640-eab8-4de3-ab7d-4186c4556134",
+        "match": "8bbb8734-c75e-4bdf-a05d-ecfcd9ab309e",
+        "holes": 3,
+        "course": 0,
+        "players": 2,
+        "scores": {
+          "42e6a434-6ff0-4003-8e71-8bc6d7e49209": 89,
+          "a4a9590e-8a98-4cea-b3a7-8311ccaa1be6": 101
+        },
+        "settlement": {
+          "42e6a434-6ff0-4003-8e71-8bc6d7e49209": 5,
+          "a4a9590e-8a98-4cea-b3a7-8311ccaa1be6": -5
+        }
+      }
+    ],
+    "async": [],
+    "sha": "6ff9f58ad4368e8502d5a3626c06234de97673de"
+  },
+  "phaseB": {
+    "phase": "B",
+    "passed": true,
+    "checks": [
+      "async 0/3 holes: turn/review ACK and duplicate actions"
+    ],
+    "live": [],
+    "async": [
+      {
+        "match": "90fa236e-c102-449b-94e4-aac085b45849",
+        "children": 1,
+        "net": -5,
+        "receipt": true
+      }
+    ],
+    "sha": "6ff9f58ad4368e8502d5a3626c06234de97673de"
+  },
+  "asyncBrowser": {
+    "passed": true,
+    "checks": [
+      "reload during unfinished replay preserves pending acknowledgement",
+      "multiple unviewed opponent results replay in order; natural animation and Skip Animation both acknowledge results",
+      "acknowledged opponent scores enter expandable scorecard without mobile overflow"
+    ],
+    "errors": []
+  },
+  "liveBrowser": {
+    "passed": true,
+    "checks": [
+      "two authenticated clients render the canonical live table, leaderboard and expandable scorecard",
+      "live reconnect restores the current table",
+      "connected client retains terminal presentation and enters Session Ended",
+      "fresh ended-session mount routes to lobby"
+    ],
+    "errors": []
+  },
+  "finalDatabase": {
+    "passed": true,
+    "liveSettled": 14,
+    "asyncParentsSettled": 4,
+    "asyncChildrenCompleted": 13,
+    "balancedNonzeroBatchesExactlyOnce": true,
+    "duplicateNotifications": 0,
+    "syntheticTableBroadcasts": 0,
+    "zeroClientTimeoutRecovery": true
+  },
+  "cleanup": {
+    "cancelledReplayOnlyParents": 2,
+    "activeSyntheticAccounts": 0,
+    "unexpiredGrants": 0,
+    "authSessions": 0,
+    "auditRetained": true
+  },
+  "failureHistory": [
+    {
+      "attempt": "initial combined harness",
+      "reason": "Unauthorized direct games update",
+      "resolution": "Use canonical request_session_end; repaired live matrix passed"
+    },
+    {
+      "attempt": "initial browser",
+      "reason": "Equal-revision nested serverAt changed and terminal durable cursor absent",
+      "resolution": "Product 6ff9f58ad; repeated hosted browser gates passed"
+    },
+    {
+      "attempt": "terminal retest launched after existing game had ended",
+      "reason": "Fresh ended mount correctly went to lobby",
+      "resolution": "New bounded fixture used; connected terminal check passed"
+    }
+  ],
+  "manualPending": [
+    "Physical iPhone/Android audio and mute",
+    "Touch and rotation",
+    "Background reconnect",
+    "Native push delivery and suppression",
+    "Jeremy multi-client gameplay, pause/resume and Run It Back"
+  ]
+}
