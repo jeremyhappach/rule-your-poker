@@ -40,3 +40,20 @@ const controller=createDeviceController({environment,load:binding,
 });
 export const status=controller.status,enableDevice=controller.enable,disableDevice=controller.clear,reconcile=controller.reconcile,setAccount=controller.setAccount;
 export async function foreground(matchId:string|null){const device=binding();if(device)await delayedRpc('async_push_device',{p_id:device.id,p_binding:device.binding,p_match:matchId});}
+
+async function registrationMessage(type:string,userId:string,targetId?:string):Promise<{registrationUserId:string}|null>{
+ const device=binding();if(!pushEnabled||(device&&device.userId!==userId))return null;
+ const reg=await prepare();if(!reg?.active)return null;
+ return new Promise((resolve)=>{const channel=new MessageChannel();
+  const timeout=setTimeout(()=>{channel.port1.close();resolve(null);},5000);
+  channel.port1.onmessage=event=>{clearTimeout(timeout);channel.port1.close();resolve(event.data);};
+  reg.active!.postMessage({type,binding:device?.binding,ownerId:userId,userId:targetId},[channel.port2]);
+ });
+}
+export async function pendingRegistration(userId:string){
+ const result=await registrationMessage('push-pending-registration',userId);
+ return result&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(result.registrationUserId)?result.registrationUserId:null;
+}
+export async function acknowledgeRegistration(userId:string,targetId:string){
+ await registrationMessage('push-registration-opened',userId,targetId);
+}

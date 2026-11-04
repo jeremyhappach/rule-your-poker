@@ -196,7 +196,7 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
         reason,
         authState: user ? "had-user" : "no-user",
       });
-      sessionStorage.setItem("redirectAfterAuth", currentPath);
+      sessionStorage.setItem("redirectAfterAuth", currentPath + window.location.search);
       try {
         recordAppRouteRedirect({
           from: currentPath,

@@ -1,0 +1,129 @@
+{
+  "columns": [
+    {
+      "table": "platform_notifications",
+      "column": "id",
+      "default": "gen_random_uuid()",
+      "nullable": "NO"
+    },
+    {
+      "table": "platform_notifications",
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "table": "platform_notifications",
+      "column": "match_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "table": "platform_notifications",
+      "column": "kind",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "table": "platform_notifications",
+      "column": "actionable",
+      "default": "false",
+      "nullable": "NO"
+    },
+    {
+      "table": "platform_notifications",
+      "column": "revision",
+      "default": "1",
+      "nullable": "NO"
+    },
+    {
+      "table": "platform_notifications",
+      "column": "read_revision",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "table": "platform_notifications",
+      "column": "payload",
+      "default": "'{}'::jsonb",
+      "nullable": "NO"
+    },
+    {
+      "table": "platform_notifications",
+      "column": "updated_at",
+      "default": "clock_timestamp()",
+      "nullable": "NO"
+    },
+    {
+      "table": "mega_test_accounts",
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "table": "mega_test_accounts",
+      "column": "created_at",
+      "default": "clock_timestamp()",
+      "nullable": "NO"
+    },
+    {
+      "table": "mega_test_accounts",
+      "column": "expires_at",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "table": "email_verification_requests",
+      "column": "user_id",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "table": "email_verification_requests",
+      "column": "requested_at",
+      "default": "clock_timestamp()",
+      "nullable": "NO"
+    }
+  ],
+  "indexes": [
+    "CREATE UNIQUE INDEX email_verification_requests_pkey ON private.email_verification_requests USING btree (user_id)",
+    "CREATE UNIQUE INDEX platform_notifications_pkey ON public.platform_notifications USING btree (id)",
+    "CREATE UNIQUE INDEX platform_notifications_user_id_match_id_kind_key ON public.platform_notifications USING btree (user_id, match_id, kind)",
+    "CREATE INDEX platform_notifications_user ON public.platform_notifications USING btree (user_id, actionable, updated_at DESC)"
+  ],
+  "policies": [
+    {
+      "cmd": "ALL",
+      "qual": "( SELECT private.account_enabled(auth.uid()) AS account_enabled)",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "platform_notifications",
+      "permissive": "RESTRICTIVE",
+      "policyname": "account_access_required",
+      "schemaname": "public",
+      "with_check": "( SELECT private.account_enabled(auth.uid()) AS account_enabled)"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "platform_notifications",
+      "permissive": "PERMISSIVE",
+      "policyname": "notification_owner",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "functions": {
+    "account_email_request": "CREATE OR REPLACE FUNCTION public.account_email_request(p_actor uuid, p_target uuid)\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE target_email text;\nBEGIN\n IF p_actor IS NULL OR (p_actor<>p_target AND (NOT private.account_enabled(p_actor) OR NOT public.has_role(p_actor,'admin'::public.app_role))) THEN RAISE EXCEPTION 'account:forbidden' USING ERRCODE='42501'; END IF;\n SELECT email INTO STRICT target_email FROM auth.users WHERE id=p_target;\n INSERT INTO private.email_verification_requests(user_id) VALUES(p_target) ON CONFLICT(user_id) DO UPDATE SET requested_at=clock_timestamp()\n WHERE private.email_verification_requests.requested_at<clock_timestamp()-interval '60 seconds';\n IF NOT FOUND THEN RAISE EXCEPTION 'account:resend_wait'; END IF;\n RETURN target_email;\nEND $function$\n",
+    "admin_account_balances": "CREATE OR REPLACE FUNCTION public.admin_account_balances()\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE result jsonb;\nBEGIN\n IF auth.uid() IS NULL OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN\n  RAISE EXCEPTION 'account_balances:not_authorized' USING ERRCODE='42501';\n END IF;\n SELECT coalesce(jsonb_agg(jsonb_build_object('id',account.id,'username',account.username,'balance',account.balance::text,\n   'lastTransactionDate',account.last_date) ORDER BY account.balance DESC,account.id),'[]'::jsonb)\n INTO result FROM (\n   SELECT p.id,p.username,coalesce(sum(t.amount),0) balance,max(t.date) last_date\n   FROM public.profiles p JOIN auth.users a ON a.id=p.id\n   LEFT JOIN public.player_transactions t ON t.profile_id=p.id\n   WHERE p.is_active GROUP BY p.id,p.username\n ) account;\n RETURN result;\nEND;\n$function$\n",
+    "account_access_snapshot": "CREATE OR REPLACE FUNCTION public.account_access_snapshot()\n RETURNS jsonb\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n SELECT jsonb_build_object('userId',u.id,'enabled',a.enabled,'status',CASE WHEN a.enabled THEN 'enabled' WHEN a.ever_enabled THEN 'suspended' ELSE 'pending' END,\n  'revision',a.revision,'email',u.email,'verified',EXISTS(SELECT FROM private.email_ownership v WHERE v.user_id=u.id AND v.email=u.email),\n  'admin',a.enabled AND public.has_role(u.id,'admin'::public.app_role))\n FROM auth.users u JOIN public.account_access a ON a.user_id=u.id WHERE u.id=auth.uid()\n$function$\n",
+    "account_registered_push": "CREATE OR REPLACE FUNCTION private.account_registered_push()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE recipient uuid; event_i uuid;\nBEGIN\n FOR recipient IN SELECT d.user_id FROM private.push_defaults d JOIN public.account_access a ON a.user_id=d.user_id\n  WHERE d.registrations_enabled AND a.enabled AND public.has_role(d.user_id,'admin'::public.app_role) LOOP\n  INSERT INTO private.push_events(user_id,registration_user_id,epoch,kind,keys) VALUES(recipient,NEW.id,0,'registration','{}')\n  ON CONFLICT(registration_user_id,user_id) WHERE kind='registration' DO NOTHING RETURNING id INTO event_i;\n  IF event_i IS NOT NULL THEN\n   INSERT INTO private.push_deliveries(event_id,subscription_id,binding)\n   SELECT event_i,id,binding FROM private.push_subscriptions WHERE user_id=recipient AND NOT disabled ON CONFLICT DO NOTHING;\n  END IF;\n END LOOP; RETURN NEW;\nEND $function$\n",
+    "admin_account_directory": "CREATE OR REPLACE FUNCTION public.admin_account_directory()\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n IF NOT private.account_enabled(auth.uid()) OR NOT public.has_role(auth.uid(),'admin'::public.app_role) THEN RAISE EXCEPTION 'account:admin_required' USING ERRCODE='42501'; END IF;\n RETURN (SELECT coalesce(jsonb_agg(jsonb_build_object('id',u.id,'username',p.username,'email',u.email,'createdAt',u.created_at,'lastSeenAt',p.last_seen_at,\n  'enabled',a.enabled,'status',CASE WHEN a.enabled THEN 'enabled' WHEN a.ever_enabled THEN 'suspended' ELSE 'pending' END,\n  'admin',public.has_role(u.id,'admin'::public.app_role),'verified',EXISTS(SELECT FROM private.email_ownership v WHERE v.user_id=u.id AND v.email=u.email),\n  'audit',(SELECT coalesce(jsonb_agg(jsonb_build_object('actorId',h.actor_id,'actor',ap.username,'at',h.changed_at,'from',h.previous_status,'to',h.new_status) ORDER BY h.changed_at DESC),'[]') FROM private.account_access_audit h JOIN public.profiles ap ON ap.id=h.actor_id WHERE h.user_id=u.id)\n ) ORDER BY u.created_at DESC),'[]') FROM auth.users u JOIN public.profiles p ON p.id=u.id JOIN public.account_access a ON a.user_id=u.id);\nEND $function$\n",
+    "delayed_notification_read": "CREATE OR REPLACE FUNCTION public.delayed_notification_read(p_id uuid, p_revision bigint)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n PERFORM private.delayed_actor(auth.uid());\n UPDATE public.platform_notifications SET read_revision=greatest(read_revision,least(revision,p_revision))\n WHERE id=p_id AND user_id=auth.uid() AND p_revision>=0;\nEND $function$\n",
+    "platform_notification_center": "CREATE OR REPLACE FUNCTION public.platform_notification_center()\n RETURNS jsonb\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\n SELECT jsonb_build_object('actionable',(SELECT count(*) FROM public.platform_notifications WHERE user_id=auth.uid() AND NOT EXISTS(SELECT FROM private.delayed_removals r WHERE r.match_id=platform_notifications.match_id) AND (actionable OR kind='invitation_closed' AND read_revision<revision)),\n 'items',(SELECT coalesce(jsonb_agg(to_jsonb(n) ORDER BY updated_at DESC),'[]') FROM (SELECT * FROM public.platform_notifications WHERE user_id=auth.uid() AND NOT EXISTS(SELECT FROM private.delayed_removals r WHERE r.match_id=platform_notifications.match_id) AND (actionable OR kind='invitation_closed' AND read_revision<revision) ORDER BY updated_at DESC,id LIMIT 50)n))\n$function$\n"
+  }
+}

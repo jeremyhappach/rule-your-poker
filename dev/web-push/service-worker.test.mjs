@@ -7,7 +7,7 @@ function fixture(){
  vm.runInNewContext(readFileSync('public/ptown-push-sw.js','utf8'),{self,URL,Response,caches:{open:async()=>({match:async key=>store.get(key)?.clone(),put:async(key,value)=>store.set(key,value)})}});
  const fire=async(name,event)=>{let task;handlers[name]({...event,waitUntil:p=>task=p});await task;};
  const bind=value=>fire('message',{source:{url:'https://local.invalid/'},data:{type:'push-binding',value},ports:[{postMessage:()=>{}}]});
- return {fire,bind,shown,navigation};
+ return {fire,bind,shown,navigation,self};
 }
 const payload={eventId:'11111111-1111-4111-8111-111111111111',matchId:'22222222-2222-4222-8222-222222222222',binding:'binding-a',kind:'turn',expiresAt:Date.now()+60000};
 
@@ -84,4 +84,22 @@ test('invitation uses guarded match landing, suppresses duplicate alerts and sha
  await f.fire('notificationclick',{notification:{data:f.shown[0].data,close:()=>{}}});assert.deepEqual(f.navigation,['/delayed/'+payload.matchId]);
  await f.fire('push',{data:{json:()=>({...payload,eventId:'44444444-4444-4444-8444-444444444444'})}});assert.equal(f.shown.length,1);assert.equal(f.shown[0].body,'An async match is ready for your turn.');
  await f.fire('push',{data:{json:()=>({...invite,expiresAt:Date.now()-1})}});assert.equal(f.shown[0].body,'Open the app to check your async matches.');assert.equal(f.shown[0].silent,true);
+});
+
+test('cold registration destination survives auth restoration, is owner-bound and clears only on record acknowledgement',async()=>{
+ const f=fixture();await f.bind({binding:'binding-a',userId:'admin-a'});
+ const p={...payload,kind:'registration',registrationUserId:payload.matchId};await f.fire('push',{data:{json:()=>p}});
+ await f.fire('notificationclick',{notification:{data:f.shown[0].data,close(){}}});await f.bind(null);
+ async function request(type,ownerId,userId){let result;await f.fire('message',{source:{url:'https://local.invalid/'},data:{type,ownerId,userId},ports:[{postMessage:v=>result=v}]});return result;}
+ assert.equal(await request('push-pending-registration','other'),null);
+ assert.equal((await request('push-pending-registration','admin-a')).registrationUserId,payload.matchId);
+ await request('push-registration-opened','admin-a','wrong');assert(await request('push-pending-registration','admin-a'));
+ await request('push-registration-opened','admin-a',payload.matchId);assert.equal(await request('push-pending-registration','admin-a'),null);
+});
+test('warm registration clicks navigate and wake an existing window; failed navigation falls back safely',async()=>{
+ for(const failure of [false,true]){const f=fixture();await f.bind({binding:'binding-a',userId:'admin-a'});const calls=[];
+ f.self.clients.matchAll=async()=>[{url:'https://local.invalid/',navigate:async path=>{calls.push(path);if(failure)throw Error('window closed');},focus:async()=>calls.push('focus'),postMessage:v=>calls.push(v.type)}];
+ const p={...payload,kind:'registration',registrationUserId:payload.matchId};await f.fire('notificationclick',{notification:{data:p,close(){}}});
+ assert.equal(calls[0],'/?adminPlayer='+payload.matchId);if(failure)assert.equal(f.navigation[0],calls[0]);else assert(calls.includes('push-navigation'));
+ }
 });

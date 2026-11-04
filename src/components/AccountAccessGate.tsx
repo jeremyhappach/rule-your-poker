@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState,type ReactNode} from 'react';
 import {useLocation} from 'react-router-dom';
 import {supabase} from '@/integrations/supabase/client';
-import {accountRpc,sendVerification,type AccountAccess} from '@/lib/accountAccess';
+import {accountRpc,sendVerification,emailDeliveryMessage,type AccountAccess} from '@/lib/accountAccess';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 
@@ -11,6 +11,7 @@ export function AccountAccessGate({children}:{children:ReactNode}) {
  const [access,setAccess]=useState<AccountAccess|null>(null),[error,setError]=useState('');
  const [dismissed,setDismissed]=useState(false),[sending,setSending]=useState(false),[message,setMessage]=useState('');
  const revision=useRef(0),identityRef=useRef<string|null|undefined>();
+ const initialAttempt=useRef('');
  const load=useCallback(async(id:string)=>{
   const attempt=++revision.current;
   try{const value=await accountRpc<AccountAccess>('account_access_snapshot');
@@ -46,9 +47,19 @@ export function AccountAccessGate({children}:{children:ReactNode}) {
   window.addEventListener('focus',refresh);window.addEventListener('online',refresh);document.addEventListener('visibilitychange',refresh);
   return()=>{void supabase.removeChannel(channel);window.removeEventListener('focus',refresh);window.removeEventListener('online',refresh);document.removeEventListener('visibilitychange',refresh);};
  },[identity,load]);
+ useEffect(()=>{
+  if(!access||access.verified||access.status==='suspended'||access.emailDelivery!=='not_requested')return;
+  const key=access.userId+':'+access.email;
+  if(initialAttempt.current===key)return;
+  initialAttempt.current=key;
+  const id=access.userId;setSending(true);
+  void sendVerification(id,true).catch(e=>{if(identityRef.current===id)setMessage(e instanceof Error?e.message:'Email could not be sent. Please resend.');})
+   .finally(()=>{if(identityRef.current===id){setSending(false);void load(id);}});
+ },[access,load]);
  const publicAuth=location.pathname==='/auth'||location.pathname==='/verify-email';
  if(publicAuth||identity===null)return <>{children}</>;
  if(identity===undefined||!access)return <main className="min-h-screen grid place-items-center bg-background text-foreground p-6"><div role="status" className="space-y-4 text-center"><p>{error||'Checking account access…'}</p>{error&&<Button onClick={()=>identity?void load(identity):window.location.reload()}>Retry</Button>}<Button variant="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sign out</Button></div></main>;
- if(!access.enabled)return <main className="min-h-screen grid place-items-center bg-background text-foreground p-6"><div className="max-w-md space-y-4 text-center"><h1 className="text-2xl font-semibold">{access.status==='pending'?'Account Pending Admin Approval':'Account Suspended — Contact Administrator.'}</h1>{access.status==='pending'&&<p>Your account is registered. An administrator must enable gameplay access.</p>}<Button variant="outline" onClick={()=>void load(access.userId)}>Check status</Button><Button variant="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sign out</Button></div></main>;
- return <>{children}<Dialog open={!access.verified&&!dismissed} onOpenChange={open=>{if(!open)setDismissed(true);}}><DialogContent><DialogHeader><DialogTitle>Your email is not verified</DialogTitle><DialogDescription>Please verify your email address to help secure your account.</DialogDescription></DialogHeader><p className="break-all text-sm">{access.email}</p><Button disabled={sending} onClick={async()=>{setSending(true);setMessage('');try{await sendVerification();setMessage('Verification email sent. Check your inbox.');}catch(e){setMessage(e instanceof Error?e.message:'Could not send email.');}finally{setSending(false);}}}>Resend verification email</Button><p role="status" className="text-sm">{message}</p><Button variant="ghost" onClick={()=>setDismissed(true)}>Continue playing</Button></DialogContent></Dialog></>;
+ const verification=<div className="space-y-3"><p className="break-all text-sm">{access.email}</p><p role={access.emailDelivery==='failed'?'alert':'status'} className="text-sm">{message||emailDeliveryMessage(access.emailDelivery)}</p><Button disabled={sending} onClick={async()=>{const id=access.userId;setSending(true);setMessage('');try{await sendVerification(id);if(identityRef.current===id)setMessage('Verification email requested. Check your inbox and spam folder.');}catch(e){if(identityRef.current===id)setMessage(e instanceof Error?e.message:'Could not send email.');}finally{if(identityRef.current===id){setSending(false);void load(id);}}}}>Resend verification email</Button></div>;
+ if(!access.enabled)return <main className="min-h-screen grid place-items-center bg-background text-foreground p-6"><div className="max-w-md space-y-4 text-center"><h1 className="text-2xl font-semibold">{access.status==='pending'?'Account Pending Admin Approval':'Account Suspended — Contact Administrator.'}</h1>{access.status==='pending'&&<><p>Your account is registered. An administrator must enable gameplay access.</p>{!access.verified&&verification}</>}<Button variant="outline" onClick={()=>void load(access.userId)}>Check status</Button><Button variant="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sign out</Button></div></main>;
+ return <>{children}<Dialog open={!access.verified&&!dismissed} onOpenChange={open=>{if(!open)setDismissed(true);}}><DialogContent><DialogHeader><DialogTitle>Your email is not verified</DialogTitle><DialogDescription>Please verify your email address to help secure your account.</DialogDescription></DialogHeader>{verification}<Button variant="ghost" onClick={()=>setDismissed(true)}>Continue playing</Button></DialogContent></Dialog></>;
 }

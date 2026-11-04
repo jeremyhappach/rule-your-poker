@@ -56,3 +56,11 @@ it.each([1,2])('resolves %s actionable child turns using the existing notificati
  await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe(count===1?'/delayed/m/play/c0':'/delayed/m'));
 });
 it('silently preserves updates when leaving and returning to the main lobby',async()=>{mocks.items=[notice];render(<MemoryRouter><NotificationProvider><Navigation/></NotificationProvider></MemoryRouter>);await screen.findByRole('button',{name:/1 pending/});fireEvent.click(screen.getByRole('button',{name:'Async'}));expect(screen.queryByRole('button',{name:/Notifications/})).toBeNull();expect(mocks.request).not.toHaveBeenCalled();mocks.items=[notice,{...notice,id:'second'}];await act(async()=>mocks.changed());fireEvent.click(screen.getByRole('button',{name:'Main'}));expect(await screen.findByRole('button',{name:/2 pending/})).toBeTruthy();expect(mocks.request).not.toHaveBeenCalled();});
+
+it('opens the same admin record from a registration bell and removes resolved approvals',async()=>{
+ mocks.items=[{...notice,kind:'registration',match_id:null,registration_user_id:'22222222-2222-4222-8222-222222222222',payload:{username:'New player',email:'new@example.invalid'}}];
+ render(<MemoryRouter><NotificationProvider><NotificationBell/><Path/></NotificationProvider></MemoryRouter>);
+ fireEvent.click(await screen.findByRole('button',{name:/1 pending/}));fireEvent.click(screen.getByRole('link',{name:/Approval required/}));
+ await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe('/?adminPlayer=22222222-2222-4222-8222-222222222222'));
+ mocks.items=[];await act(async()=>mocks.changed());expect(screen.queryByText(/Approval required/)).toBeNull();
+});

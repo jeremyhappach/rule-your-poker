@@ -12,7 +12,7 @@ try{for(const width of [320,390,844,1280]){
   await page.goto('http://127.0.0.1:15454/?scenario='+scenario);
   if(scenario==='pending')await page.getByText('Account Pending Admin Approval').waitFor();
   if(scenario==='suspended')await page.getByText('Account Suspended — Contact Administrator.').waitFor();
-  if(scenario==='unverified'){await page.getByText('Your email is not verified').waitFor();await page.getByRole('button',{name:'Resend verification email',exact:true}).click();await page.getByText('Verification email sent. Check your inbox.').waitFor();await page.getByRole('button',{name:'Continue playing'}).click();await page.getByText('Playable content').waitFor();await page.evaluate(()=>window.accountFixture.suspend());await page.getByText('Account Suspended — Contact Administrator.').waitFor();}
+  if(scenario==='unverified'){await page.getByText('Your email is not verified').waitFor();await page.getByRole('button',{name:'Resend verification email',exact:true}).click();await page.getByText('Verification email requested. Check your inbox and spam folder.').waitFor();await page.getByRole('button',{name:'Continue playing'}).click();await page.getByText('Playable content').waitFor();await page.evaluate(()=>window.accountFixture.suspend());await page.getByText('Account Suspended — Contact Administrator.').waitFor();}
   if(scenario==='admin'){
    await page.getByRole('button',{name:'Enable User',exact:true}).click();await page.getByRole('button',{name:'Disable User',exact:true}).waitFor();
    await page.getByRole('button',{name:'Disable User',exact:true}).click();await page.getByRole('alertdialog').waitFor();await page.getByRole('button',{name:'Cancel',exact:true}).click();

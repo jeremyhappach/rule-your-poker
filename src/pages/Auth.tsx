@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { sendVerification } from '@/lib/accountAccess';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { exportAuthEjectionTrace, readAuthEjectionEvents } from "@/lib/authEject
 const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const redirected = useRef(false);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -45,7 +47,8 @@ const Auth = () => {
         // If this is a password reset flow, show the reset form instead of redirecting
         if (isResetFlow) {
           setIsResettingPassword(true);
-        } else {
+        } else if (!redirected.current) {
+          redirected.current = true;
           const redirectPath = sessionStorage.getItem('redirectAfterAuth');
           if (redirectPath) {
             sessionStorage.removeItem('redirectAfterAuth');
@@ -62,7 +65,8 @@ const Auth = () => {
         // If this is a password reset flow, show the reset form instead of redirecting
         if (isResetFlow) {
           setIsResettingPassword(true);
-        } else {
+        } else if (!redirected.current) {
+          redirected.current = true;
           const redirectPath = sessionStorage.getItem('redirectAfterAuth');
           if (redirectPath) {
             sessionStorage.removeItem('redirectAfterAuth');
@@ -82,7 +86,7 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -94,6 +98,12 @@ const Auth = () => {
       });
 
       if (error) throw error;
+
+      // Initial dispatch is deduplicated by the server. The account gate also
+      // recovers it after signup redirects or a lost browser request.
+      if (data.session) void sendVerification(data.user?.id,true,data.session.access_token).catch(() => {
+        toast({title:'Account registered',description:'Verification email could not be sent. Use Resend Verification Email on your account screen.',variant:'destructive'});
+      });
 
       toast({
         title: "Success!",

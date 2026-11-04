@@ -1,3 +1,13 @@
+## 2026-11-04 — Independent verification dispatch and admin approval destinations
+
+Email dispatch is recorded separately from token-proven ownership and account
+access. Signup and gate recovery share one deduplicated server attempt; a failed
+send is actionable without blocking enabled gameplay. Registration alerts reuse
+the existing bell and Admin → Players interface. Push retains a recipient-bound
+destination through PWA/auth startup until that record opens. Disabled-player
+balance visibility is a local filter over unchanged canonical transaction sums.
+See `ACCOUNT_ACCESS_RELEASE.md#three-smoke-corrections`.
+
 ## 2026-11-03 — Mega closed installation precedes scoped hosted qualification
 
 Jeremy authorized exact-account/session/request synthetic admission while both

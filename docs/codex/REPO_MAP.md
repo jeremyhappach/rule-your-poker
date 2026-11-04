@@ -1,3 +1,15 @@
+## Admin account smoke corrections
+
+`api/account-access.ts` and service-only `account_email_dispatch_start/finish`
+own verification sends; `AccountAccessGate.tsx` recovers initial requests and
+shows failure status without gating enabled users. `ptown-push-sw.js`,
+`webPush/browser.ts`, `PushLifecycle.tsx` and `useAuthGuard.ts` preserve the admin
+destination; `Index.tsx`/`PlayerManagement.tsx` own opening and acknowledgement.
+`NotificationBell.tsx` uses server-owned registration notices. The balance
+dialog filters `admin_account_balances()` rows locally. See
+`ACCOUNT_ACCESS_RELEASE.md#three-smoke-corrections` and
+`dev/account-access/smoke-browser.mjs`.
+
 ## Arcade achievement timestamp display
 
 `src/components/arcade/AchievementTime.tsx` and `achievementTime.css` render the

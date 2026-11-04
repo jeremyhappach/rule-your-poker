@@ -8,7 +8,7 @@ import {delayedRpc} from '@/lib/delayed/client';
 import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {clearPrivateDrafts} from '@/lib/delayed/drafts';
 import '@/lib/delayed/delayed.css';
-type Notice={id:string;match_id:string;kind:string;actionable:boolean;revision:number;read_revision:number;payload:{opponentId:string;opponentName?:string;completionCount?:number;availableCount:number;earliestDeadline:string|null;lastCall:boolean;status:string}};
+type Notice={id:string;match_id:string;registration_user_id?:string;kind:string;actionable:boolean;revision:number;read_revision:number;payload:{username?:string;email?:string;registeredAt?:string;opponentId:string;opponentName?:string;completionCount?:number;availableCount:number;earliestDeadline:string|null;lastCall:boolean;status:string}};
 const NotificationContext=createContext<{userId:string;items:Notice[];count:number;error:string;refresh:()=>Promise<void>;setError:(s:string)=>void}|null>(null);
 export function NotificationProvider({children}:{children:ReactNode}){
  const [userId,setUserId]=useState<string|null>(null),[items,setItems]=useState<Notice[]>([]),[count,setCount]=useState(0),[error,setError]=useState('');
@@ -51,16 +51,17 @@ function NotificationBellContent({context}:{context:NonNullable<React.ContextTyp
  const location=useLocation(),navigate=useNavigate();
  if(location.pathname!=='/')return null;
  const {userId,items,count,error,refresh,setError}=context;
+ const destination=(n:Notice)=>n.kind==='registration'?'/?adminPlayer='+n.registration_user_id:'/delayed/'+n.match_id+(n.kind==='settled'?'?finale=1':'');
  const markRead=(n:Notice)=>delayedRpc('delayed_notification_read',{p_id:n.id,p_revision:n.revision}).then(refresh).catch(()=>setError('Unable to mark read.'));
  const openTurn=async(n:Notice)=>{try{const home=await delayedRpc<Home>('delayed_home',{p_match:n.match_id});void markRead(n);const destination=turnDestination(home,userId);startTransition(()=>navigate(destination,{state:turnEntryHint(home,destination.split('/play/')[1]??'',userId)}));}catch{setError('Unable to verify the current turn. Please retry.');}};
  return <Popover><PopoverTrigger asChild><button className="delayed-bell" data-pending={count>0||undefined} data-ring={count>0&&(location.pathname==='/'||location.pathname==='/delayed')||undefined} aria-label={`Notifications${count?`, ${count} pending`:''}`}>
   <Bell size={19}/>{count>0&&<span>{count}</span>}</button></PopoverTrigger><PopoverContent className="w-80 max-w-full" align="end">
   <h2 className="font-semibold">Notifications</h2>{error?<p role="alert">{error} <button onClick={()=>void refresh()}>Retry</button></p>:
    items.length===0?<p>No notifications.</p>:<ul className="space-y-3">{items.map(n=><li key={n.id}>
-    <Link to={'/delayed/'+n.match_id+(n.kind==='settled'?'?finale=1':'')} onClick={event=>{void markRead(n);if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();startTransition(()=>navigate('/delayed/'+n.match_id+(n.kind==='settled'?'?finale=1':'')));}}}>
-     <strong>{n.kind==='invitation'?'Pending invite'+(n.payload.opponentName?' from '+n.payload.opponentName:''):n.kind==='turn'?(n.payload.lastCall?'Last Call':'Your turn'):
+    <Link to={destination(n)} onClick={event=>{void markRead(n);if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();startTransition(()=>navigate(destination(n)));}}}>
+     <strong>{n.kind==='registration'?'Approval required · '+(n.payload.username??'New player'):n.kind==='invitation'?'Pending invite'+(n.payload.opponentName?' from '+n.payload.opponentName:''):n.kind==='turn'?(n.payload.lastCall?'Last Call':'Your turn'):
       n.kind==='accepted'?(n.payload.opponentName??'Your opponent')+' accepted your match!':n.kind==='results'?`${n.payload.completionCount} game completions ready to view`:n.kind==='settled'?'Match complete · View results':'Invitation '+n.payload.status}</strong>
-     {n.kind==='accepted'&&<small className="block">No turns yet available</small>}
+     {n.kind==='registration'&&<><small className="block break-all">{n.payload.email}</small><span className="block underline">Open player approval</span></>}{n.kind==='accepted'&&<small className="block">No turns yet available</small>}
      {n.payload.earliestDeadline&&<small className="block">Earliest deadline: {new Date(n.payload.earliestDeadline).toLocaleString()}</small>}
      {!n.actionable&&<small className="block">For your records</small>}
     </Link>{n.kind==='turn'&&n.actionable&&<button className="block underline" onClick={()=>void openTurn(n)}>{n.payload.availableCount} available {n.payload.availableCount===1?'turn':'turns'}</button>}</li>)}</ul>}

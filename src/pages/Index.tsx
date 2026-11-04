@@ -96,8 +96,9 @@ const Index = () => {
   const { enabled: debugModeEnabled, loading: debugModeLoading, toggle: toggleDebugMode } = useGlobalDebugMode();
   const [isTogglingDebugMode, setIsTogglingDebugMode] = useState(false);
   const { isAdmin } = useIsAdmin(user?.id);
-  const [accountParams] = useSearchParams();
-  const selectedAdminPlayer = accountParams.get('adminPlayer') ?? undefined;
+  const [accountParams,setAccountParams] = useSearchParams();
+  const adminTarget = accountParams.get('adminPlayer');
+  const selectedAdminPlayer = adminTarget && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(adminTarget) ? adminTarget : undefined;
   useEffect(() => { if (isAdmin && selectedAdminPlayer) setShowProfileDialog(true); }, [isAdmin, selectedAdminPlayer]);
   const { balance, loading: balanceLoading, error: balanceError, refetch: refetchBalance } = usePlayerBalance(user?.id);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
@@ -527,7 +528,7 @@ const Index = () => {
         <GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} onInitialLoad={setLobbyReady} />
       </div>
 
-        <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <Dialog open={showProfileDialog} onOpenChange={open=>{setShowProfileDialog(open);if(!open&&selectedAdminPlayer){const next=new URLSearchParams(accountParams);next.delete('adminPlayer');setAccountParams(next,{replace:true});}}}>
         <DialogContent className="max-w-md h-[85vh] max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>

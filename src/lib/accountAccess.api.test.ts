@@ -33,7 +33,19 @@ it('does not send mail when target authorization or the resend rate limit reject
 });
 it('uses the current database email and never creates an account on resend',async()=>{
  mocks.getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}},error:null});
- mocks.rpc.mockResolvedValue({data:'current@example.invalid',error:null});mocks.signInWithOtp.mockResolvedValue({error:null});
+ mocks.rpc.mockResolvedValue({data:{email:'current@example.invalid',attemptId:'attempt',skipped:false},error:null});mocks.signInWithOtp.mockResolvedValue({error:null});
  expect((await request({op:'resend',email:'forged@example.invalid'},'Bearer valid')).status).toBe(200);
  expect(mocks.signInWithOtp).toHaveBeenCalledWith({email:'current@example.invalid',options:{shouldCreateUser:false}});
+});
+
+it('records provider failure without claiming delivery or verification',async()=>{
+ mocks.getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}},error:null});
+ mocks.rpc.mockResolvedValue({data:{email:'current@example.invalid',attemptId:'attempt',skipped:false},error:null});
+ mocks.signInWithOtp.mockResolvedValue({error:Error('SMTP unavailable')});
+ const result=await request({op:'initial'},'Bearer valid');expect(result.status).toBe(503);expect(result.body.error).toMatch(/Resend/);
+ expect(mocks.rpc).toHaveBeenCalledWith('account_email_dispatch_finish',{p_target:'11111111-1111-4111-8111-111111111111',p_attempt:'attempt',p_success:false});
+});
+it('deduplicates initial sends after signup and auth restoration',async()=>{
+ mocks.getUser.mockResolvedValue({data:{user:{id:'11111111-1111-4111-8111-111111111111'}},error:null});mocks.rpc.mockResolvedValue({data:{skipped:true},error:null});
+ expect((await request({op:'initial'},'Bearer valid')).status).toBe(200);expect(mocks.signInWithOtp).not.toHaveBeenCalled();
 });

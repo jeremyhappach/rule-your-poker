@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "mockedBackend": true,
+  "actualIndexAuthAndAdminComponents": true,
+  "checks": [
+    {
+      "width": 390,
+      "flow": "cold auth restoration opens actual Index admin modal and selected Players record"
+    },
+    {
+      "width": 390,
+      "flow": "bell reopens the same actual admin modal"
+    },
+    {
+      "width": 390,
+      "flow": "disabled display filter reveals unchanged negative balance"
+    },
+    {
+      "width": 1280,
+      "flow": "cold auth restoration opens actual Index admin modal and selected Players record"
+    },
+    {
+      "width": 1280,
+      "flow": "bell reopens the same actual admin modal"
+    },
+    {
+      "width": 1280,
+      "flow": "disabled display filter reveals unchanged negative balance"
+    }
+  ]
+}

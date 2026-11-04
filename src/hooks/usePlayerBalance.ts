@@ -88,7 +88,7 @@ export const usePlayerBalance = (profileId: string | undefined) => {
 };
 
 export type AccountBalance = {
-  id: string; username: string; balance: string; lastTransactionDate: string | null;
+  id: string; username: string; balance: string; lastTransactionDate: string | null; enabled?: boolean;
 };
 
 export const useAllPlayerBalances = () => {

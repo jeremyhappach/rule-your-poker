@@ -30,6 +30,7 @@ export const AdminPlayerListDialog = ({
     username: string;
   } | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('username');
+  const [includeDisabled, setIncludeDisabled] = useState(false);
 
   // Refetch balances when dialog opens
   useEffect(() => {
@@ -39,7 +40,7 @@ export const AdminPlayerListDialog = ({
   }, [open, selectedPlayer, refetch]);
 
   const sortedPlayers = useMemo(() => {
-    const sorted = [...players];
+    const sorted = players.filter(player => includeDisabled || player.enabled !== false);
     if (sortMode === 'username') {
       sorted.sort((a, b) => a.username.localeCompare(b.username));
     } else {
@@ -52,7 +53,7 @@ export const AdminPlayerListDialog = ({
       });
     }
     return sorted;
-  }, [players, sortMode]);
+  }, [players, sortMode, includeDisabled]);
 
   const handlePlayerClick = (player: { id: string; username: string }) => {
     setSelectedPlayer(player);
@@ -111,6 +112,10 @@ export const AdminPlayerListDialog = ({
           </div>
         </DialogHeader>
 
+        <label className="flex min-h-11 items-center gap-2 text-sm">
+          <input type="checkbox" checked={includeDisabled} onChange={event => setIncludeDisabled(event.target.checked)} />
+          Include Disabled Players
+        </label>
         <ScrollArea className="max-h-[400px] pr-2">
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -134,6 +139,7 @@ export const AdminPlayerListDialog = ({
                 >
                   <span className="font-medium text-foreground truncate">
                     {player.username}
+                    {player.enabled === false && <span className="ml-2 text-xs text-muted-foreground">Disabled</span>}
                   </span>
                   <span
                     className={`font-bold ml-2 flex-shrink-0 ${

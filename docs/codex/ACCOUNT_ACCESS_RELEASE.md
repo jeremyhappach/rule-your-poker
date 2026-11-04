@@ -1,5 +1,50 @@
 # Administrator account access and independent email verification
 
+## Three smoke corrections
+
+Approved 2026-11-04 on `codex/admin-access-smoke`. Installed migration
+`20261104182353_admin_access_smoke_fixes.sql` corrects only these findings:
+
+- Signup now requests the independent email token. A server-owned attempt ID,
+  current email and dispatch status deduplicate signup/gate recovery and reject
+  stale completions. Provider failure remains visible with Resend available;
+  accepted means requested, never inbox delivery or verification. Auth automatic
+  confirmation stays enabled so approved, unverified users can play.
+- Registration bell records use the existing notification center, and both bell
+  and push target the same Admin → Players record. The worker persists a pending
+  destination for its recipient until that record opens. Login restoration keeps
+  the query string and consumes its redirect once. Approval resolves the bell;
+  later suspension does not reopen it. Revoked administrators cannot read it.
+- Admin balances include each account's existing canonical transaction sum and
+  enabled flag. Include Disabled Players filters those rows locally, defaults
+  off, and preserves statements, balances, transactions and access decisions.
+
+The audit removes `owner_grandfathered` evidence only from the four recent
+server-marked Mega qualification accounts. The earlier customer grandfathering
+remains. Before/after access hash: `c2b2eb63a044f21e00f5a535db26201e`;
+18 registered, 14 enabled, four disabled, 13 independently verified. The Petco
+account remains enabled/unverified until it consumes a genuine email token.
+Migration uses a five-second lock timeout and makes no financial/session writes.
+
+Candidate and installed hosted rollback proofs pass in
+`supabase/account-access/smoke-proof.sql`; preimages are in
+`dev/account-access/smoke-preimage.json`. All fixtures rolled back. They cover
+dispatch failure/deduplication/stale attempts, authorization, verification/access
+independence, bell approval/revocation and unchanged canonical balance sums.
+App/API TypeScript, 38 focused tests, 11 service-worker tests, real local
+GoTrue/SMTP/PostgREST single-use-token proof, 20 component browser cases, six
+real-route browser cases and production bundle pass. Security advisors report
+no new finding requiring correction in scope: private request tables intentionally
+have no browser policies; the existing admin balance RPC authorizes internally.
+
+The exact release SHA, production deployment and HTTP verification are recorded
+on `release-admin-access-smoke-20261104-verified`. Owner smoke remains unverified:
+actual mailbox delivery/link verification; enabled-unverified gameplay; physical
+iPhone warm/cold registration push and matching lobby bell; disabled balance
+row and unchanged transaction history. No physical test is recorded as passed.
+
+## Initial release and grandfathering history
+
 Approved 2026-11-04. Branch `codex/admin-account-access`, based on
 `724e4d98a8d8fb95dcf4133ccd6043417e83bfcd`.
 

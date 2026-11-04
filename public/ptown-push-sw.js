@@ -7,9 +7,21 @@ let queue=Promise.resolve();
 const serial=fn=>{const task=queue.then(fn);queue=task.catch(()=>{});return task;};
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('message',event=>{
- if(event.data?.type!=='push-binding'||!event.source?.url||new URL(event.source.url).origin!==self.location.origin)return;
- event.waitUntil(serial(async()=>{await write('binding',event.data.value);await write('receipts',[]);
+ if(!event.source?.url||new URL(event.source.url).origin!==self.location.origin)return;
+ if(event.data?.type==='push-binding')event.waitUntil(serial(async()=>{
+  const previous=await read('binding');
+  const pending=await read('pending-registration');
+  if(event.data.value&&pending&&(pending.userId?pending.userId!==event.data.value.userId:previous?.binding!==event.data.value.binding))await write('pending-registration',null);
+  await write('binding',event.data.value);await write('receipts',[]);
   for(const n of await self.registration.getNotifications())n.close();event.ports[0]?.postMessage({ok:true});}));
+ if(['push-pending-registration','push-registration-opened'].includes(event.data?.type))event.waitUntil(serial(async()=>{
+  const current=await read('binding'),pending=await read('pending-registration');
+  const valid=pending&&(pending.userId
+   ?pending.userId===event.data.ownerId&&(!current||current.userId===pending.userId)
+   :current&&current.binding===pending.binding&&current.binding===event.data.binding);
+  if(event.data.type==='push-registration-opened'&&valid&&pending.registrationUserId===event.data.userId)await write('pending-registration',null);
+  event.ports[0]?.postMessage(valid&&event.data.type==='push-pending-registration'?pending:null);
+ }));
 });
 self.addEventListener('push',event=>event.waitUntil(serial(async()=>{
  let p;try{p=event.data?.json();}catch{return;}
@@ -35,7 +47,8 @@ self.addEventListener('notificationclick',event=>{event.notification.close();eve
  if(!current||current.binding!==p?.binding||!/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.test(registration?p?.registrationUserId:table?p?.tableId:p?.matchId))return;
  // The authenticated landing RPC checks membership, removal and current state again.
  const path=registration?'/?adminPlayer='+p.registrationUserId:table?'/notifications/table/'+p.tableId:'/delayed/'+p.matchId;
+ if(registration)await write('pending-registration',{registrationUserId:p.registrationUserId,binding:p.binding,userId:current.userId,eventId:p.eventId});
  const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
  const target=windows.find(w=>new URL(w.url).origin===self.location.origin);
- if(target){await target.navigate(path);await target.focus();}else await self.clients.openWindow(path);
+ if(target){try{await target.navigate(path);await target.focus();target.postMessage?.({type:'push-navigation'});}catch{await self.clients.openWindow(path);}}else await self.clients.openWindow(path);
 }));});

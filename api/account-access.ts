@@ -15,17 +15,26 @@ return async function handler(req:IncomingMessage&{body?:unknown},res:ServerResp
   else for await(const chunk of req){raw+=chunk;if(raw.length>2048)throw Error('Request too large.');}
   if(raw.length>2048)throw Error('Request too large.');
   const body=JSON.parse(raw),db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
-  if(body.op==='resend'){
+  if(body.op==='resend'||body.op==='initial'){
    const token=/^Bearer (\S+)$/.exec(req.headers.authorization??'')?.[1];
    if(!token){res.statusCode=401;throw Error('Please sign in again.');}
    const {data,error}=await db.auth.getUser(token);
    if(error||!data.user){res.statusCode=401;throw Error('Please sign in again.');}
    const target=body.targetId??data.user.id;
    if(typeof target!=='string'||!/^[0-9a-f-]{36}$/i.test(target))throw Error('Invalid account.');
-   const address=await db.rpc('account_email_request',{p_actor:data.user.id,p_target:target});
+   const address=await db.rpc('account_email_dispatch_start',{p_actor:data.user.id,p_target:target,p_initial:body.op==='initial'});
    if(address.error){res.statusCode=address.error.message==='account:resend_wait'?429:403;throw Error(res.statusCode===429?'Please wait one minute before requesting another email.':'Request rejected.');}
-   const {error:sendError}=await db.auth.signInWithOtp({email:address.data,options:{shouldCreateUser:false}});
-   if(sendError){res.statusCode=503;throw Error('Email could not be sent. Please try again later.');}
+   if(!address.data.skipped){
+    let accepted=false;
+    try{
+     const {error:sendError}=await db.auth.signInWithOtp({email:address.data.email,options:{shouldCreateUser:false}});
+     if(sendError){res.statusCode=503;throw Error('Verification email could not be sent. Use Resend Verification Email to try again.');}
+     accepted=true;
+    }finally{
+     const saved=await db.rpc('account_email_dispatch_finish',{p_target:target,p_attempt:address.data.attemptId,p_success:accepted});
+     if(saved.error&&accepted){res.statusCode=503;throw Error('Email was requested, but its status could not be saved. Check your inbox or try Resend Verification Email.');}
+    }
+   }
   }else if(body.op==='verify'){
    if(typeof body.tokenHash!=='string'||!/^[a-f0-9]{32,128}$/i.test(body.tokenHash))throw Error('Invalid verification link.');
    // A separate Auth client consumes the real email token. Neither a caller's

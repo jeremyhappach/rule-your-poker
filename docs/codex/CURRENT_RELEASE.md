@@ -1,3 +1,23 @@
+# Admin access smoke fixes — 2026-11-04 — approved production release
+
+The three scoped corrections add deduplicated initial verification dispatch and
+actionable failures, preserve the exact Admin → Players destination through
+push/PWA authentication and the lobby bell, and add a display-only Include
+Disabled Players balance filter. Enabled, unverified users retain gameplay.
+
+Migration `20261104182353` is installed. Candidate and installed hosted rollback
+proofs pass; the exact access-status hash is unchanged for all 18 accounts
+(14 enabled/four disabled). Only four identified synthetic qualification
+accounts lost mistaken grandfathered evidence; 13 customer records remain
+verified. No financial records, game sessions or settlement owners were changed.
+
+App/API TypeScript, 38 focused tests, 11 worker tests, real GoTrue/SMTP/PostgREST
+proof, 26 browser cases and the production build pass. Browser evidence uses
+test data with actual login/lobby/admin components. Actual inbox receipt and
+physical iPhone cold/warm push smoke remain pending. Publication evidence belongs
+to `release-admin-access-smoke-20261104-verified`. See
+[scope and acceptance](ACCOUNT_ACCESS_RELEASE.md#three-smoke-corrections).
+
 # Administrator account access — 2026-11-04 — live; existing emails grandfathered
 
 New users default to pending approval; administrators can enable or suspend them

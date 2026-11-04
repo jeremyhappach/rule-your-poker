@@ -75,6 +75,9 @@ try{
  CREATE FUNCTION public.has_role(who uuid,wanted public.app_role) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$SELECT EXISTS(SELECT FROM public.user_roles WHERE user_id=who AND role=wanted)$$;
  DO $$BEGIN IF NOT EXISTS(SELECT FROM pg_publication WHERE pubname='supabase_realtime') THEN CREATE PUBLICATION supabase_realtime;END IF;END $$;`);
  await db.query(read('supabase/account-access/core.sql','utf8'));
+ const smoke=read('supabase/migrations/20261104182353_admin_access_smoke_fixes.sql','utf8');
+ await db.query(smoke.slice(0,smoke.indexOf('ALTER TABLE public.platform_notifications')));
+ await db.query(smoke.slice(smoke.indexOf('CREATE OR REPLACE FUNCTION public.account_access_snapshot'),smoke.indexOf('CREATE OR REPLACE FUNCTION public.admin_account_directory')));
  const deployed=JSON.parse(read('dev/account-access/deployed-preimage.json','utf8'));
  let registration=deployed.functions.find(f=>f.name==='handle_new_user').def.replace('BEGIN','BEGIN\n INSERT INTO public.account_access(user_id) VALUES(NEW.id);').replace('(id, username, email)','(id, username, email, is_active)').replace('NEW.email\n','NEW.email, false\n');
  await db.query(registration);
@@ -93,7 +96,7 @@ try{
  const approve=await adminClient.rpc('admin_set_account_access',{p_user_id:id,p_enabled:true});assert.ifError(approve.error);
  const login=await client().auth.signInWithPassword({email:'player@example.invalid',password:userPassword});assert.ifError(login.error);
  snapshot=await user.rpc('account_access_snapshot');assert.equal(snapshot.data.enabled,true);assert.equal(snapshot.data.verified,false);pass('approved unverified account signs in; approval is not email ownership evidence');
- const sent=await api({op:'resend'},token);assert.equal(sent.status,200,JSON.stringify(sent));assert.equal(mail.length,1);
+ const sent=await api({op:'initial'},token);assert.equal(sent.status,200,JSON.stringify(sent));assert.equal(mail.length,1);assert.equal((await api({op:'initial'},token)).status,200);assert.equal(mail.length,1);assert.equal((await user.rpc('account_access_snapshot')).data.emailDelivery,'accepted');
  const decoded=mail[0].replace(/=\n/g,'').replaceAll('=3D','=');const hash=decoded.match(/token_hash=([0-9a-f]+)/)?.[1];assert(hash,'SMTP message contains verification token');
  const verified=await api({op:'verify',tokenHash:hash});assert.equal(verified.status,200,JSON.stringify(verified));
  assert.equal((await user.rpc('account_access_snapshot')).data.verified,true);
