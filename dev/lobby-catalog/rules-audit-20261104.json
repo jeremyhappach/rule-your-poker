@@ -1,0 +1,416 @@
+{
+  "golf": {
+    "holes": 9,
+    "version": "six-card-golf/2",
+    "turnSeconds": 30,
+    "finalTrigger": "stock_equals_concealed_players",
+    "openingCards": 2,
+    "presentation": {
+      "version": 1,
+      "scoringDelayMs": 1200,
+      "resultsDurationMs": 5000
+    },
+    "holeResultSeconds": 6
+  },
+  "arcade": [
+    {
+      "id": "boxdrop/1",
+      "game": "boxdrop",
+      "config": {
+        "slots": [
+          6,
+          3
+        ],
+        "holdMs": 9000,
+        "rounds": 2,
+        "introMs": 2500,
+        "stageMs": 100000,
+        "targets": [
+          32,
+          21
+        ],
+        "version": "boxdrop/1",
+        "freshMax": 11,
+        "freshMin": 1,
+        "maxRounds": 3,
+        "clockStart": "intro_end",
+        "firstOrder": 3200,
+        "speedStepMs": 500,
+        "speedPerStep": 100,
+        "closureAwards": [
+          5000,
+          10000,
+          15000,
+          25000
+        ],
+        "bonusThreshold": 100000,
+        "recyclePerSlot": 1000,
+        "partialPerPoint": 20,
+        "recycleCapacity": 6,
+        "bonusRequiresFirstOrder": true
+      }
+    },
+    {
+      "id": "eleven-up/3",
+      "game": "eleven-up",
+      "config": {
+        "holdMs": 5000,
+        "stages": 2,
+        "introMs": 2500,
+        "readyMs": 30000,
+        "stageMs": 180000,
+        "version": "eleven-up/3",
+        "speedMax": 5000,
+        "speedStep": 100,
+        "clearBonus": 10000,
+        "groupBonus": 1000,
+        "manualStuck": true,
+        "speedStepMs": 2400,
+        "stockPerBall": 1000,
+        "bonusThreshold": 80000,
+        "maxBonusStages": 1,
+        "clearCelebrationMs": 3000
+      }
+    },
+    {
+      "id": "mega-card-golf/1",
+      "game": "mega-card-golf",
+      "config": {
+        "score": "canonical-golf",
+        "engine": "mega-card-golf/1",
+        "opening": "player-selected",
+        "finalDraw": "resolve"
+      }
+    },
+    {
+      "id": "mega-card-golf/2",
+      "game": "mega-card-golf",
+      "config": {
+        "score": "canonical-golf",
+        "engine": "mega-card-golf/2",
+        "opening": "sequential",
+        "finalDraw": "resolve"
+      }
+    },
+    {
+      "id": "mega-card-golf/3",
+      "game": "mega-card-golf",
+      "config": {
+        "score": "canonical-golf",
+        "engine": "mega-card-golf/3",
+        "opening": "sequential",
+        "finalDraw": "stand-pat-or-replace"
+      }
+    },
+    {
+      "id": "mega-card-golf/4",
+      "game": "mega-card-golf",
+      "config": {
+        "score": "canonical-golf",
+        "engine": "mega-card-golf/4",
+        "opening": "sequential",
+        "standPat": "playable-hole",
+        "finalDraw": "stand-pat-or-replace"
+      }
+    },
+    {
+      "id": "quintzee/3-duration-240",
+      "game": "quintzee",
+      "config": {
+        "rounds": 2,
+        "introMs": 2500,
+        "readyMs": 30000,
+        "version": "quintzee/3",
+        "resultMs": 9000,
+        "speedMin": 100,
+        "maxRounds": 3,
+        "clearBonus": 35,
+        "durationMs": 240000,
+        "speedRange": 200,
+        "upperBonus": 35,
+        "baseCountMs": 600,
+        "bonusThreshold": 80000,
+        "upperThreshold": 63,
+        "upperCelebrationMs": 1500
+      }
+    },
+    {
+      "id": "royal-flash/1",
+      "game": "royal-flash",
+      "config": {
+        "hands": {
+          "pair": 5000,
+          "flush": 10000,
+          "straight": 9000,
+          "two_pair": 7000,
+          "four_kind": 30000,
+          "high_card": 0,
+          "full_house": 20000,
+          "three_kind": 8000,
+          "royal_flush": 50000,
+          "straight_flush": 40000
+        },
+        "holdMs": 5000,
+        "stages": 2,
+        "introMs": 2500,
+        "readyMs": 20000,
+        "stageMs": 150000,
+        "version": "royal-flash/1",
+        "timePerSecond": 250,
+        "bonusThreshold": 200000,
+        "maxBonusStages": 1,
+        "clearCelebrationMs": 0
+      }
+    },
+    {
+      "id": "royal-flash/2",
+      "game": "royal-flash",
+      "config": {
+        "hands": {
+          "pair": 5000,
+          "flush": 10000,
+          "straight": 9000,
+          "two_pair": 7000,
+          "four_kind": 30000,
+          "high_card": 0,
+          "full_house": 20000,
+          "three_kind": 8000,
+          "royal_flush": 50000,
+          "straight_flush": 40000
+        },
+        "holdMs": 5000,
+        "stages": 2,
+        "introMs": 2500,
+        "readyMs": 20000,
+        "stageMs": 150000,
+        "version": "royal-flash/2",
+        "timePerSecond": 250,
+        "bonusThreshold": 200000,
+        "maxBonusStages": 1,
+        "autoFinishFullGrid": true,
+        "clearCelebrationMs": 0
+      }
+    },
+    {
+      "id": "royal-flash/3",
+      "game": "royal-flash",
+      "config": {
+        "hands": {
+          "pair": 5000,
+          "flush": 10000,
+          "straight": 9000,
+          "two_pair": 7000,
+          "four_kind": 30000,
+          "high_card": 0,
+          "full_house": 20000,
+          "three_kind": 8000,
+          "royal_flush": 50000,
+          "straight_flush": 40000
+        },
+        "holdMs": 5000,
+        "stages": 2,
+        "introMs": 2500,
+        "readyMs": 20000,
+        "stageMs": 150000,
+        "version": "royal-flash/3",
+        "timePerSecond": 250,
+        "allowTakeScore": false,
+        "bonusThreshold": 200000,
+        "maxBonusStages": 1,
+        "autoFinishFullGrid": true,
+        "clearCelebrationMs": 0
+      }
+    },
+    {
+      "id": "run21/3",
+      "game": "run21",
+      "config": {
+        "bust": "zero",
+        "speed": {
+          "bands": [
+            {
+              "until": 200,
+              "intervalMs": 420
+            },
+            {
+              "until": 0,
+              "intervalMs": 900
+            }
+          ],
+          "start": 280,
+          "decrement": 2,
+          "intervalMs": 420
+        },
+        "passes": 1,
+        "preset": "run21/3",
+        "rounds": 3,
+        "target": 21,
+        "columns": 5,
+        "exhausted": "score",
+        "clockStart": "intro_end",
+        "expiration": "zero",
+        "multipliers": {
+          "97": 50,
+          "98": 100,
+          "99": 150,
+          "100": 200,
+          "101": 250,
+          "102": 300,
+          "103": 400,
+          "104": 500,
+          "105": 1000
+        },
+        "roundIntroMs": 2500,
+        "roundDurationMs": 106800,
+        "goldCelebrationMs": 3800,
+        "scorePresentationMs": 5000,
+        "silverCelebrationMs": 3000
+      }
+    },
+    {
+      "id": "take-two/2",
+      "game": "take-two",
+      "config": {
+        "holdMs": 6000,
+        "rounds": 3,
+        "aceWrap": true,
+        "introMs": 2500,
+        "stageMs": 100000,
+        "version": "take-two/2",
+        "meterMax": 500,
+        "meterMin": 50,
+        "meterStep": 5,
+        "clearBonus": 10000,
+        "clockStart": "intro_end",
+        "samePoints": 1200,
+        "stockBonus": 1000,
+        "drawPenalty": 100,
+        "meterHoldMs": 1000,
+        "vacancyOrder": "first_exposed_row_major",
+        "drawResetsMeter": true,
+        "consecutivePoints": 400,
+        "timeBonusPerSecond": 50,
+        "meterStepsPerSecond": 30
+      }
+    },
+    {
+      "id": "tri-towers/5",
+      "game": "tri-towers",
+      "config": {
+        "wrap": true,
+        "holdMs": 5000,
+        "stages": 2,
+        "readyMs": 30000,
+        "stageMs": 120000,
+        "version": "tri-towers/5",
+        "drawPenalty": 100,
+        "manualStuck": true,
+        "peakBonuses": [
+          5000,
+          10000,
+          15000
+        ],
+        "roundIntroMs": 2500,
+        "stockPerCard": 1000,
+        "streakAwards": [
+          100,
+          200,
+          400,
+          600,
+          800,
+          1000,
+          1200,
+          1500,
+          2000
+        ],
+        "timePerSecond": 10,
+        "bonusThreshold": 80000,
+        "maxBonusStages": 1,
+        "clearCelebrationMs": 3000
+      }
+    },
+    {
+      "id": "trip-flip/1",
+      "game": "trip-flip",
+      "config": {
+        "dots": 30,
+        "dotMs": 6000,
+        "holdMs": 6000,
+        "rounds": 2,
+        "introMs": 2500,
+        "stageMs": 180000,
+        "version": "trip-flip/1",
+        "runPoints": 600,
+        "aceLowOnly": true,
+        "clockStart": "intro_end",
+        "timePerDot": 125,
+        "tripPoints": 3000,
+        "suitedBonus": 5000,
+        "specialBonus": 10000
+      }
+    }
+  ],
+  "defaults": [
+    "3-5-7",
+    "battle-31",
+    "boxdrop",
+    "canasta",
+    "cribbage",
+    "eleven-up",
+    "farkle",
+    "gin-rummy",
+    "holm",
+    "horses",
+    "mega-card-golf",
+    "ptown-words",
+    "quintzee",
+    "race-poker",
+    "royal-flash",
+    "run21",
+    "ship-captain-crew",
+    "six-card-golf",
+    "take-two",
+    "tri-towers",
+    "trip-flip",
+    "yahtzee"
+  ],
+  "quintzee": {
+    "rounds": 2,
+    "introMs": 2500,
+    "readyMs": 30000,
+    "version": "quintzee/3",
+    "resultMs": 9000,
+    "speedMin": 100,
+    "maxRounds": 3,
+    "clearBonus": 35,
+    "durationMs": 240000,
+    "speedRange": 200,
+    "upperBonus": 35,
+    "baseCountMs": 600,
+    "bonusThreshold": 80000,
+    "upperThreshold": 63,
+    "upperCelebrationMs": 1500
+  },
+  "checkedAt": "2026-11-04",
+  "wordsLive": {
+    "bingo": 50,
+    "turnMs": 180000,
+    "version": "ptown-words/2",
+    "passCycles": 2,
+    "timeBankMs": 180000,
+    "dictionaryId": "enable2k/1",
+    "timeBankUses": 2,
+    "exchangeMinimum": 7,
+    "dictionarySha256": "d5ec7b3b1d35db798cee044fe3ec37e7cc0a96a00dee5695ad34c767f1797925"
+  },
+  "wordsAsync": {
+    "bingo": 50,
+    "turnMs": 129600000,
+    "version": "ptown-words/3",
+    "passCycles": 2,
+    "dictionaryId": "enable2k/1",
+    "exchangeMinimum": 7,
+    "dictionarySha256": "d5ec7b3b1d35db798cee044fe3ec37e7cc0a96a00dee5695ad34c767f1797925",
+    "expiryDisposition": "forfeit"
+  }
+}

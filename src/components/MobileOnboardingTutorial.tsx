@@ -18,8 +18,9 @@ export function MobileOnboardingTutorial({onClose,onOpenSettings}:{onClose:(deci
  const steps=iphone
   ?['Open holm357.com in Safari.','Tap Share (inside the page menu on some layouts).','Choose Add to Home Screen.','Keep Open as Web App on, if shown, then tap Add.','Launch from the new Home Screen icon.']
   :['Open holm357.com in Chrome.','Tap the three-dot browser menu.','Choose Install app or Add to Home screen.','If shown, choose Install and create shortcut. Confirm Install/Add.','Launch from the new Home Screen icon.'];
- return <Dialog open onOpenChange={open=>{if(!open)onClose('snooze');}}><DialogContent className="dark mobile-onboarding">
-  <DialogHeader className="pr-8 text-left"><DialogTitle className="text-lg text-amber-200">Get the Most from P-Town Poker</DialogTitle><DialogDescription className="sr-only">Two quick steps to install the app and set up notifications. You can skip or replay this guide.</DialogDescription></DialogHeader>
+ return <Dialog open><DialogContent className="dark mobile-onboarding" showCloseButton={false}
+  onEscapeKeyDown={event=>event.preventDefault()} onInteractOutside={event=>event.preventDefault()}>
+  <DialogHeader className="text-left"><DialogTitle className="text-lg text-amber-200">Get the Most from P-Town Poker</DialogTitle><DialogDescription className="sr-only">Two quick steps to install the app and set up notifications. Choose Maybe Later to proceed immediately, Don’t Show Again, or Done. You can replay this guide from Help.</DialogDescription></DialogHeader>
   <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-950/70 p-1" role="group" aria-label="Phone platform">
    {(['iphone','android'] as const).map(value=><Button key={value} size="sm" variant={platform===value?'secondary':'ghost'} aria-pressed={platform===value} onClick={()=>setPlatform(value)}>{value==='iphone'?'iPhone':'Android'}</Button>)}
   </div>

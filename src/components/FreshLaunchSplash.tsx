@@ -8,16 +8,18 @@ import './FreshLaunchSplash.css';
 /** An optional sibling of the authenticated live lobby, never an initialization gate. */
 export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: boolean }) {
   const routeIsLobby = isSplashLobbyEntry(useLocation());
-  const [phase, setPhase] = useState<'pending' | 'showing' | 'fading' | 'done'>('pending');
+  const [phase, setPhase] = useState<'pending' | 'preparing' | 'showing' | 'fading' | 'done'>('pending');
   const [still, setStill] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [mediaDone, setMediaDone] = useState(false);
+  const [frameReady, setFrameReady] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const claimed = useRef(false);
   const cancelled = useRef(false);
   const owner = useRef(userId);
   const dispose = useRef(() => {});
-  const cancel = useCallback(() => { cancelled.current = true; setPhase('done'); }, []);
-  const finish = useCallback(() => { setStill(true); setMediaDone(true); }, []);
+  const releaseCover = useCallback(() => window.dispatchEvent(new Event('ptown:launch-cover-ready')), []);
+  const cancel = useCallback(() => { cancelled.current = true; setPhase('done'); releaseCover(); }, [releaseCover]);
+  const finish = useCallback(() => { setStill(true); setMediaDone(true); setPhase(p=>p==='preparing'?'showing':p); }, []);
   const fade = useCallback(() => setPhase(p => p === 'showing' ? 'fading' : p), []);
 
   useLayoutEffect(() => {
@@ -45,10 +47,12 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
     const posters = sources.map(src => {
       const poster = new Image();
       poster.onload = () => {
-        if (!alive || cancelled.current || --remaining > 0) return;
-        clearTimeout(assetTimeout);
-        if (document.hidden || getActiveRecoveryLease()) { cancel(); return; }
-        setPhase('showing');
+        void (poster.decode?.() ?? Promise.resolve()).then(() => {
+          if (!alive || cancelled.current || --remaining > 0) return;
+          clearTimeout(assetTimeout);
+          if (document.hidden || getActiveRecoveryLease()) { cancel(); return; }
+          setPhase(matchMedia('(prefers-reduced-motion: reduce)').matches?'showing':'preparing');
+        }).catch(cancel);
       };
       poster.onerror = cancel;
       poster.src = src;
@@ -67,6 +71,20 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
   }, [cancel]);
 
   useEffect(() => { if (phase === 'done') dispose.current(); }, [phase]);
+
+  useLayoutEffect(() => {
+    if (phase === 'preparing' || phase === 'showing') releaseCover();
+  }, [phase, releaseCover]);
+
+  useEffect(() => {
+    if (phase !== 'preparing') return;
+    const node=video.current;
+    if (!node?.canPlayType('video/mp4')) { finish(); return; }
+    if (node.readyState >= 2) { setPhase('showing'); return; }
+    // Asset failure bound, never a guessed playback/start delay.
+    const timeout=setTimeout(finish,SPLASH_MAX_VISIBLE_MS);
+    return () => clearTimeout(timeout);
+  }, [phase, finish]);
 
   useEffect(() => {
     if (phase !== 'showing') return;
@@ -94,12 +112,26 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
     const node = video.current;
     if (!node) return;
     let alive = true;
+    let frame: number | undefined, paint: number | undefined;
+    const reveal = () => { if (alive) setFrameReady(true); };
+    const decoded = () => {
+      if (node.readyState < 2) return;
+      paint=requestAnimationFrame(()=>{paint=requestAnimationFrame(reveal);});
+    };
+    if (node.requestVideoFrameCallback) frame=node.requestVideoFrameCallback(reveal);
+    else node.addEventListener('playing',decoded);
     const fallback = () => { if (alive) finish(); };
     node.muted = true;
     node.defaultMuted = true;
     if (!node.canPlayType('video/mp4')) { fallback(); return; }
     try { void node.play()?.catch(fallback); } catch { fallback(); }
-    return () => { alive = false; node.pause(); node.removeAttribute('src'); node.load(); };
+    return () => {
+      alive = false;
+      if (frame !== undefined) node.cancelVideoFrameCallback(frame);
+      if (paint !== undefined) cancelAnimationFrame(paint);
+      node.removeEventListener('playing',decoded);
+      node.pause(); node.removeAttribute('src'); node.load();
+    };
   }, [phase, still, finish]);
 
   useEffect(() => {
@@ -108,12 +140,13 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
     return () => clearTimeout(timer);
   }, [phase, cancel]);
 
-  if (!routeIsLobby || owner.current !== userId || (phase !== 'showing' && phase !== 'fading')) return null;
-  return <div className="fresh-launch-splash" data-launch-splash={phase} aria-hidden="true"
+  if (!routeIsLobby || owner.current !== userId || !['preparing','showing','fading'].includes(phase)) return null;
+  return <div className="fresh-launch-splash" data-launch-splash={phase} data-frame-ready={frameReady&&!still} aria-hidden="true"
     style={{ opacity: phase === 'fading' ? 0 : 1 }}>
     <img src={still ? SPLASH_POSTER : SPLASH_OPENING_FRAME} alt="" className="fresh-launch-splash-art" />
     {!still && <video ref={video} src={SPLASH_VIDEO} poster={SPLASH_OPENING_FRAME}
-      className="fresh-launch-splash-art" autoPlay muted playsInline preload="auto"
+      className="fresh-launch-splash-art" muted playsInline preload="auto"
+      onLoadedData={()=>setPhase(p=>p==='preparing'?'showing':p)}
       disablePictureInPicture tabIndex={-1} onEnded={finish} onError={finish} />}
   </div>;
 }

@@ -4,9 +4,9 @@ import {DEFAULT_CONFIG,type Config} from '@/lib/run21/model';
 import {duration} from '@/lib/run21/rules';
 import {qualificationThreshold} from '@/lib/run21/outcomePresentation';
 
-type Props = {config?:Config; solo?:boolean};
+type Props = {config?:Config; solo?:boolean; async?:boolean};
 /** Copy follows the supplied frozen configuration, never selects gameplay settings. */
-export function Run21ScoringReference({config=DEFAULT_CONFIG,solo=false}:Props){
+export function Run21ScoringReference({config=DEFAULT_CONFIG,solo=false,async=false}:Props){
   return <div className="space-y-2 text-sm" data-run21-scoring-reference>
     <p>Place cards into {config.columns} columns. Aim for {config.target} in each without going over.</p>
     <p>Collect Win becomes available at total {qualificationThreshold(config)}+.</p>
@@ -21,6 +21,7 @@ export function Run21ScoringReference({config=DEFAULT_CONFIG,solo=false}:Props){
       ?config.speed.bands.map(band=>`Subtract ${config.speed.decrement} every ${band.intervalMs/1000} seconds down to ${band.until}.`).join(' ')
       :`Subtract ${config.speed.decrement} every ${config.speed.intervalMs/1000} ${config.speed.intervalMs===1000?'second':'seconds'}.`}</p>
     {config.clockStart!=='intro_end'&&<p>{config.firstPlacementSeconds!=null?`Place your first card within ${config.firstPlacementSeconds} seconds. `:''}{solo?'Missing the first-placement deadline ends the run unranked.':'A separate first-placement deadline applies to each new turn. If it expires, real-money sessions pause; fake-money players auto-complete and sit out the next hand.'}</p>}
+    {async&&<p>Play {config.rounds} paired rounds. Equal totals continue with paired tiebreak rounds until one player leads. Highest total wins. Each started round keeps its normal clock.</p>}
     {solo&&<p>{config.rounds} rounds contribute to your run score. Abandoned runs are unranked.</p>}
   </div>;
 }

@@ -20,13 +20,11 @@ import { createSession } from "@/lib/sessionCreation";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { PerfSession } from "@/lib/perf";
-import { Settings, Info, Wrench } from "lucide-react";
-import { GameRules } from "@/components/GameRules";
+import { Settings, Wrench } from "lucide-react";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { RealMoneyWarningDialog } from "@/components/RealMoneyWarningDialog";
-import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import {
   AlertDialog,
@@ -102,16 +100,14 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardi
   const [selectedSession, setSelectedSession] = useState<Game | null>(null);
   const [showSessionResults, setShowSessionResults] = useState(false);
   const [showDefaultsConfig, setShowDefaultsConfig] = useState(false);
-  const [showRulesDialog, setShowRulesDialog] = useState(false);
   const [realMoney, setRealMoney] = useState(false);
   const { isAdmin: isSuperuser } = useIsAdmin(userId);
   const [pendingRealMoneyGameId, setPendingRealMoneyGameId] = useState<string | null>(null);
   const [creatingGame, setCreatingGame] = useState(false);
-  const { isTablet } = useDeviceSize();
   const navigate = useNavigate();
   const { toast } = useToast();
   const hasRecoverableSession=games.some(game=>game.is_player&&!game.session_ended_at&&!['session_ended','completed','game_over'].includes(game.status));
-  const onboardingBlocked=loading||!initialLoadSucceeded||creatingGame||showCreateDialog||showSessionResults||showDefaultsConfig||showRulesDialog||!!pendingRealMoneyGameId||!!deleteGameId||hasRecoverableSession;
+  const onboardingBlocked=loading||!initialLoadSucceeded||creatingGame||showCreateDialog||showSessionResults||showDefaultsConfig||!!pendingRealMoneyGameId||!!deleteGameId||hasRecoverableSession;
   useLayoutEffect(()=>{onOnboardingBlocked?.(onboardingBlocked);},[onboardingBlocked,onOnboardingBlocked]);
   useLayoutEffect(()=>{if(initialLoadSucceeded&&hasRecoverableSession)cancelOnboardingEntry();},[initialLoadSucceeded,hasRecoverableSession]);
 
@@ -255,17 +251,6 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardi
                 <p className="text-amber-200/80 text-xs sm:text-sm mt-0.5">Game Lobby</p>
               </div>
             </div>
-            <Button 
-              onClick={() => setShowRulesDialog(true)} 
-              size="sm"
-              variant="ghost"
-              className={`p-0 text-amber-300 hover:text-amber-100 hover:bg-amber-600/20 -mt-2 ${
-                isTablet ? 'h-16 w-16' : 'h-10 w-10'
-              }`}
-              title="Game Rules"
-            >
-              <Info className={isTablet ? 'h-10 w-10' : 'h-6 w-6'} />
-            </Button>
           </div>
           
           {/* Buttons section - at bottom */}
@@ -672,10 +657,6 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardi
         onOpenChange={setShowDefaultsConfig} 
       />
 
-      <GameRules 
-        open={showRulesDialog} 
-        onOpenChange={setShowRulesDialog} 
-      />
 
       <RealMoneyWarningDialog
         open={!!pendingRealMoneyGameId}

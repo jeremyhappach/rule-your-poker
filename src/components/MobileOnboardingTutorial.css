@@ -19,9 +19,7 @@
 /* Specificity is intentional: the production utility bundle follows this file. */
 .mobile-onboarding .onboarding-content { flex: 1 1 0%; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; touch-action: pan-y pinch-zoom; scrollbar-gutter: stable; }
 .mobile-onboarding > :not([aria-roledescription="carousel"]) { flex-shrink: 0; }
-.mobile-onboarding > div:first-child { padding-right: 32px; }
 .mobile-onboarding > [aria-label="Phone platform"] button { height: auto; min-height: 36px; padding-block: 6px; line-height: 1.3; }
-.mobile-onboarding > button { width: 44px; height: 44px; right: 5px; top: 6px; display: grid; place-items: center; }
 .onboarding-navigation { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); align-items: center; gap: .25rem; }
 .onboarding-navigation > button { min-width: 0; height: auto; min-height: 40px; padding: 4px; line-height: 1.3; }
 .onboarding-navigation > div > button { flex: 1; width: auto; min-width: 0; height: 44px; }
@@ -38,7 +36,7 @@
 
 .onboarding-install-demo { padding: .65rem; border: 1px solid #475569; border-radius: .8rem; background: #0a0f1a; }
 .onboarding-install-stage { position: relative; height: 13rem; overflow: hidden; }
-.onboarding-install-frame { position: absolute; inset: 0; opacity: 0; animation: onboarding-install-frame 7s linear infinite; animation-delay: calc(var(--frame) * 1s); pointer-events: none; }
+.onboarding-install-frame { position: absolute; inset: 0; opacity: 0; animation: onboarding-install-frame 21s linear infinite; animation-delay: calc(var(--frame) * 3s); pointer-events: none; }
 .onboarding-install-demo[data-playing="false"] .onboarding-install-frame { animation-play-state: paused; }
 .onboarding-install-frame > p { margin-top: .45rem; color: #fde68a; font-size: .75rem; line-height: 1.3; text-align: center; }
 .onboarding-demo-phone { position: relative; height: 10.4rem; max-width: 15rem; margin-inline: auto; overflow: hidden; border: 2px solid #64748b; border-radius: .8rem; background: #132c34; }
@@ -61,9 +59,9 @@
 .onboarding-demo-home-icons { display: flex; gap: .7rem; }
 .onboarding-demo-home-icons i { width: 1.2rem; height: 1.2rem; background: #cbd5e133; border-radius: .35rem; }
 .onboarding-demo-installed-icon { width: 3rem; height: 3rem; border-radius: .65rem; }
-.onboarding-demo-controls { display: flex; justify-content: space-between; align-items: center; gap: .4rem; font-size: .65rem; color: #94a3b8; }
+.onboarding-demo-controls { display: flex; justify-content: flex-end; align-items: center; font-size: .65rem; }
 .onboarding-demo-controls button { display: flex; align-items: center; gap: .2rem; padding: .35rem; color: #fde68a; border-radius: .3rem; }
-@keyframes onboarding-install-frame { 0%,12% { opacity: 1; } 14.28%,100% { opacity: 0; } }
+@keyframes onboarding-install-frame { 0%,13.33% { opacity: 1; } 14.2857%,100% { opacity: 0; } }
 .onboarding-install-demo[data-reduced="true"] .onboarding-install-frame { animation: none; opacity: 0; }
 .onboarding-install-demo[data-reduced="true"] .onboarding-install-frame[data-step="6"] { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {

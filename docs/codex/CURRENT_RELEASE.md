@@ -1,3 +1,17 @@
+# Mobile Round 2 smoke corrections — 2026-11-04 — approved release
+
+Three-second installation holds, explicit tutorial dismissal, the cleaned lobby
+banner, the complete mode-aware rules catalog (Mega Card Golf under Other), and
+the opening-art/video/native launch handoff are qualified for this coordinated
+release. The audit covers 22 registered games, including nine Arcade and six
+Async games, with 37 game/mode renders. No migration or financial/gameplay change.
+
+App TypeScript, production build, 250 focused tests, 241 shared harness tests,
+34 onboarding/lobby and 27 compiled-App splash browser scenarios pass, including
+cold/cache-served starts and recovery/resume exclusions. Native iPhone/Android owner smoke remains pending.
+See [scope, audit and qualification](MOBILE_ROUND2_SMOKE.md). Exact publication
+is recorded on `release-mobile-round2-20261104-verified`.
+
 # Mobile onboarding smoke corrections — 2026-11-04 — approved release
 
 The six scoped corrections cover first login after a current-build refresh,

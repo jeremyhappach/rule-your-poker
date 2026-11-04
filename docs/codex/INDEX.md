@@ -2,6 +2,9 @@
 
 This directory is the durable project memory for P-Town Poker. New sessions should read this index, `CURRENT_RELEASE.md`, and only the files relevant to the task.
 
+Mobile Round 2 onboarding, complete rules/mode audit, Mega under Other and splash
+launch handoff: `MOBILE_ROUND2_SMOKE.md`.
+
 Async bell/placement correction, qualification and release evidence:
 `ASYNC_SOUND_REGRESSIONS.md`.
 

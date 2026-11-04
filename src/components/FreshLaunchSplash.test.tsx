@@ -10,9 +10,10 @@ import { launchSplash, SPLASH_OPENING_FRAME, SPLASH_POSTER } from '@/lib/launchS
 import { FreshLaunchSplash } from './FreshLaunchSplash';
 
 let reduced = false, imageError = false, imageStalled = false;
+let videoReady = 2;
 beforeEach(() => {
   vi.useFakeTimers();
-  mock.lease = null; reduced = false; imageError = false; imageStalled = false;
+  mock.lease = null; videoReady=2; reduced = false; imageError = false; imageStalled = false;
   launchSplash.eligible = true; launchSplash.consumed = false;
   // Arrival after a slow boot must not disqualify this fresh document.
   vi.spyOn(performance, 'now').mockReturnValue(12000);
@@ -21,6 +22,7 @@ beforeEach(() => {
     onload?: () => void; onerror?: () => void;
     set src(_: string) { if (!imageStalled) queueMicrotask(() => imageError ? this.onerror?.() : this.onload?.()); }
   });
+  vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockImplementation(()=>videoReady);
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
   vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
@@ -73,7 +75,7 @@ it('waits for the opening image even when the completed PNG is already loaded', 
   render(tree());
   act(() => pending.get(SPLASH_POSTER)?.onload?.());
   expect(splash()).toBeNull();
-  act(() => pending.get(SPLASH_OPENING_FRAME)?.onload?.());
+  await act(async () => pending.get(SPLASH_OPENING_FRAME)?.onload?.());
   expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
   expect(document.querySelector('img')?.getAttribute('src')).toBe(SPLASH_OPENING_FRAME);
 });
@@ -120,4 +122,24 @@ it.each(['failed', 'stalled'])('never covers the lobby with a missing poster: %s
 it('never carries the splash across account identity', async () => {
   const view = render(tree()); await flush();
   view.rerender(tree(true, '/', 'other-user')); expect(splash()).toBeNull();
+});
+
+it('keeps the decoded opening above an unprepared video and starts the full clip after loading', async()=>{
+ videoReady=0;render(tree());await flush();
+ expect(splash()?.getAttribute('data-launch-splash')).toBe('preparing');
+ expect(splash()?.getAttribute('data-frame-ready')).toBe('false');
+ expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+ await flush(2000);const video=document.querySelector('video')!;videoReady=2;fireEvent.loadedData(video);await flush();
+ expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
+ expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
+ expect(splash()?.getAttribute('data-frame-ready')).toBe('false');
+ fireEvent.playing(video);await flush(40);expect(splash()?.getAttribute('data-frame-ready')).toBe('true');
+ await flush(2900);expect(document.querySelector('video')).not.toBeNull();
+ fireEvent.ended(video);expect(document.querySelector('img')?.getAttribute('src')).toBe(SPLASH_POSTER);
+});
+it('does not expose a downloaded image before decode finishes',async()=>{
+ const decoded:Array<()=>void>=[];vi.stubGlobal('Image',class{onload?:()=>void;decode(){return new Promise<void>(resolve=>{decoded.push(resolve);});}set src(_:string){queueMicrotask(()=>this.onload?.());}});
+ render(tree());await flush();expect(splash()).toBeNull();
+ await act(async()=>decoded[0]());expect(splash()).toBeNull();
+ await act(async()=>decoded[1]());expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
 });

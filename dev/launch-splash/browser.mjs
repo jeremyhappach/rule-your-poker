@@ -17,6 +17,7 @@ const server = createServer((req, res) => {
   if (!existsSync(file) || !extname(file)) file = root + '/index.html';
   const body = readFileSync(file); res.setHeader('Content-Type', mime[extname(file)] ?? 'application/octet-stream');
   res.setHeader('Accept-Ranges', 'bytes');
+  if (['.png','.mp4'].includes(extname(file))) res.setHeader('Cache-Control','public,max-age=86400');
   if (req.headers.range) {
     const [, lo, hi] = /bytes=(\d+)-(\d*)/.exec(req.headers.range); const start = +lo, end = hi ? +hi : body.length - 1;
     res.writeHead(206, { 'Content-Range': `bytes ${start}-${end}/${body.length}`, 'Content-Length': end - start + 1 }); return res.end(body.subarray(start, end + 1));
@@ -31,6 +32,7 @@ const results = [];
 const cases = [
   { name: 'first-frame-handoff', holdVideo: true, show: true },
   { name: 'opening-image-unavailable', openingFail: true },
+  { name: 'ios-cached', cached:true, show:true },
   { name: 'ios-cold', width: 390, height: 844, ios: true, show: true },
   { name: 'android-cold', width: 412, height: 915, show: true },
   { name: 'compact', width: 320, height: 568, show: true },
@@ -101,6 +103,7 @@ try {
       const send = data => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) });
       if (path.startsWith('/auth/v1/')) return send(path.endsWith('/user') ? user : { user, access_token: token });
       if (path.startsWith('/rest/v1/rpc/')) {
+        if (path.endsWith('/account_access_snapshot')) return send({userId:user.id,revision:1,enabled:true,status:'enabled',verified:true,email:user.email,emailDelivery:'sent'});
         if (path.endsWith('/account_statement')) return send({ balance: '125.00', transactions: [], has_more: false, next_cursor: null });
         if (path.endsWith('/platform_notification_center')) return send({ actionable: 0, items: [] });
         return send([]);
@@ -130,13 +133,35 @@ try {
       if (c.holdVideo && path.endsWith('.mp4')) await videoGate;
       return route.continue();
     });
+    if(c.cached){
+      // Playwright network routes disable HTTP caching. Mock only backend fetch
+      // in this case, leaving native image/video requests on the real cache path.
+      await context.unroute('**/*');
+      await context.addInitScript(({user,token})=>{
+        const fetchNetwork=window.fetch.bind(window);
+        window.fetch=async(input,init)=>{
+          const url=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url,location.href),path=url.pathname;
+          if(url.origin===location.origin&&!path.startsWith('/api/'))return fetchNetwork(input,init);
+          let data=[];
+          if(path.startsWith('/auth/v1/'))data=path.endsWith('/user')?user:{user,access_token:token};
+          if(path.endsWith('/account_access_snapshot'))data={userId:user.id,revision:1,enabled:true,status:'enabled',verified:true,email:user.email,emailDelivery:'sent'};
+          if(path.endsWith('/account_statement'))data={balance:'125.00',transactions:[],has_more:false,next_cursor:null};
+          if(path.endsWith('/platform_notification_center'))data={actionable:0,items:[]};
+          if(path.endsWith('/profiles'))data={id:user.id,username:'Splash Player',is_active:true,is_superuser:false,play_sounds:false};
+          return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});
+        };
+      },{user,token});
+    }
     const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
+    const cacheHits=[];
+    if(c.cached){const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');await cdp.send('Network.setCacheDisabled',{cacheDisabled:false});cdp.on('Network.responseReceived',({response})=>{if(response.url.includes('/launch-splash/')&&response.fromDiskCache)cacheHits.push(response.url);});await page.goto(origin+'/launch-splash/approved-v1-opening.png');await page.evaluate(async()=>{await Promise.all(['/launch-splash/approved-v1.png','/launch-splash/approved-v1.mp4'].map(url=>fetch(url).then(r=>r.arrayBuffer())));});}
     try {
       await page.goto(origin + (c.path ?? '/'), { waitUntil: 'domcontentloaded' });
       if (c.holdVideo) {
-        const overlay = page.locator('[data-launch-splash="showing"]');
+        const overlay = page.locator('[data-launch-splash="preparing"]');
         await overlay.waitFor();
         assert.equal(await overlay.locator('video').evaluate(v => v.readyState), 0);
+        assert.equal(await overlay.getAttribute('data-frame-ready'),'false');
         const screenshot = await overlay.screenshot({ path: `${out}/first-frame-before-video.png` });
         firstPaint = await page.evaluate(async screenshot => {
           const decode = async url => { const image = new Image(); image.src = url; await image.decode(); return image; };
@@ -164,7 +189,7 @@ try {
         releaseVideo();
       }
       if (c.show && !c.fallback) {
-        await page.locator('[data-launch-splash="showing"]').waitFor({ timeout: 3500 });
+        await page.locator('[data-launch-splash="showing"]').waitFor({ timeout: c.bootDelay ? 7000 : 3500 });
         const art = await page.locator('.fresh-launch-splash-art').first().evaluate(el => ({ fit: getComputedStyle(el).objectFit, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
         assert.equal(art.fit, 'contain'); assert.equal(art.width, c.width ?? 390); assert.equal(art.height, c.height ?? 844);
         await page.screenshot({ path: `${out}/${c.name}.png` });
@@ -211,7 +236,8 @@ try {
         await page.goto(origin + '/delayed/22222222-2222-4222-8222-222222222222'); await page.waitForTimeout(400);
         assert(!(await page.evaluate(() => window.splashEvidence)).some(e => e.phase !== 'none'));
       }
-      results.push({ name: c.name, evidence, media, firstPaint, membershipReads: queries.length, passed: true });
+      if(c.cached)assert(cacheHits.length>0,'Must exercise actual browser cache hits');
+      results.push({ cacheHits, name: c.name, evidence, media, firstPaint, membershipReads: queries.length, passed: true });
       console.log('PASS', c.name);
     } finally { releaseVideo(); await context.close(); }
   }

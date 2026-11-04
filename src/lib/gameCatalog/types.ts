@@ -1,5 +1,6 @@
 import type {ComponentType} from 'react';
-export interface RuleRendererProps {config?:unknown;version?:string;solo?:boolean}
+export type RulesMode = 'multiplayer' | 'arcade' | 'async';
+export interface RuleRendererProps {config?:unknown;version?:string;solo?:boolean;mode?:RulesMode}
 export type Category = 'cards' | 'dice' | 'other';
 export type Capability = 'run21' | 'tri-towers' | 'eleven-up' | 'royal-flash' | 'take-two' | 'trip-flip' | 'battle-31' | 'quintzee' | 'ptown-words' | 'boxdrop' | 'canasta' | 'six-card-golf' | 'race-poker' | 'mega-card-golf';
 export type GameDescriptor = {

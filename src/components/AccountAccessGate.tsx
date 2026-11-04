@@ -61,6 +61,10 @@ export function AccountAccessGate({children}:{children:ReactNode}) {
    .finally(()=>{if(identityRef.current===id){setSending(false);void load(id);}});
  },[access,load]);
  const publicAuth=location.pathname==='/auth'||location.pathname==='/verify-email';
+ useEffect(()=>{
+  if(publicAuth||identity===null||error||access&&!access.enabled||location.pathname!=='/')
+   window.dispatchEvent(new Event('ptown:launch-cover-ready'));
+ },[publicAuth,identity,error,access,location.pathname]);
  if(publicAuth||identity===null)return <>{children}</>;
  if(identity===undefined||!access)return <main className="min-h-screen grid place-items-center bg-background text-foreground p-6"><div role="status" className="space-y-4 text-center"><p>{error||'Checking account access…'}</p>{error&&<Button onClick={()=>identity?void load(identity):window.location.reload()}>Retry</Button>}<Button variant="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sign out</Button></div></main>;
  const verification=<div className="space-y-3"><p className="break-all text-sm">{access.email}</p><p role={access.emailDelivery==='failed'?'alert':'status'} className="text-sm">{message||emailDeliveryMessage(access.emailDelivery)}</p><Button disabled={sending} onClick={async()=>{const id=access.userId;setSending(true);setMessage('');try{await sendVerification(id);if(identityRef.current===id)setMessage('Verification email requested. Check your inbox and spam folder.');}catch(e){if(identityRef.current===id)setMessage(e instanceof Error?e.message:'Could not send email.');}finally{if(identityRef.current===id){setSending(false);void load(id);}}}}>Resend verification email</Button></div>;

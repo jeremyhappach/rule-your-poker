@@ -62,7 +62,7 @@ export const launchSplash = {
 // Cancel a pending launch if the app resumes/navigates before auth mounts Index.
 // Loading duration is deliberately absent from launch eligibility.
 if (typeof window !== 'undefined' && launchSplash.eligible) {
-  const cancel = () => { launchSplash.eligible = false; stopWatching(); };
+  const cancel = () => { launchSplash.eligible = false; stopWatching(); window.dispatchEvent(new Event('ptown:launch-cover-ready')); };
   const visibility = () => { if (document.hidden) cancel(); };
   const restored = (event: PageTransitionEvent) => { if (event.persisted) cancel(); };
   const events = ['pagehide', 'popstate', 'app:page-resumed', 'pointerdown', 'keydown'];

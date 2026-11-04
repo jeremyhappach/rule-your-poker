@@ -1,5 +1,5 @@
 import {FarkleInstructions} from '@/components/farkle/FarkleRules';
-export default function TraditionalRules({article}:{article:string}) {return <>{/* Existing articles, verbatim. */}
+export default function TraditionalRules({article}:{article:string}) {return <>{/* Shared articles; only presentation copy, never gameplay authority. */}
             {article === "357" && <section className="mt-0 space-y-4 pr-4">
               <div className="space-y-3">
                 <h3 className="font-bold text-lg text-primary">3-5-7 Overview</h3>
@@ -11,7 +11,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
               <div className="space-y-2">
                 <h4 className="font-semibold">Setup</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                  <li>All players ante to start</li>
+                  <li>All players ante to start; the configured rollover is added at each later hand’s first round</li>
                   <li>Dealer selects game configuration</li>
                   <li>Goal: Win the required number of legs</li>
                 </ul>
@@ -54,8 +54,8 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                 <h4 className="font-semibold">Winning & Scoring</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li><strong>Showdown:</strong> Multiple stayers → loser(s) pay winner directly (capped at pot max)</li>
-                  <li><strong>Solo Stay:</strong> If only one player stays, they earn a leg</li>
-                  <li><strong>Pussy Tax:</strong> If everyone folds, all players pay into the pot</li>
+                  <li><strong>Solo Stay:</strong> If only one player stays, they buy a leg for the configured leg value</li>
+                  <li><strong>Pussy Tax:</strong> If everyone folds and Pussy Tax is enabled, all eligible players pay the configured tax into the pot</li>
                   <li><strong>Win Condition:</strong> First player to reach required legs wins the pot and all player legs</li>
                   <li><strong>Ties:</strong> No money changes hands</li>
                 </ul>
@@ -100,7 +100,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
               <div className="space-y-2">
                 <h4 className="font-semibold">Showdown Scenarios</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                  <li><strong>Everyone folds:</strong> Pussy tax - all players pay into pot, buck passes</li>
+                  <li><strong>Everyone folds:</strong> If enabled, Pussy Tax is added to the pot; the buck passes</li>
                   <li><strong>One player stays:</strong> Play against Chucky (4 random cards)</li>
                   <li><strong>Multiple players stay:</strong> Player vs Player showdown</li>
                 </ul>
@@ -123,7 +123,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                   <li>Best 5-card hand wins the pot</li>
                   <li>Loser(s) match the pot (capped at pot max); winner takes the pot</li>
                   <li>Buck passes, matched amount becomes new pot</li>
-                  <li><strong>Tie between players:</strong> Both play Chucky together</li>
+                  <li><strong>Partial top tie:</strong> Tied leaders share the old pot; losing stayers fund the next pot. Only when every stayer ties does the tied group face Chucky together</li>
                 </ul>
               </div>
 
@@ -134,7 +134,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                   <li>Antes only on first hand (pot carries over)</li>
                   <li>Turn-based decisions (not simultaneous)</li>
                   <li>Chucky acts as the "house" opponent</li>
-                  <li>Game continues until someone beats Chucky alone</li>
+                  <li>Game continues until the lone stayer or an all-tied group beats Chucky</li>
                 </ul>
               </div>
             </section>}
@@ -169,11 +169,10 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
               <div className="space-y-2">
                 <h4 className="font-semibold">Hand Rankings (Best to Worst)</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                  <li><span className="text-primary font-medium">Five of a Kind</span> - All 5 dice match (e.g., 6-6-6-6-6)</li>
+                  <li><span className="text-primary font-medium">Five natural 1s</span> beat every other hand. Otherwise, 1s are wild and join your best matching group.</li><li><span className="text-primary font-medium">Five of a Kind</span> - All 5 dice match, including wilds</li>
                   <li><span className="text-primary font-medium">Four of a Kind</span> - 4 dice match</li>
-                  <li><span className="text-primary font-medium">Straight</span> - 1-2-3-4-5 or 2-3-4-5-6</li>
                   <li><span className="text-primary font-medium">Three of a Kind</span> - 3 dice match</li>
-                  <li><span className="text-primary font-medium">Two Pair</span> - 2 pairs of matching dice</li>
+                  <li>Straights, full houses and two pairs have no separate category; only the best matching group counts.</li>
                   <li><span className="text-primary font-medium">One Pair</span> - 2 dice match</li>
                   <li><span className="text-primary font-medium">High Dice</span> - No matches, highest die wins</li>
                 </ul>
@@ -286,7 +285,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                   <li><strong>31:</strong> 2 points for hitting exactly 31</li>
                   <li><strong>Pairs:</strong> 2 pts (pair), 6 pts (three of a kind), 12 pts (four of a kind)</li>
                   <li><strong>Runs:</strong> 1 pt per card in a run of 3+ (cards don't need to be in order)</li>
-                  <li><strong>Go:</strong> If you can't play without exceeding 31, say "Go" — opponent pegs 1</li>
+                  <li><strong>Go:</strong> If you cannot play without exceeding 31, say "Go". When no player can continue, the last player to play pegs 1 (unless the total is 31)</li>
                   <li><strong>Last Card:</strong> 1 point for playing the last card (if not 31)</li>
                 </ul>
               </div>
@@ -300,7 +299,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                   <li><strong>Runs:</strong> 1 pt per card in runs of 3+</li>
                   <li><strong>Flush:</strong> 4 pts if all hand cards match suit (5 if starter matches too)</li>
                   <li><strong>"His Nobs":</strong> 1 pt for a Jack in hand matching the starter's suit</li>
-                  <li>Order: Non-dealer → Dealer's hand → Dealer's crib</li>
+                  <li>A crib flush requires all five cards to match, including the starter.</li><li>Order: Each nondealer → Dealer’s hand → Dealer’s crib</li>
                 </ul>
               </div>
 
@@ -309,7 +308,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li><strong>Skunk:</strong> If the loser fails to pass the skunk threshold, the winner earns a 2× multiplier on the ante</li>
                   <li><strong>Double Skunk:</strong> If enabled, failing to pass a lower threshold earns a 3× multiplier</li>
-                  <li>Available in Full (121) and Half (61) game modes</li>
+                  <li>Full (121) and Half (61) support skunks and double skunks. Super Quick (45) supports a skunk below 30; Sprint and Custom have no skunks</li>
                 </ul>
               </div>
             </section>}
@@ -337,8 +336,8 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                 <h4 className="font-semibold">Gameplay</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li>On your turn, <strong>draw</strong> from the stock pile or the discard pile</li>
-                  <li>Then <strong>discard</strong> one card</li>
-                  <li>Form <strong>melds</strong>: sets (3–4 of same rank) or runs (3+ consecutive same suit)</li>
+                  <li>Then <strong>discard</strong> one card. A card taken from the discard pile cannot be discarded immediately.</li><li>The nondealer gets the first upcard offer, then the dealer. If both pass, the nondealer draws stock. If stock reaches two cards after a discard, the hand ends without scoring.</li>
+                  <li>Form <strong>melds</strong>: sets (3–4 of same rank) or runs (3+ consecutive same suit); Aces are low</li>
                   <li><strong>Deadwood:</strong> Cards not in melds — face cards = 10, Ace = 1, others = face value</li>
                 </ul>
               </div>
@@ -367,7 +366,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                 <h4 className="font-semibold">Winning</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li>First player to reach the match target (50 or 100 pts) wins</li>
-                  <li>Winner collects the ante from the loser</li>
+                  <li>At match end, the loser pays the configured ante plus the score difference multiplied by the configured per-point value</li>
                 </ul>
               </div>
             </section>}
@@ -383,7 +382,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
               <div className="space-y-2">
                 <h4 className="font-semibold">Setup</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
-                  <li>2+ players; all ante to start</li>
+                  <li>2+ players; agree the fixed stake before play</li>
                   <li>Each player takes 13 turns (one per category)</li>
                   <li>5 dice, up to 3 rolls per turn</li>
                 </ul>
@@ -434,7 +433,7 @@ export default function TraditionalRules({article}:{article:string}) {return <>{
                 <h4 className="font-semibold">Winning</h4>
                 <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
                   <li>After all 13 categories are filled, totals are calculated</li>
-                  <li>Highest total score wins the pot</li>
+                  <li>Highest total score wins one configured stake from each loser. A top tie moves no chips and continues to another hand.</li>
                 </ul>
               </div>
             </section>}

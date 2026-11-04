@@ -34,6 +34,6 @@ export function MobileInstallAnimation({platform,active}:{platform:MobilePlatfor
     <p>{step+1}. {caption}</p>
    </div>)}
   </div>
-  <div className="onboarding-demo-controls"><span>{reduced?'Installation preview · follow the steps below':'Installation preview · 7-second loop'}</span>{!reduced&&<button type="button" onClick={()=>setPaused(value=>!value)} aria-label={paused?'Play installation animation':'Pause installation animation'}>{paused?<Play size={14}/>:<Pause size={14}/>} {paused?'Play':'Pause'}</button>}</div>
+  {!reduced&&<div className="onboarding-demo-controls"><button type="button" onClick={()=>setPaused(value=>!value)} aria-label={paused?'Play installation animation':'Pause installation animation'}>{paused?<Play size={14}/>:<Pause size={14}/>} {paused?'Play':'Pause'}</button></div>}
  </div>;
 }
