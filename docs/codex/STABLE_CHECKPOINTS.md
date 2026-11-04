@@ -1,5 +1,15 @@
 # Stable checkpoints — do not reopen without a new repro
 
+2026-11-04 Jeremy confirmed "ok we're good" after the published iPhone splash
+hotfix retest: full branding animation with no opening flash. Accepted product
+commit: `af559022f079f193d928e07dbd12ce86b09ca198`; checkpoint tag:
+`splash-smoke-accepted-20261104`. Muted playback starts during preparation,
+the decoded opening image covers video until its first frame, and data readiness
+does not restart playback. Preserve the approved three-second clip and existing
+fresh-launch/recovery/resume guards. This closes the reported iPhone splash
+regression; it does not assert a new Android or unrelated gameplay smoke.
+See `MOBILE_ROUND2_SMOKE.md` for qualification and the earlier failed release.
+
 2026-11-03 Mega Card Golf automated hosted qualification passed at product commit
 `6ff9f58ad4368e8502d5a3626c06234de97673de`: all course/length configurations,
 two-client live terminal/reconnect, async replay/ack/skip, canonical settlement

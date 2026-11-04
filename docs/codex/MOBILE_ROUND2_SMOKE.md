@@ -95,8 +95,10 @@ cold-data playback, rejected/stalled play requests and late rejection after
 resume cancellation. All 28 compiled-App launch cases pass, including real-video
 playback after deferred data, no initial flash, full duration, actual asset-cache
 hits and recovery/resume exclusions. Qualification and publication are recorded
-with `release-splash-playback-hotfix-20261104-verified`. Owner acceptance still
-requires a fresh iPhone Home Screen launch with the full animation and no flash.
+with `release-splash-playback-hotfix-20261104-verified`. Jeremy subsequently
+confirmed "ok we're good" after the requested iPhone Home Screen animation/no-flash
+retest on `af559022f079f193d928e07dbd12ce86b09ca198`. The reported splash regression
+is accepted and closed at `splash-smoke-accepted-20261104`.
 
 ### Earlier Round 2 first-frame correction
 

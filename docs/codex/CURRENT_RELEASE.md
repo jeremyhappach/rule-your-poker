@@ -1,4 +1,4 @@
-# Splash playback hotfix — 2026-11-04
+# Splash playback hotfix — 2026-11-04 — owner smoke passed
 
 Owner smoke of `5407fd0fc` removed the flash but stalled on the opening bridge.
 The correction requests muted playback during preparation instead of waiting
@@ -7,7 +7,9 @@ guard and a single uninterrupted playback across data readiness.
 TypeScript, production build, 45 focused tests and 28 compiled-App launch
 scenarios pass. The exact
 qualification/publication checkpoint is `release-splash-playback-hotfix-20261104-verified`.
-Physical iPhone confirmation of full animation without a flash remains pending.
+Jeremy confirmed "ok we're good" after the iPhone animation/no-flash retest on
+production `af559022f079f193d928e07dbd12ce86b09ca198`. The splash is accepted;
+stable checkpoint: `splash-smoke-accepted-20261104`.
 See [failure boundary and preservation](MOBILE_ROUND2_SMOKE.md).
 
 # Mobile Round 2 smoke corrections — 2026-11-04 — approved release
