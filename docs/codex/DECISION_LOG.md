@@ -3137,3 +3137,12 @@ record is created only after server-side consumption of a genuine emailed token
 and invalidated on address change. Recovery retains canonical game/financial
 owners. See `ACCOUNT_ACCESS_RELEASE.md` for qualification and rollout evidence.
 
+Same-day owner correction: Jeremy explicitly requested all current users be
+marked verified after receiving the new unverified-email reminder. Grandfather
+the 17 accounts present at `2026-11-04 17:03:38.712215+00` using the distinct
+`owner_grandfathered` evidence method. Record the actual grant time rather than
+inventing a historical token event. Future registrations remain unverified;
+changing an email invalidates either evidence method. Genuine later verification
+updates the evidence method to `supabase_email_token`. Access, roles and finances
+are independent and unchanged.
+

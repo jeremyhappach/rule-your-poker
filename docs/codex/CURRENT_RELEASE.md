@@ -1,4 +1,4 @@
-# Administrator account access — 2026-11-04 — production release approved
+# Administrator account access — 2026-11-04 — live; existing emails grandfathered
 
 New users default to pending approval; administrators can enable or suspend them
 independently of email verification. Fresh server authorization, private email
@@ -9,6 +9,13 @@ the Auth confirmation/template configuration use the existing approved release
 workflow; exact final evidence belongs to
 `release-admin-account-access-20261104-verified`. Owner phone/push/gameplay smoke
 remains pending. See [qualification and acceptance](ACCOUNT_ACCESS_RELEASE.md).
+
+Owner follow-up: all 17 current accounts are now email-verified through an
+explicit one-time grandfathering migration; the initial empty evidence table
+caused existing users to see the unverified-email reminder. Future signups and
+email changes still require verification. Candidate and installed authenticated
+RPC proofs pass, with 13 enabled/four disabled accounts unchanged. Follow-up
+publication evidence belongs to `release-existing-email-verification-20261104-verified`.
 
 # Arcade achievement timestamps — 2026-11-03 — production release approved
 

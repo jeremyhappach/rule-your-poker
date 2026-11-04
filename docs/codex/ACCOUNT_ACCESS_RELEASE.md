@@ -6,8 +6,13 @@ Approved 2026-11-04. Branch `codex/admin-account-access`, based on
 `public.account_access` owns access. New Auth registrations start pending;
 existing profile activity is preserved. Installation retained 13 enabled users,
 four disabled qualification accounts and two enabled registered administrators.
-Approval never supplies email-ownership evidence. Historical confirmation
-timestamps are not imported as proof because their provenance is unavailable.
+Approval never supplies email-ownership evidence. The initial release did not
+import historical confirmation timestamps. After Jeremy reported the unexpected
+reminder, he explicitly authorized grandfathering all current users as verified.
+The 17-account cohort captured at `2026-11-04 17:03:38.712215+00` now has private
+`owner_grandfathered` evidence for its current email, separate from genuine token
+evidence. This one-time exception does not apply to future signups or changed
+addresses and does not enable suspended accounts.
 
 Enabled administrators use `admin_set_account_access`; serialized role/access
 changes prevent self-disable and last-administrator loss. Immutable private audit
@@ -22,6 +27,17 @@ consumes a genuine Supabase email token, saves only the returned identity/email,
 and discards its temporary session. Email changes clear evidence. Verification
 links use fragments and an explicit confirmation button; runtime href logging
 redacts this route. Resends are authorized and rate limited per target.
+
+Follow-up migration `20261104170440_grandfather_existing_email_verification.sql`
+is installed. Candidate and installed rollback proofs in
+`supabase/account-access/grandfather-proof.sql` confirm all 17 authenticated
+snapshots and admin directory records are verified, future signups remain pending
+and unverified, browsers cannot write evidence, genuine tokens update provenance,
+and email changes clear grandfathering. Candidate replay is a no-op and preserves
+Auth/profile rows and access decisions. Installed counts remain 17 registered,
+17 verified, 13 enabled and four disabled; all synthetic proof users rolled back.
+The account revision update notifies connected clients through the existing
+subscription. A refresh also retrieves the corrected verification state.
 
 The release configures Auth **Confirm email off** and the Magic link email:
 
