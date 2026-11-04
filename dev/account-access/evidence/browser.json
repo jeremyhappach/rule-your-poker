@@ -1,0 +1,86 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "width": 320,
+      "scenario": "pending"
+    },
+    {
+      "width": 320,
+      "scenario": "suspended"
+    },
+    {
+      "width": 320,
+      "scenario": "unverified"
+    },
+    {
+      "width": 320,
+      "scenario": "admin"
+    },
+    {
+      "width": 320,
+      "scenario": "notifications"
+    },
+    {
+      "width": 390,
+      "scenario": "pending"
+    },
+    {
+      "width": 390,
+      "scenario": "suspended"
+    },
+    {
+      "width": 390,
+      "scenario": "unverified"
+    },
+    {
+      "width": 390,
+      "scenario": "admin"
+    },
+    {
+      "width": 390,
+      "scenario": "notifications"
+    },
+    {
+      "width": 844,
+      "scenario": "pending"
+    },
+    {
+      "width": 844,
+      "scenario": "suspended"
+    },
+    {
+      "width": 844,
+      "scenario": "unverified"
+    },
+    {
+      "width": 844,
+      "scenario": "admin"
+    },
+    {
+      "width": 844,
+      "scenario": "notifications"
+    },
+    {
+      "width": 1280,
+      "scenario": "pending"
+    },
+    {
+      "width": 1280,
+      "scenario": "suspended"
+    },
+    {
+      "width": 1280,
+      "scenario": "unverified"
+    },
+    {
+      "width": 1280,
+      "scenario": "admin"
+    },
+    {
+      "width": 1280,
+      "scenario": "notifications"
+    }
+  ],
+  "mockedNetwork": true
+}

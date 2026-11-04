@@ -1,0 +1,22 @@
+{
+  "candidateSha256": "4d6d5e8c7349c9248a29476d32d93b459adc7280bd927635801a78a951b5679b",
+  "hostedRollback": {
+    "account": true,
+    "push": true,
+    "asyncFinancialGroups": 26,
+    "liveFinancialCases": 10
+  },
+  "concurrency": [
+    "action before suspension",
+    "suspension before action"
+  ],
+  "unitTests": 17,
+  "browserCases": 20,
+  "productionApplied": true,
+  "installedProofsPassed": true,
+  "retained": {
+    "enabled": 13,
+    "disabled": 4,
+    "enabledAdmins": 2
+  }
+}

@@ -1,3 +1,15 @@
+# Administrator account access — 2026-11-04 — production release approved
+
+New users default to pending approval; administrators can enable or suspend them
+independently of email verification. Fresh server authorization, private email
+ownership evidence, access auditing, admin registration pushes and player login
+reminders are qualified. Existing access and financial history are preserved.
+The migration is installed and voice-to-text v4 is deployed. App publication and
+the Auth confirmation/template configuration use the existing approved release
+workflow; exact final evidence belongs to
+`release-admin-account-access-20261104-verified`. Owner phone/push/gameplay smoke
+remains pending. See [qualification and acceptance](ACCOUNT_ACCESS_RELEASE.md).
+
 # Arcade achievement timestamps — 2026-11-03 — production release approved
 
 Both leaderboard periods across all nine Arcade games now show the stored

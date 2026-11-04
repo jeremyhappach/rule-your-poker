@@ -1,7 +1,7 @@
 import {NotificationBell} from '@/components/delayed/NotificationBell';
 import { FreshLaunchSplash } from '@/components/FreshLaunchSplash';
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { signOutLocal } from "@/lib/authSession";
@@ -96,6 +96,9 @@ const Index = () => {
   const { enabled: debugModeEnabled, loading: debugModeLoading, toggle: toggleDebugMode } = useGlobalDebugMode();
   const [isTogglingDebugMode, setIsTogglingDebugMode] = useState(false);
   const { isAdmin } = useIsAdmin(user?.id);
+  const [accountParams] = useSearchParams();
+  const selectedAdminPlayer = accountParams.get('adminPlayer') ?? undefined;
+  useEffect(() => { if (isAdmin && selectedAdminPlayer) setShowProfileDialog(true); }, [isAdmin, selectedAdminPlayer]);
   const { balance, loading: balanceLoading, error: balanceError, refetch: refetchBalance } = usePlayerBalance(user?.id);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
   const [showAdminPlayerList, setShowAdminPlayerList] = useState(false);
@@ -534,7 +537,7 @@ const Index = () => {
           </DialogHeader>
           
           {isAdmin ? (
-            <Tabs defaultValue="profile" className="w-full flex flex-col flex-1 min-h-0">
+            <Tabs key={selectedAdminPlayer} defaultValue={selectedAdminPlayer ? 'admin' : 'profile'} className="w-full flex flex-col flex-1 min-h-0">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="profile" className="flex items-center gap-1.5">
                   <UserCircle className="h-4 w-4" />
@@ -824,7 +827,7 @@ const Index = () => {
                     <CustomGameNamesManager />
 
                     {/* Player Management */}
-                    {user && <PlayerManagement currentUserId={user.id} />}
+                    {user && <PlayerManagement currentUserId={user.id} selectedId={selectedAdminPlayer} />}
                     
                     {/* Danger Zone */}
                     <div className="pt-2 border-t border-destructive/30">

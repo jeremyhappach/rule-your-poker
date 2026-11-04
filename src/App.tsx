@@ -7,6 +7,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AccountAccessGate } from '@/components/AccountAccessGate';
+import VerifyEmail from '@/pages/VerifyEmail';
 import { toast } from "sonner";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import Index from "./pages/Index";
@@ -201,7 +203,7 @@ const App = () => {
           
           <Toaster />
           <Sonner />
-          <BrowserRouter><PushLifecycle/><NotificationProvider>
+          <BrowserRouter><AccountAccessGate><PushLifecycle/><NotificationProvider>
             <ReleaseVersionGate>
               <AppNetworkSim>
               <WartimeAdminGateMount />
@@ -214,6 +216,7 @@ const App = () => {
                 <Route path="/delayed/:matchId" element={<Delayed />} />
                 <Route path="/delayed/:matchId/play/:childId" element={<ReleaseProtectedGameRoute checkingFallback={<AsyncTurnEntry/>}><RouteErrorBoundary title="Async Words screen crashed"><Delayed /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/notifications/table/:sessionId" element={<NotificationTable />} />
                 <Route
                   path="/game/:gameId"
@@ -308,7 +311,7 @@ const App = () => {
 
               </AppNetworkSim>
             </ReleaseVersionGate>
-          </NotificationProvider></BrowserRouter>
+          </NotificationProvider></AccountAccessGate></BrowserRouter>
 
         </ResponsiveGeometryProvider>
       </TooltipProvider>

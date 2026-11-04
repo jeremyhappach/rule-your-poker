@@ -1513,3 +1513,13 @@ Installed migration and release evidence: [ASYNC_WORDS_RELEASE.md](ASYNC_WORDS_R
 - `dev/async-combined/live-preview.mjs`: loopback-only interactive fixture preview; related live/bell browser scripts qualify local behavior.
 
 Mega competition: `src/lib/megaCardGolf/competition.ts` adapts the shared reducer; `server/megaCardGolf/multiplayer.ts` and `api/mega-golf.ts` own live orchestration/transport. `MegaTable`, `MegaCompetitionBoard`, `MegaCompetitionScorecard` and `MegaHoleReplay` reuse canonical slots and Arcade presentation. Async is an adapter in `server/delayed/adapter.ts`; the existing delayed worker handles recovery. Closed SQL registration and proofs: `supabase/mega-card-golf/competition-*`, migration `20261103191500` (hosted `20261103203945`), `dev/mega-card-golf/competition/`. Exact synthetic grants live in `competition-qualification.sql`; hosted rollback, committed-result proof and teardown live in the `hosted-*` runners/SQL. Secrets and fixture manifests stay in ignored `qualification.local`; sanitized receipts live in the competition evidence directory. See `MEGA_CARD_GOLF_COMPETITION.md`.
+# Account access and email ownership
+
+- `supabase/account-access/`: account authority, reproducible candidate, rollout
+  preflight and rollback proofs; the installed migration remains under migrations.
+- `api/account-access.ts`: authorized verification resend and token consumption.
+- `src/components/AccountAccessGate.tsx`: pending/suspended admission and reminders.
+- `src/components/PlayerManagement.tsx`: administrator access, audit and email UI.
+- `src/pages/VerifyEmail.tsx`: explicit possession confirmation from email links.
+- `dev/account-access/`: Auth/SMTP integration, concurrency and browser evidence.
+

@@ -510,7 +510,7 @@ export async function runEarlyBootPipelineProof(): Promise<void> {
     user_id: null,
     route,
     payload: {
-      href: typeof window !== "undefined" ? window.location.href : null,
+      href: typeof window !== "undefined" ? safeRuntimeHref() : null,
       origin: typeof window !== "undefined" ? window.location.origin : null,
       navigatorOnline:
         typeof navigator !== "undefined" ? navigator.onLine : null,
@@ -1498,13 +1498,20 @@ function navigationTypeString(): string | null {
   }
 }
 
+function safeRuntimeHref(): string {
+  // Email possession tokens must never enter incident/telemetry storage.
+  return window.location.pathname === '/verify-email'
+    ? window.location.origin + window.location.pathname
+    : window.location.href;
+}
+
 function pageLifecycleBase(): Record<string, unknown> {
   return {
     runtimeIncidentId: getActiveRuntimeIncidentId(),
     clientInstanceId: getClientInstanceId(),
     tabSessionId: getTabSessionId(),
     route: currentRoute(),
-    href: typeof window !== "undefined" ? window.location.href : null,
+    href: typeof window !== "undefined" ? safeRuntimeHref() : null,
     referrer: typeof document !== "undefined" ? document.referrer : null,
     visibilityState:
       typeof document !== "undefined" ? document.visibilityState : null,

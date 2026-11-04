@@ -1,0 +1,40 @@
+DO $proof$
+DECLARE admin_i uuid:=gen_random_uuid(); ordinary uuid:=gen_random_uuid(); pending_i uuid:=gen_random_uuid();
+ sid uuid:=gen_random_uuid(); sub_i uuid:=gen_random_uuid(); token uuid:=gen_random_uuid(); e private.push_events; s private.push_subscriptions; payload jsonb;
+BEGIN
+ INSERT INTO auth.users(id) VALUES(admin_i),(ordinary);
+ UPDATE public.account_access SET enabled=true,ever_enabled=true WHERE user_id IN(admin_i,ordinary);
+ UPDATE public.profiles SET is_active=true WHERE id IN(admin_i,ordinary);
+ INSERT INTO public.user_roles(user_id,role) VALUES(admin_i,'admin');
+ INSERT INTO auth.sessions(id,user_id) VALUES(sid,admin_i);
+ INSERT INTO private.push_subscriptions(id,user_id,session_id,endpoint,p256dh,auth_secret)
+ VALUES(sub_i,admin_i,sid,'https://web.push.apple.com/account-proof-'||sub_i,repeat('B',87),repeat('A',22));
+ PERFORM set_config('request.jwt.claim.sub',ordinary::text,true);
+ SET LOCAL ROLE authenticated;
+ IF public.notification_preferences() ? 'registrations' THEN RAISE EXCEPTION 'ordinary user sees admin category'; END IF;
+ BEGIN PERFORM public.notification_preferences('{"registrations":true}');RAISE EXCEPTION 'ordinary user enabled admin category';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ RESET ROLE;
+ PERFORM set_config('request.jwt.claim.sub',admin_i::text,true);
+ SET LOCAL ROLE authenticated;
+ IF NOT (public.notification_preferences('{"registrations":true}')->>'registrations')::boolean THEN RAISE EXCEPTION 'admin preference absent';END IF;
+ RESET ROLE;
+ INSERT INTO auth.users(id,raw_user_meta_data) VALUES(pending_i,'{"username":"newplayer87"}');
+ SELECT * INTO STRICT e FROM private.push_events WHERE registration_user_id=pending_i AND user_id=admin_i;
+ SELECT * INTO STRICT s FROM private.push_subscriptions WHERE id=sub_i;
+ IF (SELECT count(*) FROM private.push_deliveries WHERE event_id=e.id)<>1 OR NOT private.push_eligible(e,s) THEN RAISE EXCEPTION 'registration fanout';END IF;
+ INSERT INTO private.push_events(user_id,registration_user_id,epoch,kind,keys) VALUES(admin_i,pending_i,0,'registration','{}') ON CONFLICT(registration_user_id,user_id) WHERE kind='registration' DO NOTHING;
+ IF (SELECT count(*) FROM private.push_events WHERE registration_user_id=pending_i AND user_id=admin_i)<>1 THEN RAISE EXCEPTION 'registration duplicate';END IF;
+ UPDATE private.push_deliveries SET state='sending',lease=token,lease_until=clock_timestamp()+interval '1 minute' WHERE event_id=e.id AND subscription_id=sub_i;
+ SET LOCAL ROLE service_role;
+ payload:=public.async_push_authorize(e.id,sub_i,token);
+ RESET ROLE;
+ IF payload#>>'{payload,registrationUserId}'<>pending_i::text OR payload#>>'{payload,username}'<>'newplayer87' OR (payload#>>'{payload,expiresAt}')::bigint<floor(extract(epoch FROM clock_timestamp())*1000) THEN RAISE EXCEPTION 'registration payload';END IF;
+ PERFORM public.notification_preferences('{"quietEnabled":true,"quietStart":"00:00","quietEnd":"00:00"}');
+ IF public.async_push_authorize(e.id,sub_i,token) IS NOT NULL THEN RAISE EXCEPTION 'quiet hours bypassed';END IF;
+ IF (SELECT state FROM private.push_deliveries WHERE event_id=e.id AND subscription_id=sub_i)<>'pending' THEN RAISE EXCEPTION 'quiet registration lost';END IF;
+ PERFORM public.notification_preferences('{"quietEnabled":false}');
+ PERFORM public.admin_set_account_access(pending_i,true);
+ IF private.push_eligible(e,s) THEN RAISE EXCEPTION 'approved registration still actionable';END IF;
+ PERFORM public.notification_preferences('{"registrations":false}');
+ IF (SELECT state FROM private.push_deliveries WHERE event_id=e.id AND subscription_id=sub_i)<>'skipped' THEN RAISE EXCEPTION 'optout did not cancel';END IF;
+END $proof$;

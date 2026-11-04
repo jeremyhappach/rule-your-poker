@@ -3128,3 +3128,12 @@ Release remains explicitly held. See [candidate and evidence](ASYNC_RUNBACK_LOCA
 # 2026-11-03 — Mega competition reuses signed scores and async parent settlement
 
 Jeremy confirmed existing signed card scores, without inventing par/stroke data. Live and async use the shared versioned Arcade reducer and registry, with frozen course revision and 3/6/9/18-hole selection. Async completion records the child outcome; the established parent owns the single net financial settlement after all invitation games finish. Saved-hole presentation and per-viewer acknowledgement never score or settle. Local registration stays closed pending release authorization and hosted/owner smoke. See `MEGA_CARD_GOLF_COMPETITION.md`.
+# 2026-11-04 — Account access and email ownership are independent
+
+Approved access is stored in `public.account_access`, enforced on fresh database
+requests and actor-bound server commands. Auth confirmation timestamps do not
+prove ownership once automatic confirmation is enabled. A private email-evidence
+record is created only after server-side consumption of a genuine emailed token
+and invalidated on address change. Recovery retains canonical game/financial
+owners. See `ACCOUNT_ACCESS_RELEASE.md` for qualification and rollout evidence.
+

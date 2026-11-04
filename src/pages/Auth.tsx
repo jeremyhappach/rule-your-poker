@@ -97,7 +97,7 @@ const Auth = () => {
 
       toast({
         title: "Success!",
-        description: "Account created successfully. You can now log in.",
+        description: "Account registered. Awaiting administrator approval.",
       });
     } catch (error: any) {
       toast({
@@ -122,25 +122,6 @@ const Auth = () => {
 
       if (error) throw error;
       
-      if (data.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_active')
-          .eq('id', data.user.id)
-          .maybeSingle();
-        
-        if (profile && !profile.is_active) {
-          const { markIntentionalSignOut } = await import("@/lib/authInvalidationCause");
-          markIntentionalSignOut("Auth#inactive-account-signOut");
-          await supabase.auth.signOut({ scope: "global" });
-          toast({
-            title: "Account Inactive",
-            description: "Your account has been deactivated. Please contact an administrator.",
-            variant: "destructive",
-          });
-          return;
-        }
-      }
     } catch (error: any) {
       toast({
         title: "Error",

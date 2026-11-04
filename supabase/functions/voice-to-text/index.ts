@@ -41,6 +41,20 @@ serve(async (request) => {
   }
 
   try {
+    const authorization = request.headers.get('Authorization');
+    const url = Deno.env.get('SUPABASE_URL');
+    const apiKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!authorization || !url || !apiKey) {
+      return jsonResponse({ error: 'Authentication required.' }, 401);
+    }
+    // The database checks the current account, including an otherwise valid old JWT.
+    const access = await fetch(`${url}/rest/v1/rpc/account_access_snapshot`, {
+      method: 'POST',
+      headers: { Authorization: authorization, apikey: apiKey, 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    const account = access.ok ? await access.json() : null;
+    if (!account?.enabled) return jsonResponse({ error: 'Account access is disabled.' }, 403);
     const body = await request.json().catch(() => ({}));
     const { audio, mimeType } = body ?? {};
     const openAiApiKey = Deno.env.get("OPENAI_API_KEY");

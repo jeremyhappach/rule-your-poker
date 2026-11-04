@@ -11,6 +11,20 @@ function fixture(){
 }
 const payload={eventId:'11111111-1111-4111-8111-111111111111',matchId:'22222222-2222-4222-8222-222222222222',binding:'binding-a',kind:'turn',expiresAt:Date.now()+60000};
 
+test('registration alert deduplicates and opens the exact admin player record',async()=>{
+ const f=fixture();await f.bind({binding:'binding-a'});
+ const p={...payload,kind:'registration',registrationUserId:payload.matchId,username:'newplayer87'};
+ await f.fire('push',{data:{json:()=>p}});
+ assert.equal(f.shown[0].title,'New P-Town Poker User');
+ assert.equal(f.shown[0].body,'newplayer87 — Approval Required');
+ await f.fire('push',{data:{json:()=>p}});
+ assert.equal(f.shown.length,1);assert.equal(f.shown[0].silent,true);
+ await f.fire('notificationclick',{notification:{data:f.shown[0].data,close:()=>{}}});
+ assert.deepEqual(f.navigation,['/?adminPlayer='+payload.matchId]);
+ await f.bind({binding:'different-account'});
+ await f.fire('push',{data:{json:()=>p}});assert.equal(f.shown.length,1);
+});
+
 test('all push kinds render event titles and ignore unauthorized display fields',async()=>{
  for(const [kind,title,body] of [
   ['turn','Your Turn!','An async match is ready for your turn.'],

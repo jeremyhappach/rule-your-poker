@@ -6,6 +6,7 @@ import {statusText} from '@/lib/webPush/device.mjs';
 
 export interface PushDevice {status:()=>string;prepare:()=>unknown;enableDevice:(id:string)=>Promise<string>;disableDevice:()=>Promise<void>}
 export interface NotificationPreferences {
+ registrations?:boolean;
  invitations:boolean;asyncDefault:boolean;newTable:boolean;quietEnabled:boolean;quietStart:string;quietEnd:string;quietZone:string;
 }
 const initial:NotificationPreferences={invitations:false,asyncDefault:false,newTable:false,quietEnabled:false,quietStart:'22:00',quietEnd:'07:00',quietZone:'UTC'};
@@ -77,6 +78,7 @@ export function PushPreferences({userId,matchId,device=browser,rpc=delayedRpc,pr
    <p className="text-sm">Your turn alerts and 24-hour Last Call for this match. {quietDescription}</p>
    <p className="text-sm">Deadlines stay unchanged. After quiet hours, only one still-needed reminder may arrive.</p>
   </>:<>
+   {preferences?.registrations!==undefined&&<label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={preferences.registrations} disabled={disabled} onChange={e=>void save({registrations:e.target.checked})}/>New User Registrations</label>}
    <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={preferences?.invitations===true} disabled={disabled} onChange={e=>void save({invitations:e.target.checked})}/>Match invitations</label>
    <p className="text-sm">New invitations to you. Open an alert to accept or decline.</p>
    <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={preferences?.asyncDefault===true} disabled={disabled} onChange={e=>void save({asyncDefault:e.target.checked})}/>Your turn</label>
