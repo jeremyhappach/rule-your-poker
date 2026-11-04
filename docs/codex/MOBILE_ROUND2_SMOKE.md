@@ -69,6 +69,37 @@ not the accepted rules, scoring, admission, settlement or historical state.
 
 ## Splash boundary and correction
 
+### iPhone playback hotfix after failed owner smoke — 2026-11-04
+
+Jeremy's physical smoke of `5407fd0fc` reports that the initial flash is gone,
+but the splash remains on the bridge without animation/branding. His hotfix
+request continues the approved splash correction. The previous release is not
+accepted as a working physical-iPhone splash.
+
+The new preparation phase required `loadeddata` / `readyState >= 2` before
+calling `play()`. iOS can defer media data until playback is requested, creating
+a circular dependency. The focused regression fails on the released source;
+the compiled-App test also reproduces the bridge stall when real MP4 delivery
+is gated solely by an explicit `play()` request. This is controlled browser
+reproduction of the failure boundary, not remote inspection of Jeremy's phone.
+
+Playback now starts muted during preparation, behind the decoded opening image.
+One playback effect spans preparation and showing, so `loadeddata` neither
+pauses, reloads nor restarts the clip. The existing first-frame visibility guard,
+approved MP4/images, native startup images, complete three-second sequence,
+fallback bounds and fresh-launch/recovery/resume admission remain unchanged.
+No auth, database, gameplay or other onboarding behavior changes.
+
+App TypeScript, production build and 45 focused splash tests pass, including
+cold-data playback, rejected/stalled play requests and late rejection after
+resume cancellation. All 28 compiled-App launch cases pass, including real-video
+playback after deferred data, no initial flash, full duration, actual asset-cache
+hits and recovery/resume exclusions. Qualification and publication are recorded
+with `release-splash-playback-hotfix-20261104-verified`. Owner acceptance still
+requires a fresh iPhone Home Screen launch with the full animation and no flash.
+
+### Earlier Round 2 first-frame correction
+
 Jeremy sees one blank frame immediately after tapping the installed icon. The
 published MP4 and opening PNG matched the approved source bytes. Before correction,
 the compiled App showed generic boot/account/lobby loading before mounting the

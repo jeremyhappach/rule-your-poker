@@ -12,6 +12,7 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
   const [still, setStill] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [mediaDone, setMediaDone] = useState(false);
   const [frameReady, setFrameReady] = useState(false);
+  const playbackActive = phase === 'preparing' || phase === 'showing';
   const video = useRef<HTMLVideoElement>(null);
   const claimed = useRef(false);
   const cancelled = useRef(false);
@@ -107,7 +108,9 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
   }, [phase, mediaDone, ready, fade]);
 
   useEffect(() => {
-    if (phase !== 'showing') return;
+    // iOS may defer media data until play() is requested. Start behind the
+    // opening image, and keep this same playback alive across loadeddata.
+    if (!playbackActive) return;
     if (still) { finish(); return; }
     const node = video.current;
     if (!node) return;
@@ -132,7 +135,7 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
       node.removeEventListener('playing',decoded);
       node.pause(); node.removeAttribute('src'); node.load();
     };
-  }, [phase, still, finish]);
+  }, [playbackActive, still, finish]);
 
   useEffect(() => {
     if (phase !== 'fading') return;

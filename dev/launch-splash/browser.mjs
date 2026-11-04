@@ -30,6 +30,7 @@ const user = { id: '11111111-1111-4111-8111-111111111111', aud: 'authenticated',
 const token = ['eyJhbGciOiJIUzI1NiJ9', Buffer.from(JSON.stringify({ sub: user.id, aud: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'synthetic'].join('.');
 const results = [];
 const cases = [
+  { name: 'ios-data-requires-play', playRequired: true, ios: true, show: true },
   { name: 'first-frame-handoff', holdVideo: true, show: true },
   { name: 'opening-image-unavailable', openingFail: true },
   { name: 'ios-cached', cached:true, show:true },
@@ -76,6 +77,17 @@ try {
       const media = window.matchMedia.bind(window);
       window.matchMedia = q => q === '(display-mode: standalone)' ? { ...media(q), matches: !c.browser && !c.ios } : media(q);
       if (c.ios) Object.defineProperty(navigator, 'standalone', { value: true });
+      window.splashPlayRequests = [];
+      if (c.playRequired) {
+        // Model iOS deferring all media data until explicit playback. The MP4
+        // remains a real native video; only its network admission is gated.
+        const play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+          window.splashPlayRequests.push({ readyState: this.readyState, time: this.currentTime });
+          void window.releaseSplashVideo();
+          return play.call(this);
+        };
+      }
       if (c.reject) HTMLMediaElement.prototype.play = () => Promise.reject(new DOMException('Blocked', 'NotAllowedError'));
       if (c.unsupported) HTMLMediaElement.prototype.canPlayType = () => '';
       window.splashEvidence = [];
@@ -130,7 +142,7 @@ try {
       if (c.bootDelay && /^\/assets\/index-.*\.js$/.test(path)) await new Promise(r => setTimeout(r, 2600));
       if (c.mediaFail && path.endsWith('.mp4')) return route.abort();
       if (c.openingFail && path.endsWith('approved-v1-opening.png')) return route.abort();
-      if (c.holdVideo && path.endsWith('.mp4')) await videoGate;
+      if ((c.holdVideo || c.playRequired) && path.endsWith('.mp4')) await videoGate;
       return route.continue();
     });
     if(c.cached){
@@ -153,6 +165,7 @@ try {
       },{user,token});
     }
     const page = await context.newPage(); page.on('pageerror', error => errors.push(error.message));
+    if (c.playRequired) await page.exposeFunction('releaseSplashVideo', releaseVideo);
     const cacheHits=[];
     if(c.cached){const cdp=await context.newCDPSession(page);await cdp.send('Network.enable');await cdp.send('Network.setCacheDisabled',{cacheDisabled:false});cdp.on('Network.responseReceived',({response})=>{if(response.url.includes('/launch-splash/')&&response.fromDiskCache)cacheHits.push(response.url);});await page.goto(origin+'/launch-splash/approved-v1-opening.png');await page.evaluate(async()=>{await Promise.all(['/launch-splash/approved-v1.png','/launch-splash/approved-v1.mp4'].map(url=>fetch(url).then(r=>r.arrayBuffer())));});}
     try {
@@ -190,6 +203,7 @@ try {
       }
       if (c.show && !c.fallback) {
         await page.locator('[data-launch-splash="showing"]').waitFor({ timeout: c.bootDelay ? 7000 : 3500 });
+        if (c.playRequired) assert.deepEqual(await page.evaluate(() => window.splashPlayRequests), [{ readyState: 0, time: 0 }]);
         const art = await page.locator('.fresh-launch-splash-art').first().evaluate(el => ({ fit: getComputedStyle(el).objectFit, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
         assert.equal(art.fit, 'contain'); assert.equal(art.width, c.width ?? 390); assert.equal(art.height, c.height ?? 844);
         await page.screenshot({ path: `${out}/${c.name}.png` });

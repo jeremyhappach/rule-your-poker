@@ -124,14 +124,16 @@ it('never carries the splash across account identity', async () => {
   view.rerender(tree(true, '/', 'other-user')); expect(splash()).toBeNull();
 });
 
-it('keeps the decoded opening above an unprepared video and starts the full clip after loading', async()=>{
+it('requests playback before data arrives, keeps the opening covered and plays the full clip once loaded', async()=>{
  videoReady=0;render(tree());await flush();
  expect(splash()?.getAttribute('data-launch-splash')).toBe('preparing');
  expect(splash()?.getAttribute('data-frame-ready')).toBe('false');
- expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+ expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
  await flush(2000);const video=document.querySelector('video')!;videoReady=2;fireEvent.loadedData(video);await flush();
  expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
+ expect(HTMLMediaElement.prototype.pause).not.toHaveBeenCalled();
+ expect(video.getAttribute('src')).toBe('/launch-splash/approved-v1.mp4');
  expect(splash()?.getAttribute('data-frame-ready')).toBe('false');
  fireEvent.playing(video);await flush(40);expect(splash()?.getAttribute('data-frame-ready')).toBe('true');
  await flush(2900);expect(document.querySelector('video')).not.toBeNull();
@@ -142,4 +144,28 @@ it('does not expose a downloaded image before decode finishes',async()=>{
  render(tree());await flush();expect(splash()).toBeNull();
  await act(async()=>decoded[0]());expect(splash()).toBeNull();
  await act(async()=>decoded[1]());expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
+});
+
+it.each(['rejected', 'stalled'])('bounds a cold playback request when %s', async mode => {
+  videoReady = 0;
+  vi.mocked(HTMLMediaElement.prototype.play).mockImplementation(() => mode === 'rejected'
+    ? Promise.reject(new Error('NotAllowedError')) : new Promise(() => {}));
+  render(tree()); await flush();
+  if (mode === 'stalled') await flush(5000);
+  expect(HTMLMediaElement.prototype.play).toHaveBeenCalledOnce();
+  expect(document.querySelector('img')?.getAttribute('src')).toBe(SPLASH_POSTER);
+  expect(splash()?.getAttribute('data-launch-splash')).toBe('fading');
+  await flush(200); expect(splash()).toBeNull();
+});
+
+it('cancels pending cold playback on resume and ignores its late rejection', async () => {
+  videoReady = 0;
+  let reject!: (reason: Error) => void;
+  vi.mocked(HTMLMediaElement.prototype.play).mockImplementation(() => new Promise((_, fail) => { reject = fail; }));
+  render(tree()); await flush();
+  act(() => window.dispatchEvent(new Event('app:page-resumed')));
+  expect(splash()).toBeNull();
+  expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledOnce();
+  await act(async () => reject(new Error('AbortError')));
+  await flush(6000); expect(splash()).toBeNull();
 });
