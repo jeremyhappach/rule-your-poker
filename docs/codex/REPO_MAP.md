@@ -1,13 +1,16 @@
 ## Mobile onboarding
 
 `src/components/LobbyOnboarding.tsx` owns automatic lobby admission and Help replay;
-`MobileOnboardingTutorial.tsx` is the shared two-slide view. Entry/platform checks
+`MobileOnboardingTutorial.tsx` is the shared two-slide view, and
+`MobileInstallAnimation.tsx` owns its lightweight instructional sequence. The
+same lobby owner supplies the History/Help/auth overflow menu. Entry/platform checks
 live in `src/lib/mobileOnboarding.ts`; `AccountAccessGate` shares reminder/access
 state through `accountAccessContext.ts`. `GameLobby` reports readiness/recovery
 exclusions, and `PushLifecycle` resolves pending push destinations. The existing
 `VisualPreferences`/`PushPreferences` own the Settings handoff and permissions.
 Migration `20261104202040` and `supabase/tests/mobile_onboarding.sql` own private
-account/version persistence and its rollback proof. See `MOBILE_ONBOARDING.md`.
+account/version persistence and its rollback proof. See `MOBILE_ONBOARDING.md`
+and the superseding smoke corrections in `MOBILE_ONBOARDING_SMOKE.md`.
 
 ## Admin account smoke corrections
 

@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings, FlaskConical, TimerOff } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert, Wrench, Settings, FlaskConical, TimerOff } from "lucide-react";
 import { useNoTimersEnabled, setNoTimersEnabled } from "@/lib/geometryLab/noTimersStore";
 import { useGameFreezeTraceEnabled, setGameFreezeTraceEnabled } from "@/lib/gameFreezeTraceSetting";
 import { useGlobalDebugMode } from "@/lib/debugHarness/useGlobalDebugMode";
@@ -476,26 +476,20 @@ const Index = () => {
     <div className="min-h-screen p-4 bg-background">
       <FreshLaunchSplash userId={user.id} ready={lobbyReady && !!currentUsername && !balanceLoading && !balanceError && !maintenanceLoading && !isMaintenanceMode} />
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2" data-lobby-header>
           {/* Left-aligned username + balance button */}
           <Button 
             variant="outline" 
             size="sm"
             onClick={handleBalanceButtonClick}
-            className="flex-1 min-w-0 h-8 px-3 justify-between"
+            className="flex-1 min-w-0 h-8 px-2 justify-between"
             title={balanceError ? "Balance unavailable — open to retry" : balanceLoading ? "Loading balance" : isAdmin ? "Player Balances" : "My Balance"}
           >
-            <span 
-              className="truncate"
-              style={{
-                fontSize: currentUsername.length > 15 ? '0.7rem' : 
-                         currentUsername.length > 10 ? '0.8rem' : '0.875rem'
-              }}
-            >
+            <span className="min-w-0 flex-1 truncate text-left" title={currentUsername} data-lobby-username>
               {currentUsername}
             </span>
             <span 
-              className={`font-bold ml-2 flex-shrink-0 ${
+              className={`font-bold flex-shrink-0 ${
                 balance === null ? 'text-muted-foreground' : accountAmountIsNegative(balance) ? 'text-red-500' : 'text-green-500'
               }`}
             >
@@ -504,8 +498,7 @@ const Index = () => {
           </Button>
           
           <NotificationBell />
-          <LobbyOnboarding userId={user.id} ready={lobbyReady&&!maintenanceLoading&&!isMaintenanceMode} blocked={onboardingBlocked||showProfileDialog||showHistoryDialog||showRulesDialog||showBalanceDialog||showAdminPlayerList||showRecentLogins||!!selectedAdminPlayer} onRules={()=>setShowRulesDialog(true)} onOpenSettings={()=>{setOpenNotifications(true);setShowProfileDialog(true);}}/>
-          {/* Right side buttons - Profile, History, Logout */}
+          {/* Keep preferences pinned; secondary actions share one overflow menu. */}
           <div className="flex gap-1.5 flex-shrink-0">
             <Button 
               variant="outline" 
@@ -513,21 +506,11 @@ const Index = () => {
               onClick={() => {setOpenNotifications(false);setShowProfileDialog(true);}}
               className="h-8 w-8 p-0"
               title="Profile Settings"
+              aria-label="Profile Settings"
             >
               <UserCircle className="w-4 h-4" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowHistoryDialog(true)}
-              className="h-8 w-8 p-0"
-              title="My History"
-            >
-              <History className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" onClick={handleLogout} size="sm">
-              Logout
-            </Button>
+            <LobbyOnboarding userId={user.id} ready={lobbyReady&&!maintenanceLoading&&!isMaintenanceMode} blocked={onboardingBlocked||showProfileDialog||showHistoryDialog||showRulesDialog||showBalanceDialog||showAdminPlayerList||showRecentLogins||!!selectedAdminPlayer} onRules={()=>setShowRulesDialog(true)} onHistory={()=>setShowHistoryDialog(true)} onLogin={()=>navigate('/auth')} onLogout={()=>void handleLogout()} onOpenSettings={()=>{setOpenNotifications(true);setShowProfileDialog(true);}}/>
           </div>
         </div>
         <GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} onInitialLoad={setLobbyReady} onOnboardingBlocked={setOnboardingBlocked} />

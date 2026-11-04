@@ -12,5 +12,6 @@ describe('supported mobile platforms',()=>{
 const entry={supported:true,standalone:false,path:'/',search:'',hash:'',navigation:'navigate',discarded:false,redirect:false};
 describe('fresh-entry admission',()=>{
  it('admits restored authentication on a fresh lobby or login entry',()=>{expect(isFreshMobileEntry(entry)).toBe(true);expect(isFreshMobileEntry({...entry,path:'/auth'})).toBe(true);});
- it.each([{supported:false},{standalone:true},{navigation:'reload'},{navigation:'back_forward'},{discarded:true},{redirect:true},{path:'/game/existing'},{path:'/delayed/match/turn'},{path:'/arcade/run21/run/run'},{search:'?adminPlayer=id'},{hash:'#recovery'}])('does not consume an ineligible entry %o',patch=>{expect(isFreshMobileEntry({...entry,...patch})).toBe(false);});
+ it('allows a build refresh before the first presentation',()=>{expect(isFreshMobileEntry({...entry,navigation:'reload'})).toBe(true);});
+ it.each([{supported:false},{standalone:true},{navigation:'back_forward'},{discarded:true},{redirect:true},{path:'/game/existing'},{path:'/delayed/match/turn'},{path:'/arcade/run21/run/run'},{search:'?adminPlayer=id'},{hash:'#recovery'}])('does not consume an ineligible entry %o',patch=>{expect(isFreshMobileEntry({...entry,...patch})).toBe(false);});
 });

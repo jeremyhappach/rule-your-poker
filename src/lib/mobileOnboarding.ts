@@ -15,11 +15,14 @@ export function isStandalone() {
  return window.matchMedia('(display-mode: standalone)').matches||(navigator as Navigator&{standalone?:boolean}).standalone===true;
 }
 export function isFreshMobileEntry(e:{supported:boolean;standalone:boolean;path:string;search:string;hash:string;navigation?:string;discarded:boolean;redirect:boolean}) {
- return e.supported&&!e.standalone&&!e.discarded&&!e.redirect&&e.navigation==='navigate'
+ return e.supported&&!e.standalone&&!e.discarded&&!e.redirect&&['navigate','reload'].includes(e.navigation??'')
   &&['/','/auth'].includes(e.path)&&['','?launch=home'].includes(e.search)&&!e.hash;
 }
 // One document-entry decision; routes, focus, token refresh and snooze expiry cannot re-arm it.
 const checked=new Set<string>();
+const receiptKey=(userId:string)=>`ptown:onboarding-entry:${ONBOARDING_VERSION}:${userId}`;
+const navigationType=()=> (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.type;
+let explicitEntry=false;
 function captureEntry(explicitLogin=false) { try {
  const mobile=detectMobile(navigator.userAgent,navigator.platform,navigator.maxTouchPoints);
  return !document.hidden&&isFreshMobileEntry({supported:mobile.supported,standalone:isStandalone(),path:location.pathname,
@@ -37,12 +40,19 @@ export function resolveOnboardingPushEntry(destination:string|null) {
 }
 export function claimOnboardingEntry(userId:string) {
  if(!entryEligible||isStandalone()||checked.has(userId))return false;
- checked.add(userId);return true;
+ // A build-refresh before the first presentation must remain eligible. Storage
+ // is only a same-tab reload receipt; account decisions remain server-owned.
+ try {if(!explicitEntry&&navigationType()==='reload'&&sessionStorage.getItem(receiptKey(userId)))return false;} catch { /* In-memory dedupe still applies. */ }
+ return true;
+}
+export function consumeOnboardingEntry(userId:string) {
+ checked.add(userId);
+ try {sessionStorage.setItem(receiptKey(userId),'presented');} catch { /* Storage may be disabled. */ }
 }
 export function cancelOnboardingEntry(){entryEligible=false;}
 export function onboardingAuthEvent(event:string) {
  if(event==='SIGNED_OUT'){signedOut=true;entryEligible=false;checked.clear();}
- if(event==='SIGNED_IN'&&signedOut){signedOut=false;entryEligible=captureEntry(true);pushReady=import.meta.env.VITE_ASYNC_PUSH_ENABLED!=='true';listeners.forEach(fn=>fn());}
+ if(event==='SIGNED_IN'&&signedOut){signedOut=false;explicitEntry=true;entryEligible=captureEntry(true);pushReady=import.meta.env.VITE_ASYNC_PUSH_ENABLED!=='true';listeners.forEach(fn=>fn());}
 }
 if(typeof window!=='undefined') {
  window.addEventListener('pagehide',cancelOnboardingEntry);

@@ -1,3 +1,20 @@
+# Mobile onboarding smoke corrections — 2026-11-04 — approved release
+
+The six scoped corrections cover first login after a current-build refresh,
+optional push setup failures, installation benefits and seven-second platform
+animations, one lobby overflow menu, production CSS overflow and optional
+notifications/Quiet Hours copy. Account decisions, gameplay and finances remain
+unchanged; no migration is required.
+
+101 focused tests, 241 harness tests, 34 browser scenarios, App TypeScript and
+the production build qualify the candidate. Browser checks use actual app
+components with mocked backend/device services and exact production CSS,
+including 320px screens, touch scrolling, 200% text and keyboard navigation.
+The earlier ten unrelated Mega suite failures remain outside this scope.
+Physical-device and real-account owner smoke remain pending. See
+[scope, root cause and qualification](MOBILE_ONBOARDING_SMOKE.md); publication
+is recorded on `release-mobile-onboarding-smoke-20261104-verified`.
+
 # Mobile install and notification onboarding — 2026-11-04 — approved release
 
 One branded two-slide guide now admits existing and new enabled players on a

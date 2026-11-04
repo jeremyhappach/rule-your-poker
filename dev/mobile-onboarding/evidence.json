@@ -1,6 +1,8 @@
 {
   "passed": true,
   "mockedBackend": true,
+  "productionStylesheet": true,
+  "hostedStylesheet": null,
   "actualIndexAccountGateGameLobbySettings": true,
   "physicalDevice": false,
   "checks": [
@@ -74,6 +76,57 @@
     },
     {
       "flow": "snooze expiry waits for the next fresh entry"
+    },
+    {
+      "flow": "reported iPhone Chrome build refresh then first login without prior logout"
+    },
+    {
+      "flow": "desktop-first login then iPhone Chrome with restored authentication"
+    },
+    {
+      "flow": "Android Chrome worker failure cannot block onboarding"
+    },
+    {
+      "flow": "Android standalone excludes automatic onboarding and retains manual replay"
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "fontSize": 16,
+      "flow": "Android expanded/collapsed permission help, footer and vertical touch scroll"
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "fontSize": 16,
+      "flow": "Android expanded/collapsed permission help, footer and vertical touch scroll"
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "fontSize": 32,
+      "flow": "Android expanded/collapsed permission help, footer and vertical touch scroll"
+    },
+    {
+      "flow": "both platform animation stages, real artwork, pause/resume, pause off slide, benefits and optional/quiet-hours copy"
+    },
+    {
+      "flow": "reduced-motion static installation preview, no animation"
+    },
+    {
+      "width": 320,
+      "flow": "username fits, pinned bell/profile, History, keyboard Help, Settings and Logout"
+    },
+    {
+      "width": 360,
+      "flow": "username fits, pinned bell/profile, History, keyboard Help, Settings and Logout"
+    },
+    {
+      "width": 1280,
+      "flow": "username fits, pinned bell/profile, History, keyboard Help, Settings and Logout"
+    },
+    {
+      "flow": "unusually long username truncates without header overflow"
     }
   ]
 }

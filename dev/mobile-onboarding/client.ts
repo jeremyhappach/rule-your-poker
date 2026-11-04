@@ -6,7 +6,7 @@ const listeners=new Set<Function>();
 const session=()=>signedIn?{access_token:'fixture-only',user:{id},expires_at:Date.now()/1000+3600}:null;
 export const supabase={
  auth:{getSession:async()=>({data:{session:session()}}),onAuthStateChange:(fn:Function)=>{listeners.add(fn);return {data:{subscription:{unsubscribe:()=>listeners.delete(fn)}}};},signOut:async()=>{signedIn=false;for(const fn of listeners)fn('SIGNED_OUT',null);return {error:null};},signInWithPassword:async()=>{(window as any).fixtureLogin();return {data:{session:session()},error:null};}},
- from:(table:string)=>{const value=table==='profiles'?{username:'Player',is_superuser:false}:table==='user_roles'?config.admin?{role:'admin'}:null:table==='system_settings'?[]:null;
+ from:(table:string)=>{const value=table==='profiles'?{username:config.username??'Player',is_superuser:false}:table==='user_roles'?config.admin?{role:'admin'}:null:table==='system_settings'?[]:null;
   const q:any=new Proxy({}, {get:(_target,key)=>key==='then'?(resolve:Function)=>Promise.resolve({data:value,error:null}).then(resolve as never):()=>q});return q;},
  rpc:async(name:string,args:any={})=>{
   (window as any).calls.push({name,args});let data:any=null;

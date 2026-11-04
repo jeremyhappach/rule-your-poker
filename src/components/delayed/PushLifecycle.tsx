@@ -8,7 +8,7 @@ export function PushLifecycle(){
  const {pathname,search}=useLocation(),navigate=useNavigate(),[userId,setUserId]=useState<string|null|undefined>();
  useEffect(()=>{
   if(!pushEnabled)return;let alive=true,changed=false,revision=0;
-  const accept=(id:string|null)=>{const request=++revision;void setAccount(id).then(()=>{if(alive&&request===revision)setUserId(id);}).catch(()=>{});};
+  const accept=(id:string|null)=>{const request=++revision;void setAccount(id).catch(()=>{}).then(()=>{if(alive&&request===revision)setUserId(id);});};
   const {data}=supabase.auth.onAuthStateChange((event,session)=>{
    if(session||event==='SIGNED_OUT'||event==='INITIAL_SESSION'){changed=true;accept(session?.user.id??null);}
   });
@@ -23,11 +23,14 @@ export function PushLifecycle(){
    // iPhone browser tabs may have no Push/Notification APIs until installed.
    // No worker means there is no pending worker destination to wait for.
    if(!registration){if(alive)resolveOnboardingPushEntry(null);return;}
-   void registration.then(async()=>{await reconcile();const target=await pendingRegistration(userId);
+   // Device maintenance is optional. Only a pending navigation destination
+   // needs to precede onboarding; failed push setup must not strand admission.
+   void reconcile().catch(()=>{});
+   void registration.then(async()=>{const target=await pendingRegistration(userId);
    const path=target?'/?adminPlayer='+target:null;
    if(alive)resolveOnboardingPushEntry(path);
    if(alive&&path&&pathname+search!==path)navigate(path);
-  }).catch(()=>{});};
+  }).catch(()=>{if(alive)resolveOnboardingPushEntry(null);});};
   const message=(event:MessageEvent)=>{if(event.data?.type==='push-navigation')sync();};
   sync();document.addEventListener('visibilitychange',sync);window.addEventListener('online',sync);
   navigator.serviceWorker?.addEventListener('message',message);

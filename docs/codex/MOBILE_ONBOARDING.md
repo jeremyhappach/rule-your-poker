@@ -1,5 +1,9 @@
 # Mobile installation and notifications — 2026-11-04
 
+The six approved follow-up findings and corrected qualification are documented
+in [Mobile onboarding smoke fixes](MOBILE_ONBOARDING_SMOKE.md). That release
+supersedes the original blanket reload exclusion and browser-fixture evidence.
+
 Jeremy approved the two-slide tutorial, isolated account preference migration,
 qualification and main publication. The release is based on main `99860b909`;
 the original Golf worktree and its changes remain untouched.

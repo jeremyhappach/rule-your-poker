@@ -12,4 +12,7 @@ afterEach(cleanup);
 const mount=()=>render(<MemoryRouter><PushLifecycle/></MemoryRouter>);
 it('releases onboarding in an iPhone browser without push APIs',async()=>{mock.prepare.mockReturnValue(undefined);mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));expect(mock.target).not.toHaveBeenCalled();expect(mock.reconcile).not.toHaveBeenCalled();});
 it('waits for worker navigation and excludes an administrator deep link',async()=>{mock.target.mockResolvedValue('target');mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith('/?adminPlayer=target'));});
-it('releases a supported browser only after reconciliation',async()=>{mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));expect(mock.reconcile).toHaveBeenCalled();expect(mock.target).toHaveBeenCalledWith('a');});
+it('releases a supported browser after checking the pending destination',async()=>{mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));expect(mock.reconcile).toHaveBeenCalled();expect(mock.target).toHaveBeenCalledWith('a');});
+it.each(['prepare','reconcile','setAccount','target'] as const)('does not strand onboarding when %s fails',async(key)=>{mock[key].mockRejectedValue(Error('Device unavailable'));mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));});
+it('does not wait for unrelated device maintenance',async()=>{mock.reconcile.mockReturnValue(new Promise(()=>{}));mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));});
+it('continues to wait for an unresolved navigation destination',async()=>{mock.target.mockReturnValue(new Promise(()=>{}));mount();await waitFor(()=>expect(mock.target).toHaveBeenCalled());expect(mock.resolved).not.toHaveBeenCalled();});
