@@ -1,0 +1,79 @@
+{
+  "passed": true,
+  "mockedBackend": true,
+  "actualIndexAccountGateGameLobbySettings": true,
+  "physicalDevice": false,
+  "checks": [
+    {
+      "width": 320,
+      "height": 568,
+      "flow": "two slides, platform switch, admin exclusion, fit, Done persistence, reload/manual replay"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "flow": "two slides, platform switch, admin exclusion, fit, Done persistence, reload/manual replay"
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "flow": "two slides, platform switch, admin exclusion, fit, Done persistence, reload/manual replay"
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "flow": "two slides, platform switch, admin exclusion, fit, Done persistence, reload/manual replay"
+    },
+    {
+      "flow": "desktop automatic suppression and manual replay"
+    },
+    {
+      "flow": "standalone automatic suppression and manual replay"
+    },
+    {
+      "flow": "active membership automatic suppression and manual replay"
+    },
+    {
+      "flow": "completed automatic suppression and manual replay"
+    },
+    {
+      "flow": "dismissed automatic suppression and manual replay"
+    },
+    {
+      "flow": "snoozed automatic suppression and manual replay"
+    },
+    {
+      "flow": "X persists on a fresh browser entry"
+    },
+    {
+      "flow": "Maybe Later persists on a fresh browser entry"
+    },
+    {
+      "flow": "Never persists on a fresh browser entry"
+    },
+    {
+      "flow": "email reminder precedes tutorial with no stacked dialogs"
+    },
+    {
+      "flow": "pending approval excludes onboarding"
+    },
+    {
+      "flow": "actual Settings handoff expanded; permission only on Enable gesture"
+    },
+    {
+      "flow": "recovered route and return to lobby do not trigger"
+    },
+    {
+      "flow": "horizontal drag, Back, progress dots, denied instructions and refresh without a decision"
+    },
+    {
+      "flow": "newly approved account enters the lobby and receives tutorial"
+    },
+    {
+      "flow": "explicit sign-in event reaches tutorial after actual Auth redirect"
+    },
+    {
+      "flow": "snooze expiry waits for the next fresh entry"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {useLocation,useNavigate} from 'react-router-dom';
 import {supabase} from '@/integrations/supabase/client';
+import {resolveOnboardingPushEntry} from '@/lib/mobileOnboarding';
 import {prepare,reconcile,setAccount,pushEnabled,pendingRegistration} from '@/lib/webPush/browser';
 
 export function PushLifecycle(){
@@ -17,8 +18,14 @@ export function PushLifecycle(){
  useEffect(()=>{
   if(!pushEnabled||!userId)return;
   let alive=true;
-  const sync=()=>{void prepare()?.then(async()=>{await reconcile();const target=await pendingRegistration(userId);
+  const sync=()=>{
+   const registration=prepare();
+   // iPhone browser tabs may have no Push/Notification APIs until installed.
+   // No worker means there is no pending worker destination to wait for.
+   if(!registration){if(alive)resolveOnboardingPushEntry(null);return;}
+   void registration.then(async()=>{await reconcile();const target=await pendingRegistration(userId);
    const path=target?'/?adminPlayer='+target:null;
+   if(alive)resolveOnboardingPushEntry(path);
    if(alive&&path&&pathname+search!==path)navigate(path);
   }).catch(()=>{});};
   const message=(event:MessageEvent)=>{if(event.data?.type==='push-navigation')sync();};

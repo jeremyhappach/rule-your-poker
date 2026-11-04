@@ -29,9 +29,10 @@ interface VisualPreferencesProps {
   userId: string;
   onSave?: () => void;
   disabled?: boolean;
+  openNotifications?: boolean;
 }
 
-export function VisualPreferences({ userId, onSave, disabled = false }: VisualPreferencesProps) {
+export function VisualPreferences({ userId, onSave, disabled = false, openNotifications = false }: VisualPreferencesProps) {
   // Pull the shared provider so saves can propagate to every consumer
   // (CanonicalCardBack, table felt, etc.) immediately — without this
   // call, the provider only re-fetches on userId change, and the user's
@@ -104,7 +105,7 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
 
   return (
     <div className="space-y-6">
-      <PushPreferences key={userId} userId={userId} />
+      <PushPreferences key={userId} userId={userId} initialExpanded={openNotifications} />
       <div className="flex items-center gap-2 pb-2 border-b">
         <Palette className="h-4 w-4" />
         <h3 className="font-semibold">Visual Preferences</h3>

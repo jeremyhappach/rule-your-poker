@@ -8,7 +8,7 @@ const source = readFileSync(resolve(process.cwd(), 'src/components/GameLobby.tsx
 describe('GameLobby maintenance ownership', () => {
   it('receives maintenance state from its parent instead of opening a second realtime channel', () => {
     expect(source).toContain('isMaintenanceMode: boolean;');
-    expect(source).toContain('({ userId, isMaintenanceMode, onInitialLoad }: GameLobbyProps)');
+    expect(source).toContain('({ userId, isMaintenanceMode, onInitialLoad, onOnboardingBlocked }: GameLobbyProps)');
     expect(source).not.toContain('useMaintenanceMode');
   });
 });

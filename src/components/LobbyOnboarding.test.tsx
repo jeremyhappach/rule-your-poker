@@ -1,0 +1,21 @@
+// @vitest-environment jsdom
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {AccountAccessContext} from '@/lib/accountAccessContext';
+const mock=vi.hoisted(()=>({rpc:vi.fn(),claim:vi.fn(),session:vi.fn()}));
+vi.mock('@/lib/mobileOnboarding',()=>({claimOnboardingEntry:mock.claim,onboardingPreference:mock.rpc,pushEntryReady:()=>true,subscribePushEntry:()=>()=>{}}));
+vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:mock.session}}}));
+vi.mock('./MobileOnboardingTutorial',()=>({MobileOnboardingTutorial:({onClose,onOpenSettings}:any)=><div role="dialog"><button onClick={()=>onClose('snooze')}>Later</button><button onClick={()=>onClose('dismiss')}>Never</button><button onClick={()=>onClose('complete')}>Done</button><button onClick={onOpenSettings}>Settings</button></div>}));
+import {LobbyOnboarding} from './LobbyOnboarding';
+const access={userId:'a',enabled:true,status:'enabled' as const,revision:1,email:'a@example.invalid',verified:true,admin:false};
+const settings=vi.fn();
+const ui=(reminderOpen=false,blocked=false)=><AccountAccessContext.Provider value={{access,reminderOpen}}><LobbyOnboarding userId="a" ready blocked={blocked} onRules={()=>{}} onOpenSettings={settings}/></AccountAccessContext.Provider>;
+beforeEach(()=>{vi.clearAllMocks();mock.claim.mockReturnValue(false).mockReturnValueOnce(true);mock.rpc.mockResolvedValue({userId:'a',eligible:true});mock.session.mockResolvedValue({data:{session:{user:{id:'a'}}}});});
+afterEach(cleanup);
+it('waits for the verification reminder and then opens',async()=>{const view=render(ui(true));expect(mock.rpc).not.toHaveBeenCalled();view.rerender(ui(false));expect(await screen.findByRole('dialog')).toBeTruthy();expect(mock.rpc).toHaveBeenCalledWith('a','present',expect.any(String));});
+it('does not interrupt active/recovered gameplay',()=>{render(ui(false,true));expect(mock.rpc).not.toHaveBeenCalled();});
+it('respects server suppression',async()=>{mock.rpc.mockResolvedValue({userId:'a',eligible:false});render(ui());await waitFor(()=>expect(mock.rpc).toHaveBeenCalled());expect(screen.queryByRole('dialog')).toBeNull();});
+it.each([['Later','snooze'],['Never','dismiss'],['Done','complete']])('closes immediately and saves %s',async(label,action)=>{render(ui());await screen.findByRole('dialog');fireEvent.click(screen.getByText(label));expect(screen.queryByRole('dialog')).toBeNull();await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('a',action,expect.any(String)));});
+it('hands off to Settings without completing onboarding',async()=>{render(ui());await screen.findByRole('dialog');fireEvent.click(screen.getByText('Settings'));expect(settings).toHaveBeenCalledOnce();await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('a','snooze',expect.any(String)));});
+it('drops stale automatic reads after a gameplay transition',async()=>{let resolve:any;mock.rpc.mockReturnValue(new Promise(r=>{resolve=r;}));const view=render(ui());view.rerender(ui(false,true));resolve({userId:'a',eligible:true});await Promise.resolve();expect(screen.queryByRole('dialog')).toBeNull();});
+it('does not save a closing decision under a different account',async()=>{render(ui());await screen.findByRole('dialog');mock.session.mockResolvedValue({data:{session:{user:{id:'b'}}}});fireEvent.click(screen.getByText('Done'));await Promise.resolve();expect(mock.rpc).toHaveBeenCalledTimes(1);});

@@ -1,0 +1,19 @@
+.mobile-onboarding {
+ width: min(26rem, calc(100% - 1.5rem));
+ max-height: calc(100% - 1.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+ display: flex;
+ flex-direction: column;
+ gap: .65rem;
+ padding: 1rem;
+ overflow: hidden;
+ background: #101a2b;
+ border-color: #7c5b2b;
+ border-radius: 1rem;
+ color: #f1f5f9;
+}
+.mobile-onboarding > :not([aria-roledescription="carousel"]) { flex-shrink: 0; }
+.mobile-onboarding > button { width: 2.75rem; height: 2.75rem; right: .3rem; top: .35rem; display: grid; place-items: center; }
+.onboarding-phone { display: flex; align-items: center; gap: .7rem; padding: .75rem; border: 2px solid #475569; border-radius: 1rem; background: #0a0f1a; }
+.onboarding-steps { display: grid; gap: .5rem; font-size: .8125rem; line-height: 1.35; }
+.onboarding-steps li { display: flex; align-items: flex-start; gap: .5rem; }
+.onboarding-steps li > span { flex: 0 0 1.2rem; display: grid; place-items: center; height: 1.2rem; border-radius: 50%; background: #fbbf2420; color: #fcd34d; font-size: .7rem; }

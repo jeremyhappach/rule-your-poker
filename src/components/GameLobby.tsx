@@ -2,6 +2,7 @@ import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
 import { Gamepad2 } from "lucide-react";
 import { useLayoutEffect, useState } from "react";
 import { useLobbyGames } from "@/hooks/useLobbyGames";
+import { cancelOnboardingEntry } from '@/lib/mobileOnboarding';
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,9 +88,10 @@ interface GameLobbyProps {
   userId: string;
   isMaintenanceMode: boolean;
   onInitialLoad?: (ready: boolean) => void;
+  onOnboardingBlocked?: (blocked: boolean) => void;
 }
 
-export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad }: GameLobbyProps) => {
+export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardingBlocked }: GameLobbyProps) => {
   // Prevent screen from dimming in the lobby
   useWakeLock(true);
   
@@ -108,6 +110,10 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad }: GameLobb
   const { isTablet } = useDeviceSize();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const hasRecoverableSession=games.some(game=>game.is_player&&!game.session_ended_at&&!['session_ended','completed','game_over'].includes(game.status));
+  const onboardingBlocked=loading||!initialLoadSucceeded||creatingGame||showCreateDialog||showSessionResults||showDefaultsConfig||showRulesDialog||!!pendingRealMoneyGameId||!!deleteGameId||hasRecoverableSession;
+  useLayoutEffect(()=>{onOnboardingBlocked?.(onboardingBlocked);},[onboardingBlocked,onOnboardingBlocked]);
+  useLayoutEffect(()=>{if(initialLoadSucceeded&&hasRecoverableSession)cancelOnboardingEntry();},[initialLoadSucceeded,hasRecoverableSession]);
 
   const createGame = async () => {
     // Prevent double-clicks

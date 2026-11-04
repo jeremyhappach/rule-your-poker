@@ -3,10 +3,13 @@ import {useLocation} from 'react-router-dom';
 import {supabase} from '@/integrations/supabase/client';
 import {accountRpc,sendVerification,emailDeliveryMessage,type AccountAccess} from '@/lib/accountAccess';
 import {Button} from '@/components/ui/button';
+import {AccountAccessContext} from '@/lib/accountAccessContext';
+import {cancelOnboardingEntry,onboardingAuthEvent} from '@/lib/mobileOnboarding';
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 
 export function AccountAccessGate({children}:{children:ReactNode}) {
  const location=useLocation();
+ useEffect(()=>{if(!['/','/auth'].includes(location.pathname)||!['','?launch=home'].includes(location.search)||location.hash)cancelOnboardingEntry();},[location.pathname,location.search,location.hash]);
  const [identity,setIdentity]=useState<string|null|undefined>(undefined);
  const [access,setAccess]=useState<AccountAccess|null>(null),[error,setError]=useState('');
  const [dismissed,setDismissed]=useState(false),[sending,setSending]=useState(false),[message,setMessage]=useState('');
@@ -28,6 +31,7 @@ export function AccountAccessGate({children}:{children:ReactNode}) {
    if(id)void load(id);
   };
   const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
+   onboardingAuthEvent(event);
    ++authEvents;
    // Foreground SIGNED_IN and token refresh do not create another launch.
    if(session||event==='SIGNED_OUT'||event==='INITIAL_SESSION'&&identityRef.current===undefined)queueMicrotask(()=>admit(session?.user.id??null));
@@ -61,5 +65,5 @@ export function AccountAccessGate({children}:{children:ReactNode}) {
  if(identity===undefined||!access)return <main className="min-h-screen grid place-items-center bg-background text-foreground p-6"><div role="status" className="space-y-4 text-center"><p>{error||'Checking account access…'}</p>{error&&<Button onClick={()=>identity?void load(identity):window.location.reload()}>Retry</Button>}<Button variant="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sign out</Button></div></main>;
  const verification=<div className="space-y-3"><p className="break-all text-sm">{access.email}</p><p role={access.emailDelivery==='failed'?'alert':'status'} className="text-sm">{message||emailDeliveryMessage(access.emailDelivery)}</p><Button disabled={sending} onClick={async()=>{const id=access.userId;setSending(true);setMessage('');try{await sendVerification(id);if(identityRef.current===id)setMessage('Verification email requested. Check your inbox and spam folder.');}catch(e){if(identityRef.current===id)setMessage(e instanceof Error?e.message:'Could not send email.');}finally{if(identityRef.current===id){setSending(false);void load(id);}}}}>Resend verification email</Button></div>;
  if(!access.enabled)return <main className="min-h-screen grid place-items-center bg-background text-foreground p-6"><div className="max-w-md space-y-4 text-center"><h1 className="text-2xl font-semibold">{access.status==='pending'?'Account Pending Admin Approval':'Account Suspended — Contact Administrator.'}</h1>{access.status==='pending'&&<><p>Your account is registered. An administrator must enable gameplay access.</p>{!access.verified&&verification}</>}<Button variant="outline" onClick={()=>void load(access.userId)}>Check status</Button><Button variant="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sign out</Button></div></main>;
- return <>{children}<Dialog open={!access.verified&&!dismissed} onOpenChange={open=>{if(!open)setDismissed(true);}}><DialogContent><DialogHeader><DialogTitle>Your email is not verified</DialogTitle><DialogDescription>Please verify your email address to help secure your account.</DialogDescription></DialogHeader>{verification}<Button variant="ghost" onClick={()=>setDismissed(true)}>Continue playing</Button></DialogContent></Dialog></>;
+ return <AccountAccessContext.Provider value={{access,reminderOpen:!access.verified&&!dismissed}}>{children}<Dialog open={!access.verified&&!dismissed} onOpenChange={open=>{if(!open)setDismissed(true);}}><DialogContent><DialogHeader><DialogTitle>Your email is not verified</DialogTitle><DialogDescription>Please verify your email address to help secure your account.</DialogDescription></DialogHeader>{verification}<Button variant="ghost" onClick={()=>setDismissed(true)}>Continue playing</Button></DialogContent></Dialog></AccountAccessContext.Provider>;
 }

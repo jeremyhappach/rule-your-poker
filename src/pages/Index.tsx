@@ -1,5 +1,6 @@
 import {NotificationBell} from '@/components/delayed/NotificationBell';
 import { FreshLaunchSplash } from '@/components/FreshLaunchSplash';
+import { LobbyOnboarding } from '@/components/LobbyOnboarding';
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,6 +77,8 @@ const Index = () => {
   const { user, isReady } = useAuthGuard({ pageLabel: "Index" });
   const [isLoading, setIsLoading] = useState(true);
   const [lobbyReady, setLobbyReady] = useState(false);
+  const [onboardingBlocked,setOnboardingBlocked] = useState(true);
+  const [openNotifications,setOpenNotifications] = useState(false);
   const [sessionCleanupRequired, setSessionCleanupRequired] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("");
@@ -500,12 +503,14 @@ const Index = () => {
             </span>
           </Button>
           
-          <NotificationBell />{/* Right side buttons - Profile, History, Logout */}
+          <NotificationBell />
+          <LobbyOnboarding userId={user.id} ready={lobbyReady&&!maintenanceLoading&&!isMaintenanceMode} blocked={onboardingBlocked||showProfileDialog||showHistoryDialog||showRulesDialog||showBalanceDialog||showAdminPlayerList||showRecentLogins||!!selectedAdminPlayer} onRules={()=>setShowRulesDialog(true)} onOpenSettings={()=>{setOpenNotifications(true);setShowProfileDialog(true);}}/>
+          {/* Right side buttons - Profile, History, Logout */}
           <div className="flex gap-1.5 flex-shrink-0">
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setShowProfileDialog(true)}
+              onClick={() => {setOpenNotifications(false);setShowProfileDialog(true);}}
               className="h-8 w-8 p-0"
               title="Profile Settings"
             >
@@ -525,7 +530,7 @@ const Index = () => {
             </Button>
           </div>
         </div>
-        <GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} onInitialLoad={setLobbyReady} />
+        <GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} onInitialLoad={setLobbyReady} onOnboardingBlocked={setOnboardingBlocked} />
       </div>
 
         <Dialog open={showProfileDialog} onOpenChange={open=>{setShowProfileDialog(open);if(!open&&selectedAdminPlayer){const next=new URLSearchParams(accountParams);next.delete('adminPlayer');setAccountParams(next,{replace:true});}}}>
@@ -558,7 +563,7 @@ const Index = () => {
                 <ScrollArea className="h-full pr-4 overscroll-contain">
                   <div className="space-y-6 pt-2">
                     {/* Visual Preferences Section */}
-                    {user && <VisualPreferences userId={user.id} disabled={false} />}
+                    {user && <VisualPreferences userId={user.id} disabled={false} openNotifications={openNotifications} />}
 
                     {/* Username Section */}
                     <div className="space-y-3">
@@ -931,7 +936,7 @@ const Index = () => {
                 )}
 
                 {/* Visual Preferences Section */}
-                {user && <VisualPreferences userId={user.id} disabled={isMaintenanceMode} />}
+                {user && <VisualPreferences userId={user.id} disabled={isMaintenanceMode} openNotifications={openNotifications} />}
 
                 {/* Username Section */}
                 <div className="space-y-3">

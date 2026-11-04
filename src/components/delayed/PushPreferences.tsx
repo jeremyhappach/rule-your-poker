@@ -10,13 +10,13 @@ export interface NotificationPreferences {
  invitations:boolean;asyncDefault:boolean;newTable:boolean;quietEnabled:boolean;quietStart:string;quietEnd:string;quietZone:string;
 }
 const initial:NotificationPreferences={invitations:false,asyncDefault:false,newTable:false,quietEnabled:false,quietStart:'22:00',quietEnd:'07:00',quietZone:'UTC'};
-export function PushPreferences({userId,matchId,device=browser,rpc=delayedRpc,preview=false}:{userId:string;matchId?:string;device?:PushDevice;rpc?:typeof delayedRpc;preview?:boolean}){
+export function PushPreferences({userId,matchId,device=browser,rpc=delayedRpc,preview=false,initialExpanded=false}:{userId:string;matchId?:string;device?:PushDevice;rpc?:typeof delayedRpc;preview?:boolean;initialExpanded?:boolean}){
  const deviceEnabled=browser.pushEnabled||preview;
  const [enabled,setEnabled]=useState<boolean|null>(null),[preferences,setPreferences]=useState<NotificationPreferences|null>(null);
  const [quiet,setQuiet]=useState(initial),[pending,setPending]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState('');
  const [state,setState]=useState(()=>deviceEnabled?device.status():'inactive');
- const [expanded,setExpanded]=useState(false),detailsId=useId();
- useEffect(()=>{setExpanded(false);},[userId,matchId]);
+ const [expanded,setExpanded]=useState(initialExpanded),detailsId=useId();
+ useEffect(()=>{setExpanded(initialExpanded);},[userId,matchId,initialExpanded]);
  const requestVersion=useRef(0),matchVersion=useRef(0),saving=useRef(false);
  useEffect(()=>{
   let alive=true;setEnabled(null);setPreferences(null);setError('');

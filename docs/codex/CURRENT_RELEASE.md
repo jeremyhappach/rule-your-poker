@@ -1,3 +1,19 @@
+# Mobile install and notification onboarding — 2026-11-04 — approved release
+
+One branded two-slide guide now admits existing and new enabled players on a
+fresh eligible mobile-browser lobby entry. Desktop, standalone launches,
+recoverable sessions and active routes are excluded; the email reminder finishes
+first. Account/version preferences persist seven-day snooze, dismissal and Done.
+Help → Install App & Notifications replays without changing saved preferences;
+the settings action opens the existing Notifications controls.
+
+Migration `20261104202040` is installed. Candidate and installed rollback proofs,
+57 focused tests, 241 harness tests, 21 browser scenarios, TypeScript and the
+production bundle pass. Ten unrelated Mega tests also fail on unchanged main;
+physical-device installation/push and owner production smoke remain pending.
+See [scope and evidence](MOBILE_ONBOARDING.md). Exact publication is recorded on
+`release-mobile-onboarding-20261104-verified` after the approved main push.
+
 # Admin access smoke fixes — 2026-11-04 — approved production release
 
 The three scoped corrections add deduplicated initial verification dispatch and
@@ -444,7 +460,7 @@ and a read-only no-active-seat check. Notifications/deep links, recovery,
 refresh/resume, browser use and uncertain/slow startup skip it. Startup owners
 remain independent; the three-second navigation budget includes initialization,
 followed by a 200 ms fade. Existing installs need the updated manifest launch URL.
-TypeScript, build, 54 focused tests, 31 push regressions and 20 compiled-App browser
+TypeScript, build, 57 focused tests, 31 push regressions and 20 compiled-App browser
 scenarios pass. Physical iPhone/Android lifecycle and manifest adoption remain
 owner smoke. No rules, finances, schema, notification or audio changes. See
 [qualification, platform limits and smoke](FRESH_LAUNCH_SPLASH.md).
