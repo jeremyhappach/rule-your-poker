@@ -1,4 +1,5 @@
-import {useLayoutEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState,type CSSProperties,type ReactNode} from 'react';
+import {audioTrace} from '@/lib/audio/audioTrace';
 import {presentSound} from '@/lib/audio/presentationSound';
 import {PlayingCard} from '@/components/PlayingCard';
 import {CountdownDots} from '@/components/ui/CountdownDots';
@@ -31,6 +32,12 @@ export function TriTowersBoard({replay=false,view:v,canAct,onIntent,result,round
  useLayoutEffect(()=>{setAnimated(fresh);previous.current={roundKey,cleared:v.removed.filter(i=>i<3)};},[roundKey,v.removed]);
  const modern=['tri-towers/3','tri-towers/4','tri-towers/5'].includes(v.rules.version);
  const motion=useTriRoundPresentation({replay,scope:roundKey,phase:v.phase,connected,paused,result,now,deadline:v.deadline,userId,active:presentationActive,modern,liveEntry,recoveryEpoch,celebrationMs:v.rules.clearCelebrationMs??0});
+ useEffect(()=>{
+  audioTrace.record('tri-presentation',{scope:roundKey,phase:v.phase,liveEntry,recoveryEpoch,connected,paused,replay,
+   active:presentationActive,reduced:motion.reduced,introAdmitted:motion.introAdmitted,resultAdmitted:motion.admitted,
+   result:result?.id,reason:result?.reason,elapsedMs:result?.elapsed,remainingMs:v.deadline-now,hidden:document.hidden});
+ },[roundKey,v.phase,liveEntry,recoveryEpoch,connected,paused,replay,presentationActive,motion.reduced,motion.introAdmitted,motion.admitted,result?.id]);
+ useEffect(()=>()=>audioTrace.record('tri-unmounted',{scope:roundKey}),[roundKey]);
  useTriCardAudio({userId,scope:roundKey,epoch:recoveryEpoch,active:connected&&presentationActive&&!paused,replay,view:v});
  useTriTowerClearAudio({scope:roundKey,userId,removed:v.removed,phase:v.phase,recoveryEpoch,
   active:modern&&connected&&presentationActive&&!paused,reduced:motion.reduced,replay});

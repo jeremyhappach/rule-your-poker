@@ -7,6 +7,7 @@ import {useAccountAccess} from '@/lib/accountAccessContext';
 import {claimOnboardingEntry,consumeOnboardingEntry,onboardingPreference,pushEntryReady,subscribePushEntry,type OnboardingDecision,type OnboardingPreference} from '@/lib/mobileOnboarding';
 import {supabase} from '@/integrations/supabase/client';
 import {MobileOnboardingTutorial} from './MobileOnboardingTutorial';
+import {AudioDiagnostics} from './AudioDiagnostics';
 
 interface Props {
  userId:string|null;ready:boolean;blocked:boolean;
@@ -16,9 +17,10 @@ export function LobbyOnboarding({userId,ready,blocked,onOpenSettings,onRules,onH
  const account=useAccountAccess();
  const pushReady=useSyncExternalStore(subscribePushEntry,pushEntryReady);
  const [mode,setMode]=useState<'automatic'|'manual'|null>(null),[menuOpen,setMenuOpen]=useState(false);
+ const [audioOpen,setAudioOpen]=useState(false);
  const identity=useRef(userId);identity.current=userId;
  const pending=useRef<{userId:string;promise:Promise<OnboardingPreference>}|null>(null);
- const safe=!!userId&&mode===null&&ready&&!blocked&&!menuOpen&&pushReady&&account?.access.userId===userId&&account.access.enabled&&!account.reminderOpen;
+ const safe=!!userId&&mode===null&&!audioOpen&&ready&&!blocked&&!menuOpen&&pushReady&&account?.access.userId===userId&&account.access.enabled&&!account.reminderOpen;
  useEffect(()=>{
   if(!safe||!userId||!claimOnboardingEntry(userId))return;
   let alive=true;
@@ -52,11 +54,13 @@ export function LobbyOnboarding({userId,ready,blocked,onOpenSettings,onRules,onH
     <DropdownMenuSub><DropdownMenuSubTrigger>Help</DropdownMenuSubTrigger><DropdownMenuSubContent collisionPadding={12}>
      <DropdownMenuItem onSelect={()=>{if(userId)consumeOnboardingEntry(userId);setMode('manual');setMenuOpen(false);}}>Install App &amp; Notifications</DropdownMenuItem>
      <DropdownMenuItem onSelect={()=>{onRules();setMenuOpen(false);}}>Game Rules</DropdownMenuItem>
+     <DropdownMenuItem disabled={!userId} onSelect={()=>{setAudioOpen(true);setMenuOpen(false);}}>Audio diagnostics</DropdownMenuItem>
     </DropdownMenuSubContent></DropdownMenuSub>
     <DropdownMenuSeparator/>
     <DropdownMenuItem onSelect={userId?onLogout:onLogin}>{userId?<LogOut className="mr-2 h-4 w-4"/>:<LogIn className="mr-2 h-4 w-4"/>}{userId?'Logout':'Login'}</DropdownMenuItem>
    </DropdownMenuContent>
   </DropdownMenu>
   {mode&&!account?.reminderOpen&&(mode==='manual'||!blocked)&&<MobileOnboardingTutorial onClose={close} onOpenSettings={()=>{close('snooze');onOpenSettings();}}/>}
+  {audioOpen&&<AudioDiagnostics onClose={()=>setAudioOpen(false)}/>}
  </>;
 }

@@ -1,3 +1,20 @@
+# Async input and audio diagnostics — 2026-11-05 — approved release, owner smoke pending
+
+Async TriTowers now uses the existing ordered input buffer for immediate pending
+feedback while server responses remain authoritative. Shared Quintzee adds quiet,
+distinct hold/release tones for actual user toggles, respecting immediate mute.
+Help → Audio diagnostics provides bounded opt-in local tracing and phone export.
+The iPhone PWA starting-bell/final-fanfare defect remains OPEN pending a device
+trace; existing playback timing and admission are unchanged.
+
+TypeScript, production build, 520 covered focused tests and actual Edge component/
+Web Audio checks pass. Async pending feedback measured about 10 ms versus none
+before; confirmed moves still follow the server. No physical iPhone/Android smoke
+is claimed. No rules, clocks, animations, scoring, settlement or schema changes.
+See [evidence and iPhone instructions](ASYNC_INPUT_AUDIO_TRACE.md).
+Checkpoint: `release-async-input-audio-trace-20261105`; its `-verified` tag records
+the exact production publication.
+
 # Async Words final-turn review — 2026-11-05 — approved release, owner smoke pending
 
 Completed Words review now animates only the opponent's final placement and its

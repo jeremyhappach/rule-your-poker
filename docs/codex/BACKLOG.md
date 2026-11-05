@@ -1,3 +1,22 @@
+## Open — Async TriTowers missing bell/fanfare on iPhone PWA — November 5, 2026
+
+Jeremy reports working card movement and first/second tower sounds, missing fresh
+turn bell and final fanfare. The three-swords visual did appear. Expected: each
+admitted cue once, global Sounds off immediately silent. Device: installed iPhone
+PWA; exact game/turn and iOS version not yet captured. Provenance: direct smoke
+report and device clarification in this chat, November 5.
+
+Approved diagnostic release adds Help → Audio diagnostics with bounded local
+capture and Share/Save/Copy. Desktop native audio passed; delayed-response stress
+shows a possible expired-window path but does not establish this device cause.
+No speculative bell/fanfare playback change. Await the physical device trace.
+Related older all-clear interruption report below remains unproven, not assumed
+the same cause. See [trace instructions/evidence](ASYNC_INPUT_AUDIO_TRACE.md).
+
+Associated approved corrections are implemented: existing ordered buffer in
+Async TriTowers (~10 ms pending feedback); quiet hold/release tones in shared
+Quintzee across Arcade/Async/live. Local/browser checks pass; owner smoke pending.
+
 ## Pending owner smoke — Mega Card Golf production release — 2026-11-03
 
 Engineering release is complete: closed hosted qualification passed, followed by

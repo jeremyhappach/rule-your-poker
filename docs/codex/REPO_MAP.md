@@ -416,6 +416,13 @@ authenticates requests, `server/arcade/service.ts` coordinates CAS/receipts, and
 owner-only revision notifications. `supabase/functions/arcade-recovery/index.ts`
 recovers due runs. Proofs live in `dev/arcade`; policy in `ARCADE_PHASE_ONE.md`.
 
+Async input/audio diagnostics (2026-11-05): `src/hooks/useAsyncTriInput.ts` adapts
+the existing `useTriIntentBuffer` to the delayed action/receipt transport.
+`src/lib/audio/quintzeeHoldCue.ts` supplies quiet user-toggle tones from the shared
+`QuintzeeView`. `src/lib/audio/audioTrace.ts` is bounded opt-in local capture;
+`src/components/AudioDiagnostics.tsx` exposes start/stop/export through lobby Help.
+`dev/async-input-audio/` exercises actual components with isolated transport.
+
 Application audio: `src/lib/audio/audioManager.ts` owns one current Web Audio
 context and observable Sounds preference. Native contexts are retired on mute,
 background/interruption and final gameplay exit; receipts survive replacement.

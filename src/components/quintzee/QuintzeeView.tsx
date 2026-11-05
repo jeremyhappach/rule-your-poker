@@ -1,4 +1,5 @@
 import {useQuintzeeRollAudio} from './useQuintzeeRollAudio';
+import {presentQuintzeeHold} from '@/lib/audio/quintzeeHoldCue';
 import {QuintzeeBonuses} from './QuintzeeBonuses';
 import {useQuintzeeScorePresentation} from './useQuintzeeScorePresentation';
 import {TriScorePill,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
@@ -16,6 +17,7 @@ import {AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,Alert
 export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineEnd,snapshot:v,actor,userId=actor,now,pending,error,onIntent,onReconnect,activeTab,setActiveTab,sessionEnded=false,panel,balance,navigation}:{replay?:boolean;awaitingStart?:boolean;onResultTimelineEnd?:(at:number)=>void;navigation?:ReactNode;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(id:string)=>ReactNode;snapshot:QuintzeeSnapshot;actor:string;userId?:string;now:number;pending:boolean;error:string;onIntent:(i:QuintzeeIntent)=>void;onReconnect:()=>void}){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),[held,setHeld]=useState<number[]>([]),[layer,setLayer]=useState<Element|null>(null),[abandon,setAbandon]=useState(false),root=useRef<HTMLDivElement>(null);
  const [zero,setZero]=useState<{category:number;revision:number;scope:string}|null>(null),confirming=useRef(false);
+ const heldCurrent=useRef<number[]>([]);
  const tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
  const s=v.state,b=s.board,active=s.players[s.turnIndex],mine=active===actor,at=v.pausedAt??now,clock=quintzeeClock(b,at);
  const playerName=(id:string,index:number)=>v.playerNames?.[id]?.trim()||`Player ${index+1}`;
@@ -29,12 +31,19 @@ export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineE
  useEffect(()=>{if(result)onResultTimelineEnd?.(at-result.elapsed+baseMotion.finalDelay+TRI_ROUND_TIMELINE.homeAt);},[result?.id,baseMotion.finalDelay,b.deadline,onResultTimelineEnd]);
  const canAct=!replay&&!sessionEnded&&!v.autoplay&&mine&&!pending&&!error&&!rumble&&!baseMotion.busy&&at>=(b.celebration?.endsAt??0)&&tab==='cards'&&(b.phase==='playing'||ready)&&!s.finished&&v.pausedAt===null&&at<b.deadline;
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
- useLayoutEffect(()=>{setHeld([...b.held]);},[v.scope,b.rollSerial,b.dice.length]);
+ useLayoutEffect(()=>{heldCurrent.current=[...b.held];setHeld(heldCurrent.current);},[v.scope,b.rollSerial,b.dice.length]);
  useEffect(()=>{setZero(null);confirming.current=false;},[v.scope,v.revision]);
  const choose=(category:number)=>{if(!canAct||ready||b.dice.length!==5)return;const name=QUINTZEE_CATEGORIES[category];if(b.scores[name]!==undefined)return;const isZero=quintzeeBasePreview(name,b.dice)===0;if(v2&&isZero&&quintzeeNeedsZeroConfirmation(b,name))setZero({category,revision:v.revision,scope:v.scope});else onIntent({type:v2&&isZero?'score_zero':'score',items:[category]});};
  const confirmZero=()=>{if(!zero||confirming.current||!canAct||zero.revision!==v.revision||zero.scope!==v.scope)return;confirming.current=true;setZero(null);onIntent({type:'score_zero',items:[zero.category]});};
  const rollNumber=b.dice.length===5?3-b.rollsRemaining:0;
  const seconds=Math.ceil(clock.remaining/1000);
+ const toggleHold=(index:number)=>{
+  if(!canAct||ready||b.rollsRemaining===0)return;
+  const next=!heldCurrent.current.includes(index);
+  heldCurrent.current=next?[...heldCurrent.current,index]:heldCurrent.current.filter(i=>i!==index);
+  setHeld(heldCurrent.current);
+  presentQuintzeeHold(userId,v.scope,next,viewport.current);
+ };
  const status=v.status==='expired'?'Start time expired':s.finished?'Match complete':v.pausedAt!==null?'Paused':b.phase==='intro'?'Get Ready':b.phase==='stage_complete'?quintzeeRoundLabel(b.result?.reason):'';
  return <FullscreenGameShell gameplay={!replay} className={`quintzee-shell quintzee-${v.theme}`} title="QUINTZEE" description={s.round===3?'Bonus round':`Round ${s.round} of 2`} activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} announcement={s.players.length===1?false:undefined}
   navigation={navigation??(s.players.length===1?<nav aria-label="Quintzee controls"><button onClick={()=>setTab('lobby')}>Rules</button>{s.players.length===1&&v.status==='active'&&<button disabled={pending} onClick={()=>setAbandon(true)}>Abandon</button>}</nav>:undefined)}
@@ -47,7 +56,7 @@ export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineE
   <div className="q-play-area">
    {v.autoplay&&<label className="q-autoplay"><input type="checkbox" checked disabled={pending||!!error} onChange={()=>onIntent({type:'reclaim',items:[]})}/>Auto-play</label>}
    <div className="q-roll-guide"><strong>{rollNumber?`Roll ${rollNumber} of 3`:ready?'Ready to start':'Ready to roll'}</strong>{mine&&!ready&&!v.autoplay&&<span>{b.rollsRemaining===0?'Choose a category':'Tap dice to hold or release'}</span>}</div>
-   <div className="q-dice" aria-label="Dice - tap to hold or release">{b.dice.length===5&&b.dice.map((value,i)=>{const rolling=!!rumble&&!rumble.held.includes(i);return <button key={v.scope+':'+i} disabled={!canAct||ready||b.rollsRemaining===0} data-held={held.includes(i)} data-rolling={rolling} onClick={()=>setHeld(h=>h.includes(i)?h.filter(x=>x!==i):[...h,i])} aria-label={'Die '+(i+1)+': '+(rolling?'rolling':value)+', '+(held.includes(i)?'held; tap to release':'not held; tap to hold')} aria-pressed={held.includes(i)}><QuintzeeDie value={value} rolling={rolling}/><small>{held.includes(i)?'HELD':'HOLD'}</small></button>;})}</div>
+   <div className="q-dice" aria-label="Dice - tap to hold or release">{b.dice.length===5&&b.dice.map((value,i)=>{const rolling=!!rumble&&!rumble.held.includes(i);return <button key={v.scope+':'+i} disabled={!canAct||ready||b.rollsRemaining===0} data-held={held.includes(i)} data-rolling={rolling} onClick={()=>toggleHold(i)} aria-label={'Die '+(i+1)+': '+(rolling?'rolling':value)+', '+(held.includes(i)?'held; tap to release':'not held; tap to hold')} aria-pressed={held.includes(i)}><QuintzeeDie value={value} rolling={rolling}/><small>{held.includes(i)?'HELD':'HOLD'}</small></button>;})}</div>
    {replay?<div className="q-opponent-turn" role="status">Saved round result</div>:mine?<button className="q-roll" disabled={!canAct||b.rollsRemaining===0} onClick={()=>onIntent({type:ready?'start':'roll',items:ready||b.dice.length===0?[]:held})}>{rumble?'ROLLING…':ready?'Start':b.phase==='intro'?'GET READY':b.rollsRemaining===0?'CHOOSE A CATEGORY':b.dice.length===0?'Roll (3 remaining)':'REROLL DICE'}{b.phase==='playing'&&b.dice.length===5&&<small>{b.rollsRemaining} {b.rollsRemaining===1?'reroll':'rerolls'} left</small>}</button>:<div className="q-opponent-turn" role="status">{playerName(active,s.turnIndex)}’s turn</div>}
    {result?.reason==='timeout'&&motion.admitted&&motion.elapsed<1200&&!baseMotion.banner&&<div className="q-celebration" role="status">Time’s up</div>}
    {!rumble&&!baseMotion.busy&&(!motion.admitted||motion.elapsed>=baseMotion.finalDelay+4300)&&(b.phase==='intro'||b.phase==='stage_complete'||s.finished)&&<div className="q-result" role="status"><strong>{status}</strong>{v.status==='expired'?<span>Run unranked</span>:b.phase==='intro'?<span>{Math.max(1,Math.ceil((b.deadline-at)/1000))}</span>:<span>{b.result?.rawSubtotal} × {b.result?.multiplier} = <b>{b.result?.stageScore.toLocaleString()}</b></span>}{s.finished&&v.status==='completed'&&<small>Final totals above · {s.qualified.length?'Bonus round included':'Two rounds complete'}</small>}</div>}

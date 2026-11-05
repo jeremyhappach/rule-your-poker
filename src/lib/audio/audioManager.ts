@@ -1,3 +1,4 @@
+import {audioTrace} from './audioTrace';
 export type TrackAudioNode = <T extends AudioNode>(node: T) => T;
 export interface AudioCue {
   durationMs: number;
@@ -59,8 +60,16 @@ export class AudioManager {
   private resuming: AudioContext | null = null;
   private pageAway = false;
   private sessionInterrupted = false;
+  private contextSerial = 0;
 
   constructor(private env: AudioEnvironment) {}
+
+  private trace(event:string,id?:string,expiresAt?:number,fields:Record<string,string|number|boolean|null>={}) {
+    if (!audioTrace.enabled() || id && !/^(run21-bell:tri:|tri-clear:|tri-tower:|tri-card:|tri-count:)/.test(id)) return;
+    try {audioTrace.record(event,{...fields,cue:id,remainingMs:expiresAt===undefined?undefined:expiresAt-this.env.now(),
+      context:this.contextSerial,contextState:this.context?.state??'absent',audioTime:this.context?.currentTime??null,
+      enabled:this.enabled,hidden:this.env.document().hidden,pageAway:this.pageAway,interrupted:this.sessionInterrupted,owners:this.gameplayOwners.size});}catch{/* Diagnostics never affect playback. */}
+  }
 
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   getSnapshot = () => this.snapshot;
@@ -80,7 +89,7 @@ export class AudioManager {
       // A header handoff / React effect rehearsal may reacquire synchronously.
       // A real exit retires the engine so the next game cannot inherit a silent one.
       queueMicrotask(() => {
-        if (!this.gameplayOwners.size) { this.retireContext(); this.updateSession(); }
+        if (!this.gameplayOwners.size) { this.retireContext('gameplay-exit'); this.updateSession(); }
       });
     };
   };
@@ -112,12 +121,13 @@ export class AudioManager {
     const gesture = (event: Event) => { if (event.isTrusted) this.unlock(true); };
     const leave = () => {
       this.pageAway = true;
-      this.retireContext();
+      this.retireContext('page-away');
       this.updateSession();
     };
     const foreground = () => {
       if (doc.hidden) return;
       this.pageAway = false;
+      this.trace('foreground');
       this.unlock();
     };
     const visibility = () => {
@@ -126,7 +136,7 @@ export class AudioManager {
     };
     const unobserve = this.env.playbackSession?.observe?.(() => {
       this.sessionInterrupted = true;
-      this.retireContext();
+      this.retireContext('session-interrupted');
       this.updateSession();
     }, () => { this.sessionInterrupted = false; foreground(); });
     gestures.forEach(name => doc.addEventListener(name, gesture, { capture: true, passive: true }));
@@ -144,7 +154,7 @@ export class AudioManager {
       doc.defaultView?.removeEventListener('app:page-resumed', foreground);
       unobserve?.();
       this.env.playbackSession?.release();
-      this.retireContext();
+      this.retireContext('uninstall');
       this.preferenceVersion++;
       this.uninstall = null;
     };
@@ -153,6 +163,7 @@ export class AudioManager {
 
   setUser(userId: string | null) {
     if (this.userId === userId) return;
+    this.trace('user-change');
     this.stopActive();
     this.clearPending();
     this.userId = userId;
@@ -166,7 +177,8 @@ export class AudioManager {
     void Promise.resolve().then(() => this.env.loadPreference(userId)).then(enabled => {
       if (this.preferenceVersion !== version) return;
       this.enabled = enabled;
-      if (enabled === false) this.retireContext();
+      this.trace('preference-loaded');
+      if (enabled === false) this.retireContext('preference-muted');
       this.publish(); this.updateSession();
       this.flush();
     }).catch(() => {});
@@ -179,9 +191,10 @@ export class AudioManager {
     // recovery notification. A genuine interruption still blocks native playback.
     if (enabled && this.enabled === false) this.sessionInterrupted = false;
     this.enabled = enabled;
+    this.trace('preference-changed');
     // Mute also closes a running-but-silent engine. Unmute creates and primes a
     // fresh one in the user's gesture instead of trusting the old state flag.
-    if (!enabled) this.retireContext();
+    if (!enabled) this.retireContext('muted');
     this.publish(); this.updateSession();
     if (enabled) this.unlock();
   }
@@ -194,6 +207,8 @@ export class AudioManager {
       if (!this.context || this.context.state === 'closed') {
         this.context?.removeEventListener('statechange', this.stateChanged);
         this.context = this.env.createContext();
+        this.contextSerial++;
+        this.trace('context-created');
         this.context.addEventListener('statechange', this.stateChanged);
       }
       if (this.context.state !== 'running') {
@@ -205,7 +220,8 @@ export class AudioManager {
         // gesture must still retry synchronously instead of waiting on that promise.
         if (trustedGesture || this.resuming !== context) {
           this.resuming = context;
-          void context.resume().then(() => { if (this.context === context) this.flush(); }).catch(() => {}).finally(() => {
+          this.trace('resume-request',undefined,undefined,{trustedGesture});
+          void context.resume().then(() => { if (this.context === context) {this.trace('resume-resolved');this.flush();} }).catch(() => {this.trace('resume-rejected');}).finally(() => {
             if (this.resuming === context) this.resuming = null;
           });
         }
@@ -219,7 +235,7 @@ export class AudioManager {
         this.primedContext=this.context;
       }
       this.flush();
-    } catch { /* Unsupported/blocked audio never blocks gameplay. */ }
+    } catch { this.trace('unlock-failed'); /* Unsupported/blocked audio never blocks gameplay. */ }
   };
 
   /** Existing instantaneous platform sounds retain their call sites; never catch them up. */
@@ -235,7 +251,7 @@ export class AudioManager {
     this.remember(key);
     if (!event.cue || this.enabled !== true) return false;
     this.unlock();
-    return this.schedule(event.cue, this.env.now() + event.cue.durationMs + 25, scheduled);
+    return this.schedule(event.cue, this.env.now() + event.cue.durationMs + 25, scheduled,event.id);
   }
 
   request(event: AudioEvent) {
@@ -260,13 +276,14 @@ export class AudioManager {
   /** Cancellable presentation audio. Unlock skips elapsed ticks; interruption retires the event. */
   follow(event: AudioTimeline) {
     const key = `ptown-audio:${event.userId}:${event.id}`;
-    if (event.userId !== this.userId || event.expiresAt <= this.env.now()) return () => {};
-    if (this.enabled === false || this.pageAway || this.sessionInterrupted || this.env.document().hidden) { this.remember(key); return () => {}; }
+    this.trace('timeline-request',event.id,event.expiresAt);
+    if (event.userId !== this.userId || event.expiresAt <= this.env.now()) {this.trace('timeline-rejected',event.id,event.expiresAt,{reason:event.userId!==this.userId?'identity':'expired'});return () => {};}
+    if (this.enabled === false || this.pageAway || this.sessionInterrupted || this.env.document().hidden) { this.trace('timeline-inactive',event.id,event.expiresAt);this.remember(key); return () => {}; }
     let entry = this.timelines.get(key);
     if (!entry) {
-      if (this.hasPlayed(key)) return () => {};
+      if (this.hasPlayed(key)) {this.trace('timeline-duplicate',event.id,event.expiresAt);return () => {};}
       this.unlock();
-      entry = {event, owners: new Set(), timer: setTimeout(() => this.retireTimeline(key), event.expiresAt - this.env.now())};
+      entry = {event, owners: new Set(), timer: setTimeout(() => this.retireTimeline(key,'expired'), event.expiresAt - this.env.now())};
       this.timelines.set(key, entry);
     }
     const owner = {};
@@ -275,7 +292,7 @@ export class AudioManager {
     return () => {
       entry.owners.delete(owner);
       // React's effect rehearsal may reacquire the same event in this microtask.
-      queueMicrotask(() => { if (!entry.owners.size && this.timelines.get(key) === entry) this.retireTimeline(key); });
+      queueMicrotask(() => { if (!entry.owners.size && this.timelines.get(key) === entry) this.retireTimeline(key,'owner-released'); });
     };
   }
 
@@ -283,9 +300,10 @@ export class AudioManager {
     this.played.add(key);
     try { this.env.storage().setItem(key, '1'); } catch { /* In-memory receipt remains. */ }
   }
-  private retireTimeline(key: string) {
+  private retireTimeline(key: string,reason='interrupted') {
     const entry = this.timelines.get(key);
     if (!entry) return;
+    this.trace('timeline-retired',entry.event.id,entry.event.expiresAt,{reason,scheduled:!!entry.stop});
     this.timelines.delete(key);
     clearTimeout(entry.timer);
     entry.stop?.();
@@ -293,10 +311,11 @@ export class AudioManager {
   }
 
   private stateChanged = () => {
+    this.trace('context-state');
     if (this.context?.state !== 'running') {
       this.stopActive(false);
       // Initial autoplay suspension may wait for a gesture; an actual interruption may not replay.
-      if ((this.context?.state as string) === 'interrupted') this.retireContext();
+      if ((this.context?.state as string) === 'interrupted') this.retireContext('context-interrupted');
     }
     else this.flush();
   };
@@ -304,15 +323,15 @@ export class AudioManager {
   private flush() {
     for (const [key, entry] of this.timelines) {
       const remaining = entry.event.expiresAt - this.env.now();
-      if (remaining <= 0) { this.retireTimeline(key); continue; }
+      if (remaining <= 0) { this.retireTimeline(key,'expired'); continue; }
       if (entry.stop || !entry.owners.size || this.env.now() < entry.event.startedAt) continue;
       const cue = entry.event.cueAt(this.env.now() - entry.event.startedAt, remaining);
-      this.schedule(cue, entry.event.expiresAt, stop => { entry.stop = stop; this.remember(key); });
+      this.schedule(cue, entry.event.expiresAt, stop => { entry.stop = stop; this.remember(key); },entry.event.id);
     }
     for (const [key, { event }] of this.pending) {
       if (event.expiresAt - this.env.now() < event.cue.durationMs) {
         this.removePending(key);
-      } else if (this.schedule(event.cue, event.expiresAt)) {
+      } else if (this.schedule(event.cue, event.expiresAt,undefined,event.id)) {
         // Success means every source was scheduled in a running context, not merely attempted.
         this.played.add(key);
         try { this.env.storage().setItem(key, '1'); } catch { /* In-memory dedupe remains. */ }
@@ -321,16 +340,17 @@ export class AudioManager {
     }
   }
 
-  private schedule(cue: AudioCue, expiresAt: number, scheduled?: (stop: () => void) => void) {
+  private schedule(cue: AudioCue, expiresAt: number, scheduled?: (stop: () => void) => void,eventId?:string) {
     const ctx = this.context;
-    if (!ctx || ctx.state !== 'running' || this.enabled !== true || this.pageAway || this.sessionInterrupted || this.env.document().hidden) return false;
-    if (expiresAt - this.env.now() < cue.durationMs) return false;
+    if (!ctx || ctx.state !== 'running' || this.enabled !== true || this.pageAway || this.sessionInterrupted || this.env.document().hidden) {this.trace('schedule-not-ready',eventId,expiresAt);return false;}
+    if (expiresAt - this.env.now() < cue.durationMs) {this.trace('schedule-window-short',eventId,expiresAt,{durationMs:cue.durationMs});return false;}
     const policy = cue.policy;
     if (policy) {
       const recent = this.env.now() - (this.lastGroup.get(policy.group) ?? -Infinity) < policy.intervalMs;
       const stronger = [...this.voices.values()].some(voice => voice.priority > policy.priority);
       // Suppressed effects must not queue up behind the meaningful sound.
       if (recent || stronger || (this.voices.size >= 3 && ![...this.voices.values()].some(v => v.priority < policy.priority))) {
+        this.trace('schedule-suppressed',eventId,expiresAt);
         scheduled?.(() => {});
         return true;
       }
@@ -338,7 +358,8 @@ export class AudioManager {
     const nodes: AudioNode[] = [];
     const track: TrackAudioNode = node => { nodes.push(node); return node; };
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const stop = () => {
+    const stop = (reason='cancelled') => {
+      this.trace('sources-stopped',eventId,expiresAt,{reason});
       clearTimeout(timer);
       for (const node of nodes) {
         if ('stop' in node) { try { (node as AudioScheduledSourceNode).stop(); } catch { /* Already ended. */ } }
@@ -351,10 +372,12 @@ export class AudioManager {
       // Connect only after the complete cue schedules, so a partial failure stays silent.
       const output = track(ctx.createGain());
       if (!cue.schedule(ctx, output, track) || ctx.state !== 'running' || this.env.now() >= expiresAt) {
+        this.trace('schedule-failed',eventId,expiresAt);
         stop();
         return false;
       }
       output.connect(ctx.destination);
+      this.trace('sources-scheduled',eventId,expiresAt,{durationMs:cue.durationMs,nodes:nodes.length});
       // Existing bell/scoring/notification cues remain unchanged, but their
       // active presence keeps new routine table sounds from masking them.
       this.voices.set(stop, policy ?? {priority: 50, group: 'existing', intervalMs: 0});
@@ -363,10 +386,11 @@ export class AudioManager {
         this.lastGroup.set(policy.group, this.env.now());
       }
       this.active.add(stop);
-      timer = setTimeout(stop, Math.min(cue.durationMs, expiresAt - this.env.now()));
+      timer = setTimeout(()=>stop('finished'), Math.min(cue.durationMs, expiresAt - this.env.now()));
       scheduled?.(stop);
       return true;
     } catch {
+      this.trace('schedule-threw',eventId,expiresAt);
       stop();
       return false;
     }
@@ -378,7 +402,8 @@ export class AudioManager {
   }
   /** Dispose the complete old graph, including misleadingly 'running' contexts.
    * Receipts survive replacement; old resume promises/listeners cannot revive it. */
-  private retireContext() {
+  private retireContext(reason='retired') {
+    this.trace('context-retired',undefined,undefined,{reason});
     this.stopActive();
     this.clearPending(true);
     const context = this.context;

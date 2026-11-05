@@ -4,6 +4,8 @@ import {MegaCompetitionScorecard} from '@/components/megaCardGolf/MegaCompetitio
 import {playingTopic,roundGameplayRunning,usePlayingPresence} from '@/lib/delayed/playingPresence';
 import {admitTurnSnapshot} from '@/lib/delayed/turnSnapshot';
 import {localTurnPresentation} from '@/lib/delayed/turnAudio';
+import {useAsyncTriInput} from '@/hooks/useAsyncTriInput';
+import type {TriIntentBuffer} from '@/lib/triTowers/intentBuffer';
 import {useRun21PlacementAudio} from '@/hooks/useRun21PlacementAudio';
 import {useRun21Bell} from '@/hooks/useRun21Bell';
 import {roundIntro} from '@/lib/run21/roundIntro';
@@ -46,6 +48,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const requestKey='ptown:async-turn:request:'+userId+':'+childId;
  const clock=useRef({at:Date.now(),received:performance.now()}),generation=useRef(0),request=useRef<Record<string,unknown>|null>(readPendingTurn(requestKey)),initialSegment=useRef<number|null>(null);
  const initialRound=useRef<number|null>(null);
+ const triController=useRef<TriIntentBuffer|null>(null);
  const freshAction=useRef<{id:unknown;before:Snapshot}|null>(null);
  const [audio,setAudio]=useState({liveEntry:false,epoch:0,events:[] as BoardFeedbackEvent[]});
  const interruptAudio=useCallback(()=>{freshAction.current=null;setAudio(p=>({liveEntry:false,epoch:p.epoch+1,events:[]}));},[]);
@@ -73,7 +76,13 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   setSnapshot(old=>old&&old.revision>value.revision?old:value);
   if(initialSegment.current===null){initialSegment.current=value.segment;initialRound.current=value.round;if(value.terminal||value.actor!==userId)navigate('/delayed/'+matchId+(value.terminal?'?review='+childId:''),{replace:true});}
  },[childId,matchId,userId,navigate]);
- const refresh=useCallback(async()=>{const epoch=++generation.current,command=request.current;try{
+ const triInput=useAsyncTriInput({childId,userId,read:()=>latest.current,accept,
+  available:!pending&&!request.current&&!error&&tab==='cards',now:()=>clock.current.at+performance.now()-clock.current.received,
+  enabled:snapshot?.game==='tri-towers',interruptAudio});
+ triController.current=snapshot?.game==='tri-towers'?triInput:null;
+ const refresh=useCallback(async()=>{
+  if(triController.current?.sent){await triController.current.recover();return;}
+  const epoch=++generation.current,command=request.current;try{
   const value=await delayedRequest<Snapshot>(command??{op:'state',childId});
   if(epoch!==generation.current)return;accept(value,command);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');
  }catch(e){if(epoch===generation.current){
@@ -85,7 +94,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   }else setError(message);
  }}},[childId,accept,interruptAudio]);
  useEffect(()=>{void refresh();const channel=supabase.channel('delayed-turn:'+childId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},payload=>{
-  if((payload.new as any).match_id===matchId&&!request.current)void refresh();
+  if((payload.new as any).match_id===matchId&&!request.current&&!triController.current?.busy)void refresh();
  }).subscribe(status=>{if(status==='SUBSCRIBED'&&!request.current)void refresh();});
   const focus=()=>{if(document.hidden)interruptAudio();else void refresh();};document.addEventListener('visibilitychange',focus);window.addEventListener('online',focus);
   window.addEventListener('offline',interruptAudio);window.addEventListener('pagehide',interruptAudio);
@@ -121,6 +130,11 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   const timer=setTimeout(()=>void refresh(),Math.max(0,due-clock.current.at));return()=>clearTimeout(timer);
  },[due,snapshot?.revision,refresh]);
  async function act(intent:Record<string,unknown>){if(!snapshot||pending||request.current)return;
+  if(snapshot.game==='tri-towers'&&intent.type!=='start'){
+   if(intent.type==='remove')triInput.enqueue({type:'remove',index:Number(intent.index)});
+   else if(intent.type==='draw'||intent.type==='take_score')triInput.enqueue({type:intent.type});
+   return;
+  }
   request.current={op:'action',childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');await refresh();}
  // A reconnect into an unavailable/terminal segment belongs at the match home.
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
@@ -152,7 +166,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  },[attemptKey,runResult,medalMs,now,presentationActive]);
  useEffect(()=>{const hidden=()=>{if(document.hidden)retireMedal();};window.addEventListener('offline',retireMedal);document.addEventListener('visibilitychange',hidden);
   return()=>{window.removeEventListener('offline',retireMedal);document.removeEventListener('visibilitychange',hidden);};},[retireMedal]);
- const canAct=!!snapshot&&!snapshot.held&&!ended&&!pending&&!error&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<board.deadline;
+ const canAct=!!snapshot&&!snapshot.held&&!ended&&!pending&&!error&&!(snapshot.game==='tri-towers'&&triInput.uncertain)&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<board.deadline;
  const home=<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={realMoney}>{participants.map(p=>p.name).join(' vs. ')||'Match home'}</AsyncSessionName></Link>;
  if(!snapshot||!board)return <AsyncTurnStage matchId={matchId} title="Your turn!">
   {autoStart&&!ended&&!error&&!snapshot?.held&&(!snapshot||now<Date.parse(snapshot.expiresAt))?null:<>
@@ -187,7 +201,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   actions={view&&<div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={i=>void act(i)} pending={!canAct}/></div></div>}>
    {error&&<div role="alert" className="arcade-error">{error}<button onClick={()=>void refresh()}>Reconnect</button></div>}
    {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct} hideScoring={!!medal}/></>:
-    <div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard view={board} now={now} canAct={canAct} roundKey={childId+':'+initialSegment.current} result={triResult}
+    <div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard input={triInput} view={board} now={now} canAct={canAct} roundKey={childId+':'+initialSegment.current} result={triResult}
      userId={userId} liveEntry={audio.liveEntry} recoveryEpoch={audio.epoch} connected={!error} presentationActive={tab==='cards'} paused={snapshot.held} roundLabel={'ROUND '+displayRound} scores={scores.map(item=>item.active?{...item,score:board.score}:item)}
      takeScore={board.phase==='playing'?<button className="tri-take-score" disabled={!canAct} onClick={()=>void act({type:'take_score'})}>Take Score</button>:null}
      onIntent={i=>void act(i)}/></div>}
