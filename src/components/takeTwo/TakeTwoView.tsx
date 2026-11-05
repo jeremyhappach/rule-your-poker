@@ -24,22 +24,22 @@ export function TakeTwoLoading({solo=false,error,onReconnect,activeTab,setActive
  const shell=<FullscreenGameShell className="take-scene" ready={false} title="Take 2" description="" activeTab={activeTab??tab} setActiveTab={setActiveTab??setTab} panel={<TakeTwoRules/>} announcement={solo?false:undefined}><div className="take-loading" role="status">{error||'Loading Take 2…'}{error&&<button onClick={onReconnect}>Reconnect</button>}</div></FullscreenGameShell>;
  return solo?<div className="arcade-run" data-shell-presentation-mode="fullscreen">{shell}</div>:shell;
 }
-interface Props {connected?:boolean;terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:TakeTwoSnapshot['players'][number])=>ReactNode;view:TakeTwoSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:TakeTwoIntent)=>void|Promise<void>;onReconnect:()=>void;onFinish?:()=>void}
-export function TakeTwoView({view:v,userId,now,pending,error,epoch,liveEntry=false,connected=true,onIntent,onReconnect,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance}:Props){
+interface Props {replay?:boolean;navigation?:ReactNode;connected?:boolean;terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:TakeTwoSnapshot['players'][number])=>ReactNode;view:TakeTwoSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:TakeTwoIntent)=>void|Promise<void>;onReconnect:()=>void;onFinish?:()=>void}
+export function TakeTwoView({replay=false,navigation,view:v,userId,now,pending,error,epoch,liveEntry=false,connected=true,onIntent,onReconnect,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance}:Props){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,window=takeTwoPlayWindow(b,at,!v.solo),result=takeTwoRoundPresentation(b,v.scope,at),cabinetRef=useRef<HTMLDivElement>(null);
  const [selection,setSelection]=useState<{index:number;card:number|null;scope:string}|null>(null),[feedback,setFeedback]=useState('');
  const [submission,setSubmission]=useState<{revision:number;scope:string;items:number[]}|null>(null);
  const selected=selection?.scope===v.scope&&(selection.index===-1?b.current:b.slots[selection.index])===selection.card&&(selection.index===-1||b.exposed.includes(selection.index))?selection.index:null;
  const submittedItems=submission?.scope===v.scope&&submission.revision===v.revision?submission.items:[];
- const motion=useTriRoundPresentation({scope:'take-two:'+v.scope,phase:b.phase,connected:connected&&!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards'&&!sessionEnded,modern:true,liveEntry,recoveryEpoch:epoch,resultSequence:takeTwoResultSequence});
+ const motion=useTriRoundPresentation({replay,scope:'take-two:'+v.scope,phase:b.phase,connected:connected&&!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards'&&!sessionEnded,modern:true,liveEntry,recoveryEpoch:epoch,resultSequence:takeTwoResultSequence});
  const allClear=!!result&&result.reason==='cleared'&&result.elapsed<takeTwoResultSequence.clearMs;
  const root=useRef<HTMLDivElement>(null),soundSurface=useRef<HTMLDivElement>(null),playersRef=useRef<HTMLDivElement>(null),[layer,setLayer]=useState<Element|null>(null),submitted=useRef(false);
- useVisibleCardChangeAudio({scope:v.scope,revision:v.revision,epoch,active:connected&&!error&&!v.paused&&tab==='cards'&&!sessionEnded,
+ useVisibleCardChangeAudio({scope:v.scope,revision:v.revision,epoch,active:!replay&&connected&&!error&&!v.paused&&tab==='cards'&&!sessionEnded,
   signature:JSON.stringify([b.slots,b.current,b.stockRemaining])},'flip',soundSurface);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
  useLayoutEffect(()=>{setSelection(null);setFeedback('');},[v.scope,epoch,tab]);
- const terminal=b.phase==='complete',canSelect=v.canAct&&connected&&!v.paused&&!error&&window.playable&&tab==='cards'&&!sessionEnded,canAct=canSelect&&!pending&&!submission;
+ const terminal=b.phase==='complete',canSelect=!replay&&v.canAct&&connected&&!v.paused&&!error&&window.playable&&tab==='cards'&&!sessionEnded,canAct=canSelect&&!pending&&!submission;
  const send=(intent:TakeTwoIntent)=>{
   if(!canAct||submitted.current)return;
   submitted.current=true;setSubmission({revision:v.revision,scope:v.scope,items:intent.type==='pair'?intent.items:[]});setSelection(null);setFeedback('');
@@ -58,8 +58,8 @@ export function TakeTwoView({view:v,userId,now,pending,error,epoch,liveEntry=fal
  };
  const active=v.players.find(p=>p.active),meter=takeTwoMeter(b,at),lit=Math.ceil(Math.min(window.remaining,b.rules.stageMs)/b.rules.stageMs*15),rows=(b.layout.at(-1)?.row??0)+1;
  useLayoutEffect(()=>{playersRef.current?.querySelector('[data-active=true]')?.scrollIntoView({block:'nearest',inline:'nearest'});},[active?.id]);
- return <FullscreenGameShell className="take-scene" title="Take 2" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
- navigation={v.solo?<nav aria-label="Take 2 controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
+ return <FullscreenGameShell gameplay={!replay} className="take-scene" title="Take 2" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
+ navigation={navigation??(v.solo?<nav aria-label="Take 2 controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined)}
  announcement={v.solo?false:undefined} panelTitle={v.solo?'Rules':undefined} panelDescription={`P-Town rules · ${b.rules.version}`} panel={panel??<TakeTwoRules version={b.rules.version}/>}>
  <div className="take-root" ref={root} data-take-two={sessionEnded?undefined:''}>
  {error&&!sessionEnded&&<div className="take-error" role="alert">{error} <button onClick={onReconnect}>Reconnect</button></div>}

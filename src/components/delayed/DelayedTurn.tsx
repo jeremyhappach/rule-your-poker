@@ -13,6 +13,8 @@ import {AsyncTurnStage} from './AsyncTurnStage';
 import {TriScorePill} from '@/components/triTowers/TriTowersPresentation';
 import {QuintzeeView} from '@/components/quintzee/QuintzeeView';
 import type {QuintzeeSnapshot} from '@/lib/quintzee/model';
+import {TakeTwoView} from '@/components/takeTwo/TakeTwoView';
+import type {TakeTwoSnapshot} from '@/lib/takeTwo/model';
 import {BoxdropView} from '@/components/boxdrop/BoxdropView';
 import type {BoxdropSnapshot} from '@/lib/boxdrop/model';
 import {useCallback,useEffect,useRef,useState} from 'react';
@@ -170,6 +172,10 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   <MegaCompetitionBoard view={board} userId={userId} now={now} pending={pending} canAct={canAct} onIntent={i=>act(i)} activeTab={tab} setActiveTab={setTab} navigation={<nav>{home}<button onClick={()=>setTab('lobby')}>Rules</button></nav>}
    onPresentationDone={()=>{if(ended)navigate('/delayed/'+matchId+(snapshot.terminal?'?review='+childId+'&finished=1':''),{replace:true});}}
    scorecard={frame=><MegaCompetitionScorecard course={board.config.name} holes={board.config.holes} hole={displayRound!} players={participants} results={(snapshot.holeResults??[]).filter(r=>r.actor!==userId||r.hole<frame.view.hole||frame.scoring?.finished)} write={frame.scoring?.finished?{actor:userId,hole:frame.view.hole}:undefined}/>}/></div>;
+ if(snapshot.game==='take-two'){
+  const value:TakeTwoSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,round:displayRound!,board,canAct,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:scores};
+  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><TakeTwoView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={audio.epoch} liveEntry={audio.liveEntry} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
+ }
  if(snapshot.game==='boxdrop'){
   const value:BoxdropSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,round:displayRound!,board,canAct,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:Object.keys(snapshot.totals).map(id=>({id,name:participants.find(p=>p.id===id)?.name??(id===userId?'You':'Opponent'),score:snapshot.totals[id],active:id===(ended?userId:snapshot.actor)}))};
   return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><BoxdropView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={audio.epoch} liveEntry={audio.liveEntry} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;

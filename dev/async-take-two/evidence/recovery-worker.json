@@ -1,0 +1,7 @@
+{
+  "sha256": "0a14cb5733d5960c2b27b3bd87aaf27f631047e11840576e9ac9c6142a0ddb78",
+  "bytes": 31159,
+  "entrypoint": "index.ts",
+  "verify_jwt": false,
+  "authentication": "existing single-use database dispatcher token; service role RPC boundary"
+}

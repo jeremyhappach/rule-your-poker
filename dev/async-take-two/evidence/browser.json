@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checks": [
+    "browser round 1 actual service and SQL",
+    "browser round 2 actual service and SQL",
+    "browser round 3 actual service and SQL",
+    "browser round 4 actual service and SQL",
+    "browser round 5 actual service and SQL",
+    "browser round 6 actual service and SQL",
+    "Take 2 available in actual capability-driven selector"
+  ],
+  "errors": [],
+  "viewports": 5,
+  "realTransport": true
+}

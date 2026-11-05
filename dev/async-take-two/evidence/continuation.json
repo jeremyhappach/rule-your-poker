@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "zeroClientGameplayTimeout": true,
+  "turnHandoff": true,
+  "archiveFrozenRules": true,
+  "lastViewerRunback": true,
+  "independentInvitation": true,
+  "settlementUnchanged": true
+}

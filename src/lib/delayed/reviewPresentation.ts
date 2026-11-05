@@ -4,6 +4,7 @@ import {SCORE_HOLD,SCORE_FLIGHT,SCORE_AFTER} from '@/lib/ptownWords/scorePresent
 import {triCountWindow,TRI_ROUND_TIMELINE} from '@/lib/triTowers/roundTimeline';
 import type {ReviewEvent} from './reviews';
 import type {Home} from './client';
+import {takeTwoCountWindow} from '@/lib/takeTwo/roundPresentation';
 import {savedHolePresentation} from '@/lib/megaCardGolf/presentation';
 export const ASYNC_SCORE_HOLD_MS=3000;
 /** Only acknowledged earlier contributions plus the one currently being revealed.
@@ -18,6 +19,10 @@ export function reviewScoreContext(event:ReviewEvent,events:ReviewEvent[],home:H
 export function reviewSchedule(event:ReviewEvent){
  const b=event.board,r=b?.result,rules=b?.rules??event.receipt.rules;
  if(!b)return {duration:SCORE_HOLD+SCORE_AFTER,countStart:0,countEnd:SCORE_HOLD,presentationEnd:SCORE_HOLD+SCORE_AFTER,medal:0};
+ if(event.receipt.game==='take-two'){
+  const window=takeTwoCountWindow(r?.reason==='full_clear');
+  return {duration:rules.holdMs,countStart:window.start,countEnd:window.end,presentationEnd:rules.holdMs,medal:0};
+ }
  if(event.receipt.game==='mega-card-golf'){
   const event=savedHolePresentation(b,0).events[0];
   return {duration:event.end,countStart:b.results.at(-1).hidden.length*500,countEnd:event.end-4200,presentationEnd:event.end,medal:0};

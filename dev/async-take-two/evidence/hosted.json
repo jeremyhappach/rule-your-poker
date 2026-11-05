@@ -1,0 +1,8 @@
+{
+  "project": "xvhmbuppghwmwpwrkzao",
+  "candidateProof": "PASS before migration: rules/deals/privacy and 61 financial groups, both money modes, synthetic writes rolled back",
+  "installedProof": "PASS after migration: same complete proof plus 624 original/extracted deal comparisons; synthetic writes rolled back",
+  "migration": "20261105011042_async_take_two_identical_deals",
+  "admissionAtInstall": false,
+  "worker": {"name":"delayed-recovery","version":3,"status":"ACTIVE","verify_jwt":false,"authentication":"existing single-use dispatcher token"}
+}

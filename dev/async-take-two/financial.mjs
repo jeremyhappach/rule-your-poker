@@ -1,0 +1,18 @@
+import {readFileSync as read,writeFileSync as write} from 'node:fs';
+import assert from 'node:assert/strict';
+let s=read('supabase/account-access/financial-proof.sql','utf8').replace(/\r/g,'');
+const edit=(a,b)=>{assert(s.includes(a),a);s=s.replace(a,()=>b);};
+edit('game text;kind text;','game text;kind text;money_i boolean;');
+edit(" FOREACH game IN ARRAY ARRAY['ptown-words','run21','tri-towers','quintzee','boxdrop'] LOOP"," FOREACH money_i IN ARRAY ARRAY[false,true] LOOP\n FOREACH game IN ARRAY ARRAY['ptown-words','run21','tri-towers','quintzee','boxdrop','take-two'] LOOP");
+edit('p:=public.delayed_create(req,b,true,offer_i);','p:=public.delayed_create(req,b,money_i,offer_i);');
+edit('public.delayed_create(req,b,true,offer_i)=p','public.delayed_create(req,b,money_i,offer_i)=p');
+edit('public.delayed_create(req,b,false,offer_i)','public.delayed_create(req,b,NOT money_i,offer_i)');
+edit('UPDATE private.delayed_matches SET real_money=false WHERE id=p','UPDATE private.delayed_matches SET real_money=NOT money_i WHERE id=p');
+edit("   BEGIN PERFORM public.delayed_remove(p,gen_random_uuid());RAISE EXCEPTION 'ar:real deleted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;","   IF money_i THEN BEGIN PERFORM public.delayed_remove(p,gen_random_uuid());RAISE EXCEPTION 'ar:real deleted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;END IF;");
+edit("PERFORM pg_temp.ar_assert((SELECT count(*)=2 AND sum(amount)=0 AND bool_and(amount=CASE WHEN profile_id=a THEN expected ELSE -expected END) FROM public.player_transactions WHERE source_game_id=p AND transaction_type='SessionResult'),'two balanced real-account postings');","PERFORM pg_temp.ar_assert((SELECT CASE WHEN money_i THEN count(*)=2 AND sum(amount)=0 AND bool_and(amount=CASE WHEN profile_id=a THEN expected ELSE -expected END) ELSE count(*)=0 END FROM public.player_transactions WHERE source_game_id=p AND transaction_type='SessionResult'),'money-mode account postings');");
+edit("status='session_ended' AND real_money FROM public.games","status='session_ended' AND real_money=money_i FROM public.games");
+edit('next_p:=public.delayed_create(gen_random_uuid(),b,true,offer_i)','next_p:=public.delayed_create(gen_random_uuid(),b,money_i,offer_i)');
+edit("INSERT INTO ar_checks VALUES(game||' / '||kind","INSERT INTO ar_checks VALUES(money_i||' / '||game||' / '||kind");
+edit(" END LOOP;\n PERFORM set_config('request.jwt.claim.sub',a::text,true);\n SET LOCAL ROLE authenticated;"," END LOOP;\n END LOOP;\n PERFORM set_config('request.jwt.claim.sub',a::text,true);\n SET LOCAL ROLE authenticated;");
+write('supabase/delayed/take-two-financial-proof.sql',s);
+console.log('Prepared both-money canonical settlement matrix: six games, five outcomes.');

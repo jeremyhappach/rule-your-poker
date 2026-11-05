@@ -1,3 +1,15 @@
+# Take 2 Async — 2026-11-04 — qualified, owner smoke pending
+
+Three identical-deck rounds use the existing alternating order, retaining the
+canonical 100-second clock and every speed/time bonus. Opponent board reviews
+unlock only after the viewer completes that same round. Hosted financial proofs,
+rule parity, real service concurrency and five-viewport browser checks pass.
+Ten existing Mega/Golf defaults failures reproduce on unchanged main.
+Migration `20261105011042_async_take_two_identical_deals`; recovery worker v3.
+Checkpoint: `release-async-take-two-20261104`. Activation requires matching
+deployment/manifest/publisher and recovery checks. Physical owner smoke pending.
+See [qualification](ASYNC_TAKE_TWO.md).
+
 # Splash playback hotfix — 2026-11-04 — owner smoke passed
 
 Owner smoke of `5407fd0fc` removed the flash but stalled on the opening bridge.
