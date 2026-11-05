@@ -23,6 +23,7 @@ blocked and production held for Golf: `CANASTA_BEGINNER_CHECKPOINT.md`.
 
 | File | Read when |
 |---|---|
+| `ASYNC_REVIEW_TRI_RESPONSIVENESS.md` | Reviewed-score emphasis audit, Ready burst fix, single-operation TriTowers SQL authority, before/after latency, rollback and iPhone acceptance |
 | `ASYNC_UX_NAVIGATION_MONEY_RELEASE.md` | Final async navigation/money UX gates, guarded stale-incident recovery, current hosted financial proof, browser-to-SQL and publication checkpoint |
 | `ASYNC_REAL_MONEY_RELEASE.md` | Five-game real-money async qualification/activation, recent-opponent default and combined Notifications UI release |
 | `NOTIFICATIONS_INVITATIONS_ACCORDION.md` | Live turn-push baseline, missing invitation correction, collapsed match controls and local qualification/release boundary |

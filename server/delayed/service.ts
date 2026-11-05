@@ -20,6 +20,14 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
  if(body.op==='action'&&(!intent||!['start','place','pass','collect','remove','draw','take_score','recycle','roll','score','score_zero','pair','open','replace','discard','stand-pat'].includes(intent.type)||
   intent.type==='place'&&(!('items'in intent)&&(!Number.isInteger(intent.column)||intent.column<0||intent.column>4))||
   intent.type==='remove'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>27)))throw Error('delayed:invalid_action');
+ // A routing hint grants no authority: SQL checks the stored game, owner, frozen
+ // revision/segment, deadlines and receipt before calling the existing commit.
+ if(body.game==='tri-towers'){
+  const value=await rpc('delayed_tri_step',{p_child:body.childId,p_actor:userId,...(body.op==='action'?{p_request:body.requestId,p_revision:body.revision,p_segment:body.segment,p_intent:intent}:{})});
+  // Returning the stale result allows a due tick to commit before rejection.
+  if(value.error)throw Error(value.error);
+  return value as Awaited<ReturnType<typeof project>>;
+ }
  let row:RecordRow=await rpc('delayed_load',{p_child:body.childId,p_actor:userId,p_request:body.op==='action'?body.requestId:null});
  if(body.op==='action'){
   if(intent.type==='replace'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>5))throw Error('delayed:invalid_action');

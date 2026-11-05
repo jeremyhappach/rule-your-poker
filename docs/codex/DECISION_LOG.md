@@ -1,3 +1,16 @@
+## 2026-11-05 — Review identity is presentation-only; TriTowers commits in one RPC
+
+Saved Async results emphasize their receipt actor through the final hold. The
+existing review and announcement gates determine when gameplay mounts; no turn
+owner or input permission is changed for visual emphasis. Ready removal chains
+use the existing four-intention buffer and confirmed revisions in both modes.
+
+Async TriTowers now wraps existing rules, commit and projection in
+`delayed_tri_step`, preserving shared receipts and lock order. Due recovery returns
+a stale-action result after committing its tick, rather than rolling back that
+recovery with a SQL exception. Old/new clients and the existing worker remain
+compatible. See `ASYNC_REVIEW_TRI_RESPONSIVENESS.md` for proofs and limitations.
+
 ## 2026-11-05 — Async audio lifetime spans automatic review-to-turn entry
 
 The iPhone trace confirmed that tying the last audio lease to a visible gameplay

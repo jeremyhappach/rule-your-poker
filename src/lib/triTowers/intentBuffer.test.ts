@@ -24,8 +24,8 @@ it('cancels dependencies on an unexpected confirmed upcard',async()=>{
 it('lets the server reject a queued action and cancels its dependents explicitly',async()=>{
  const h=harness();[0,1,2].forEach(index=>h.buffer.enqueue({type:'remove',index}));h.commit(0);await flush();h.pending[1].reject(Error('illegal move'));await flush();expect(h.send).toHaveBeenCalledTimes(2);expect(h.buffer.message).toContain('illegal move');expect(h.buffer.busy).toBe(false);
 });
-it('does not retain intro taps or queue a Ready action behind another Ready action',async()=>{
- const h=harness();h.v={...h.v,phase:'intro'};h.buffer.enqueue({type:'draw'});expect(h.send).not.toHaveBeenCalled();h.v={...h.v,phase:'ready'};h.buffer.enqueue({type:'remove',index:0});h.buffer.enqueue({type:'remove',index:1});expect(h.buffer.pendingCards).toEqual([0]);h.v={...h.v,phase:'playing'};h.commit(0);await flush();expect(h.send).toHaveBeenCalledTimes(1);
+it('blocks intro taps and retains exposed-card successors behind the first Ready removal',async()=>{
+ const h=harness();h.v={...h.v,phase:'intro'};h.buffer.enqueue({type:'draw'});expect(h.send).not.toHaveBeenCalled();h.v={...h.v,phase:'ready'};h.buffer.enqueue({type:'remove',index:0});h.buffer.enqueue({type:'remove',index:1});expect(h.buffer.pendingCards).toEqual([0,1]);expect(h.send).toHaveBeenCalledTimes(1);h.v={...h.v,phase:'playing'};h.commit(0);await flush();expect(h.send).toHaveBeenCalledTimes(2);expect(h.pending[1].c.revision).toBe(2);
 });
 it('treats a stock draw as a barrier and never invents hidden cards',()=>{
  const h=harness();h.v={...h.v,cards:[null,2]};h.buffer.enqueue({type:'remove',index:0});expect(h.send).not.toHaveBeenCalled();h.buffer.enqueue({type:'draw'});h.buffer.enqueue({type:'remove',index:1});expect(h.send).toHaveBeenCalledTimes(1);expect(h.buffer.queue).toEqual([]);

@@ -23,7 +23,7 @@ export function useAsyncTriInput({childId,userId,read,accept,available,now,enabl
   const segment=Number(command.roundId);
   if(!Number.isSafeInteger(segment)||command.scope!==`${childId}:${userId}:${segment}`)throw new RejectedTriAction('Invalid pending turn.');
   try{
-   const value=await delayedRequest<Snapshot>({op:'action',childId,revision:command.revision,segment,requestId:command.requestId,intent:command.intent});
+   const value=await delayedRequest<Snapshot>({op:'action',game:'tri-towers',childId,revision:command.revision,segment,requestId:command.requestId,intent:command.intent});
    if(!lifetime.active)throw new UncertainTriAction('Turn closed before confirmation.');
    accept(value);
    return view(read())!;

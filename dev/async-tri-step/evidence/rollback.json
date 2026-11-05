@@ -1,0 +1,17 @@
+{
+  "database": "async_tri_step_1793921264326",
+  "checks": [
+    {
+      "label": "false / tie=false : actual rules, clocks, receipt replay, late replay, authorization, continuation and canonical settlement"
+    },
+    {
+      "label": "false / tie=true : actual rules, clocks, receipt replay, late replay, authorization, continuation and canonical settlement"
+    },
+    {
+      "label": "true / tie=false : actual rules, clocks, receipt replay, late replay, authorization, continuation and canonical settlement"
+    },
+    {
+      "label": "true / tie=true : actual rules, clocks, receipt replay, late replay, authorization, continuation and canonical settlement"
+    }
+  ]
+}

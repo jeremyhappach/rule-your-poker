@@ -1,0 +1,7 @@
+[
+{"phase":"review-start","pills":[{"text":"Me0","active":"false","opacity":"0.6","pillOpacity":"0.75","centered":"false"},{"text":"Other0","active":"true","opacity":"1","pillOpacity":"1","centered":"true"}],"enabledCards":0,"body":false},
+{"phase":"countup","pills":[{"text":"Me0","active":"false","opacity":"0.6","pillOpacity":"0.75","centered":"false"},{"text":"Other30","active":"true","opacity":"1","pillOpacity":"1","centered":"true"}],"enabledCards":0,"body":false},
+{"phase":"completed-result-hold","pills":[{"text":"Me0","active":"false","opacity":"0.6","pillOpacity":"0.75","centered":"false"},{"text":"Other100","active":"true","opacity":"1","pillOpacity":"1","centered":"false"}],"enabledCards":0,"body":false},
+{"phase":"your-turn","pills":[],"enabledCards":0,"body":true},
+{"phase":"playable","pills":[{"text":"Me0","active":"true","opacity":"1","pillOpacity":"1","centered":"false"},{"text":"Other100","active":"false","opacity":"0.6","pillOpacity":"0.75","centered":"false"}],"enabledCards":28,"body":false}
+]

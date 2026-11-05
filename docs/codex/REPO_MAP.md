@@ -1,3 +1,15 @@
+## Async TriTowers operation and reviewed-score emphasis
+
+`supabase/delayed/tri-step.sql` defines the single-operation Async orchestration
+and projection around existing `delayed_tri_core` and `delayed_commit` authorities.
+`server/delayed/service.ts` dispatches verified TriTowers commands; old clients and
+the recovery worker retain the compatible adapter path. Its rollback proof and
+removal plan are adjacent. `dev/async-tri-step/` contains parity, independent
+connection, latency and actual-component browser evidence. Shared intent admission
+remains `src/lib/triTowers/intentBuffer.ts`; review actor ownership remains
+`reviewScoreContext`/`ResultReview`, with an explicit presentation prop for Words.
+See `ASYNC_REVIEW_TRI_RESPONSIVENESS.md`.
+
 ## Take 2 Async
 
 `server/delayed/{adapter,service}.ts` and `TakeTwoView` remain the orchestration

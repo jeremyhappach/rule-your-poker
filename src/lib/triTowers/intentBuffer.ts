@@ -21,7 +21,7 @@ export class TriIntentBuffer {
  }
  enqueue(intent:BufferedIntent){this.restore();const v=this.io.read();
   if(!v?.allowed||!['ready','playing'].includes(v.phase)||this.uncertain){this.message=this.uncertain?'Reconnect to resolve the previous play.':'That play is unavailable now.';this.changed();return;}
-  if(this.busy&&(v.phase==='ready'||intent.type!=='remove'||this.sent?.intent.type!=='remove'||this.queue.some(e=>e.intent.type!=='remove'))){this.message='Wait for the current play to be confirmed.';this.changed();return;}
+  if(this.busy&&(intent.type!=='remove'||this.sent?.intent.type!=='remove'||this.queue.some(e=>e.intent.type!=='remove'))){this.message='Wait for the current play to be confirmed.';this.changed();return;}
   if(this.pendingCards.length>=4){this.message='Four plays are pending. Try that card again after confirmation.';this.changed();return;}
   const card=intent.type==='remove'?v.cards[intent.index]:null;
   if(intent.type==='remove'&&(card==null||v.removed.includes(intent.index)||this.pendingCards.includes(intent.index))){this.message='That card is unavailable or already pending.';this.changed();return;}

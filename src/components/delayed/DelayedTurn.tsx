@@ -83,7 +83,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const refresh=useCallback(async()=>{
   if(triController.current?.sent){await triController.current.recover();return;}
   const epoch=++generation.current,command=request.current;try{
-  const value=await delayedRequest<Snapshot>(command??{op:'state',childId});
+  const value=await delayedRequest<Snapshot>(command??{op:'state',childId,...(latest.current?.game==='tri-towers'?{game:'tri-towers'}:{})});
   if(epoch!==generation.current)return;accept(value,command);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');
  }catch(e){if(epoch===generation.current){
   interruptAudio();
@@ -135,7 +135,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
    else if(intent.type==='draw'||intent.type==='take_score')triInput.enqueue({type:intent.type});
    return;
   }
-  request.current={op:'action',childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');await refresh();}
+  request.current={op:'action',...(snapshot.game==='tri-towers'?{game:'tri-towers'}:{}),childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');await refresh();}
  // A reconnect into an unavailable/terminal segment belongs at the match home.
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
  // Shared presentation completion starts the final readable hold. This only

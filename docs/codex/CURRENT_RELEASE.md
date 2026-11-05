@@ -1,3 +1,22 @@
+# Async review emphasis and TriTowers response — 2026-11-05 — owner smoke pending
+
+TriTowers, Run21, Quintzee, Boxdrop and Words now emphasize the reviewed actor
+through results/countup/final hold. Gameplay emphasis begins after YOUR TURN;
+review input locks and authoritative turn ownership are unchanged. TriTowers
+retains four exposed-card intentions from Ready in both Async and Arcade.
+
+Migration `20261105232926` consolidates Async TriTowers into one database operation
+using existing rules, commit, receipts and financial settlement. Hosted rollback
+proofs (including injected financial failure), independent-connection races and
+180 frozen-rule parity cases pass. Controlled service time falls 74–80%; desktop
+pending feedback is 7–29 ms for first and consecutive taps. All 16 browser burst
+cases retain four moves; full review-to-play sequence passes. Physical iPhone PWA
+acceptance remains separate. TypeScript, production bundle and 241 harness checks
+pass; 3835 app checks pass with the same 10 Defaults failures reproduced on main.
+See [measurements, authority, rollback and smoke](ASYNC_REVIEW_TRI_RESPONSIVENESS.md).
+Checkpoint: `release-async-review-tri-responsiveness-20261105`; the `-verified`
+tag records the exact production build and publication receipt.
+
 # Async TriTowers starting bell — 2026-11-05 — iPhone owner smoke passed
 
 The iPhone PWA trace on `76f3c79` confirms that Async entry retired its running

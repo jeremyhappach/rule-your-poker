@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import {initialSibling,completedSibling} from '../../../dev/async-combined/sibling-completion-fixtures.mjs';
 import triRules from '@/lib/triTowers/rules-v2.json';
+import {finalWordsFixture,viewer,opponent,childId,matchId} from '@/lib/delayed/wordsFinalReview.fixture';
+import {PtownWordsView} from '@/components/ptownWords/PtownWordsView';
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {useState} from 'react';
@@ -13,6 +15,7 @@ const mock=vi.hoisted(()=>({rpc:vi.fn(),change:()=>{},state:null as any,home:nul
 vi.mock('@/lib/delayed/client',()=>({delayedRpc:mock.rpc}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:()=>{const c={on:(_a:any,_b:any,cb:()=>void)=>{mock.change=cb;return c;},subscribe:()=>c};return c;},removeChannel:vi.fn()}}));
 vi.mock('canvas-confetti',()=>({default:vi.fn()}));
+vi.mock('@/components/GameplaySoundButton',()=>({GameplaySoundButton:()=>null}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{request:vi.fn(()=>vi.fn()),follow:vi.fn(()=>vi.fn())}}));
 const event={id:'event',kind:'attempt',actor:'other',round:1,score:100,at:'2026-10-29T00:00:00Z',receipt:{game:'run21'},board:null,seen:false};
 const mount=(element:React.ReactNode)=>render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/review']}><Routes><Route path='/' element={<h1>Lobby destination</h1>}/><Route path='/review' element={element}/><Route path='/delayed/match' element={<h1>Match home destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);
@@ -106,14 +109,14 @@ for(const game of ['quintzee','run21','tri-towers','boxdrop']){
   mock.state.events=[{...current,id:'prior',round:1,score:19803,board:null,seen:true},current];
   mock.home.lineup[0].scores={me:80000,other:19803};
  }
- it(game+': saved replay keeps viewer highlighted, animates only the opponent cumulative award and ignores duplicate refresh totals',async()=>{
+ it(game+': saved replay keeps the reviewed player highlighted, animates only the opponent cumulative award and ignores duplicate refresh totals',async()=>{
   replayFixture();const ui=mount(gate());await flush();await advance(3100);
   const cells=()=>ui.container.querySelectorAll(game==='boxdrop'?'.box-score':'.tri-score-cell');
-  expect(cells()).toHaveLength(2);expect(cells()[0].getAttribute('data-active')).toBe('true');expect(cells()[1].getAttribute('data-active')).toBe('false');
+  expect(cells()).toHaveLength(2);expect(cells()[0].getAttribute('data-active')).toBe('false');expect(cells()[1].getAttribute('data-active')).toBe('true');
   expect(cells()[0].textContent).toContain('80,000');expect(cells()[1].textContent).toContain(game==='run21'?'20,204':'19,803');
   await advance(2400);const value=cells()[1].textContent!;expect(value).not.toContain('19,803');expect(value).not.toContain('999,999');expect(cells()[0].textContent).toContain('80,000');
   mock.home.lineup[0].scores.other=999999;await act(async()=>mock.change());expect(cells()[1].textContent).toBe(value);
-  await advance(10000);await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);
+  await advance(2500);expect(cells()[1].getAttribute('data-active')).toBe('true');expect(screen.queryByText('Gameplay owner')).toBeNull();await advance(3000);expect(screen.getByText('Your turn!')).toBeTruthy();expect(screen.queryByText('Gameplay owner')).toBeNull();await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);
  });
  it(game+': resumed review seeks the same disclosed cumulative range',async()=>{
   replayFixture();const original=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'?Promise.resolve({elapsed:5500,seen:false}):original(name,args));
@@ -122,6 +125,17 @@ for(const game of ['quintzee','run21','tri-towers','boxdrop']){
   await advance(10000);await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);
  });
 }
+
+it('Words keeps the reviewed actor through countup/hold, then admits the actual turn after YOUR TURN',async()=>{
+ const f=finalWordsFixture(),review=f.events[2];mock.home=f.home;mock.state={...mock.state,actor:viewer,events:[review]};
+ const ui=mount(<ReviewGate home={f.home} childId={childId} matchId={matchId} userId={viewer}>{()=> <PtownWordsView view={{...f.snapshot,phase:'playing',finished:false,terminal:undefined,movePresentation:undefined,activePlayerId:viewer,canAct:true}} now={Date.now()} pending={false} connected error="" activeTab="cards" setActiveTab={()=>{}} panel={null} sessionEnded={false} onIntent={async()=>true} onReconnect={()=>{}}/>}</ReviewGate>);await flush();
+ const active=(id:string)=>ui.container.querySelector(`[data-score-player="${id}"]`)?.getAttribute('data-active');
+ expect(active(opponent)).toBe('true');expect(active(viewer)).toBe('false');
+ await advance(2450);expect(active(opponent)).toBe('true');expect(ui.container.querySelectorAll('.words-rack button:not([disabled])')).toHaveLength(0);
+ await advance(5249);expect(active(opponent)).toBe('true');expect(screen.queryByText('Your turn!')).toBeNull();
+ await advance(101);expect(screen.getByText('Your turn!')).toBeTruthy();expect(active(viewer)).toBeUndefined();
+ await advance(2100);expect(active(viewer)).toBe('true');expect(active(opponent)).toBe('false');expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);
+});
 
 it.each([false,true])('final match results persist until Back to Lobby, reduced=%s',async reduced=>{
  window.matchMedia=vi.fn().mockReturnValue({matches:reduced});const ui=mount(<MatchFinale matchId='match' userId='me'/>);await flush();fireEvent.load(screen.getByRole('img'));await advance(7600);
