@@ -1,4 +1,4 @@
-# Async TriTowers starting bell — 2026-11-05 — device-confirmed cause, owner retest pending
+# Async TriTowers starting bell — 2026-11-05 — iPhone owner smoke passed
 
 The iPhone PWA trace on `76f3c79` confirms that Async entry retired its running
 audio engine, then created a suspended replacement outside the entry gesture.
@@ -9,10 +9,15 @@ cleanup and bell expiry/dedupe remain unchanged; no extra tap or late replay.
 167 focused checks, app TypeScript, production build and desktop Edge transition
 checks pass. The gesture-restricted browser control reproduces the old missed
 bell; retained ownership schedules it once with one context, and mute stays
-silent. Physical iPhone playback remains PENDING, not established by desktop
-scheduling. The final-clear fanfare stays OPEN separately: this trace ends with
+silent. Jeremy's iPhone PWA retest on `84696641119d3aaa2c432f6284cb82343fe067a2`
+confirmed one starting bell after opponent review without another tap (reply `2`,
+the offered answer "Yes, once at turn start"). This closes the starting-bell
+report. The final-clear fanfare stays OPEN separately: the supplied trace ends with
 `take_score`. See [trace evidence, correction and phone smoke](ASYNC_ENTRY_AUDIO_LIFETIME.md).
 Checkpoint: `release-async-entry-audio-20261105`; its `-verified` tag records publication.
+Owner-smoke tag: `async-tri-bell-smoke-accepted-20261105`. The separate release-signal
+workflow `42104189539` subsequently failed; Vercel/public-manifest publication was
+verified. Its existing publisher investigation remains queued.
 
 # TriTowers invalid play / Run21 bust audio — 2026-11-05 — approved release, owner smoke pending
 

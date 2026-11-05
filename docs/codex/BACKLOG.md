@@ -1,4 +1,4 @@
-## Pending iPhone retest — Async TriTowers missing starting bell — November 5, 2026
+## Completed — Async TriTowers missing starting bell — November 5, 2026
 
 Jeremy reports working card movement and first/second tower sounds, missing fresh
 turn bell and final fanfare. The three-swords visual did appear. Expected: each
@@ -10,8 +10,11 @@ November 5 follow-up: full device trace from `76f3c79`, iOS 18.7 / Safari 18.7.5
 confirms the running engine retired on header exit and its replacement stayed
 suspended through bell expiry. Corrected with a shared Async route audio lease
 through loading/opponent review/own-turn entry. Local regressions and desktop
-gesture-restricted browser proof pass; await Jeremy's physical PWA retest and
-trace. See [evidence and acceptance](ASYNC_ENTRY_AUDIO_LIFETIME.md).
+gesture-restricted browser proof pass. Jeremy's iPhone PWA retest on `8469664`
+confirmed one bell at turn start after opponent review without another tap:
+reply `2` to the offered answer "Yes, once at turn start." Starting-bell report
+closed by owner smoke; no new trace was supplied. See
+[evidence and acceptance](ASYNC_ENTRY_AUDIO_LIFETIME.md).
 
 ## Open — Async TriTowers final-clear fanfare on iPhone PWA — November 5, 2026
 
@@ -151,6 +154,12 @@ only as separately agreed scope. Await consolidated owner smoke and approval;
 no product code, customer state, migrations or publication changed.
 
 ## Queued — GitHub publisher cannot fetch public manifest — October 29, 2026
+
+November 5 Async bell follow-up: runtime `84696641119d3aaa2c432f6284cb82343fe067a2`
+is Vercel READY and the public manifest matched, but release-signal run
+`42104189539` subsequently completed with failure. This repeats the separate
+publication-workflow symptom; no specific HTTP cause is inferred from the run
+status. Keep investigation separate from the accepted iPhone bell correction.
 
 Take 2 release unblocked at 01:40 UTC November 5: attempt 1 failed after repeated
 HTTP 403 responses. Connector rerun was denied (`Resource not accessible by

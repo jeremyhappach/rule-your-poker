@@ -1,5 +1,15 @@
 # Stable checkpoints — do not reopen without a new repro
 
+2026-11-05 Jeremy's iPhone PWA Async TriTowers retest passed on product commit
+`84696641119d3aaa2c432f6284cb82343fe067a2`: the starting bell plays once at own-turn
+entry after the opponent review without another tap. Provenance: reply `2` to
+the second offered answer, "Yes, once at turn start." Owner-smoke tag:
+`async-tri-bell-smoke-accepted-20261105`. Preserve the shared Async route audio
+lease above loading/review and the existing mute, cleanup, expiry and dedupe.
+This accepts the starting bell only; final-clear fanfare remains separately open.
+No new device trace, Android smoke or additional physical mute/recovery test was
+reported. See `ASYNC_ENTRY_AUDIO_LIFETIME.md`.
+
 2026-11-04 Jeremy confirmed "ok we're good" after the published iPhone splash
 hotfix retest: full branding animation with no opening flash. Accepted product
 commit: `af559022f079f193d928e07dbd12ce86b09ca198`; checkpoint tag:

@@ -1,7 +1,7 @@
 # Async entry audio lifetime — November 5, 2026
 
-Status: confirmed startup ownership defect corrected; physical iPhone acceptance
-pending. Final-clear fanfare remains a separate OPEN investigation.
+Status: confirmed startup ownership defect corrected; Jeremy's physical iPhone
+starting-bell smoke passed. Final-clear fanfare remains a separate OPEN investigation.
 
 ## Device evidence and failure boundary
 
@@ -76,7 +76,17 @@ later trusted tap. Muting closes the retained engine and leaving Async closes
 every remaining engine. Browser errors: zero. Local evidence is under ignored
 `qualification.local/async-entry-audio/`.
 
-## Physical acceptance still required
+## Physical starting-bell acceptance
+
+On November 5, Jeremy answered `2` to the retest question on build
+`84696641119d3aaa2c432f6284cb82343fe067a2`, selecting the second offered answer:
+"Yes, once at turn start." The question explicitly covered Sounds on, an opponent
+result waiting, one Take turn tap and no additional tap through the review.
+Record this as owner-observed iPhone PWA playback acceptance and close the
+starting-bell report. No new device trace was supplied. Owner-smoke checkpoint:
+`async-tri-bell-smoke-accepted-20261105`.
+
+For any recurrence, preserve this reproduction procedure:
 
 On the published build, enable Sounds and start Help → Audio diagnostics before
 entering an Async TriTowers turn with an opponent result waiting. Tap Take turn
@@ -86,9 +96,13 @@ Stop and share/save the trace through Help. Expected: the entry engine remains
 available, no `gameplay-exit` retirement inside that transition, and one scheduled
 `run21-bell:tri:` cue before expiry. Also check Sounds off and leaving Async.
 
-No physical iPhone/Android playback is claimed by these desktop checks. Keep the
-startup issue pending Jeremy's device acceptance. Capture a separate trace of an
-actual all-three-towers clear for the still-open fanfare report.
+Desktop checks remain distinct from Jeremy's phone observation. Physical mute,
+background/exit recovery and Android were not additionally reported in this
+reply. Capture a separate trace of an actual all-three-towers clear for the
+still-open fanfare report.
 
 Release checkpoint: `release-async-entry-audio-20261105`; its `-verified` annotated
 tag records the exact published SHA/deployment and any publication limitations.
+The separate release-signal workflow `42104189539` later completed with failure;
+the runtime deployment and public manifest were already verified. The existing
+publisher investigation remains queued; no infrastructure changes were made.
