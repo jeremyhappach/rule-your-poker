@@ -1,3 +1,18 @@
+# Async Words final-turn review — 2026-11-05 — approved release, owner smoke pending
+
+Completed Words review now animates only the opponent's final placement and its
+crosswords on the authoritative completed board. The shared countup finishes,
+final rack-adjusted totals appear, and the board holds three seconds before Game
+Complete. Existing viewed-result acknowledgements and server-qualified Match
+Finale admission remain intact; earlier turn receipts never become a replay queue.
+Own/pass/forfeit finishes retain the final board without an older word animation.
+
+Focused Async/Words regressions, app TypeScript, production build and actual
+browser component/loopback checks cover both match-ending and remaining-game cases.
+No migration, financial change or historical-game repair. Physical owner smoke
+remains pending. See [evidence and smoke](ASYNC_WORDS_FINAL_REVIEW.md).
+Checkpoint: `release-async-words-final-review-20261105`.
+
 # Take 2 Async — 2026-11-04 — production enabled, owner smoke pending
 
 Runtime `cb04c67cb9d1d6efd6bd80d70d570b0414edba26` is pushed to `origin/main`,

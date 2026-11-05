@@ -33,6 +33,7 @@ export function reviewSchedule(event:ReviewEvent){
  }
  if(event.receipt.game==='ptown-words'){
   const p=b.movePresentation,start=p?Math.max(0,p.announceAt-p.startedAt):0;
+  if(!p)return {duration:0,countStart:0,countEnd:1,presentationEnd:0,medal:0};
   return {duration:start+SCORE_HOLD+SCORE_FLIGHT+SCORE_AFTER,countStart:start+SCORE_HOLD,countEnd:start+SCORE_HOLD+SCORE_FLIGHT,presentationEnd:start+SCORE_HOLD+SCORE_FLIGHT+SCORE_AFTER,medal:0};
  }
  const tri=event.receipt.game==='tri-towers',box=event.receipt.game==='boxdrop',clear=r?.reason===(box?'full_clear':'cleared');
