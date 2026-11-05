@@ -1,4 +1,5 @@
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
+import {AsyncAudioScope} from '@/components/delayed/AsyncAudioScope';
 import {NotificationProvider} from '@/components/delayed/NotificationBell';
 import {PushLifecycle} from '@/components/delayed/PushLifecycle';
 import { useEffect, lazy, Suspense } from "react";
@@ -212,9 +213,11 @@ const App = () => {
                 <Route path="/arcade" element={<Arcade />} />
                 <Route path="/arcade/:game" element={<Arcade />} />
                 <Route path="/arcade/:game/run/:runId" element={<ReleaseProtectedGameRoute><RouteErrorBoundary title="Arcade screen crashed"><Arcade /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
-                <Route path="/delayed" element={<Delayed />} />
-                <Route path="/delayed/:matchId" element={<Delayed />} />
-                <Route path="/delayed/:matchId/play/:childId" element={<ReleaseProtectedGameRoute checkingFallback={<AsyncTurnEntry/>}><RouteErrorBoundary title="Async Words screen crashed"><Delayed /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
+                <Route element={<AsyncAudioScope/>}>
+                  <Route path="/delayed" element={<Delayed />} />
+                  <Route path="/delayed/:matchId" element={<Delayed />} />
+                  <Route path="/delayed/:matchId/play/:childId" element={<ReleaseProtectedGameRoute checkingFallback={<AsyncTurnEntry/>}><RouteErrorBoundary title="Async Words screen crashed"><Delayed /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
+                </Route>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/notifications/table/:sessionId" element={<NotificationTable />} />

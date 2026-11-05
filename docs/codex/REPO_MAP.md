@@ -426,6 +426,11 @@ the existing `useTriIntentBuffer` to the delayed action/receipt transport.
 Application audio: `src/lib/audio/audioManager.ts` owns one current Web Audio
 context and observable Sounds preference. Native contexts are retired on mute,
 background/interruption and final gameplay exit; receipts survive replacement.
+`src/components/delayed/AsyncAudioScope.tsx` retains an existing gameplay lease
+across Async routes above release/lazy loading and result review, preserving the
+entry gesture's engine until auto-start. It releases on leaving Async and does
+not bypass mute/background cleanup. See `ASYNC_ENTRY_AUDIO_LIFETIME.md` and
+`dev/async-entry-audio/` for the device evidence and transition regression.
 See `AUDIO_ENGINE_RECOVERY.md`. `GameplaySoundButton` and
 `VisualPreferences` save through its existing profile adapter. `playbackSession.ts`
 scopes supported iOS playback mode to enabled foreground gameplay. The shared

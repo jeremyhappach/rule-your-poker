@@ -1,3 +1,13 @@
+## 2026-11-05 — Async audio lifetime spans automatic review-to-turn entry
+
+The iPhone trace confirmed that tying the last audio lease to a visible gameplay
+header discarded the gesture-unlocked context before opponent review and auto-start.
+The common Async route layout now retains the existing manager lease above loading
+and release checking. Real Async exit releases it; mute/background/interruption
+still retire immediately. No new unlock tap, deferred expired cue, gameplay wait
+or second audio engine. See `ASYNC_ENTRY_AUDIO_LIFETIME.md`; final-clear fanfare
+remains a separate unproven issue.
+
 ## 2026-11-04 — Independent verification dispatch and admin approval destinations
 
 Email dispatch is recorded separately from token-proven ownership and account

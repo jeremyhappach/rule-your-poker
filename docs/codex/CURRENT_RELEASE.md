@@ -1,3 +1,19 @@
+# Async TriTowers starting bell — 2026-11-05 — device-confirmed cause, owner retest pending
+
+The iPhone PWA trace on `76f3c79` confirms that Async entry retired its running
+audio engine, then created a suspended replacement outside the entry gesture.
+A shared Async route audio lease now preserves that engine through release/data
+loading, opponent-result review and auto-start. Existing mute, background/exit
+cleanup and bell expiry/dedupe remain unchanged; no extra tap or late replay.
+
+167 focused checks, app TypeScript, production build and desktop Edge transition
+checks pass. The gesture-restricted browser control reproduces the old missed
+bell; retained ownership schedules it once with one context, and mute stays
+silent. Physical iPhone playback remains PENDING, not established by desktop
+scheduling. The final-clear fanfare stays OPEN separately: this trace ends with
+`take_score`. See [trace evidence, correction and phone smoke](ASYNC_ENTRY_AUDIO_LIFETIME.md).
+Checkpoint: `release-async-entry-audio-20261105`; its `-verified` tag records publication.
+
 # TriTowers invalid play / Run21 bust audio — 2026-11-05 — approved release, owner smoke pending
 
 Owner-selected B sounds are integrated byte-for-byte: a short low buzz on an

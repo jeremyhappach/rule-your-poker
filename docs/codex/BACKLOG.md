@@ -1,17 +1,27 @@
-## Open — Async TriTowers missing bell/fanfare on iPhone PWA — November 5, 2026
+## Pending iPhone retest — Async TriTowers missing starting bell — November 5, 2026
 
 Jeremy reports working card movement and first/second tower sounds, missing fresh
 turn bell and final fanfare. The three-swords visual did appear. Expected: each
 admitted cue once, global Sounds off immediately silent. Device: installed iPhone
-PWA; exact game/turn and iOS version not yet captured. Provenance: direct smoke
+PWA. Provenance: direct smoke
 report and device clarification in this chat, November 5.
 
-Approved diagnostic release adds Help → Audio diagnostics with bounded local
-capture and Share/Save/Copy. Desktop native audio passed; delayed-response stress
-shows a possible expired-window path but does not establish this device cause.
-No speculative bell/fanfare playback change. Await the physical device trace.
-Related older all-clear interruption report below remains unproven, not assumed
-the same cause. See [trace instructions/evidence](ASYNC_INPUT_AUDIO_TRACE.md).
+November 5 follow-up: full device trace from `76f3c79`, iOS 18.7 / Safari 18.7.5,
+confirms the running engine retired on header exit and its replacement stayed
+suspended through bell expiry. Corrected with a shared Async route audio lease
+through loading/opponent review/own-turn entry. Local regressions and desktop
+gesture-restricted browser proof pass; await Jeremy's physical PWA retest and
+trace. See [evidence and acceptance](ASYNC_ENTRY_AUDIO_LIFETIME.md).
+
+## Open — Async TriTowers final-clear fanfare on iPhone PWA — November 5, 2026
+
+Original smoke: first two tower sounds work; final fanfare missing although the
+three-swords visual appears. The supplied November 5 trace ends with `take_score`,
+not all-three-towers clear, and contains no final-clear cue request. Its startup
+ownership diagnosis does not establish this separate cause. Preserve current
+fanfare behavior; obtain a device trace of an actual final clear. The older
+October 17 count-up interruption report below is related but not proven identical.
+Help → Audio diagnostics offers bounded local capture and Share/Save/Copy.
 
 Associated approved corrections are implemented: existing ordered buffer in
 Async TriTowers (~10 ms pending feedback); quiet hold/release tones in shared
