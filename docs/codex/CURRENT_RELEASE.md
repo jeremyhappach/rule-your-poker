@@ -1,4 +1,14 @@
-# Take 2 Async — 2026-11-04 — qualified, owner smoke pending
+# Take 2 Async — 2026-11-04 — deployed, activation awaiting publisher
+
+Runtime `cb04c67cb9d1d6efd6bd80d70d570b0414edba26` is pushed to `origin/main`,
+Vercel production `dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd` is READY, and the public
+manifest matches. Activation remains closed: publisher `41947439166` is still
+waiting for the manifest; the persisted publication receipt remains on
+`5407fd0fc710dd4790dc51f07760e94c150071c7`. The activation transaction rejected
+`take_two:publication_not_verified` and changed no admission state. This is the
+existing queued publisher issue, not a gameplay qualification failure. Resume
+with the matching publisher receipt and `dev/async-take-two/prepare-activation.mjs`;
+do not bypass the gate or manually write the receipt.
 
 Three identical-deck rounds use the existing alternating order, retaining the
 canonical 100-second clock and every speed/time bonus. Opponent board reviews

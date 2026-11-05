@@ -58,6 +58,20 @@ No synthetic production records remain.
 
 ## Release and acceptance
 
+Runtime commit `cb04c67cb9d1d6efd6bd80d70d570b0414edba26` and checkpoint tag are
+pushed. Vercel production `dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd` is READY and
+`https://holm357.com/build-manifest.json` serves the matching build ID.
+At 01:23 UTC November 5, publisher run `41947439166` / job `126983028421`
+remains in the manifest-wait step. Stored publication is still `5407fd0fc`;
+guarded activation rejected `take_two:publication_not_verified`. Take 2 remains
+disabled, with no gate bypass or manual publication write. The existing
+publisher backlog entry contains this release's additional evidence.
+
+Final check at 01:27:24 UTC: publisher still in progress at the manifest wait;
+`private.delayed_take_two_release.enabled=false`, stored SHA unchanged. Stopped
+at the repository's 35-minute execution boundary. Remaining work is the existing
+publisher gate, then the already-approved guarded activation and owner smoke.
+
 Migration installs admission closed; recovery worker v3 uses the existing
 single-use dispatcher authentication. Activate only after matching READY
 production commit, public manifest, publisher receipt, installed authority

@@ -123,6 +123,19 @@ no product code, customer state, migrations or publication changed.
 
 ## Queued — GitHub publisher cannot fetch public manifest — October 29, 2026
 
+November 4 Take 2 Async release: runtime `cb04c67cb9d1d6efd6bd80d70d570b0414edba26`
+is production READY (`dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd`) and a direct public
+manifest fetch matches. At 01:23 UTC November 5, publisher run `41947439166`,
+job `126983028421`, remains in its manifest-wait step (started 01:17 UTC).
+Stored release receipt remains `5407fd0fc710dd4790dc51f07760e94c150071c7`.
+Guarded Take 2 activation rejected `take_two:publication_not_verified`; admission
+is still closed. Migration and both-money financial proofs passed, worker v3 is
+deployed, and client/service/browser checks passed. Expected: authorized publisher
+records this verified runtime before activation. Logs for the in-progress job
+are not yet available (GitHub BlobNotFound). Preserve the gate; do not combine
+publisher investigation with game changes. Provenance: approved Take 2 release
+verification; see `ASYNC_TAKE_TWO.md`.
+
 Latest related failure, 13:12:28 UTC: Tri-Towers runtime SHA `1b222a254` is
 production READY and matches the public manifest, but publisher `40879563973`
 attempt 1 received 503 `manifest_invalid` from publish-release after its GitHub
