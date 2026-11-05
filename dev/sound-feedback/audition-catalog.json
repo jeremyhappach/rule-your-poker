@@ -1,0 +1,51 @@
+{
+  "status": "Audition only; not integrated or deployed",
+  "source": "Original procedural synthesis; no third-party recordings",
+  "base": "47939ceffadbbb5423e5ef0ee98e25624f43d39b",
+  "catalog": [
+    {
+      "name": "tritowers-a-soft-double",
+      "label": "A — Soft double-note",
+      "format": "mono PCM16 WAV",
+      "rate": 44100,
+      "actionMs": 170,
+      "fileMs": 230,
+      "peakDbFS": -23,
+      "rmsDbFS": -31.6,
+      "sha256": "69777b149d0c4d6bbd71480f32a333f7e5c61ca8ee53397aed31f9a147d6f16a"
+    },
+    {
+      "name": "tritowers-b-low-buzz",
+      "label": "B — Short low buzz",
+      "format": "mono PCM16 WAV",
+      "rate": 44100,
+      "actionMs": 120,
+      "fileMs": 180,
+      "peakDbFS": -24,
+      "rmsDbFS": -30.2,
+      "sha256": "1735ddb02668d0bd44aab1c79855582f89df04017c0d812d7f0085940c003f01"
+    },
+    {
+      "name": "run21-a-dry-stone",
+      "label": "A — Dry stone crack",
+      "format": "mono PCM16 WAV",
+      "rate": 44100,
+      "actionMs": 640,
+      "fileMs": 700,
+      "peakDbFS": -14,
+      "rmsDbFS": -36.7,
+      "sha256": "48dae2179490f4aa855723b15d6d2952b9e04e39138d035afa95a140cc9117bf"
+    },
+    {
+      "name": "run21-b-heavy-crumble",
+      "label": "B — Heavy crumble",
+      "format": "mono PCM16 WAV",
+      "rate": 44100,
+      "actionMs": 960,
+      "fileMs": 1020,
+      "peakDbFS": -14,
+      "rmsDbFS": -35.9,
+      "sha256": "211166baae37f8f8b693b9bf2605feacdd9101c1cd31e971721f298d7918a65d"
+    }
+  ]
+}

@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {afterEach,beforeAll,beforeEach,expect,it,vi} from 'vitest';
 import {audioHarness} from '@/lib/audio/audioTestHarness';
-import {run21FailureCueAt,RUN21_FAILURE_CUE_MS} from './failureCue';
+import {run21FailureCueAt,run21BustCueAt,RUN21_FAILURE_CUE_MS} from './failureCue';
+import {loadAuditionedFixtures} from '@/lib/audio/approvedSounds.fixture';
+beforeAll(loadAuditionedFixtures);
 beforeEach(()=>{vi.useFakeTimers();sessionStorage.clear();vi.spyOn(document,'hidden','get').mockReturnValue(false);});
 afterEach(()=>{vi.useRealTimers();vi.restoreAllMocks();});
 it('schedules two descending notes and completes inside 1.1 seconds',()=>{
@@ -23,4 +25,13 @@ it('respects mute and refuses delayed unmute, then admits a new live result',asy
   h.manager.setPreference('user',false);expect(h.nodes.filter(n=>n.kind==='oscillator').every(n=>n.disconnect.mock.calls.length>0)).toBe(true);
   h.manager.setPreference('user',true);follow('fresh');expect(h.starts()).toHaveLength(2);
   h.dispose();
+});
+it('uses the selected crumble alone, refuses late onset and stops immediately on mute',async()=>{
+ const h=audioHarness();for(let i=0;i<6;i++)await Promise.resolve();
+ const follow=(id:string)=>h.manager.follow({userId:'user',id,startedAt:Date.now(),expiresAt:Date.now()+RUN21_FAILURE_CUE_MS,cueAt:run21BustCueAt});
+ follow('bust');expect(h.nodes.filter(n=>n.kind==='buffer'&&n.start.mock.calls.length)).toHaveLength(1);expect(h.nodes.filter(n=>n.kind==='oscillator')).toHaveLength(0);
+ follow('bust');expect(h.starts()).toHaveLength(1);h.manager.setPreference('user',false);expect(h.nodes.filter(n=>n.kind==='buffer').every(n=>n.disconnect.mock.calls.length)).toBe(true);
+ vi.advanceTimersByTime(200);h.manager.setPreference('user',true);follow('bust');expect(h.starts()).toHaveLength(1);
+ for(const [elapsed,remaining] of [[81,1100],[0,500]])expect(run21BustCueAt(elapsed,remaining).schedule(h.ctx as unknown as AudioContext,{} as AudioNode,n=>n)).toBe(false);
+ h.dispose();
 });

@@ -7,6 +7,7 @@ import {DEFAULT_CONFIG} from '@/lib/run21/model';
 const audio=vi.hoisted(()=>({follow:vi.fn(),cancel:vi.fn()}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{follow:audio.follow}}));
 import {useRun21FailureAudio} from './useRun21FailureAudio';
+import {run21BustCueAt,run21FailureCueAt} from '@/lib/run21/failureCue';
 
 function view(reason:Result['reason']|null=null,score=0,playerId='p',roundId='one'):BoardProjection {
   return {config:DEFAULT_CONFIG,roundId,roundNumber:1,viewerId:'p',players:[{id:'p',name:'Player'},{id:'q',name:'Opponent'}],
@@ -19,11 +20,12 @@ const initial=()=>({view:view(),now:4900,epoch:0,enabled:true});
 beforeEach(()=>{audio.follow.mockReturnValue(audio.cancel);vi.spyOn(document,'hidden','get').mockReturnValue(false);vi.spyOn(navigator,'onLine','get').mockReturnValue(true);});
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.clearAllMocks();});
 
-it.each(['arcade-run','session:dealer-game'])('sounds each confirmed bust and no-qualify once in %s, including another player and round',scope=>{
+it.each(['arcade-run','async-child','session:dealer-game'])('sounds each confirmed bust and no-qualify once in %s, including another player and round',scope=>{
   const h=renderHook(p=>useRun21FailureAudio('user',scope,p.view,p.now,p.epoch,p.enabled),{initialProps:initial(),wrapper:StrictMode});
   for(const [i,reason] of (['bust','collect','timeout','exhausted'] as const).entries()){
     const next={view:view(reason,0,i%2?'q':'p',String(i)),now:5050,epoch:0,enabled:true};
     h.rerender(next);expect(audio.follow).toHaveBeenCalledTimes(i+1);
+    expect(audio.follow.mock.lastCall![0].cueAt).toBe(reason==='bust'?run21BustCueAt:run21FailureCueAt);
     h.rerender({...next,view:{...next.view},now:5200});expect(audio.follow).toHaveBeenCalledTimes(i+1);
     expect(audio.follow.mock.lastCall![0].id).toContain(scope);
   }

@@ -1,6 +1,16 @@
 import type {AudioCue} from '@/lib/audio/audioManager';
+import {approvedSound} from '@/lib/audio/approvedSounds';
 
 export const RUN21_FAILURE_CUE_MS = 1100;
+
+/** Owner-selected crumble at the existing visible bust onset. Never fetch or catch up. */
+export function run21BustCueAt(elapsedMs:number,remainingMs:number):AudioCue {
+  const cue=approvedSound('run21Bust');
+  return {durationMs:cue?.durationMs??0,policy:cue?.policy,schedule(context,destination,track){
+    if(!cue||elapsedMs<0||elapsedMs>80||remainingMs<cue.durationMs)return false;
+    return cue.schedule(context,destination,track);
+  }};
+}
 
 /** Original two-note muted-brass fall: a short wah, then a lower, longer wah. */
 export function run21FailureCueAt(elapsedMs:number,remainingMs:number):AudioCue {

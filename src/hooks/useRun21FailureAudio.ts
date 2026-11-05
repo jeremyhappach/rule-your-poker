@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {platformAudio} from '@/lib/audio/platformAudio';
-import {RUN21_FAILURE_CUE_MS,run21FailureCueAt} from '@/lib/run21/failureCue';
+import {RUN21_FAILURE_CUE_MS,run21FailureCueAt,run21BustCueAt} from '@/lib/run21/failureCue';
 import {outcomePresentation} from '@/lib/run21/outcomePresentation';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 import type {BoardProjection} from '@/lib/run21/model';
@@ -28,7 +28,7 @@ export function useRun21FailureAudio(userId:string,scope:string,view:BoardProjec
       outcomePresentation(result,'').kind==='score')return;
     const startedAt=performance.now();
     active.current={context,key,stop:platformAudio.follow({userId,id:'run21-failure:'+key,startedAt,
-      expiresAt:startedAt+RUN21_FAILURE_CUE_MS,cueAt:run21FailureCueAt})};
+      expiresAt:startedAt+RUN21_FAILURE_CUE_MS,cueAt:outcomePresentation(result,'').kind==='bust'?run21BustCueAt:run21FailureCueAt})};
     // Clock paints and identical snapshots keep the same owner until the cue finishes.
   },[scope,view,now,epoch,enabled,userId,interruption,replay]);
   useEffect(()=>{

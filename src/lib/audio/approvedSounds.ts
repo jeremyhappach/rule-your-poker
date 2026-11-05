@@ -23,8 +23,10 @@ import farkleBust from '@/assets/audio/farkle-bust-a.wav?url';
 import upperBonus from '@/assets/audio/upper-bonus-b.wav?url';
 import allFilled from '@/assets/audio/all-filled-b.wav?url';
 import chip from '@/assets/audio/chip-single.wav?url';
+import triInvalid from '@/assets/audio/tritowers-invalid-b.wav?url';
+import run21Bust from '@/assets/audio/run21-bust-b.wav?url';
 
-const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, cupRoll, quintzeeRoll, dropCountdown, chucky, farkleBust, upperBonus, allFilled, chip};
+const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, cupRoll, quintzeeRoll, dropCountdown, chucky, farkleBust, upperBonus, allFilled, chip, triInvalid, run21Bust};
 export type ApprovedSound = keyof typeof files | 'cribbageHighlight';
 const cues = new Map<ApprovedSound, AudioCue>();
 const countdown = new Map<string, AudioCue>();
@@ -53,6 +55,8 @@ const policies = {
   upperBonus: {priority: 75, group: 'scoring', intervalMs: 0},
   allFilled: {priority: 75, group: 'scoring', intervalMs: 0},
   chip: {priority: 15, group: 'chips', intervalMs: 160},
+  triInvalid: {priority: 30, group: 'invalid-play', intervalMs: 100},
+  run21Bust: {priority: 70, group: 'failure', intervalMs: 0},
 };
 
 /** Fetch once without creating an AudioContext or touching the user's preference.

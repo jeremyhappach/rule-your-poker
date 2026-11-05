@@ -1,0 +1,14 @@
+{
+  "selectedAt": "2026-11-05",
+  "instruction": "B for both; Run21 bust must coincide with the existing rock visual and replace its tone",
+  "triInvalid": {
+    "audition": "tritowers-b-low-buzz.wav",
+    "asset": "src/assets/audio/tritowers-invalid-b.wav",
+    "sha256": "1735ddb02668d0bd44aab1c79855582f89df04017c0d812d7f0085940c003f01"
+  },
+  "run21Bust": {
+    "audition": "run21-b-heavy-crumble.wav",
+    "asset": "src/assets/audio/run21-bust-b.wav",
+    "sha256": "211166baae37f8f8b693b9bf2605feacdd9101c1cd31e971721f298d7918a65d"
+  }
+}

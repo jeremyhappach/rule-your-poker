@@ -1,3 +1,19 @@
+# TriTowers invalid play / Run21 bust audio — 2026-11-05 — approved release, owner smoke pending
+
+Owner-selected B sounds are integrated byte-for-byte: a short low buzz on an
+attempted invalid TriTowers play, and the heavy crumble replacing Run21's old
+bust tone at the existing confirmed rock-visual onset. All shared gameplay modes
+retain their rules, input ordering, clocks, animations, scores and settlement.
+Timeout/no-qualify retain their original tone; global Sounds remains immediate.
+
+269 focused tests, app TypeScript, production build and actual Edge shared-view/
+Web Audio checks pass. Crumble scheduling followed visible DOM admission by about
+3–4 ms, with one sample and no old bust oscillator. Physical-device smoke pending.
+The separate iPhone TriTowers bell/fanfare issue remains OPEN awaiting its trace.
+See [ownership, qualification and smoke](INVALID_PLAY_BUST_AUDIO.md).
+Checkpoint: `release-invalid-play-bust-audio-20261105`; its `-verified` tag records
+the exact production publication.
+
 # Async input and audio diagnostics — 2026-11-05 — approved release, owner smoke pending
 
 Async TriTowers now uses the existing ordered input buffer for immediate pending

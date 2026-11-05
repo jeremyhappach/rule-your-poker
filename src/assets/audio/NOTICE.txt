@@ -40,3 +40,10 @@ chip-single.wav: Kenney Vleugels, Casino Audio, CC0 1.0.
 https://kenney.nl/assets/casino-audio
 Identical to the selected original Sound Lab audition; provenance and processing
 remain in dev/sound-lab/catalog.json. Cup C reuse also approved for Horses/SCC.
+
+TriTowers invalid-play B and Run21 bust B, owner selected 2026-11-05:
+tritowers-invalid-b.wav (SHA-256 1735ddb02668d0bd44aab1c79855582f89df04017c0d812d7f0085940c003f01)
+run21-bust-b.wav (SHA-256 211166baae37f8f8b693b9bf2605feacdd9101c1cd31e971721f298d7918a65d)
+Original deterministic procedural synthesis for P-Town; no external recordings.
+Byte-identical to the inline auditions: Low buzz B and Heavy crumble B.
+Source generator and audition metadata: dev/sound-feedback/.
