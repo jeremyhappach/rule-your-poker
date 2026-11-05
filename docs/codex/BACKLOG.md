@@ -123,6 +123,14 @@ no product code, customer state, migrations or publication changed.
 
 ## Queued — GitHub publisher cannot fetch public manifest — October 29, 2026
 
+Take 2 release unblocked at 01:40 UTC November 5: attempt 1 failed after repeated
+HTTP 403 responses. Connector rerun was denied (`Resource not accessible by
+integration`), but the existing failed job was retried through the signed-in
+owner browser. Attempt 2 passed and receipt `41947439166-2` matches `cb04c67cb`;
+guarded Take 2 activation then passed. No access-control, credential, publisher
+code or gate change was made. Keep the underlying intermittent manifest denial
+investigation queued; this individual release is no longer blocked.
+
 November 4 Take 2 Async release: runtime `cb04c67cb9d1d6efd6bd80d70d570b0414edba26`
 is production READY (`dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd`) and a direct public
 manifest fetch matches. At 01:23 UTC November 5, publisher run `41947439166`,

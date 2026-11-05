@@ -1,14 +1,15 @@
-# Take 2 Async — 2026-11-04 — deployed, activation awaiting publisher
+# Take 2 Async — 2026-11-04 — production enabled, owner smoke pending
 
 Runtime `cb04c67cb9d1d6efd6bd80d70d570b0414edba26` is pushed to `origin/main`,
 Vercel production `dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd` is READY, and the public
-manifest matches. Activation remains closed: publisher `41947439166` is still
-waiting for the manifest; the persisted publication receipt remains on
-`5407fd0fc710dd4790dc51f07760e94c150071c7`. The activation transaction rejected
-`take_two:publication_not_verified` and changed no admission state. This is the
-existing queued publisher issue, not a gameplay qualification failure. Resume
-with the matching publisher receipt and `dev/async-take-two/prepare-activation.mjs`;
-do not bypass the gate or manually write the receipt.
+manifest matches. Publisher attempt 1 failed with HTTP 403 fetching the manifest.
+After Jeremy requested production, the existing job was retried through his
+signed-in GitHub browser because the connector lacks Actions write permission.
+Attempt 2 succeeded; receipt `41947439166-2` matches the runtime SHA.
+Guarded activation passed at 01:40:26 UTC November 5: all 16 authority fingerprints,
+migration, publication, admission and recovery/liveness checks passed. Take 2 is
+enabled; authenticated `delayed_capabilities` returns `take-two/2` with the
+100-second clock and full speed/time bonuses. No gate or credential was bypassed.
 
 Three identical-deck rounds use the existing alternating order, retaining the
 canonical 100-second clock and every speed/time bonus. Opponent board reviews
@@ -16,8 +17,8 @@ unlock only after the viewer completes that same round. Hosted financial proofs,
 rule parity, real service concurrency and five-viewport browser checks pass.
 Ten existing Mega/Golf defaults failures reproduce on unchanged main.
 Migration `20261105011042_async_take_two_identical_deals`; recovery worker v3.
-Checkpoint: `release-async-take-two-20261104`. Activation requires matching
-deployment/manifest/publisher and recovery checks. Physical owner smoke pending.
+Checkpoints: `release-async-take-two-20261104` and
+`release-async-take-two-activated-20261104`. Physical owner smoke pending.
 See [qualification](ASYNC_TAKE_TWO.md).
 
 # Splash playback hotfix — 2026-11-04 — owner smoke passed

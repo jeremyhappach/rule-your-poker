@@ -1,0 +1,20 @@
+{
+  "runtimeSha": "cb04c67cb9d1d6efd6bd80d70d570b0414edba26",
+  "productionDeployment": "dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd",
+  "state": "READY",
+  "domain": "holm357.com",
+  "publicManifestMatched": true,
+  "publisherReceipt": "41947439166-2",
+  "publisherShaMatched": true,
+  "publisherCompletedAt": "2026-11-05T01:39:15.638Z",
+  "activatedAt": "2026-11-05T01:40:26.102201Z",
+  "authorityFingerprintsVerified": 16,
+  "takeTwoEnabled": true,
+  "recoveryHealthy": true,
+  "realMoneyLiveness": "healthy",
+  "authenticatedCapabilityAvailable": true,
+  "rulesVersion": "take-two/2",
+  "rounds": 3,
+  "stageMs": 100000,
+  "physicalOwnerSmoke": "pending"
+}

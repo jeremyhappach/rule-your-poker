@@ -1,5 +1,12 @@
 # Take 2 Async qualification — 2026-11-04
 
+**Production enabled:** guarded activation passed at 01:40:26 UTC November 5.
+Publisher retry `41947439166-2` succeeded for `cb04c67cb9d1d6efd6bd80d70d570b0414edba26`.
+All 16 authority fingerprints and release/recovery checks passed. A separate
+authenticated capability read confirms Take 2 is available with canonical /2
+rules, 100 seconds, three rounds and all bonuses. Owner device smoke is pending.
+Activation checkpoint: `release-async-take-two-activated-20261104`.
+
 Approved scope: two authenticated humans, three corresponding identical-deck
 rounds, alternating A1/B1/A2/B2/A3/B3. Jeremy explicitly retained the canonical
 100-second clock and all speed/time bonuses. Equal totals produce a draw.
@@ -57,6 +64,13 @@ logs/screenshots and generated worker: ignored `qualification.local/async-take-t
 No synthetic production records remain.
 
 ## Release and acceptance
+
+The earlier publication blocker below was resolved by rerunning the existing
+failed job through the signed-in owner browser. The connector's rerun returned
+HTTP 403 `Resource not accessible by integration`; no permissions or credentials
+were changed. Attempt 2 passed both manifest verification and publication, after
+which the prepared activation transaction committed. Recovery and real-money
+liveness are healthy. See `dev/async-take-two/evidence/production.json`.
 
 Runtime commit `cb04c67cb9d1d6efd6bd80d70d570b0414edba26` and checkpoint tag are
 pushed. Vercel production `dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd` is READY and
