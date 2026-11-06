@@ -8,6 +8,7 @@ export const APPROVED_TILE_ARTWORK: Readonly<Record<string, {slug:string; infoBo
   'take-two': {slug:'take-two'},
   'royal-flash': {slug:'royal-flash'},
   'mega-card-golf': {slug:'mega-card-golf'},
+  'crib-lab': {slug:'crib-lab'},
   quintzee: {slug:'quintzee'},
 };
 

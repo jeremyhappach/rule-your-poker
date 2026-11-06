@@ -1,3 +1,7 @@
+# Crib Lab v1 — November 6, 2026 — locally qualified, production closed
+
+Crib Lab adds three-round solo Arcade cribbage using the canonical private shuffle, hand scorer, run receipts, recovery worker and timestamped leaderboards. The new duration default freezes at admission. The local database, concurrency, browser, audio and layout proofs passed. Hosted installation, publication, activation and physical PWA acceptance are pending. See [qualification and owner smoke](CRIB_LAB_V1.md).
+
 # Cribbage counting clock — November 6, 2026
 
 Cribbage uses server time from the admitted session frame and monotonic client

@@ -5,21 +5,23 @@ import {readFileSync} from 'node:fs';
 import {GAME_CATALOG,ARCADE_GAMES} from '@/lib/gameCatalog';
 import {ASYNC_RULES_GAMES,rulesModes} from '@/lib/gameCatalog/rulesModes';
 import audit from '../../../dev/lobby-catalog/rules-audit-20261104.json';
+// The November 4 production audit stays historical. This row is the locally qualified candidate.
+const candidate=vi.hoisted(()=>({game:'crib-lab',id:'crib-lab/1',config:{version:'crib-lab/1',durationMs:240000}}));
 vi.mock('@/lib/arcade/client',()=>({arcadeRequest:vi.fn(async({game})=>{
  const {default:a}=await import('../../../dev/lobby-catalog/rules-audit-20261104.json');
- return {currentRuleset:a.arcade.filter(r=>r.game===game).at(-1)?.id};
+ return {currentRuleset:[...a.arcade,candidate].filter(r=>r.game===game).at(-1)?.id};
 })}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:vi.fn(async(_name,{p_ruleset})=>{
  const {default:a}=await import('../../../dev/lobby-catalog/rules-audit-20261104.json');
- return {data:a.arcade.find(r=>r.id===p_ruleset)?.config,error:null};
+ return {data:[...a.arcade,candidate].find(r=>r.id===p_ruleset)?.config,error:null};
 })}}));
 import {RulesContent} from '../rules/RulesContent';
 import {GameRules} from '../GameRules';
 afterEach(cleanup);
 
-it('covers the deployed live defaults and enabled Arcade registry exactly',()=>{
- expect(GAME_CATALOG.map(g=>g.defaultsKey).sort()).toEqual(audit.defaults);
- expect(ARCADE_GAMES.map(g=>g.id).sort()).toEqual([...new Set(audit.arcade.map(r=>r.game))].sort());
+it('covers the audited registry and the Crib Lab candidate exactly',()=>{
+ expect(GAME_CATALOG.map(g=>g.defaultsKey).sort()).toEqual([...audit.defaults,candidate.game].sort());
+ expect(ARCADE_GAMES.map(g=>g.id).sort()).toEqual([...new Set(audit.arcade.map(r=>r.game)),candidate.game].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
 });
 it('covers every Async adapter and every explicit Arcade service dispatch',()=>{

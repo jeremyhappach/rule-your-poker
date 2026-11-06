@@ -35,6 +35,7 @@ export async function arcadeRequest<T>(body:Record<string,unknown>):Promise<T>{
   let value:any;try{value=await response.json();}catch(e){if(run21)throw new UncertainRun21Action('Response was lost.');if(timed)throw new UncertainTriAction('Response was lost.');throw e;}finally{clearTimeout(timeout);}
   if(run21&&(response.status>=500||lostResponse&&!response.ok))throw new UncertainRun21Action('Server response uncertain.');
   if(timed&&response.status>=500)throw new UncertainTriAction('Server response uncertain.');
+  if(!response.ok&&body.game==='crib-lab')throw Object.assign(Error(messages[value.error]??(response.status>=500?'Connection uncertain. Reconnect to retry.':'Review the current cards and try again.')),{definitive:response.status<500&&!lostResponse});
   if(!response.ok&&body.game==='quintzee')throw Object.assign(Error(response.status>=500||lostResponse?'Connection uncertain. Reconnect to retry.':value.error??'arcade:database_rejected'),{definitive:response.status<500&&!lostResponse});
   if(!response.ok&&['eleven-up','royal-flash','boxdrop','trip-flip','take-two'].includes(body.game as string))throw Error(response.status>=500||lostResponse?'Connection uncertain. Reconnect to retry.':value.error??'arcade:database_rejected');
   if(!response.ok){const message=messages[value.error]??'Arcade could not process that request. Please try again.';throw timed&&['arcade:stale_action','arcade:database_rejected','arcade:round_intro'].includes(value.error)?new RejectedTriAction(message):timed&&lostResponse?new UncertainTriAction(message):Error(message);}

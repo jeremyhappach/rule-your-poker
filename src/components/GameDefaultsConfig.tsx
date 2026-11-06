@@ -7,7 +7,7 @@ import {GAME_CATALOG,findGame,type Category} from '@/lib/gameCatalog';
 import {CategoryNavigation} from '@/components/catalog/CategoryNavigation';
 import '@/components/catalog/catalog.css';
 const FarkleDefaultsEditor=lazy(()=>import('@/components/farkle/FarkleDefaultsEditor').then(m=>({default:m.FarkleDefaultsEditor})));
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 interface GameDefaults {
   quintzee_theme?: 'classic'|'modern';
+  crib_lab_round_seconds?: number;
   quintzee_round_seconds?: number;
   canasta_mode?:CanastaMode;
   golf_holes?: number;
@@ -80,6 +81,7 @@ interface SessionDealerDrawTieHarnessStatus {
 
 export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigProps) {
   const { enabled: harnessesModeEnabled, loading: harnessesModeLoading, toggle: toggleHarnessesMode } = useHarnessesMode();
+  const editedGames=useRef(new Set<string>());
   const [defaults, setDefaults] = useState<GameDefaults[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -161,12 +163,14 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       console.error('Error fetching defaults:', error);
       toast.error('Failed to load defaults');
     } else {
+      editedGames.current.clear();
       setDefaults(data || []);
     }
     setLoading(false);
   };
 
   const updateDefault = (gameType: string, field: keyof GameDefaults, value: number | boolean | string) => {
+    editedGames.current.add(gameType);
     setDefaults(prev =>
       prev.map(d =>
         d.game_type === gameType ? { ...d, [field]: value } : d
@@ -178,8 +182,14 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     // Validate all numeric fields before saving
     const validationErrors: string[] = [];
 
-    for (const defaultConfig of defaults) {
+    const rowsToSave=defaults.filter(d=>editedGames.current.has(d.game_type)||(selectedGameType==='crib-lab'?d.game_type==='crib-lab':d.game_type!=='crib-lab'));
+    for (const defaultConfig of rowsToSave) {
       const gameType = defaultConfig.game_type;
+      if(gameType==='crib-lab'){
+        const seconds=Number(defaultConfig.crib_lab_round_seconds);
+        if(!Number.isInteger(seconds)||seconds<60||seconds>600)validationErrors.push('Crib Lab round duration must be a whole number from 60 to 600 seconds.');
+        continue;
+      }
       if(gameType==='quintzee'&&!isQuintzeeRoundSeconds(Number(defaultConfig.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial)))validationErrors.push('Quintzee: Round duration must be a whole number from 60-600 seconds');
 
       // Decision timer: 5-60 seconds
@@ -310,7 +320,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     }
 
     // Convert string values to numbers before saving
-    const normalizedDefaults = defaults.map(d => ({
+    const normalizedDefaults = rowsToSave.map(d => ({
       ...d,
       decision_timer_seconds: Number(d.decision_timer_seconds),
       ante_amount: Number(d.ante_amount),
@@ -339,6 +349,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     setSaving(true);
     try {
       for (const defaultConfig of normalizedDefaults) {
+        if(defaultConfig.game_type==='crib-lab'){
+          const {error}=await supabase.from('game_defaults').update({crib_lab_round_seconds:Number(defaultConfig.crib_lab_round_seconds)}).eq('game_type','crib-lab');
+          if(error)throw error;
+          continue;
+        }
         const { error } = await supabase
           .from('game_defaults')
           .update({
@@ -1039,6 +1054,12 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   };
 
   const renderSettingsForGameType = () => {
+      if(selectedGameType==='crib-lab'){
+        const d=getDefaultByType('crib-lab');
+        return d&&<div className="space-y-2"><Label htmlFor="crib-lab-duration">Round duration (seconds)</Label>
+          <Input id="crib-lab-duration" type="number" inputMode="numeric" min={60} max={600} step={1} value={d.crib_lab_round_seconds??240} onChange={e=>updateDefault('crib-lab','crib_lab_round_seconds',e.target.value)}/>
+          <p className="text-xs text-muted-foreground">New games use this duration for all three rounds. Each duration has its own leaderboard.</p></div>;
+      }
       if(selectedGameType==='quintzee'){const d=getDefaultByType('quintzee');return d?<div className="space-y-2"><Label className="block" htmlFor="quintzee-theme">Theme</Label><select className="block h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="quintzee-theme" value={d.quintzee_theme??'classic'} onChange={e=>updateDefault('quintzee','quintzee_theme',e.target.value)}><option value="classic">Classic</option><option value="modern">Modern</option></select>
         <Label className="block" htmlFor="quintzee-duration">Round duration (seconds)</Label><Input id="quintzee-duration" type="number" inputMode="numeric" min={QUINTZEE_ROUND_SECONDS.min} max={QUINTZEE_ROUND_SECONDS.max} step={1} value={d.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial} onChange={e=>updateDefault('quintzee','quintzee_round_seconds',e.target.value)}/>
         <p className="text-xs">60–600 seconds per round. Applies to new Arcade runs and multiplayer matches in both themes. Active games keep their original duration. Scoring remains ×100–×300 with an 80,000-point bonus-round threshold.</p>
