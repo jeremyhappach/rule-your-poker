@@ -11,13 +11,15 @@ try{
   await c.query('insert into auth.users(id) values($1)',[user]);
   await c.query('insert into public.account_access(user_id,enabled,ever_enabled) values($1,true,true) on conflict(user_id) do update set enabled=true,ever_enabled=true',[user]);
   await c.query('insert into public.profiles(id,username,is_active) values($1,$2,true) on conflict(id) do update set is_active=true',[user,'Lab '+user.slice(0,8)]);
-  await c.query("update private.arcade_rulesets set enabled=true where game='crib-lab'");
+  await c.query("update private.arcade_rulesets set enabled=false where game='crib-lab' and enabled");
+  await c.query('update private.arcade_rulesets set enabled=true where id=$1',[process.argv.includes('--polish')?'crib-lab/2':'crib-lab/1']);
   await c.query("update private.arcade_recovery_state set failure=null,last_completed_at=clock_timestamp(),claimed=true,token=$1,expires_at=clock_timestamp()+interval '1 minute'",[token]);
   const req=randomUUID();
   const starts=await Promise.all(clients.map(conn=>get(conn,"select public.arcade_start($1,$2,'crib-lab') r",[user,req])));
   assert.equal(starts[0].id,starts[1].id);const id=starts[0].id;
   const step=(conn,actor,rev=null,round=null,request=null,action=null,items=[])=>get(conn,'select public.arcade_crib_lab_step($1,$2,$3,$4,$5,$6,$7,$8) r',[actor,id,rev,round,request,action,items,actor?null:token]);
-  const initial=(await step(c,user)).projection,command=randomUUID();
+  let initial=(await step(c,user)).projection;const command=randomUUID();
+  if(initial.transition){await new Promise(resolve=>setTimeout(resolve,initial.transition.endsAt-initial.serverAt+40));initial=(await step(c,user)).projection;}
   const concurrent=await Promise.all(clients.map(conn=>step(conn,user,initial.revision,initial.roundId,command,'select',[0,0])));
   assert.deepEqual(concurrent.map(r=>r.outcome).sort(),['committed','duplicate']);
   const v=concurrent[0].projection;

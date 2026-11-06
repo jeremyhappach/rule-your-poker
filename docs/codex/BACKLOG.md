@@ -1,3 +1,7 @@
+## Completed — Crib Lab Polish Pass 1 release queue — November 6, 2026
+
+Jeremy accepted local preview 3 at `d6359506c` and authorized production publication after Chucky Showdown polish clears the release lane. Chucky release `b8c893aca` cleared the lane. Both hosted rollback proofs passed and the qualified client proceeded to the guarded publication and activation workflow. See [release qualification](CRIB_LAB_POLISH_1.md). Source: owner preview review in the Crib Lab chat.
+
 ## Completed — Async TriTowers missing starting bell — November 5, 2026
 
 Jeremy reports working card movement and first/second tower sounds, missing fresh

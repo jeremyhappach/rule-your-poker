@@ -1,3 +1,7 @@
+# Crib Lab Polish Pass 1 — November 6, 2026
+
+Jeremy approved preview 3. It adds gold-only card selection, stable Confirm and Cancel controls, paused phase introductions and slower combination counts. The Base score counts up first, the equation shows the time bonus, then the central pill adds the round to the game total. Crib Lab uses the shared Arcade Classic face from Chucky polish `b8c893aca`. Hosted candidate and installed proofs matched on migration `20261106232247`. V1 runs retain their original clock and boards. The release checkpoint is `crib-lab-polish-1-2026-11-06`. [Hosted qualification and phone smoke](CRIB_LAB_POLISH_1.md).
+
 # Chucky Showdown and Crib Lab — approved Arcade presentation, November 6, 2026
 
 The portrait-left Chucky tile, remaining-use pips, Stay portrait, drifting/shattering Crack and shared round bell are qualified together. Chucky v2 and Crib Lab use the approved centered card face. The existing rulesets and database own all game state. Local browser qualification completed three rounds in each game, including Chucky's three distinct bells, muted play and reload, plus Crib Lab scoring and leaderboard continuation. Owner production iPhone smoke is pending. See [Chucky presentation and smoke steps](CHUCKY_SHOWDOWN_V2.md#approved-arcade-presentation-polish).

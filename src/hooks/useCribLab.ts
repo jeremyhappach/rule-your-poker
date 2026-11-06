@@ -7,6 +7,7 @@ export function useCribLab(id:string,userId:string,transport:LabTransport,liveEn
   const [snapshot,setSnapshot]=useState<LabSnapshot|null>(null),[now,setNow]=useState(0);
   const [ready,setReady]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState('');
   const [uncertain,setUncertain]=useState(false);
+  const [liveTransition,setLiveTransition]=useState(''),[countAfter,setCountAfter]=useState(-Infinity);
   const [deal,setDeal]=useState(''),[count,setCount]=useState(''),[cue,setCue]=useState<LabCommand|null>(null);
   const latest=useRef<LabSnapshot|null>(null),clock=useRef({at:0,local:0});
   const lane=useRef<ReturnType<typeof createAuthoritativeSubscription>|null>(null),busy=useRef(false),epoch=useRef(0);
@@ -20,13 +21,24 @@ export function useCribLab(id:string,userId:string,transport:LabTransport,liveEn
       if(JSON.stringify({...next,serverAt:0})!==JSON.stringify({...prev,serverAt:0}))return false;
       if(next.serverAt<=prev.serverAt)return true;
     }
-    if(!prev)bornEnded.current=next.status!=='active';
+    const local=performance.now();
+    const at=prev?Math.max(next.serverAt,clock.current.at+local-clock.current.local):next.serverAt;
+    if(!prev)bornEnded.current=next.status!=='active'&&!(next.ruleset.startsWith('crib-lab/2')&&next.result&&next.serverAt<(next.phaseUntil??0));
+    const firstCountMs=next.result?.presentation?.beats[0]?.ms??1250;
     if(!recovering&&!document.hidden){
+      if(next.transition&&next.transition.id!==prev?.transition?.id&&(prev||liveEntry)&&next.serverAt<next.transition.endsAt)
+        setLiveTransition(next.transition.id);
       if(next.phase==='discard'&&next.roundId!==prev?.roundId&&(prev||liveEntry)&&next.serverAt-next.deadline+next.durationMs<2200)setDeal(next.roundId);
-      if(next.result&&prev?.roundId===next.roundId&&!prev.result&&next.serverAt-next.result.scoredAt<1250)setCount(next.roundId);
+      if(next.result&&prev?.roundId===next.roundId&&!prev.result&&at-next.result.scoredAt<firstCountMs){
+        setCount(next.roundId);setCountAfter(-Infinity);
+      }
     }
-    latest.current=next; clock.current={at:next.serverAt,local:performance.now()};
-    setSnapshot(next);setNow(next.serverAt);setError('');return true;
+    // Restore the current count silently. Later unseen beats can play as they arrive.
+    if(next.result?.presentation&&!document.hidden&&(recovering||!prev||prev.result?.id!==next.result.id&&at-next.result.scoredAt>=firstCountMs)){
+      setCount(next.roundId);setCountAfter(at);
+    }
+    latest.current=next;clock.current={at,local};
+    setSnapshot(next);setNow(at);setError('');return true;
   },[id,liveEntry]);
   const submit=useCallback(async(live=false)=>{
     const saved=sessionStorage.getItem(key);
@@ -53,7 +65,7 @@ export function useCribLab(id:string,userId:string,transport:LabTransport,liveEn
     mounted.current=true;
     const recovery=createAuthoritativeSubscription({
       subscribe:transport.subscribe,load:transport.load,apply:accept,connected:setReady,error:e=>setError((e as Error).message),
-      interrupt:()=>{epoch.current++;setDeal('');setCount('');setCue(null);},
+      interrupt:()=>{epoch.current++;setLiveTransition('');setDeal('');setCount('');setCue(null);},
       recoverPending:()=>submit(),
     });
     lane.current=recovery;
@@ -65,8 +77,9 @@ export function useCribLab(id:string,userId:string,transport:LabTransport,liveEn
   function act(type:LabAction,items:number[]=[]){
     const v=latest.current;
     if(!v||v.status!=='active'||!lane.current?.isReady()||busy.current||sessionStorage.getItem(key))return;
+    if(type!=='abandon'&&v.transition)return;
     const command:LabCommand={requestId:crypto.randomUUID(),revision:v.revision,roundId:v.roundId,intent:{type,items}};
     sessionStorage.setItem(key,JSON.stringify(command));void submit(true);
   }
-  return {snapshot,now,ready,pending,error:error||(uncertain?'Reconnect to confirm your last move.':''),deal,count,cue,act,bornEnded:bornEnded.current,reconnect:()=>void lane.current?.recover()};
+  return {snapshot,now,ready,pending,liveTransition,countAfter,error:error||(uncertain?'Reconnect to confirm your last move.':''),deal,count,cue,act,bornEnded:bornEnded.current,reconnect:()=>void lane.current?.recover()};
 }
