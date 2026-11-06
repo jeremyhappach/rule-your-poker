@@ -27,7 +27,7 @@ import triInvalid from '@/assets/audio/tritowers-invalid-b.wav?url';
 import run21Bust from '@/assets/audio/run21-bust-b.wav?url';
 
 const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, cupRoll, quintzeeRoll, dropCountdown, chucky, farkleBust, upperBonus, allFilled, chip, triInvalid, run21Bust};
-export type ApprovedSound = keyof typeof files | 'cribbageHighlight';
+export type ApprovedSound = keyof typeof files | 'cribbageHighlight' | 'riffle';
 const cues = new Map<ApprovedSound, AudioCue>();
 const countdown = new Map<string, AudioCue>();
 let loading: Promise<void> | undefined;
@@ -68,6 +68,7 @@ export function preloadApprovedSounds() {
       const response = await fetch(url);
       if (!response.ok) return;
       const pcm = decodePCM(await response.arrayBuffer());
+      if(name==='slide')paperRecording=pcm;
       const cue = name==='chucky'?pcmCue(pcm,0,400):pcmCue(pcm);
       if (name === 'dropCountdown') ['3','2','1'].forEach((beat,i) =>
         countdown.set(beat, {...pcmCue(pcm,i*900,180),policy:policies.dropCountdown}));
@@ -96,7 +97,21 @@ export const cribbageHighlightCue: AudioCue = {
     return true;
   },
 };
+// Keep the source so the solo shuffle can reuse the approved paper recording on demand.
+let paperRecording: ReturnType<typeof decodePCM> | undefined;
+function riffleSound(pcm:ReturnType<typeof decodePCM>):AudioCue{
+  const samples=new Float32Array(Math.ceil(pcm.rate*.72));
+  for(let card=0;card<18;card++){
+    const start=Math.floor(pcm.rate*(.045+card*.024+card*card*.00055));
+    // The audible snap in deal-paper.wav peaks at 106 ms.
+    const cut=Math.floor(pcm.rate*(.081+(card%3)*.004));
+    const length=Math.min(Math.floor(pcm.rate*.043),pcm.samples.length-cut,samples.length-start);
+    for(let i=0;i<length;i++)samples[start+i]+=pcm.samples[cut+i]*Math.sin(Math.PI*i/length)*1.25;
+  }
+  return {...pcmCue({samples,rate:pcm.rate}),policy:{priority:25,group:'shuffle',intervalMs:0}};
+}
 export function approvedSound(name: ApprovedSound) {
+  if(name==='riffle'&&!cues.has(name)&&paperRecording)cues.set(name,riffleSound(paperRecording));
   return name === 'cribbageHighlight' ? cribbageHighlightCue : cues.get(name);
 }
 /** Exact selected recording, sliced at its three approved tone onsets. */

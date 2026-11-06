@@ -12,6 +12,20 @@ import {reset,writes} from '../../../dev/lobby-catalog/mockSupabase';
 beforeEach(()=>{reset();vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}});});afterEach(cleanup);
 function category(name:string){fireEvent.mouseDown(screen.getByRole('tab',{name}),{button:0,ctrlKey:false});}
 describe('defaults persistence and rules versions',()=>{
+ it('saves only Chucky decision timing for a solo Defaults edit',async()=>{
+   reset([...defaultsFixture.defaults,{...defaultsFixture.defaults[0],game_type:'chucky-showdown',decision_timer_seconds:30}]);
+   render(<GameDefaultsConfig open onOpenChange={()=>{}}/>);
+   fireEvent.change(await screen.findByRole('combobox',{name:'Game'}),{target:{value:'chucky-showdown'}});
+   const field=await screen.findByLabelText('Decision timer (seconds)');
+   expect((field as HTMLInputElement).value).toBe('30');
+   expect(screen.queryByLabelText('Default stake / ante ($)')).toBeNull();
+   fireEvent.change(field,{target:{value:'3'}});
+   fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));expect(writes).toHaveLength(0);
+   fireEvent.change(field,{target:{value:'45'}});
+   fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));
+   await waitFor(()=>expect(writes).toHaveLength(1));
+   expect(writes[0]).toMatchObject({key:'chucky-showdown',patch:{decision_timer_seconds:45}});
+ });
  it.each(['classic','modern'])('saves Quintzee round duration independently of decision timing (%s)',async(theme)=>{
  reset([{...defaultsFixture.defaults[0],game_type:'quintzee',quintzee_theme:theme,quintzee_round_seconds:240,decision_timer_seconds:10} as typeof defaultsFixture.defaults[number]]);
  const close=vi.fn();render(<GameDefaultsConfig open onOpenChange={close}/>);await screen.findByRole('combobox',{name:'Game'});category('Dice');fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'quintzee'}});

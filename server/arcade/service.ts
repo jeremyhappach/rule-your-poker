@@ -31,7 +31,23 @@ async function takeTwoStep(rpc:Rpc,userId:string,id:string,body:Record<string,an
  const result=await rpc('arcade_take_two_step',{p_actor:userId,p_run:id,...(body.op==='action'?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_items:body.intent.type==='pair'?body.intent.items:null}:{})});
  if(result.outcome==='stale')throw Error('arcade:stale_action');return result.projection;
 }
+async function showdownStep(rpc:Rpc,actor:string,id:string,body:Record<string,any>){
+  const command=body.op==='action';
+  if(command){
+    const intent=body.intent;
+    if(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||
+      !intent||!['press','bank','abandon'].includes(intent.type)||
+      (intent.type==='press'? !Number.isInteger(intent.level)||intent.level<1||intent.level>7 : intent.level!=null))
+      throw Error('arcade:invalid_command');
+  }
+  const response=await rpc('arcade_chucky_showdown_step',{p_actor:actor,p_run:id,...(command?{
+    p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_level:body.intent.level??null
+  }:{})});
+  if(response.outcome==='stale')throw Error('arcade:stale_action');
+  return response.projection;
+}
 export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,token:string|null=null):Promise<RunRecord>{
+ if(input.game==='chucky-showdown')return (await rpc('arcade_chucky_showdown_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='mega-card-golf')return await synchronizeMega(rpc,input as unknown as MegaRecord,actor,token) as unknown as RunRecord;
  if(input.game==='quintzee')return (await rpc('arcade_quintzee_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='boxdrop')return (await rpc('arcade_boxdrop_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
@@ -54,10 +70,15 @@ export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,toke
 }
 export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<string>,body:Record<string,any>){
  if(body.game==='mega-card-golf')return megaOperation(rpc,userId,body);
+ if(body.game==='chucky-showdown'&&body.op==='history'){
+  if(body.before!=null&&!isUuid(body.before))throw Error('arcade:invalid_request');
+  return rpc('arcade_chucky_showdown_history',{p_actor:userId,p_before:body.before??null});
+ }
  if(body.op==='leaderboard')return rpc('arcade_leaderboard',{p_actor:userId,p_game:body.game,p_window:body.window,p_result:body.result??null,...(body.ruleset?{p_ruleset:body.ruleset}:{})});
  if(!['start','state','action'].includes(body.op))throw Error('arcade:invalid_operation');
  if(body.op==='start'&&!isUuid(body.requestId))throw Error('arcade:invalid_request');
  if(body.op!=='start'&&!isUuid(body.runId))throw Error('arcade:invalid_run');
+ if(body.game==='chucky-showdown'&&body.op!=='start')return showdownStep(rpc,userId,body.runId,body);
  if(quintzeeShortcut(body))return quintzeeStep(rpc,userId,body.runId,body);
  if(boxdropShortcut(body))return boxdropStep(rpc,userId,body.runId,body);
  if(tripFlipShortcut(body))return tripFlipStep(rpc,userId,body.runId,body);
@@ -69,6 +90,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
  let row:RunRecord&{receipt?:{fingerprint:string;run_id:string}}=body.op==='start'?
   body.game==='quintzee'?await rpc('arcade_quintzee_start',{p_actor:userId,p_request:body.requestId,p_theme:body.theme??'modern'}):await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
   await rpc('arcade_load',{p_actor:userId,p_run:body.runId,p_request:body.op==='action'?body.requestId:null});
+ if(row.game==='chucky-showdown')return showdownStep(rpc,userId,row.id,body);
  if(row.game==='quintzee'){
   if(body.presentationVersion!==1)throw Error('arcade:refresh_required');
   if(body.op==='action'&&!validQuintzeeCommand(body))throw Error('arcade:invalid_command');

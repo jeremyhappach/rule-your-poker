@@ -1,0 +1,35 @@
+.cs-scene{position:fixed;inset:0;isolation:isolate;align-items:center;color:#f5ead4;background:radial-gradient(ellipse at 50% 45%,#164335,#081c19 80%);padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.cs-table{width:min(100%,58rem);height:100%;min-height:0;container-type:size;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,.88fr) minmax(0,1fr) auto minmax(0,1fr) auto;gap:min(1.4cqh,.5rem);padding:clamp(3px,1%,12px) 2.2%;border-inline:1px solid #ba98562b;background:radial-gradient(ellipse at top,#331d2090,transparent 38%),repeating-linear-gradient(85deg,#ffffff02 0 1px,transparent 1px 4px)}
+.cs-header,.cs-bank-actions,.cs-message,.cs-clock{display:flex;align-items:center}.cs-header{gap:.65rem;border-bottom:1px solid #cca15160;padding-bottom:min(1cqh,.45rem)}
+.cs-header h1{min-width:0;display:flex;align-items:center;gap:.4em;margin-right:auto;white-space:nowrap;font:bold clamp(15px,min(5.7cqw,5.6cqh),28px)/1.1 Georgia,serif;color:#f5d99d;letter-spacing:-.03em}
+.cs-header h1 svg{width:.8em;fill:currentColor}.cs-header a,.cs-header button{flex:none}.cs-header .arcade-info-button{position:static}
+.cs-band{min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);border-radius:9px;text-align:center;padding:0 2% min(1cqh,8px)}
+.cs-band h2,.cs-bank dt{color:#e0cda8;font:700 clamp(10px,1.95cqh,13px)/1.3 system-ui;letter-spacing:.11em;text-transform:uppercase}
+.cs-dealer{background:linear-gradient(100deg,transparent,#54272c59,transparent);border-bottom:1px solid #ba98562b}
+.cs-dealer h2{color:#ebb7a0}.cs-player{border-top:1px solid #ba98562b}
+.cs-cards{position:relative;display:flex;align-items:center;justify-content:center;gap:clamp(2px,1cqw,8px);min-height:0;container-type:size}
+.cs-card{height:min(96cqh,31cqw,8rem);max-width:22%;aspect-ratio:5/7;display:block;animation:cs-place .15s ease-out both}
+.cs-dealer .cs-card{height:min(96cqh,18cqw,6.4rem);max-width:13.5%}
+.cs-card>span{display:block;width:100%;height:100%}.cs-flip{animation:cs-turn .2s ease-out both}
+.cs-choice{border-block:1px solid #a47b3f66;padding:min(1.25cqh,.55rem) 0;background:#0f201b80}.cs-message{justify-content:space-between;min-height:clamp(18px,4.6cqh,32px);gap:.4rem;padding-inline:2px}
+.cs-message strong{font:bold clamp(15px,3.4cqh,23px)/1.05 Georgia,serif;color:#f3dbab}.cs-message .cs-cracked{color:#ffb2a0;letter-spacing:.02em}
+.cs-clock{gap:.5em;color:#f3dfb5;font-variant-numeric:tabular-nums;font-weight:800;font-size:clamp(11px,2.3cqh,16px)}
+.cs-clock .tri-dots i{width:100%;max-width:5px}.cs-clock .tri-dots{width:clamp(54px,20cqw,82px);display:grid;grid-template-columns:repeat(12,1fr);gap:2px}
+.cs-levels{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(2px,1cqw,7px);margin-top:min(.6cqh,5px)}
+.cs-levels button,.cs-bank-actions button{border:1px solid #d5ac67;border-radius:7px;background:linear-gradient(#324739,#15271e);color:#fff1d3;touch-action:manipulation}
+.cs-levels button{min-height:clamp(32px,7.8cqh,58px);font-variant-numeric:tabular-nums}
+.cs-levels b,.cs-levels small{display:block;line-height:1.1}.cs-levels b{font:700 clamp(16px,3.3cqh,24px)/1.1 Georgia,serif;position:relative}.cs-levels small{font-size:clamp(10px,1.8cqh,13px);color:#e1c498}
+.cs-levels svg{display:inline-block;width:.5em;height:.6em}.cs-levels [data-done=true]{opacity:.52;border-style:dashed}.cs-levels [data-selected=true]{background:#804338;box-shadow:inset 0 0 0 1px #f7ce86;opacity:1}
+.cs-bank{border:1px solid #b28d4c75;border-radius:9px;background:linear-gradient(135deg,#192c25,#101c19);padding:min(1.3cqh,11px) min(2.2cqw,15px)}
+.cs-bank dl{display:grid;grid-template-columns:1.2fr 1fr .85fr;text-align:center}.cs-bank dl>div+div{border-left:1px solid #b28d4c45}.cs-bank dt{font-size:clamp(9px,min(2.7cqw,2.3cqh),13px);letter-spacing:.045em}.cs-bank dd{font:bold clamp(15px,4.3cqh,32px)/1.1 Georgia,serif;font-variant-numeric:tabular-nums}.cs-bank dl>div:last-child dd{color:#ffd282}
+.cs-bank-actions{justify-content:space-between;gap:.5em;margin-top:min(.85cqh,8px);white-space:nowrap;font:500 clamp(11px,min(3.3cqw,2.4cqh),15px)/1.1 system-ui}.cs-bank-actions i{margin-inline:.2em}.cs-bank-actions button{padding:.32em 1.2em;color:#21190f;background:linear-gradient(#f5d48c,#c4974b);font:bold clamp(16px,4cqh,24px)/1.1 Georgia,serif}.cs-bank-actions button:disabled{filter:saturate(.35);opacity:.6}
+.cs-exit{padding-top:.65rem;border-top:1px solid #d5ac6745}.cs-exit button{margin:.3rem .7rem .3rem 0;text-decoration:underline}.cs-error{font-size:12px}.cs-error button{text-decoration:underline}.cs-message .tri-score-cell{width:auto;min-width:3rem}.cs-message .tri-score-pill{position:static}
+.cs-riffle{width:100%;height:100%;display:grid;place-items:center}.cs-riffle i{grid-area:1/1;width:auto;height:min(75cqh,18cqw);aspect-ratio:5/7;border:1px solid #deb77b;border-radius:5px;background:repeating-linear-gradient(45deg,#59302d 0 3px,#783f38 3px 5px);box-shadow:inset 0 0 0 2px #302423;animation:cs-riffle .8s both ease-in-out;animation-delay:calc(var(--i)*4ms)}
+@keyframes cs-riffle{0%{transform:translateY(calc(var(--i)*-.2px))}28%{transform:translateX(calc(var(--side)*76%)) rotate(calc(var(--side)*15deg))}58%{transform:translate(calc(var(--side)*22%),calc(var(--i)*-.7px)) rotate(calc(var(--side)*-6deg))}83%{transform:translate(calc(var(--side)*5%),calc(var(--i)*-.35px))}100%{transform:translateY(calc(var(--i)*-.2px))}}
+@keyframes cs-place{from{transform:translateY(-12%) rotate(-3deg);opacity:.1}to{transform:none;opacity:1}}@keyframes cs-turn{from{transform:perspective(400px) rotateY(-84deg)}to{transform:none}}
+@container (min-aspect-ratio: 3/2){
+  .cs-band{position:relative;display:flex;align-items:stretch;padding:0}
+  .cs-band h2{position:absolute;inset-inline-start:1%;align-self:center}
+  .cs-cards{flex:1}.cs-header .arcade-info-button,.cs-header button{min-height:30px}
+}
+@media(prefers-reduced-motion:reduce){.cs-card,.cs-flip,.cs-riffle i{animation:none}}

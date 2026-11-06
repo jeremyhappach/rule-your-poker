@@ -1,3 +1,11 @@
+# Chucky Showdown v1 — November 6, 2026 — isolated local candidate
+
+Solo Arcade Chucky Showdown is locally implemented on `codex/chucky-showdown-v1`.
+The candidate uses HOLM private draws and best-five scoring, a server-timed nine-hand
+Arcade run and immutable results. Local SQL, worker, concurrency and browser evidence
+and the deferred publication steps are in [Chucky Showdown v1](CHUCKY_SHOWDOWN_V1.md).
+Production admission and the separate Crib Lab release are outside this checkpoint.
+
 # Cribbage counting clock — November 6, 2026
 
 Cribbage uses server time from the admitted session frame and monotonic client

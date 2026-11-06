@@ -1,0 +1,38 @@
+import type {Card} from '@/lib/cardUtils';
+import type {CompletionRecord} from '@/lib/arcade/model';
+
+export type ShowdownAction = 'press' | 'bank' | 'abandon';
+export interface ShowdownCommand {
+  requestId:string;
+  revision:number;
+  roundId:string;
+  intent:{type:ShowdownAction; level?:number};
+}
+export interface ShowdownSnapshot {
+  id:string; revision:number; status:'active'|'completed'|'abandoned'; ruleset:string;
+  serverAt:number; durationMs:number; round:number; roundId:string; hand:number;
+  phase:'deal'|'decision'|'showdown'|'win'|'payout'; since:number; due:number;
+  fresh:boolean; level:number; levels:number[]; player:Card[]; community:Card[]; chucky:Card[];
+  reason:'bank'|'timeout'|'cracked'|'all'|null; beforeRisk:number; risk:number;
+  bank:number; completedRounds:number; score:number; completion:CompletionRecord|null;
+}
+
+// Presentation seeks the persisted beat. A recovered board never starts its deal over.
+export function dealFrame(v:ShowdownSnapshot, elapsed:number){
+  const shuffleAt=v.fresh?820:0, boardAt=shuffleAt+850;
+  const dealt=(offset:number,max:number)=>Math.max(0,Math.min(max,1+Math.floor((elapsed-offset)/180)));
+  return {
+    player:v.phase==='deal'&&v.fresh?dealt(0,4):4,
+    mixing:v.phase==='deal'&&elapsed>=shuffleAt&&elapsed<boardAt,
+    community:v.phase==='deal'?dealt(boardAt,4):4,
+    chucky:v.phase==='showdown'?dealt(180,v.level):v.level,
+  };
+}
+export function scoreFrame(v:ShowdownSnapshot, now:number){
+  const startDelay=v.phase==='payout'&&v.reason!=='cracked'?190:0;
+  const fraction=Math.max(0,Math.min(1,(now-v.since-startDelay)/(900-startDelay)));
+  const moving=v.phase==='win'||v.phase==='payout';
+  const risk=moving?Math.round(v.beforeRisk+(v.risk-v.beforeRisk)*fraction):v.risk;
+  const bank=v.phase==='payout'&&v.reason!=='cracked'?v.bank-risk:v.bank;
+  return {risk,bank};
+}

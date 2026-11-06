@@ -7,10 +7,12 @@ import {ASYNC_RULES_GAMES,rulesModes} from '@/lib/gameCatalog/rulesModes';
 import audit from '../../../dev/lobby-catalog/rules-audit-20261104.json';
 vi.mock('@/lib/arcade/client',()=>({arcadeRequest:vi.fn(async({game})=>{
  const {default:a}=await import('../../../dev/lobby-catalog/rules-audit-20261104.json');
+ if(game==='chucky-showdown')return {currentRuleset:'chucky-showdown/1'};
  return {currentRuleset:a.arcade.filter(r=>r.game===game).at(-1)?.id};
 })}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:vi.fn(async(_name,{p_ruleset})=>{
  const {default:a}=await import('../../../dev/lobby-catalog/rules-audit-20261104.json');
+ if(p_ruleset==='chucky-showdown/1')return {data:{version:p_ruleset,durationMs:30000},error:null};
  return {data:a.arcade.find(r=>r.id===p_ruleset)?.config,error:null};
 })}}));
 import {RulesContent} from '../rules/RulesContent';
@@ -18,8 +20,8 @@ import {GameRules} from '../GameRules';
 afterEach(cleanup);
 
 it('covers the deployed live defaults and enabled Arcade registry exactly',()=>{
- expect(GAME_CATALOG.map(g=>g.defaultsKey).sort()).toEqual(audit.defaults);
- expect(ARCADE_GAMES.map(g=>g.id).sort()).toEqual([...new Set(audit.arcade.map(r=>r.game))].sort());
+ expect(GAME_CATALOG.filter(g=>g.id!=='chucky-showdown').map(g=>g.defaultsKey).sort()).toEqual(audit.defaults);
+ expect(ARCADE_GAMES.filter(g=>g.id!=='chucky-showdown').map(g=>g.id).sort()).toEqual([...new Set(audit.arcade.map(r=>r.game))].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
 });
 it('covers every Async adapter and every explicit Arcade service dispatch',()=>{
