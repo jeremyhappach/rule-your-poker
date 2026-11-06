@@ -14,7 +14,7 @@ const rejected=async(fn,pattern)=>{
   await c.query('rollback to rejection');
 };
 
-const migration=readFileSync('supabase/migrations/20261106184346_chucky_showdown_arcade_v1.sql','utf8');
+const migration=readFileSync('supabase/migrations/20261106191752_chucky_showdown_arcade_v1.sql','utf8');
 const cards=spec=>spec.split(' ').map(t=>({rank:t.slice(0,-1),suit:{s:'♠',h:'♥',d:'♦',c:'♣'}[t.at(-1)]}));
 const unique=cs=>new Set(cs.map(c=>c.rank+c.suit)).size===cs.length;
 const rank=cs=>one('select public.holm_best_hand_value($1)',[JSON.stringify(cs)]);

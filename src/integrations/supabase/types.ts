@@ -1484,6 +1484,7 @@ export type Database = {
       }
       game_defaults: {
         Row: {
+          crib_lab_round_seconds: number
           canasta_mode: 'beginner' | 'expert'
             golf_holes: number
             golf_scoring_delay_ms: number
@@ -1530,6 +1531,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          crib_lab_round_seconds?: number
           canasta_mode?: 'beginner' | 'expert'
             golf_holes?: number
             golf_scoring_delay_ms?: number
@@ -1576,6 +1578,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          crib_lab_round_seconds?: number
           canasta_mode?: 'beginner' | 'expert'
             golf_holes?: number
             golf_scoring_delay_ms?: number

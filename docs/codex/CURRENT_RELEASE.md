@@ -1,10 +1,10 @@
-# Chucky Showdown v1 — November 6, 2026 — isolated local candidate
+# Chucky Showdown v1 — November 6, 2026 — hosted release qualification
 
-Solo Arcade Chucky Showdown is locally implemented on `codex/chucky-showdown-v1`.
-The candidate uses HOLM private draws and best-five scoring, a server-timed nine-hand
-Arcade run and immutable results. Local SQL, worker, concurrency and browser evidence
-and the deferred publication steps are in [Chucky Showdown v1](CHUCKY_SHOWDOWN_V1.md).
-Production admission and the separate Crib Lab release are outside this checkpoint.
+The solo Arcade nine-hand game uses HOLM draws and poker evaluation, individual reveal admission and automatic banking on timeout. It shares the published Crib Lab catalog and Arcade recovery worker. Hosted migration `20261106191752` passed candidate and installed rollback proofs with digest `6894ecd3a16a5fcb75917359b8d0060a`. Worker v19 matched the tested upload. The guarded activation requires the matching public release and a healthy worker. Physical PWA smoke is pending. See [Chucky Showdown qualification](CHUCKY_SHOWDOWN_V1.md).
+
+# Crib Lab v1 — November 6, 2026 — hosted qualification passed
+
+Crib Lab adds three-round solo Arcade cribbage using the canonical private shuffle, hand scorer, run receipts, recovery worker and timestamped leaderboards. The new duration default freezes at admission. Hosted migration `20261106184302` passed candidate and installed rollback proofs with digest `240b547aa5f4df0ff3dbf40faedeed06`. Recovery worker v18 passed exact source verification and reported a healthy production heartbeat. The release checkpoint is `crib-lab-v1-2026-11-06`. Arcade admission is gated on the matching public client and publication receipt. Physical PWA acceptance remains Jeremy’s smoke step. See [qualification and owner smoke](CRIB_LAB_V1.md).
 
 # Cribbage counting clock — November 6, 2026
 

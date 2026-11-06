@@ -46,7 +46,19 @@ async function showdownStep(rpc:Rpc,actor:string,id:string,body:Record<string,an
   if(response.outcome==='stale')throw Error('arcade:stale_action');
   return response.projection;
 }
+async function cribLabStep(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
+  const action=body.op==='action';
+  if(action&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||
+    !body.intent||typeof body.intent.type!=='string'||!Array.isArray(body.intent.items)||body.intent.items.length>4||
+    !body.intent.items.every((item:unknown)=>Number.isInteger(item)&&Number(item)>=0&&Number(item)<=5)))throw Error('arcade:invalid_command');
+  const result=await rpc('arcade_crib_lab_step',{p_actor:userId,p_run:id,...(action?{
+    p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_items:body.intent.items
+  }:{})});
+  if(result.outcome==='stale')throw Error('arcade:stale_action');
+  return result.projection;
+}
 export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,token:string|null=null):Promise<RunRecord>{
+ if(input.game==='crib-lab')return (await rpc('arcade_crib_lab_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='chucky-showdown')return (await rpc('arcade_chucky_showdown_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='mega-card-golf')return await synchronizeMega(rpc,input as unknown as MegaRecord,actor,token) as unknown as RunRecord;
  if(input.game==='quintzee')return (await rpc('arcade_quintzee_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
@@ -79,6 +91,8 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
  if(body.op==='start'&&!isUuid(body.requestId))throw Error('arcade:invalid_request');
  if(body.op!=='start'&&!isUuid(body.runId))throw Error('arcade:invalid_run');
  if(body.game==='chucky-showdown'&&body.op!=='start')return showdownStep(rpc,userId,body.runId,body);
+ // The locked step checks the stored game and actor before projecting any cards.
+ if(body.game==='crib-lab'&&body.op!=='start')return cribLabStep(rpc,userId,body.runId,body);
  if(quintzeeShortcut(body))return quintzeeStep(rpc,userId,body.runId,body);
  if(boxdropShortcut(body))return boxdropStep(rpc,userId,body.runId,body);
  if(tripFlipShortcut(body))return tripFlipStep(rpc,userId,body.runId,body);
@@ -91,6 +105,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
   body.game==='quintzee'?await rpc('arcade_quintzee_start',{p_actor:userId,p_request:body.requestId,p_theme:body.theme??'modern'}):await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
   await rpc('arcade_load',{p_actor:userId,p_run:body.runId,p_request:body.op==='action'?body.requestId:null});
  if(row.game==='chucky-showdown')return showdownStep(rpc,userId,row.id,body);
+ if(row.game==='crib-lab')return cribLabStep(rpc,userId,row.id,body);
  if(row.game==='quintzee'){
   if(body.presentationVersion!==1)throw Error('arcade:refresh_required');
   if(body.op==='action'&&!validQuintzeeCommand(body))throw Error('arcade:invalid_command');

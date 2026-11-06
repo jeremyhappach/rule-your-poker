@@ -1,6 +1,6 @@
-# Chucky Showdown v1 — local qualification
+# Chucky Showdown v1 — release qualification
 
-Solo Arcade candidate on `codex/chucky-showdown-v1`, based on `670f5a9f5`. This checkpoint is local. The approved 1466 × 564 master has SHA-256 `7fd28f0b57950140ededb82aff44f02e36be335a5aa4fff3f00af3212edb306b`. The two WebP banners preserve its full frame and P-Town Original ribbon. The catalog supplies its standard native Rules button.
+Solo Arcade candidate on `codex/chucky-showdown-v1`, based on `670f5a9f5`. The original local checkpoint is tagged `chucky-showdown-v1-local-qualification-2026-11-06`. The approved 1466 × 564 master has SHA-256 `7fd28f0b57950140ededb82aff44f02e36be335a5aa4fff3f00af3212edb306b`. The two WebP banners preserve its full frame and P-Town Original ribbon. The catalog supplies its standard native Rules button.
 
 ## Run and score ownership
 
@@ -35,11 +35,12 @@ node dev/chucky-showdown/browser.mjs chucky_showdown_v1_1793990800 --preview
 
 Run these commands individually. The last command serves the game at `http://127.0.0.1:15474/arcade/chucky-showdown`. It uses a synthetic account and rollback transaction. Stop it before running the database proofs. Screenshots and the browser receipt log are under `qualification.local/chucky-showdown/browser/`.
 
-## Publication steps requiring Jeremy's approval
+## Hosted release — November 6, 2026
 
-1. Finish the Crib Lab release first. Compare the final main tip with this candidate's base, then reconcile the shared catalog, Defaults, Arcade API, and recovery dispatcher in an isolated integration worktree. Retain both games' registrations. Re-run the proofs and application checks against that exact integrated revision. Resolve the existing app-suite release gate under the normal repository workflow.
-2. Capture the deployed definitions and indexes in a disposable release-equivalent database. Run the rollback proof with `20261106184346_chucky_showdown_arcade_v1.sql` as the candidate, install it there, and repeat the installed proof, concurrency test and worker test. Record the qualified authority digest. Shared-function changes since this local base require a new digest.
-3. With explicit hosted-schema approval, apply that single migration with Chucky admission closed. Verify the HOLM dependencies, service-only step grants, disabled rules, Game Defaults row and qualified authority digest. Existing runs and results require no backfill.
-4. Publish the matching bundled `supabase/functions/arcade-recovery/index.ts` worker while admission is closed. Integrate the validated application revision, use the repository's approved main push helper, and verify the Vercel deployment and recorded publication SHA. Verify a healthy recovery heartbeat.
-5. With activation approval, run `supabase/chucky-showdown/activate.sql` in one transaction with `app.chucky_showdown_release_sha` set to that verified 40-character SHA and `app.chucky_showdown_authority_hash` to the independently qualified digest. The script checks the SHA, definitions, heartbeat and frozen configuration before opening admission.
-6. Smoke on installed iPhone and Android PWAs. Check the banner, all five rows, audible riffle and seven flips, immediate mute, a crack after a win, an explicit bank, resume across a deadline and one timestamped result after nine hands. Record the accepted checkpoint after that smoke.
+The release combines Chucky with published Crib Lab commit `176c70659`. The combined app passed typecheck, the Chucky browser smoke with all seven placements and flips, the 241-test harness and 3,862 application tests. The ten existing Defaults test failures matched the base by name.
+
+Migration `20261106191752` was installed with Chucky admission closed. Candidate and installed hosted rollback proofs returned the independently qualified digest `6894ecd3a16a5fcb75917359b8d0060a`, zero fixture users, zero Chucky runs and zero enabled Chucky boards after rollback. The disposable PostgreSQL qualification used the hosted HOLM evaluator and private draw, and the hosted Arcade start, commit and leaderboard definitions. It passed both migration proofs and independent-connection races. Hosted coverage is reproducible with `supabase/tests/chucky_showdown_hosted_proof.sql`, inserting the migration at CANDIDATE_DDL for the pre-install pass.
+
+Arcade recovery v19 adds the Chucky dispatch to production v18. Its exact upload passed the loopback worker proof, including nine unattended hands and consumed-token rejection. The downloaded production worker matched the tested source and retained v18's dispatch authentication and Crib Lab route.
+
+The release tag is `chucky-showdown-v1-2026-11-06`. Admission opens through `supabase/chucky-showdown/activate.sql` after the verified Vercel SHA, database publication receipt, authority digest and recovery heartbeat agree. Jeremy's installed iPhone and Android PWA smoke covers the audible riffle and seven flips, immediate mute, a crack after a win, banking, returning across a deadline, and one timestamped result after nine hands.

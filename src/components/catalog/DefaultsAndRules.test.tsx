@@ -26,6 +26,18 @@ describe('defaults persistence and rules versions',()=>{
    await waitFor(()=>expect(writes).toHaveLength(1));
    expect(writes[0]).toMatchObject({key:'chucky-showdown',patch:{decision_timer_seconds:45}});
  });
+ it('saves only the Crib Lab duration and rejects fractional seconds',async()=>{
+  reset([{...defaultsFixture.defaults[0],game_type:'crib-lab',crib_lab_round_seconds:240} as typeof defaultsFixture.defaults[number]]);
+  const close=vi.fn();render(<GameDefaultsConfig open onOpenChange={close}/>);
+  fireEvent.change(await screen.findByRole('combobox',{name:'Game'}),{target:{value:'crib-lab'}});
+  const field=await screen.findByLabelText('Round duration (seconds)');
+  expect((field as HTMLInputElement).value).toBe('240');
+  fireEvent.change(field,{target:{value:'60.5'}});fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));
+  expect(writes).toHaveLength(0);
+  fireEvent.change(field,{target:{value:'300'}});fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));
+  await waitFor(()=>expect(close).toHaveBeenCalledWith(false));
+  expect(writes).toEqual([{table:'game_defaults',key:'crib-lab',patch:{crib_lab_round_seconds:300}}]);
+ });
  it.each(['classic','modern'])('saves Quintzee round duration independently of decision timing (%s)',async(theme)=>{
  reset([{...defaultsFixture.defaults[0],game_type:'quintzee',quintzee_theme:theme,quintzee_round_seconds:240,decision_timer_seconds:10} as typeof defaultsFixture.defaults[number]]);
  const close=vi.fn();render(<GameDefaultsConfig open onOpenChange={close}/>);await screen.findByRole('combobox',{name:'Game'});category('Dice');fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'quintzee'}});

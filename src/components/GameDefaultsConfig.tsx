@@ -26,6 +26,7 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 interface GameDefaults {
   quintzee_theme?: 'classic'|'modern';
+  crib_lab_round_seconds?: number;
   quintzee_round_seconds?: number;
   canasta_mode?:CanastaMode;
   golf_holes?: number;
@@ -181,12 +182,19 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     // Validate all numeric fields before saving
     const validationErrors: string[] = [];
 
-    const rowsToSave = defaults.filter(d => editedGames.current.has(d.game_type) || (selectedGameType==='chucky-showdown' ? d.game_type==='chucky-showdown' : d.game_type!=='chucky-showdown'));
+    const soloTimers = ['chucky-showdown','crib-lab'];
+    const rowsToSave = defaults.filter(d => editedGames.current.has(d.game_type) ||
+      (soloTimers.includes(selectedGameType) ? d.game_type===selectedGameType : !soloTimers.includes(d.game_type)));
     for (const defaultConfig of rowsToSave) {
       const gameType = defaultConfig.game_type;
       if(gameType==='chucky-showdown'){
         const seconds=Number(defaultConfig.decision_timer_seconds);
         if(!Number.isInteger(seconds)||seconds<5||seconds>60)validationErrors.push('Chucky Showdown needs a whole number from 5 to 60 seconds.');
+        continue;
+      }
+      if(gameType==='crib-lab'){
+        const seconds=Number(defaultConfig.crib_lab_round_seconds);
+        if(!Number.isInteger(seconds)||seconds<60||seconds>600)validationErrors.push('Crib Lab round duration must be a whole number from 60 to 600 seconds.');
         continue;
       }
       if(gameType==='quintzee'&&!isQuintzeeRoundSeconds(Number(defaultConfig.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial)))validationErrors.push('Quintzee: Round duration must be a whole number from 60-600 seconds');
@@ -350,6 +358,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       for (const defaultConfig of normalizedDefaults) {
         if(defaultConfig.game_type==='chucky-showdown'){
           const {error}=await supabase.from('game_defaults').update({decision_timer_seconds:defaultConfig.decision_timer_seconds}).eq('game_type','chucky-showdown');
+          if(error)throw error;
+          continue;
+        }
+        if(defaultConfig.game_type==='crib-lab'){
+          const {error}=await supabase.from('game_defaults').update({crib_lab_round_seconds:Number(defaultConfig.crib_lab_round_seconds)}).eq('game_type','crib-lab');
           if(error)throw error;
           continue;
         }
@@ -1060,6 +1073,12 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           onChange={e=>updateDefault(selectedGameType,'decision_timer_seconds',e.target.value)}/>
         <p className="text-xs text-muted-foreground">5–60 seconds. New runs freeze this duration and rank with runs using the same timer.</p></div>;
     }
+      if(selectedGameType==='crib-lab'){
+        const d=getDefaultByType('crib-lab');
+        return d&&<div className="space-y-2"><Label htmlFor="crib-lab-duration">Round duration (seconds)</Label>
+          <Input id="crib-lab-duration" type="number" inputMode="numeric" min={60} max={600} step={1} value={d.crib_lab_round_seconds??240} onChange={e=>updateDefault('crib-lab','crib_lab_round_seconds',e.target.value)}/>
+          <p className="text-xs text-muted-foreground">New games use this duration for all three rounds. Each duration has its own leaderboard.</p></div>;
+      }
       if(selectedGameType==='quintzee'){const d=getDefaultByType('quintzee');return d?<div className="space-y-2"><Label className="block" htmlFor="quintzee-theme">Theme</Label><select className="block h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="quintzee-theme" value={d.quintzee_theme??'classic'} onChange={e=>updateDefault('quintzee','quintzee_theme',e.target.value)}><option value="classic">Classic</option><option value="modern">Modern</option></select>
         <Label className="block" htmlFor="quintzee-duration">Round duration (seconds)</Label><Input id="quintzee-duration" type="number" inputMode="numeric" min={QUINTZEE_ROUND_SECONDS.min} max={QUINTZEE_ROUND_SECONDS.max} step={1} value={d.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial} onChange={e=>updateDefault('quintzee','quintzee_round_seconds',e.target.value)}/>
         <p className="text-xs">60–600 seconds per round. Applies to new Arcade runs and multiplayer matches in both themes. Active games keep their original duration. Scoring remains ×100–×300 with an 80,000-point bonus-round threshold.</p>

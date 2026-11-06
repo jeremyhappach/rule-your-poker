@@ -1,5 +1,6 @@
 // Exercise the bundled Edge entry point and live RPC contracts on loopback PostgreSQL.
 import {build} from 'esbuild';
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {connect} from '../quintzee/database.mjs';
@@ -30,8 +31,8 @@ try{
       return Response.json(value);
     }catch{return new Response('denied',{status:403});}
   };
-  const compiled=await build({entryPoints:['supabase/functions/arcade-recovery/index.ts'],bundle:true,write:false,format:'esm',platform:'node',target:'es2022'});
-  await import('data:text/javascript;base64,'+Buffer.from(compiled.outputFiles[0].contents).toString('base64'));
+  const bytes=process.argv[3]?readFileSync(process.argv[3]):(await build({entryPoints:['supabase/functions/arcade-recovery/index.ts'],bundle:true,write:false,format:'esm',platform:'node',target:'es2022'})).outputFiles[0].contents;
+  await import('data:text/javascript;base64,'+Buffer.from(bytes).toString('base64'));
   const req=t=>new Request('http://127.0.0.1',{headers:{'x-arcade-dispatch':t}});
   assert.equal((await handler(req('invalid'))).status,401);
   assert.deepEqual(await (await handler(req(token))).json(),{processed:1});
