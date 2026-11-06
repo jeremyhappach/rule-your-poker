@@ -16,15 +16,20 @@ describe('defaults persistence and rules versions',()=>{
    reset([...defaultsFixture.defaults,{...defaultsFixture.defaults[0],game_type:'chucky-showdown',decision_timer_seconds:30}]);
    render(<GameDefaultsConfig open onOpenChange={()=>{}}/>);
    fireEvent.change(await screen.findByRole('combobox',{name:'Game'}),{target:{value:'chucky-showdown'}});
-   const field=await screen.findByLabelText('Decision timer (seconds)');
+   const field=await screen.findByLabelText('Fold / Stay timer (seconds)');
    expect((field as HTMLInputElement).value).toBe('30');
    expect(screen.queryByLabelText('Default stake / ante ($)')).toBeNull();
    fireEvent.change(field,{target:{value:'3'}});
    fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));expect(writes).toHaveLength(0);
    fireEvent.change(field,{target:{value:'45'}});
+   const cracks=screen.getByLabelText('Cracks per round');
+   fireEvent.change(cracks,{target:{value:'0'}});fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));expect(writes).toHaveLength(0);
+   fireEvent.change(cracks,{target:{value:'4'}});
+   fireEvent.change(screen.getByLabelText('Folds per round'),{target:{value:'2'}});
+   fireEvent.change(screen.getByLabelText('Chucky selection timer (seconds)'),{target:{value:'15'}});
    fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));
    await waitFor(()=>expect(writes).toHaveLength(1));
-   expect(writes[0]).toMatchObject({key:'chucky-showdown',patch:{decision_timer_seconds:45}});
+   expect(writes[0]).toMatchObject({key:'chucky-showdown',patch:{decision_timer_seconds:45,chucky_selection_seconds:15,chucky_max_cracks:4,chucky_max_folds:2}});
  });
  it('saves only the Crib Lab duration and rejects fractional seconds',async()=>{
   reset([{...defaultsFixture.defaults[0],game_type:'crib-lab',crib_lab_round_seconds:240} as typeof defaultsFixture.defaults[number]]);

@@ -1484,6 +1484,9 @@ export type Database = {
       }
       game_defaults: {
         Row: {
+          chucky_selection_seconds: number
+          chucky_max_folds: number
+          chucky_max_cracks: number
           crib_lab_round_seconds: number
           canasta_mode: 'beginner' | 'expert'
             golf_holes: number
@@ -1531,6 +1534,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          chucky_selection_seconds?: number
+          chucky_max_folds?: number
+          chucky_max_cracks?: number
           crib_lab_round_seconds?: number
           canasta_mode?: 'beginner' | 'expert'
             golf_holes?: number
@@ -1578,6 +1584,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          chucky_selection_seconds?: number
+          chucky_max_folds?: number
+          chucky_max_cracks?: number
           crib_lab_round_seconds?: number
           canasta_mode?: 'beginner' | 'expert'
             golf_holes?: number

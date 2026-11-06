@@ -27,7 +27,7 @@ export async function arcadeRequest<T>(body:Record<string,unknown>):Promise<T>{
  for(let attempt=0;attempt<2;attempt++){
   let response:Response;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
-  try {if(timed)triTiming('fetch-dispatch',id,performance.now()-started,String(attempt));mark('fetch-dispatch');response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:['chucky-showdown','quintzee','eleven-up','royal-flash','boxdrop','trip-flip','take-two'].includes(body.game as string)?1:4}),signal:controller.signal});}
+  try {if(timed)triTiming('fetch-dispatch',id,performance.now()-started,String(attempt));mark('fetch-dispatch');response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:body.game==='chucky-showdown'?2:['quintzee','eleven-up','royal-flash','boxdrop','trip-flip','take-two'].includes(body.game as string)?1:4}),signal:controller.signal});}
   catch{mark('request-failed');clearTimeout(timeout);lostResponse=true;if(attempt===0)continue;throw run21?new UncertainRun21Action('Connection lost.'):timed?new UncertainTriAction('Connection lost. Reconnect to restore your game.'):Error('Connection lost. Reconnect to restore your run.');}
   finally{if(!run21)clearTimeout(timeout);}
   mark('response-headers',response.headers.get('Server-Timing')??undefined);
@@ -35,6 +35,7 @@ export async function arcadeRequest<T>(body:Record<string,unknown>):Promise<T>{
   let value:any;try{value=await response.json();}catch(e){if(run21)throw new UncertainRun21Action('Response was lost.');if(timed)throw new UncertainTriAction('Response was lost.');throw e;}finally{clearTimeout(timeout);}
   if(run21&&(response.status>=500||lostResponse&&!response.ok))throw new UncertainRun21Action('Server response uncertain.');
   if(timed&&response.status>=500)throw new UncertainTriAction('Server response uncertain.');
+  if(!response.ok&&body.game==='chucky-showdown'&&value.error==='arcade:refresh_required')throw Object.assign(Error('Refresh to play the updated Chucky Showdown.'),{definitive:true});
   if(!response.ok&&body.game==='crib-lab')throw Object.assign(Error(messages[value.error]??(response.status>=500?'Connection uncertain. Reconnect to retry.':'Review the current cards and try again.')),{definitive:response.status<500&&!lostResponse});
   if(!response.ok&&(body.game==='quintzee'||body.game==='chucky-showdown'))throw Object.assign(Error(response.status>=500||lostResponse?'Connection uncertain. Reconnect to retry.':value.error??'arcade:database_rejected'),{definitive:response.status<500&&!lostResponse});
   if(!response.ok&&['eleven-up','royal-flash','boxdrop','trip-flip','take-two'].includes(body.game as string))throw Error(response.status>=500||lostResponse?'Connection uncertain. Reconnect to retry.':value.error??'arcade:database_rejected');

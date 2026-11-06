@@ -1,7 +1,7 @@
 import type {Card} from '@/lib/cardUtils';
 import type {CompletionRecord} from '@/lib/arcade/model';
 
-export type ShowdownAction = 'press' | 'bank' | 'abandon';
+export type ShowdownAction = 'press' | 'bank' | 'fold' | 'stay' | 'abandon';
 export interface ShowdownCommand {
   requestId:string;
   revision:number;
@@ -36,3 +36,17 @@ export function scoreFrame(v:ShowdownSnapshot, now:number){
   const bank=v.phase==='payout'&&v.reason!=='cracked'?v.bank-risk:v.bank;
   return {risk,bank};
 }
+
+export interface V2Config {version:'chucky-showdown/2';foldMs:number;selectMs:number;maxFolds:number;maxCracks:number}
+export interface V2Scene {
+  round:number;hand:number;roundId:string;
+  phase:'deal'|'fold_stay'|'board_reveal'|'choose'|'showdown'|'win'|'crack'|'round_over';
+  since:number;due:number;player:Card[];community:Card[];chucky:Card[];
+  folds:number;cracks:number;uses:number[];level:number;risk:number;beforeRisk:number;score:number;
+  reason:'folds'|'exhausted'|'busted'|null;best:Card[]|null;label:string|null;tie:boolean|null;
+}
+export interface V2Snapshot extends V2Scene, Pick<ShowdownSnapshot,'id'|'revision'|'status'|'ruleset'|'serverAt'|'completion'> {
+  config:V2Config;lastShowdown:V2Scene|null;lastRound:V2Scene|null;
+}
+export type ShowdownView=ShowdownSnapshot|V2Snapshot;
+export const isV2=(v:ShowdownView):v is V2Snapshot=>'uses' in v;

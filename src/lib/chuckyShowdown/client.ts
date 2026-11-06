@@ -1,10 +1,10 @@
 import {supabase} from '@/integrations/supabase/client';
 import {arcadeRequest} from '@/lib/arcade/client';
-import type {ShowdownCommand,ShowdownSnapshot} from './model';
+import type {ShowdownCommand,ShowdownView} from './model';
 
 export interface ShowdownTransport {
-  load:()=>Promise<ShowdownSnapshot>;
-  send:(command:ShowdownCommand)=>Promise<ShowdownSnapshot>;
+  load:()=>Promise<ShowdownView>;
+  send:(command:ShowdownCommand)=>Promise<ShowdownView>;
   subscribe:(changed:()=>void,status:(connected:boolean)=>void)=>()=>void;
 }
 export function chuckyShowdownTransport(id:string):ShowdownTransport {

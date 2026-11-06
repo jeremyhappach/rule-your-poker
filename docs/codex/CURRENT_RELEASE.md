@@ -1,3 +1,7 @@
+# Chucky Showdown v2 — November 6, 2026 — hosted release qualification
+
+Three variable-length Fold/Stay rounds replace the nine-hand format for newly admitted v2 runs. V1 runs and scores retain their original rules and boards. The five-row display adds two hidden community cards, per-round resources, individual 720 ms Chucky reveals, winning-five highlights, and synchronized glass and descending-score audio. Hosted migration `20261106210547` passed pre-install and installed rollback proofs. Activation checks the release SHA, authority digest, recovery heartbeat and real-money play. Physical iPhone acceptance is pending. See [qualification and owner smoke](CHUCKY_SHOWDOWN_V2.md).
+
 # Chucky Showdown v1 — November 6, 2026 — hosted release qualification
 
 The solo Arcade nine-hand game uses HOLM draws and poker evaluation, individual reveal admission and automatic banking on timeout. It shares the published Crib Lab catalog and Arcade recovery worker. Hosted migration `20261106191752` passed candidate and installed rollback proofs with digest `6894ecd3a16a5fcb75917359b8d0060a`. Worker v19 matched the tested upload. The guarded activation requires the matching public release and a healthy worker. Physical PWA smoke is pending. See [Chucky Showdown qualification](CHUCKY_SHOWDOWN_V1.md).

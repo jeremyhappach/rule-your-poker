@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {connect} from '../quintzee/database.mjs';
-const db=process.argv[2];if(!/^chucky_showdown_v1_\d+$/.test(db??''))throw Error('Expected Chucky Showdown fixture database');
+const db=process.argv[2];if(!/^chucky_showdown_v[12]_\d+$/.test(db??''))throw Error('Expected Chucky Showdown fixture database');
 const c=await connect(db),user=randomUUID(),token=randomUUID(),rawFetch=globalThis.fetch;
 let handler;
 try{
@@ -12,7 +12,9 @@ try{
   await c.query('insert into auth.users(id) values($1)',[user]);
   await c.query('insert into public.account_access(user_id,enabled,ever_enabled) values($1,true,true) on conflict(user_id) do update set enabled=true,ever_enabled=true',[user]);
   await c.query('insert into public.profiles(id,username,is_active) values($1,$2,true) on conflict(id) do update set is_active=true',[user,'Lab '+user.slice(0,8)]);
-  await c.query("update private.arcade_rulesets set enabled=true where id='chucky-showdown/1'");
+  const ruleset=db.startsWith('chucky_showdown_v2_')?'chucky-showdown/2':'chucky-showdown/1';
+  await c.query("update private.arcade_rulesets set enabled=false where game='chucky-showdown' and enabled");
+  await c.query("update private.arcade_rulesets set enabled=true where id=$1",[ruleset]);
   await c.query("update private.arcade_recovery_state set failure=null,last_completed_at=clock_timestamp(),claimed=false,token=$1,expires_at=clock_timestamp()+interval '1 minute'",[token]);
   const {id}=(await c.query("select public.arcade_start($1,$2,'chucky-showdown')->>'id' id",[user,randomUUID()])).rows[0];
   await c.query('select public.arcade_chucky_showdown_step($1,$2)',[user,id]);

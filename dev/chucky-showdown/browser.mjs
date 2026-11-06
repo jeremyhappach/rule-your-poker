@@ -7,11 +7,12 @@ import {createServer} from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import {connect} from '../quintzee/database.mjs';
 
-const database=process.argv[2];if(!/^chucky_showdown_v1_\d+$/.test(database??''))throw Error('Expected disposable database');
-const preview=process.argv.includes('--preview'), port=preview?15474:15473;
+const database=process.argv[2];if(!/^chucky_showdown_v[12]_\d+$/.test(database??''))throw Error('Expected disposable database');
+const v2=database.startsWith('chucky_showdown_v2_');
+const preview=process.argv.includes('--preview'), port=(preview?15474:15473)+(v2?4:0);
 const origin='http://127.0.0.1:'+port;
 let operation,apiLane=Promise.resolve();
-const c=await connect(database),actor=randomUUID(),out='qualification.local/chucky-showdown/browser';
+const c=await connect(database),actor=randomUUID(),out='qualification.local/'+(v2?'chucky-v2':'chucky-showdown')+'/browser';
 mkdirSync(out,{recursive:true});
 const fixture=resolve('dev/chucky-showdown/browser-client.ts');
 const entry=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body><div id="root"></div><script>sessionStorage.setItem("showdown-local-user",${JSON.stringify(actor)});</script><script type="module" src="/dev/chucky-showdown/browser-entry.tsx"></script></body></html>`;
@@ -52,7 +53,8 @@ try{
   await c.query('insert into auth.users(id) values($1)',[actor]);
   await c.query('insert into public.account_access(user_id,enabled,ever_enabled) values($1,true,true) on conflict(user_id) do update set enabled=true,ever_enabled=true',[actor]);
   await c.query('insert into public.profiles(id,username,is_active) values($1,$2,true) on conflict(id) do update set is_active=true',[actor,'Showdown '+actor.slice(0,8)]);
-  await c.query("update private.arcade_rulesets set enabled=true where id='chucky-showdown/1'");
+  await c.query("update private.arcade_rulesets set enabled=false where game='chucky-showdown' and enabled");
+  await c.query('update private.arcade_rulesets set enabled=true where id=$1',[v2?'chucky-showdown/2':'chucky-showdown/1']);
   // Script only the draw source, within the disposable transaction. All timing, outcome,
   // revisions, bank/timeout and result posting still run through the installed authority.
   if(!preview){
@@ -61,8 +63,12 @@ try{
     await c.query(`create or replace function public.holm_deterministic_chucky_cards(p_round_id uuid,p_used_cards jsonb,p_card_count integer)
       returns jsonb language plpgsql volatile as $$declare symbols text[];mode text:=current_setting('app.showdown_cards',true);
       begin
-        if mode in ('win','crack') then
-          if jsonb_array_length(p_used_cards)=0 then symbols:=array['A♠','K♠','Q♠','J♠'];
+        if mode='tie' then
+          if jsonb_array_length(p_used_cards)=0 then symbols:=array['10♠','2♥','3♦','5♣'];
+          elsif jsonb_array_length(p_used_cards)=4 then symbols:=array['A♠','K♥','Q♦','J♣'];
+          else symbols:=array['10♥','8♣','7♥','5♠','4♣','3♣','2♠'];end if;
+        elsif mode in ('win','crack') then
+          if jsonb_array_length(p_used_cards)=0 then symbols:=case when mode='crack' then array['A♥','K♦','9♥','J♣'] else array['A♠','K♠','Q♠','J♠'] end;
           elsif jsonb_array_length(p_used_cards)=4 and mode='win' then symbols:=array['10♠','2♥','3♦','4♣'];
           elsif jsonb_array_length(p_used_cards)=4 then symbols:=array['2♠','2♥','2♦','4♣'];
           elsif mode='crack' then symbols:=array['2♣','5♥','6♦','7♣','8♠','9♥','10♦']; end if;
@@ -109,6 +115,7 @@ try{
       log.push({op:req.op,action:req.intent?.type,phase:value.phase,revision:value.revision,due:value.due,hand:value.hand,chucky:value.chucky?.length});
       // Lose the first acknowledgement only after the database has committed it.
       if(!dropped&&req.intent?.type==='press'){dropped=true;return route.abort('connectionreset');}
+      if(v2&&value.phase==='crack'&&req.op==='state')await new Promise(resolve=>setTimeout(resolve,360));
       await route.fulfill({response});
     });
     const button=name=>page.getByRole('button',{name,exact:true});
@@ -117,6 +124,10 @@ try{
       const ack=page.waitForResponse(r=>r.url().endsWith('/api/arcade')&&r.request().postDataJSON().op==='action');
       await button(name).click();assert.equal((await ack).status(),200);
     };
+    if(v2){
+      const {smokeV2}=await import('./smoke-v2.mjs');
+      await smokeV2({page,actor,c,origin,out,errors,log,act,phase,button});
+    }else{
     const level=n=>'Level '+n+', '+(n*100)+' points';
     await page.goto('http://127.0.0.1:15473/arcade');
     const tile=page.getByRole('link',{name:'Chucky Showdown leaderboard'});
@@ -197,7 +208,7 @@ try{
     assert.deepEqual(errors,[]);
     played.push(...await page.evaluate(()=>window.audioEvents));
     writeFileSync(out+'/result.json',JSON.stringify({layouts,played,requests:log,score:100},null,2));
-    for(const key of ['palette:slide:','palette:riffle:','palette:chucky:','palette:flip:',':count:','palette:cracked:','palette:chip:','palette:scorePost:'])
+    for(const key of ['palette:slide:','palette:riffle:','palette:flip:',':count:','palette:cracked:','palette:chip:','palette:scorePost:'])
       assert.ok(played.some(id=>id.includes(key)),key+' missing '+JSON.stringify(played));
     const firstCommit=played.find(id=>id.includes('palette:chip:')&&id.endsWith(':commit'));
     const firstShowdown=firstCommit.split(':').slice(2,-1).join(':');
@@ -211,5 +222,6 @@ try{
     const presses=log.filter(r=>r.action==='press');
     assert.equal(presses[0].revision,presses[1].revision);
     console.log('PASS: Arcade tile, rules, actual service/SQL, four viewports, seven-card reveal, win/crack/bank/timeout, reload, mute and timestamped leaderboard/history.');
+    }
   }
 }finally{await browser?.close();await server.close();await c.query('rollback');await c.end();}

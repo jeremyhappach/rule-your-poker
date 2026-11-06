@@ -36,9 +36,13 @@ async function showdownStep(rpc:Rpc,actor:string,id:string,body:Record<string,an
   if(command){
     const intent=body.intent;
     if(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||
-      !intent||!['press','bank','abandon'].includes(intent.type)||
+      !intent||!['press','bank','fold','stay','abandon'].includes(intent.type)||
       (intent.type==='press'? !Number.isInteger(intent.level)||intent.level<1||intent.level>7 : intent.level!=null))
       throw Error('arcade:invalid_command');
+  }
+  if(body.presentationVersion!==2){
+    const stored=await rpc('arcade_load',{p_actor:actor,p_run:id,p_request:null});
+    if(stored.config?.version==='chucky-showdown/2')throw Error('arcade:refresh_required');
   }
   const response=await rpc('arcade_chucky_showdown_step',{p_actor:actor,p_run:id,...(command?{
     p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_level:body.intent.level??null
@@ -82,6 +86,7 @@ export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,toke
 }
 export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<string>,body:Record<string,any>){
  if(body.game==='mega-card-golf')return megaOperation(rpc,userId,body);
+ if(body.game==='chucky-showdown'&&body.op==='start'&&body.presentationVersion!==2)throw Error('arcade:refresh_required');
  if(body.game==='chucky-showdown'&&body.op==='history'){
   if(body.before!=null&&!isUuid(body.before))throw Error('arcade:invalid_request');
   return rpc('arcade_chucky_showdown_history',{p_actor:userId,p_before:body.before??null});

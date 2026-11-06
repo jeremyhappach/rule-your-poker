@@ -34,6 +34,9 @@ interface GameDefaults {
   golf_results_duration_ms?: number;
   id: string;
   game_type: string;
+  chucky_selection_seconds?:number;
+  chucky_max_folds?:number;
+  chucky_max_cracks?:number;
   decision_timer_seconds: number;
   chucky_second_to_last_delay_seconds: number;
   chucky_last_card_delay_seconds: number;
@@ -79,6 +82,12 @@ interface SessionDealerDrawTieHarnessStatus {
   consumedGameId?: string | null;
 }
 
+const chuckySettings=[
+  ['decision_timer_seconds','Fold / Stay timer (seconds)',5,60],
+  ['chucky_selection_seconds','Chucky selection timer (seconds)',5,60],
+  ['chucky_max_folds','Folds per round',1,7],
+  ['chucky_max_cracks','Cracks per round',1,7],
+] as const;
 export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigProps) {
   const { enabled: harnessesModeEnabled, loading: harnessesModeLoading, toggle: toggleHarnessesMode } = useHarnessesMode();
   const editedGames=useRef(new Set<string>());
@@ -190,6 +199,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       if(gameType==='chucky-showdown'){
         const seconds=Number(defaultConfig.decision_timer_seconds);
         if(!Number.isInteger(seconds)||seconds<5||seconds>60)validationErrors.push('Chucky Showdown needs a whole number from 5 to 60 seconds.');
+        for(const [field,label,min,max] of chuckySettings.slice(1)){
+          const value=Number(defaultConfig[field]??(min===5?30:3));
+          if(!Number.isInteger(value)||value<min||value>max)validationErrors.push(label+' must be a whole number from '+min+' to '+max+'.');
+        }
         continue;
       }
       if(gameType==='crib-lab'){
@@ -357,7 +370,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     try {
       for (const defaultConfig of normalizedDefaults) {
         if(defaultConfig.game_type==='chucky-showdown'){
-          const {error}=await supabase.from('game_defaults').update({decision_timer_seconds:defaultConfig.decision_timer_seconds}).eq('game_type','chucky-showdown');
+          const {error}=await supabase.from('game_defaults').update({decision_timer_seconds:defaultConfig.decision_timer_seconds,chucky_selection_seconds:Number(defaultConfig.chucky_selection_seconds??30),chucky_max_folds:Number(defaultConfig.chucky_max_folds??3),chucky_max_cracks:Number(defaultConfig.chucky_max_cracks??3)}).eq('game_type','chucky-showdown');
           if(error)throw error;
           continue;
         }
@@ -1068,10 +1081,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
   const renderSettingsForGameType = () => {
     if(selectedGameType==='chucky-showdown'){
       const d=getDefaultByType(selectedGameType);
-      return d&&<div className="space-y-2"><Label htmlFor="showdown-clock">Decision timer (seconds)</Label>
-        <Input id="showdown-clock" type="number" inputMode="numeric" min={5} max={60} step={1} value={d.decision_timer_seconds}
-          onChange={e=>updateDefault(selectedGameType,'decision_timer_seconds',e.target.value)}/>
-        <p className="text-xs text-muted-foreground">5–60 seconds. New runs freeze this duration and rank with runs using the same timer.</p></div>;
+      return d&&<div className="space-y-2">{chuckySettings.map(([field,label,min,max])=><div key={field}>
+        <Label htmlFor={field}>{label}</Label><Input id={field} type="number" inputMode="numeric" min={min} max={max} step={1}
+          value={d[field]??(min===5?30:3)} onChange={e=>updateDefault(selectedGameType,field,e.target.value)}/></div>)}
+        <p className="text-xs text-muted-foreground">New runs freeze these four settings. Matching configurations share a leaderboard.</p></div>;
     }
       if(selectedGameType==='crib-lab'){
         const d=getDefaultByType('crib-lab');

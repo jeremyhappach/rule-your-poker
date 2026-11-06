@@ -1,19 +1,21 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {createAuthoritativeSubscription,retireAcknowledgedCommand,scheduleAuthoritativeBoundary} from '@/lib/authoritativeSubscription';
 import type {ShowdownTransport} from '@/lib/chuckyShowdown/client';
-import type {ShowdownAction,ShowdownCommand,ShowdownSnapshot} from '@/lib/chuckyShowdown/model';
+import type {ShowdownAction,ShowdownCommand,ShowdownView} from '@/lib/chuckyShowdown/model';
 
 export function useChuckyShowdown(id:string,userId:string,transport:ShowdownTransport,liveEntry:boolean){
-  const [snapshot,setSnapshot]=useState<ShowdownSnapshot|null>(null),[now,setNow]=useState(0);
+  const [snapshot,setSnapshot]=useState<ShowdownView|null>(null),[now,setNow]=useState(0);
   const [ready,setReady]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState('');
   const [uncertain,setUncertain]=useState(false);
   const [choice,setChoice]=useState<{revision:number;level?:number;at:number}|null>(null);
+  const [recoveryEpoch,setRecoveryEpoch]=useState(0);
   const [livePhase,setLivePhase]=useState('');
-  const latest=useRef<ShowdownSnapshot|null>(null),clock=useRef({at:0,local:0});
+  const latest=useRef<ShowdownView|null>(null),clock=useRef({at:0,local:0});
   const lane=useRef<ReturnType<typeof createAuthoritativeSubscription>|null>(null),busy=useRef(false),epoch=useRef(0);
+  const silent=useRef<ShowdownView|null>(null);
   const bornEnded=useRef(false),mounted=useRef(false);
   const key='ptown:chucky-showdown:1:'+userId+':'+id;
-  const accept=useCallback((next:ShowdownSnapshot,recovering:boolean)=>{
+  const accept=useCallback((next:ShowdownView,recovering:boolean)=>{
     if(!mounted.current||next.id!==id)return false;
     const prev=latest.current;
     if(prev&&next.revision<prev.revision)return false;
@@ -27,6 +29,7 @@ export function useChuckyShowdown(id:string,userId:string,transport:ShowdownTran
     }
     const local=performance.now();
     const at=prev?Math.max(next.serverAt,clock.current.at+local-clock.current.local):next.serverAt;
+    silent.current=recovering?next:null;
     latest.current=next;clock.current={at,local};
     setSnapshot(next);setNow(at);setError('');return true;
   },[id,liveEntry]);
@@ -54,7 +57,7 @@ export function useChuckyShowdown(id:string,userId:string,transport:ShowdownTran
     mounted.current=true;
     const recovery=createAuthoritativeSubscription({
       subscribe:transport.subscribe,load:transport.load,apply:accept,connected:setReady,error:e=>setError((e as Error).message),
-      interrupt:()=>{epoch.current++;setLivePhase('');},
+      interrupt:()=>{epoch.current++;setRecoveryEpoch(epoch.current);setLivePhase('');},
       recoverPending:()=>submit(),
     });
     lane.current=recovery;
@@ -67,10 +70,10 @@ export function useChuckyShowdown(id:string,userId:string,transport:ShowdownTran
     const v=latest.current;
     if(!v||v.status!=='active'||!lane.current?.isReady()||busy.current||sessionStorage.getItem(key))return;
     const at=clock.current.at+performance.now()-clock.current.local;
-    if(type!=='abandon'&&(v.phase!=='decision'||at>=v.due))return;
+    if(type!=='abandon'&&(!['decision','fold_stay','choose'].includes(v.phase)||at>=v.due))return;
     const command:ShowdownCommand={requestId:crypto.randomUUID(),revision:v.revision,roundId:v.roundId,intent:{type,level}};
     setChoice({revision:v.revision,level,at});
     sessionStorage.setItem(key,JSON.stringify(command));void submit(true);
   }
-  return {snapshot,now,ready,pending,error:error||(uncertain?'Reconnect to confirm your last move.':''),livePhase,choice:pending&&choice?.revision===snapshot?.revision?choice:null,act,bornEnded:bornEnded.current,reconnect:()=>void lane.current?.recover()};
+  return {snapshot,now,ready,pending,recoveryEpoch,silent:silent.current===snapshot,error:error||(uncertain?'Reconnect to confirm your last move.':''),livePhase,choice:pending&&choice?.revision===snapshot?.revision?choice:null,act,bornEnded:bornEnded.current,reconnect:()=>void lane.current?.recover()};
 }

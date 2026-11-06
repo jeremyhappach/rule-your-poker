@@ -1,8 +1,9 @@
-import {memo,useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
+import {useEffect,useMemo,useRef} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
 import {ArrowLeft,Check,Spade} from 'lucide-react';
 import {ArcadeInfo} from './ArcadeInfo';
-import {PlayingCard} from '@/components/PlayingCard';
+import {CardSlot,EndRun,Riffle} from './ChuckyTableParts';
+import {ChuckyRoundTable} from './ChuckyRoundTable';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {CountdownDots} from '@/components/ui/CountdownDots';
 import {ArcadeCompletion} from '@/components/run21/ArcadeCompletion';
@@ -14,29 +15,9 @@ import type {ApprovedSound} from '@/lib/audio/approvedSounds';
 import {useChuckyShowdown} from '@/hooks/useChuckyShowdown';
 import {chuckyShowdownTransport} from '@/lib/chuckyShowdown/client';
 import {dealFrame,scoreFrame,type ShowdownSnapshot} from '@/lib/chuckyShowdown/model';
-import type {Card} from '@/lib/cardUtils';
+import {isV2} from '@/lib/chuckyShowdown/model';
 import './chuckyShowdown.css';
 
-const CardSlot=memo(function CardSlot({card,flip}:{card?:Card;flip?:boolean}){
-  return <span className="cs-card" aria-label={card?card.rank+card.suit:'Face-down card'}>
-    <span key={card?'face':'back'} className={card&&flip?'cs-flip':''}>
-      <PlayingCard frontStyle="megatouch" size="sm" card={card} isHidden={!card} style={{width:'100%',height:'100%'}}/>
-    </span></span>;
-});
-function EndRun({disabled,abandon}:{disabled:boolean;abandon:()=>void}){
-  const [confirm,setConfirm]=useState(false);
-  return <div className="cs-exit">
-    {confirm?<><p>End this run without a leaderboard score?</p>
-      <button disabled={disabled} onClick={abandon}>End run</button>
-      <button onClick={()=>setConfirm(false)}>Keep playing</button></>:
-      <button disabled={disabled} onClick={()=>setConfirm(true)}>Abandon run</button>}
-  </div>;
-}
-function Riffle(){
-  return <div className="cs-riffle" role="img" aria-label="Shuffling the remaining deck">
-    {Array.from({length:12},(_,i)=><i key={i} style={{'--side':i%2===0?-1:1,'--i':i} as CSSProperties}/>)}
-  </div>;
-}
 const roundBannerAt=(v:ShowdownSnapshot)=>v.since+(v.reason==='cracked'?1800:1150);
 function phaseSounds(v:ShowdownSnapshot):[number,ApprovedSound,string][]{
   const beats:[number,ApprovedSound,string][]=[];
@@ -51,9 +32,7 @@ function phaseSounds(v:ShowdownSnapshot):[number,ApprovedSound,string][]{
   }else if(v.phase==='showdown'){
     beats.push([0,'chip','commit']);
     cards(v.level,180,'chucky');
-    // The approved 400 ms heartbeat leads into the first flip. Overlapping it
-    // with a flip would suppress the quieter card cue in the shared audio manager.
-    beats.push([v.level*180+90,'chucky','heartbeat']);
+
   }else if(v.phase==='payout'){
     beats.push([0,v.reason==='cracked'?'cracked':'chip','payout']);
     if(v.hand%3===0)beats.push([roundBannerAt(v)-v.since,'scorePost','round']);
@@ -71,11 +50,17 @@ function status(v:ShowdownSnapshot,roundClosed:boolean){
 
 export function SoloChuckyShowdown({runId,userId}:{runId:string;userId:string}){
   const transport=useMemo(()=>chuckyShowdownTransport(runId),[runId]);
-  const liveEntry=useRef(hasTriStart(runId)),root=useRef<HTMLDivElement>(null),navigate=useNavigate();
+  const liveEntry=useRef(hasTriStart(runId));
   const game=useChuckyShowdown(runId,userId,transport,liveEntry.current);
-  const v=game.snapshot, now=game.now, phaseKey=v?v.phase+':'+v.since:'';
-  const live=!!v&&phaseKey===game.livePhase;
   useEffect(()=>{retireTriStart(runId);},[runId]);
+  const v=game.snapshot;
+  if(!v)return <main className="arcade-page"><p role="status">{game.error||'Dealing Chucky Showdown…'}</p>{game.error&&<button onClick={game.reconnect}>Reconnect</button>}</main>;
+  return isV2(v)?<ChuckyRoundTable game={game} v={v} userId={userId}/>:<LegacyTable game={game} v={v} userId={userId}/>;
+}
+function LegacyTable({game,v,userId}:{game:ReturnType<typeof useChuckyShowdown>;v:ShowdownSnapshot;userId:string}){
+  const runId=v.id,root=useRef<HTMLDivElement>(null),navigate=useNavigate();
+  const now=game.now,phaseKey=v.phase+':'+v.since;
+  const live=!!v&&phaseKey===game.livePhase;
   useEffect(()=>{
     if(!v||!live)return;
     const timers:ReturnType<typeof setTimeout>[]=[];
@@ -110,7 +95,6 @@ export function SoloChuckyShowdown({runId,userId}:{runId:string;userId:string}){
       navigate('/arcade/chucky-showdown?result='+runId,{replace:true});
   },[v,live,game.bornEnded,now,navigate,runId]);
 
-  if(!v)return <main className="arcade-page"><p role="status">{game.error||'Dealing Chucky Showdown…'}</p>{game.error&&<button onClick={game.reconnect}>Reconnect</button>}</main>;
   const frames=dealFrame(v,now-v.since),score=scoreFrame(v,now);
   const decision=v.phase==='decision',left=decision?Math.max(0,v.due-(game.choice?.at??now)):0;
   const canAct=decision&&left>0&&game.ready&&!game.pending;
