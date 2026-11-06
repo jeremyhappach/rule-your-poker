@@ -972,11 +972,11 @@ export const CribbageCountingPhase = ({
 
 
 
-    // Apply skip-ahead state if we're past the start
+    // The first target can already be scoring while it still has no highlighted combo.
+    setTransitionPhase(skipPhase);
     if (skipTargetIndex > 0 || skipComboIndex > -1) {
       setCurrentTargetIndex(skipTargetIndex);
       setCurrentComboIndex(skipComboIndex);
-      setTransitionPhase(skipPhase);
 
       // A reconnect can land directly on a highlighted combo. Its rail text
       // must be restored with that highlight, rather than leaving the rail to

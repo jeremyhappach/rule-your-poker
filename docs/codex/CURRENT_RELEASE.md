@@ -1,3 +1,34 @@
+# Cribbage counting transition — November 6, 2026
+
+The counting screen now applies the recovered scoring phase during the half-second
+before the first combination highlights. Elapsed-time and saved-beat recovery
+keep their existing precedence and animation durations. The correction is
+presentation-only. Physical Android Chrome / iPhone Safari smoke is pending.
+
+The mounted component regression failed on the previous build at 2,800, 3,000
+and 3,299 ms. All three now advance. The 2,799 and 3,300 ms controls and a saved
+scoring beat also pass. Two independent Edge contexts used the final player's
+action response and the opponent's fetched PostgreSQL state in an isolated
+fixture. With the final actor reversed, both counted both hands without a reload.
+Across the three browser runs (150 / 900 ms delivery, +1,445 / +2,115 ms clock
+offset), each client presented all three targets, scheduled seven highlight
+cues once each and reached the database score. A deliberate peer reload during
+a host pause restored the active beat silently and subsequent highlights played
+once through completion after resume.
+
+The current Cribbage authority and atomic postgame rollback proofs passed,
+including settlement replay and balances. The older, pre-authority counting
+lease fixture writes a public round directly and cannot run unmodified against
+the private-state schema. App typecheck, production bundle, 267 focused tests
+and 241 harness tests passed. The full app suite passed 3,845 tests and retained
+the ten previously documented Defaults failures.
+
+In a separate clock test, with no saved beat, a simulated clock two minutes ahead
+skipped the visible count and requested completion. A saved beat took precedence
+under the same offset. Consider anchoring elapsed time and release retries to a
+server timestamp and monotonic client time, including time spent paused.
+Release tag `release-cribbage-counting-transition-20261106`.
+
 # Async latency, Run21 controls and Words timed turns — November 6, 2026
 
 Async Run21 shows the pending card and column. Take 2 retains a second exposed pair.
