@@ -7,7 +7,8 @@ const db=await connect(database);
 try{
  for(const suffix of ['async_words_read_only_inspection','delayed_board_action','async_words_play_clock']){
   const file=readdirSync('supabase/migrations').find(name=>name.endsWith('_'+suffix+'.sql'));
-  await db.query(readFileSync(file?'supabase/migrations/'+file:'supabase/delayed/words-play-clock.sql','utf8'));
+  if(!file)throw Error('Missing migration '+suffix);
+  await db.query(readFileSync('supabase/migrations/'+file,'utf8'));
  }
  await db.query("UPDATE private.delayed_words_health SET enabled=true,last_tick=clock_timestamp()");
  console.log(database);

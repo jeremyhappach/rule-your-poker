@@ -42,8 +42,8 @@ try{
  }
  const observer=await open(first);await observer.locator('.words-view-only').waitFor();assert.equal((await row()).deadline,null);
  const page=await open(second);await page.locator('.words-rack').waitFor();assert.equal((await row()).deadline,null);
- await page.locator('.words-turn-announcement').waitFor({timeout:15000});assert.equal((await row()).deadline,null);assert.equal(await page.locator('.words-rack button:enabled').count(),0);
- await page.locator('.words-bank:enabled').first().waitFor();assert.equal(await page.locator('.words-pause').count(),0);assert.equal(await page.locator('.words-bank').count(),2);
+ await page.locator('.words-turn-announcement').waitFor({timeout:15000});assert.equal((await row()).deadline,null);assert.equal(await page.locator('.words-rack button:enabled').count(),0);assert.equal(await page.locator('.words-scores [data-active=true]').getAttribute('data-score-player'),first);
+ await page.locator('.words-bank:enabled').first().waitFor();assert.equal(await page.locator('.words-pause').count(),0);assert.equal(await page.locator('.words-bank').count(),2);assert.equal(await page.locator('.words-scores [data-active=true]').getAttribute('data-score-player'),second);
  const initial=Date.parse((await row()).deadline);
  await page.locator('.words-bank').first().click();await page.waitForFunction(()=>document.querySelectorAll('.words-bank').length===1);assert.equal(Date.parse((await row()).deadline)-initial,180000);
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('offline'));});

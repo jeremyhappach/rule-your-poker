@@ -4,7 +4,7 @@ Async Run21 shows the pending card and column. Take 2 retains a second exposed p
 Run21 puts Give Up / Take Score above Pass outside the columns in each mode.
 Quintzee and Mega show pending choices. Words uses fresh command responses.
 Ordinary Async Take 2, Quintzee and Boxdrop commands use migration `20261106145520`.
-The Words clock is qualified for new admissions after publication of the compatible client.
+The compatible client shipped at `5e096e275`. Migration `20261106150725` now admits new Words invitations with the live three-minute clock and two banks. Existing invitations and matches retain their frozen rules.
 See [release measurements, qualification and rollback](ASYNC_LATENCY_RELEASE.md).
 Physical iPhone PWA acceptance is pending. Jeremy reported improved TriTowers feel on the previous build.
 

@@ -2158,5 +2158,71 @@
         }
       ]
     }
+  ],
+  "secondPair": [
+    {
+      "mode": "async",
+      "sounds": true,
+      "responseMs": 180,
+      "pendingMs": 15,
+      "confirmedMs": 202,
+      "retaps": 0
+    },
+    {
+      "mode": "async",
+      "sounds": false,
+      "responseMs": 180,
+      "pendingMs": 16,
+      "confirmedMs": 216,
+      "retaps": 0
+    },
+    {
+      "mode": "async",
+      "sounds": true,
+      "responseMs": 600,
+      "pendingMs": 16,
+      "confirmedMs": 1032,
+      "retaps": 0
+    },
+    {
+      "mode": "async",
+      "sounds": false,
+      "responseMs": 600,
+      "pendingMs": 16,
+      "confirmedMs": 1032,
+      "retaps": 0
+    },
+    {
+      "mode": "arcade",
+      "sounds": true,
+      "responseMs": 180,
+      "pendingMs": 14,
+      "confirmedMs": 200,
+      "retaps": 0
+    },
+    {
+      "mode": "arcade",
+      "sounds": false,
+      "responseMs": 180,
+      "pendingMs": 15,
+      "confirmedMs": 215,
+      "retaps": 0
+    },
+    {
+      "mode": "arcade",
+      "sounds": true,
+      "responseMs": 600,
+      "pendingMs": 16,
+      "confirmedMs": 1049,
+      "retaps": 0
+    },
+    {
+      "mode": "arcade",
+      "sounds": false,
+      "responseMs": 600,
+      "pendingMs": 17,
+      "confirmedMs": 1049,
+      "retaps": 0
+    }
   ]
 }

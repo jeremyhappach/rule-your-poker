@@ -42,6 +42,9 @@ BEGIN
  prior:=public.delayed_words_action(c.id,gen_random_uuid(),(v->>'revision')::bigint,'time_bank','[{"slot":0}]');
  PERFORM pg_temp.verify(prior->>'error'='ptown_words:time_bank_used' AND prior->'deadline'=v->'deadline','spent bank denied');
  PERFORM pg_temp.verify((SELECT expires_at=original AND segment=1 FROM private.delayed_children WHERE id=c.id),'banks preserve availability and turn identity');
+ -- Active time can cross the original 36-hour boundary.
+ UPDATE private.delayed_children SET available_at=c.available_at-interval '37 hours',last_call_at=c.last_call_at-interval '37 hours',expires_at=original-interval '37 hours' WHERE id=c.id;
+ PERFORM pg_temp.verify(NOT private.delayed_expire(c.id,c.segment,original-interval '37 hours') AND (SELECT NOT terminal FROM private.delayed_children WHERE id=c.id),'entered clock takes precedence over availability');
  -- Playable expiry is a live-rules pass, not availability forfeiture.
  FOR n IN 1..4 LOOP
   SELECT * INTO c FROM private.delayed_children WHERE id=c.id;actor_i:=c.actor;
@@ -72,5 +75,14 @@ BEGIN
  prior:=public.delayed_words_action(c.id,first_req,first_rev,'begin_turn');
  PERFORM pg_temp.verify(prior->'revision'<>v->'revision' AND (public.delayed_words_snapshot(c.id)->>'finished')::boolean,'late receipt replay leaves terminal state');
  END LOOP;END LOOP;
+ PERFORM set_config('request.jwt.claim.sub',a::text,true);
+ m:=public.delayed_create(gen_random_uuid(),b,false,'[{"game":"ptown-words","stake":7}]');
+ PERFORM set_config('request.jwt.claim.sub',b::text,true);
+ PERFORM public.delayed_respond(m,gen_random_uuid(),(SELECT offer_hash FROM private.delayed_matches WHERE id=m),'accept');
+ SELECT * INTO c FROM private.delayed_children WHERE match_id=m;
+ UPDATE private.delayed_children SET available_at=c.available_at-interval '37 hours',last_call_at=c.last_call_at-interval '37 hours',expires_at=c.expires_at-interval '37 hours' WHERE id=c.id;
+ PERFORM set_config('request.jwt.claim.sub',c.actor::text,true);
+ v:=public.delayed_words_action(c.id,gen_random_uuid(),c.revision,'begin_turn');
+ PERFORM pg_temp.verify(v->>'error'='delayed:deadline' AND v#>>'{outcome,reason}'='timeout_forfeit','missed unentered 36-hour availability forfeits');
 END $$;
 SELECT 'passed' AS clock_and_settlement;

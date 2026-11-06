@@ -19,6 +19,16 @@ async function rpc(actor,name,args,databaseRole='service_role'){
  }catch(e){await connection.query('ROLLBACK');throw e;}finally{await connection.end();}
 }
 const child=async id=>(await db.query('SELECT * FROM private.delayed_children WHERE id=$1',[id])).rows[0];
+async function legalWord(row){
+ const fresh=await child(row.id),state=fresh.state,actor=fresh.actor;
+ const racks=[state.racks[actor],...Object.entries(state.racks).filter(([id])=>id!==actor).map(([,rack])=>rack),state.bag];
+ for(const [i,letter] of [...'CAT'].entries()){
+  const source=racks.find(r=>r.some(t=>t.face===letter)),index=source.findIndex(t=>t.face===letter);
+  [source[index],racks[0][i]]=[racks[0][i],source[index]];
+ }
+ await db.query('UPDATE private.delayed_children SET state=$2 WHERE id=$1',[row.id,JSON.stringify(state)]);
+ return racks[0].slice(0,3).map((tile,i)=>({tileId:tile.id,letter:tile.face,square:112+i}));
+}
 async function match(game){
  await db.query("UPDATE private.delayed_words_health SET enabled=true,last_tick=clock_timestamp()");
 
@@ -44,13 +54,15 @@ try{
  const c=await match('ptown-words'),actor=c.actor;
  const action=(v,type,items=null,id=randomUUID())=>rpc(actor,'delayed_words_action',{p_child:c.id,p_request:id,p_revision:Number(v.revision),p_action:type,p_items:items},'authenticated');
  let v=await action(c,'begin_turn');
- const banks=await Promise.allSettled([action(v,'time_bank',[{slot:0}]),action(v,'pass')]);assert.equal(banks.filter(x=>x.status==='fulfilled').length,1);assert.match(banks.find(x=>x.status==='rejected').reason.message,/stale_revision|not_your_turn/);
- for(const type of ['pass','time_bank']){
+ const tiles=await legalWord(c);
+ const banks=await Promise.allSettled([action(v,'time_bank',[{slot:0}]),action(v,'place',tiles)]);assert.equal(banks.filter(x=>x.status==='fulfilled').length,1);assert.match(banks.find(x=>x.status==='rejected').reason.message,/stale_revision|not_your_turn/);
+ for(const type of ['place','time_bank']){
   const row=await match('ptown-words'),p=row.actor;
   const execute=(type,v,items)=>rpc(p,'delayed_words_action',{p_child:row.id,p_request:randomUUID(),p_revision:Number(v.revision),p_action:type,p_items:items},'authenticated');
   v=await execute('begin_turn',row,null);
+  const placements=await legalWord(row);
   await db.query("UPDATE private.delayed_children SET gameplay_due_at=to_timestamp($2/1000.0),state=jsonb_set(state,'{deadline}',to_jsonb($2::bigint)) WHERE id=$1",[row.id,Date.now()-1]);
-  const result=await Promise.allSettled([execute(type,v,type==='time_bank'?[{slot:0}]:null),rpc(p,'delayed_words_snapshot',{p_child:row.id},'authenticated'),db.query('SELECT private.delayed_words_recover_local()')]);
+  const result=await Promise.allSettled([execute(type,v,type==='time_bank'?[{slot:0}]:placements),rpc(p,'delayed_words_snapshot',{p_child:row.id},'authenticated'),db.query('SELECT private.delayed_words_recover_local()')]);
   assert.equal(result[1].status,'fulfilled');assert.equal(result[2].status,'fulfilled');
   const after=await child(row.id);assert.equal(after.state.moves.length,1);assert.equal(after.state.moves[0].action,'pass');assert.equal(after.gameplay_due_at,null);assert.equal(after.state.timeBankSpent?.[p]?.length??0,0);
  }

@@ -29,3 +29,11 @@ The clock and board migrations passed rollback-contained qualification on the ho
 For board actions, restore the prior API/route behavior and drain in-flight requests before running [the additive function rollback](../../supabase/delayed/board-action-rollback.sql). Existing committed results and receipts remain authoritative.
 
 For Words, [stop new timed admissions](../../supabase/delayed/stop-timed-words-admission.sql) first. Keep the compatible client and timeout worker serving all previously issued timed invitations and matches. After those finish or expire, run [the guarded authority rollback](../../supabase/delayed/rollback-words-play-clock.sql) in a transaction. It rejects rollback with outstanding timed contracts. The prior release receipt, match history and financial postings are retained.
+
+## Publication and checks
+
+The production alias served client `5e096e2759a4bfd106ae5d6db7289e21f5acc068` on Vercel deployment `dpl_9unexg79SeLod2ooBk38gm3GhQPy` before timed Words admission opened. Installed migrations `20261106145520` and `20261106150725` both passed their hosted rollback proofs again after installation. An armed clock can cross the original availability deadline and still resume from match home. An unopened turn still forfeits at 36 hours.
+
+The targeted second-pair probe measured the actual removal of the second pair. At 600 ms per response, its final tap registered in 16 ms in Async and confirmed at 1,032 ms with either Sounds setting. Arcade registered it in 16–17 ms and confirmed at 1,049 ms. Both required zero retaps. The two authoritative moves remain serial.
+
+App TypeScript, production bundling, and 241 harness checks passed. The full app run reported the ten previously documented Defaults failures and four assertions tied to the former Pass location. The four updated assertions passed on focused reruns. Browser checks covered the 48 audit cases, eight additional second-pair probes, six Run21 viewport/layout cases, and a Words session against disposable PostgreSQL. The `release-async-latency-20261106-verified` tag records the final published SHA and deployment.
