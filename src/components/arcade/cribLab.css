@@ -11,14 +11,15 @@
 .lab-header>span {margin-left:auto;font-variant-numeric:tabular-nums;font-size:.82rem;white-space:nowrap;color:#dee7d9;}
 .lab-header>a,.lab-header>button {display:grid;place-items:center;min-width:2rem;min-height:2rem;}
 .lab-header .arcade-info-button {position:static;}
-.lab-hud {gap:1.25rem;justify-content:space-between;padding:0 .4rem;}
-.lab-meter {width:56%;max-width:16rem;}
+.lab-hud {display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:.55rem;align-items:center;padding:0 .4rem;}
+.lab-meter {width:100%;max-width:16rem;}
 .lab-meter>div:first-child {display:flex;justify-content:space-between;align-items:baseline;font-variant-numeric:tabular-nums;}
 .lab-meter b {font-size:1.05rem;letter-spacing:.04em;}
-.lab-meter span {font-size:.88rem;color:#efcd80;font-weight:bold;}
+.lab-factor {display:grid;justify-items:end;color:#efcd80;font-variant-numeric:tabular-nums;}
+.lab-factor b {font-size:1.12rem;}
 .lab-meter .tri-dots {width:100%;margin-top:.15rem;}
 .lab-score {text-align:center;min-width:5.8rem;}
-.lab-score small,.lab-hand-label small,.lab-offer small {font:bold .65rem/1.2 system-ui;letter-spacing:.08em;text-transform:uppercase;}
+.lab-score small,.lab-factor small,.lab-hand-label small,.lab-offer small {font:bold .65rem/1.2 system-ui;letter-spacing:.08em;text-transform:uppercase;}
 .lab-score .tri-score-pill {min-width:5.6rem;padding:.14rem .55rem;color:#fff1bd;background:#102b28;border:1px solid #d5b975;border-radius:2rem;font:bold 1.25rem/1.2 Georgia,serif;}
 .lab-rows {display:grid;grid-template-rows:repeat(5,minmax(0,1fr));gap:clamp(.16rem,.6cqh,.5rem);min-height:0;}
 .lab-row {container-type:size;display:flex;align-items:center;position:relative;border-radius:.65rem;border:1px solid #93c7b12b;background:linear-gradient(105deg,#0b2925aa,#9dd8aa09);}
@@ -65,7 +66,9 @@
   .lab-table {width:min(100%,70rem);min-height:17rem;grid-template: auto auto minmax(0,1fr) / minmax(0,2.1fr) minmax(0,1fr);gap:.35rem .65rem;}
   .lab-header {grid-column:1/-1;}
   .lab-rows {grid-column:1;grid-row:2/4;}
-  .lab-hud {grid-column:2;grid-row:2;flex-wrap:wrap;justify-content:center;gap:.3rem;}
+  .lab-hud {grid-column:2;grid-row:2;gap:.2rem;padding:0;}
+  .lab-score,.lab-score .tri-score-pill {min-width:4rem;}
+  .lab-factor small {font-size:.52rem;}
   .lab-meter {width:100%;}
   .lab-controls {grid-column:2;grid-row:3;align-self:center;}
   .lab-actionline {flex-wrap:wrap;justify-content:center;gap:.35rem;}

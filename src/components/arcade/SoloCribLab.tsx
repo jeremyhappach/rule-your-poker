@@ -103,9 +103,10 @@ export function SoloCribLab({runId,userId,transport:provided}:{runId:string;user
         <h1><FlaskConical aria-hidden="true"/>Crib Lab</h1><span>Round <b>{v.round}</b> / 3</span>
         <GameplaySoundButton/><ArcadeInfo game="crib-lab" name="Crib Lab" ruleset={v.ruleset}/></header>
       <div className="lab-hud"><div className="lab-meter" aria-label={'Round timer, '+Math.ceil(remaining/1000)+' seconds'}>
-        <div><b>{Math.floor(Math.ceil(remaining/1000)/60)}:{String(Math.ceil(remaining/1000)%60).padStart(2,'0')}</b><span>×{multiplier}</span></div>
+        <div><b>{Math.floor(Math.ceil(remaining/1000)/60)}:{String(Math.ceil(remaining/1000)%60).padStart(2,'0')}</b></div>
         <CountdownDots remaining={remaining} duration={v.durationMs}/>{r&&beat?.stage!=='total'&&<small>Game total · {r.before.toLocaleString()}</small>}</div>
         <div ref={pill} className="lab-score"><small>{scoreLabel}</small><TriScorePill root={root} item={{id:userId,score:v.score,active:true}} value={beat?.value??v.score}/></div>
+        <div className="lab-factor"><small>Multiplier</small><b>×{multiplier}</b></div>
       </div>
       <section className="lab-rows" aria-label="Five hands" key={v.roundId}>
         {v.hands.map((hand,h)=><div className="lab-row" key={h} data-counting={h===active} data-ready={phase==='discard'&&pairSelected(v.discardMasks[h])}>
