@@ -24,12 +24,13 @@ export function TakeTwoLoading({solo=false,error,onReconnect,activeTab,setActive
  const shell=<FullscreenGameShell className="take-scene" ready={false} title="Take 2" description="" activeTab={activeTab??tab} setActiveTab={setActiveTab??setTab} panel={<TakeTwoRules/>} announcement={solo?false:undefined}><div className="take-loading" role="status">{error||'Loading Take 2…'}{error&&<button onClick={onReconnect}>Reconnect</button>}</div></FullscreenGameShell>;
  return solo?<div className="arcade-run" data-shell-presentation-mode="fullscreen">{shell}</div>:shell;
 }
-interface Props {replay?:boolean;navigation?:ReactNode;connected?:boolean;terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:TakeTwoSnapshot['players'][number])=>ReactNode;view:TakeTwoSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:TakeTwoIntent)=>void|Promise<void>;onReconnect:()=>void;onFinish?:()=>void}
+interface Props {replay?:boolean;navigation?:ReactNode;connected?:boolean;terminalPresenting?:boolean;onAbandon?:()=>void;activeTab?:ShellTabId;setActiveTab?:(tab:ShellTabId)=>void;sessionEnded?:boolean;panel?:ReactNode;balance?:(p:TakeTwoSnapshot['players'][number])=>ReactNode;view:TakeTwoSnapshot;userId:string;now:number;pending:boolean;error:string;epoch:number;liveEntry?:boolean;onIntent:(intent:TakeTwoIntent)=>void|Promise<boolean|void>;onReconnect:()=>void;onFinish?:()=>void}
 export function TakeTwoView({replay=false,navigation,view:v,userId,now,pending,error,epoch,liveEntry=false,connected=true,onIntent,onReconnect,onAbandon,activeTab,setActiveTab,sessionEnded=false,panel,balance}:Props){
  const [localTab,setLocalTab]=useState<ShellTabId>('cards'),tab=activeTab??localTab,setTab=setActiveTab??setLocalTab;
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,window=takeTwoPlayWindow(b,at,!v.solo),result=takeTwoRoundPresentation(b,v.scope,at),cabinetRef=useRef<HTMLDivElement>(null);
  const [selection,setSelection]=useState<{index:number;card:number|null;scope:string}|null>(null),[feedback,setFeedback]=useState('');
  const [submission,setSubmission]=useState<{revision:number;scope:string;items:number[]}|null>(null);
+ const [queued,setQueued]=useState<{scope:string;revision:number;items:[number,number];cards:(number|null)[];first:number[];previousCurrent:number|null}|null>(null);
  const selected=selection?.scope===v.scope&&(selection.index===-1?b.current:b.slots[selection.index])===selection.card&&(selection.index===-1||b.exposed.includes(selection.index))?selection.index:null;
  const submittedItems=submission?.scope===v.scope&&submission.revision===v.revision?submission.items:[];
  const motion=useTriRoundPresentation({replay,scope:'take-two:'+v.scope,phase:b.phase,connected:connected&&!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards'&&!sessionEnded,modern:true,liveEntry,recoveryEpoch:epoch,resultSequence:takeTwoResultSequence});
@@ -38,21 +39,42 @@ export function TakeTwoView({replay=false,navigation,view:v,userId,now,pending,e
  useVisibleCardChangeAudio({scope:v.scope,revision:v.revision,epoch,active:!replay&&connected&&!error&&!v.paused&&tab==='cards'&&!sessionEnded,
   signature:JSON.stringify([b.slots,b.current,b.stockRemaining])},'flip',soundSurface);
  useLayoutEffect(()=>{setLayer(root.current?.closest('[data-fullscreen-board-slot]')?.querySelector('[data-canonical-felt-interaction-layer]')??null);},[]);
- useLayoutEffect(()=>{setSelection(null);setFeedback('');},[v.scope,epoch,tab]);
+ useLayoutEffect(()=>{setSelection(null);setFeedback('');setQueued(null);},[v.scope,epoch,tab]);
  const terminal=b.phase==='complete',canSelect=!replay&&v.canAct&&connected&&!v.paused&&!error&&window.playable&&tab==='cards'&&!sessionEnded,canAct=canSelect&&!pending&&!submission;
+ const canPrepare=canSelect&&submittedItems.length===2&&!queued;
  const send=(intent:TakeTwoIntent)=>{
   if(!canAct||submitted.current)return;
   submitted.current=true;setSubmission({revision:v.revision,scope:v.scope,items:intent.type==='pair'?intent.items:[]});setSelection(null);setFeedback('');
   // Only selection is local. The hook retains the immutable request on
   // uncertainty; authoritative snapshots alone remove cards and award points.
-  void Promise.resolve(onIntent(intent)).finally(()=>{submitted.current=false;setSubmission(null);});
+  void Promise.resolve(onIntent(intent)).then(accepted=>{
+   if(accepted!==true){setQueued(null);setSelection(null);}
+  },()=>{setQueued(null);setSelection(null);}).finally(()=>{submitted.current=false;setSubmission(null);});
  };
+ useLayoutEffect(()=>{
+  if(!queued)return;
+  if(!canSelect||v.finished||document.hidden||!navigator.onLine||queued.scope!==v.scope){
+   setQueued(null);return;
+  }
+  if(pending||submission)return;
+  setQueued(null);
+  if(v.revision!==queued.revision+1||!queued.first.every(i=>i===-1?b.current!==queued.previousCurrent:b.slots[i]===null))return;
+  if(!queued.items.every((i,n)=>b.exposed.includes(i)&&b.slots[i]===queued.cards[n]))return;
+  if(b.legalPairs.some(([a,z])=>a===Math.min(...queued.items)&&z===Math.max(...queued.items)))send({type:'pair',items:queued.items});
+ },[queued,submission,pending,canSelect,v.revision,v.scope,v.finished,b]);
  const choose=(index:number)=>setSelection({index,card:index===-1?b.current:b.slots[index],scope:v.scope});
  const select=(index:number)=>{
-  if(!canSelect||submittedItems.includes(index))return;
+  if(!canSelect||queued||submittedItems.includes(index)||!canAct&&(!submission||index<0))return;
   if(selected===index){setSelection(null);return;}
   if(selected===null){choose(index);setFeedback('');return;}
-  if(!canAct){choose(index);return;}
+  if(!canAct){
+   if(canPrepare&&selected>=0&&b.legalPairs.some(([a,z])=>a===Math.min(selected,index)&&z===Math.max(selected,index))){
+    const items:[number,number]=[selected,index];
+    setQueued({scope:v.scope,revision:v.revision,items,cards:items.map(i=>b.slots[i]),first:[...submittedItems],previousCurrent:b.current});
+    setSelection(null);
+   }else choose(index);
+   return;
+  }
   if(b.legalPairs.some(([a,z])=>a===Math.min(selected,index)&&z===Math.max(selected,index)))send({type:'pair',items:[selected,index]});
   else {choose(index);setFeedback('Choose the same value or the next value.');}
  };
@@ -71,8 +93,8 @@ export function TakeTwoView({replay=false,navigation,view:v,userId,now,pending,e
  <div className="take-stats"><div className="take-counters"><span>K Q <b>{b.consecutivePairs}</b><small> ×400</small></span><span>J J <b>{b.samePairs}</b><small> ×1200</small></span></div><div className="take-meter" role="meter" aria-label="Pair speed bonus" aria-valuemin={50} aria-valuemax={500} aria-valuenow={meter}><span style={{width:`${meter/5}%`}}/><b>Bonus +{meter}</b></div></div>
  <p className="take-instruction" role="status">{feedback||(pending||submission?'Confirming…':b.event.label==='Get ready'?'':`${b.event.label}${b.event.points?' · '+(b.event.points>0?'+':'')+b.event.points:''}`)}</p>
  <div className="take-felt"><div className="take-play-group"><div className="take-tableau-space">
- <div className="take-tableau" data-rows={rows} aria-label="Take 2 playfield">{b.slots.map((id,index)=>{const p=b.layout[index],offset=p.row/Math.max(1,rows-1)*100,highlight=selected===index||submittedItems.includes(index);return id===null?null:<button key={index} style={{left:`${p.x*8.35}%`,top:`${offset}%`,transform:`translateY(-${offset}%)`,zIndex:p.row+1}} data-selected={highlight||undefined} data-covered={!b.exposed.includes(index)||undefined} disabled={!canSelect||!b.exposed.includes(index)||submittedItems.includes(index)} aria-label={`Row ${p.row+1}, card ${p.column+1}: ${cardName(id)}${b.exposed.includes(index)?'':', covered'}`} aria-pressed={highlight} onClick={()=>select(index)}><Card id={id}/></button>;})}</div>
- </div><div className="take-clock" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100,window.remaining/1000)}><span aria-hidden="true">◷</span>{Array.from({length:15},(_,i)=><i key={i} data-lit={i<lit} data-zone={i<3?'red':i<7?'yellow':'green'}/>)}<small>{v.paused?'Paused':Math.ceil(Math.min(window.remaining,b.rules.stageMs)/1000)+'s'}</small></div><footer><button className="take-current" aria-label={`Current card: ${cardName(b.current)}`} aria-pressed={selected===-1||submittedItems.includes(-1)} data-selected={selected===-1||submittedItems.includes(-1)||undefined} disabled={!canSelect||b.current===null||submittedItems.includes(-1)} onClick={()=>select(-1)}><Card id={b.current}/></button><button className="take-stock" aria-label={`Next Card, ${b.stockRemaining} cards remaining`} disabled={!canAct||b.stockRemaining===0} onClick={()=>send({type:'draw'})}><span className="take-stock-count" aria-hidden="true">{b.stockRemaining}</span>Next Card</button></footer>
+ <div className="take-tableau" data-rows={rows} aria-label="Take 2 playfield">{b.slots.map((id,index)=>{const p=b.layout[index],offset=p.row/Math.max(1,rows-1)*100,highlight=selected===index||submittedItems.includes(index)||!!queued?.items.includes(index);return id===null?null:<button key={index} style={{left:`${p.x*8.35}%`,top:`${offset}%`,transform:`translateY(-${offset}%)`,zIndex:p.row+1}} data-selected={highlight||undefined} data-covered={!b.exposed.includes(index)||undefined} disabled={!canSelect||(!canAct&&(!submission||!!queued))||!b.exposed.includes(index)||submittedItems.includes(index)} aria-label={`Row ${p.row+1}, card ${p.column+1}: ${cardName(id)}${b.exposed.includes(index)?'':', covered'}`} aria-pressed={highlight} onClick={()=>select(index)}><Card id={id}/></button>;})}</div>
+ </div><div className="take-clock" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100,window.remaining/1000)}><span aria-hidden="true">◷</span>{Array.from({length:15},(_,i)=><i key={i} data-lit={i<lit} data-zone={i<3?'red':i<7?'yellow':'green'}/>)}<small>{v.paused?'Paused':Math.ceil(Math.min(window.remaining,b.rules.stageMs)/1000)+'s'}</small></div><footer><button className="take-current" aria-label={`Current card: ${cardName(b.current)}`} aria-pressed={selected===-1||submittedItems.includes(-1)} data-selected={selected===-1||submittedItems.includes(-1)||undefined} disabled={!canAct||b.current===null} onClick={()=>select(-1)}><Card id={b.current}/></button><button className="take-stock" aria-label={`Next Card, ${b.stockRemaining} cards remaining`} disabled={!canAct||b.stockRemaining===0} onClick={()=>send({type:'draw'})}><span className="take-stock-count" aria-hidden="true">{b.stockRemaining}</span>Next Card</button></footer>
  </div>
  </div>
  {window.phase==='intro'&&<div className="take-overlay"><TriRoundIntro remaining={window.remaining} roundLabel={`ROUND ${v.round}`} turnLabel={v.solo?'':v.canAct?'YOUR TURN':`${active?.name??'Player'}’S TURN`} paused={v.paused}/></div>}

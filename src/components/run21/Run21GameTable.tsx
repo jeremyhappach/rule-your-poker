@@ -102,8 +102,7 @@ export function Run21GameTable(props: Props) {
       : <div className="run21-player-pane">
           {errorPane}
           {participationPane}
-          <Run21Scoreboard view={view} now={now}/>
-          {!view.revealed&&<Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending}/>}
+          <div className="run21-controls-and-score"><Run21Scoreboard view={view} now={now}/>{!view.revealed&&<Run21PlayerPane withPass view={view} now={now} onIntent={onIntent} pending={pending}/>}</div>
         </div>;
     felt = <>
         <GameplayOpponentSeatLayer family="run21" participants={view.players.filter(p => p.id !== view.viewerId).map(p => ({id: p.id, position: p.seat, name: p.name, chips: snapshot.balances[p.id]}))}

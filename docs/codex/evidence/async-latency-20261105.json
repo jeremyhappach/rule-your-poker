@@ -1,0 +1,7244 @@
+{
+  "build": "f2f81f3445e4e1210c4ba04d614a4bd27063cc43",
+  "method": "Desktop Edge touch emulation, fixed delay per browser request. No production gameplay writes or physical iPhone observation. Frame observations of synthetic projections; service timings are independent local PostgreSQL runs.",
+  "summary": [
+    {
+      "g": "run21",
+      "mode": "async",
+      "delay": 180,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        13,
+        17
+      ],
+      "confirm": [
+        198,
+        217
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        829,
+        849
+      ]
+    },
+    {
+      "g": "run21",
+      "mode": "async",
+      "delay": 600,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        11,
+        16
+      ],
+      "confirm": [
+        616,
+        633
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        2499,
+        2529
+      ]
+    },
+    {
+      "g": "run21",
+      "mode": "arcade",
+      "delay": 180,
+      "cases": 2,
+      "pending": [
+        13,
+        16
+      ],
+      "disable": [
+        13,
+        16
+      ],
+      "confirm": [
+        201,
+        217
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        849,
+        850
+      ]
+    },
+    {
+      "g": "run21",
+      "mode": "arcade",
+      "delay": 600,
+      "cases": 2,
+      "pending": [
+        14,
+        17
+      ],
+      "disable": [
+        14,
+        17
+      ],
+      "confirm": [
+        615,
+        633
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        2501,
+        2512
+      ]
+    },
+    {
+      "g": "take-two",
+      "mode": "async",
+      "delay": 180,
+      "cases": 2,
+      "pending": [
+        15,
+        17
+      ],
+      "disable": [
+        15,
+        17
+      ],
+      "confirm": [
+        199,
+        216
+      ],
+      "local": [
+        7,
+        16
+      ],
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        600,
+        631
+      ]
+    },
+    {
+      "g": "take-two",
+      "mode": "async",
+      "delay": 600,
+      "cases": 2,
+      "pending": [
+        15,
+        16
+      ],
+      "disable": [
+        15,
+        16
+      ],
+      "confirm": [
+        615,
+        633
+      ],
+      "local": [
+        11,
+        11
+      ],
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        1848,
+        1849
+      ]
+    },
+    {
+      "g": "take-two",
+      "mode": "arcade",
+      "delay": 180,
+      "cases": 2,
+      "pending": [
+        14,
+        17
+      ],
+      "disable": [
+        14,
+        17
+      ],
+      "confirm": [
+        199,
+        217
+      ],
+      "local": [
+        14,
+        16
+      ],
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        612,
+        615
+      ]
+    },
+    {
+      "g": "take-two",
+      "mode": "arcade",
+      "delay": 600,
+      "cases": 2,
+      "pending": [
+        15,
+        17
+      ],
+      "disable": [
+        15,
+        17
+      ],
+      "confirm": [
+        617,
+        633
+      ],
+      "local": [
+        12,
+        16
+      ],
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        1881,
+        1897
+      ]
+    },
+    {
+      "g": "boxdrop",
+      "mode": "async",
+      "delay": 180,
+      "cases": 2,
+      "pending": [
+        12,
+        16
+      ],
+      "disable": [
+        12,
+        16
+      ],
+      "confirm": [
+        197,
+        215
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        809,
+        825
+      ]
+    },
+    {
+      "g": "boxdrop",
+      "mode": "async",
+      "delay": 600,
+      "cases": 2,
+      "pending": [
+        14,
+        16
+      ],
+      "disable": [
+        14,
+        16
+      ],
+      "confirm": [
+        631,
+        632
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        2526,
+        2528
+      ]
+    },
+    {
+      "g": "boxdrop",
+      "mode": "arcade",
+      "delay": 180,
+      "cases": 2,
+      "pending": [
+        12,
+        16
+      ],
+      "disable": [
+        12,
+        16
+      ],
+      "confirm": [
+        196,
+        216
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        811,
+        859
+      ]
+    },
+    {
+      "g": "boxdrop",
+      "mode": "arcade",
+      "delay": 600,
+      "cases": 2,
+      "pending": [
+        14,
+        16
+      ],
+      "disable": [
+        14,
+        16
+      ],
+      "confirm": [
+        630,
+        632
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": [
+        2526,
+        2528
+      ]
+    },
+    {
+      "g": "quintzee",
+      "mode": "async",
+      "delay": 180,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        14,
+        73
+      ],
+      "confirm": [
+        198,
+        217
+      ],
+      "local": [
+        15,
+        17
+      ],
+      "ready": [
+        1720,
+        1730
+      ],
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": null
+    },
+    {
+      "g": "quintzee",
+      "mode": "async",
+      "delay": 600,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        5,
+        16
+      ],
+      "confirm": [
+        618,
+        633
+      ],
+      "local": [
+        15,
+        17
+      ],
+      "ready": [
+        2133,
+        2155
+      ],
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": null
+    },
+    {
+      "g": "quintzee",
+      "mode": "arcade",
+      "delay": 180,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        14,
+        32
+      ],
+      "confirm": [
+        200,
+        216
+      ],
+      "local": [
+        15,
+        16
+      ],
+      "ready": [
+        1714,
+        1715
+      ],
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": null
+    },
+    {
+      "g": "quintzee",
+      "mode": "arcade",
+      "delay": 600,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        13,
+        17
+      ],
+      "confirm": [
+        616,
+        634
+      ],
+      "local": [
+        16,
+        17
+      ],
+      "ready": [
+        2146,
+        2147
+      ],
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": null
+    },
+    {
+      "g": "ptown-words",
+      "mode": "async",
+      "delay": 180,
+      "cases": 2,
+      "pending": [
+        13,
+        15
+      ],
+      "disable": [
+        13,
+        15
+      ],
+      "confirm": [
+        400,
+        415
+      ],
+      "local": [
+        13,
+        16
+      ],
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": null
+    },
+    {
+      "g": "ptown-words",
+      "mode": "async",
+      "delay": 600,
+      "cases": 2,
+      "pending": [
+        15,
+        15
+      ],
+      "disable": [
+        15,
+        15
+      ],
+      "confirm": [
+        1247,
+        1248
+      ],
+      "local": [
+        13,
+        16
+      ],
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": null
+    },
+    {
+      "g": "ptown-words",
+      "mode": "live",
+      "delay": 180,
+      "cases": 2,
+      "pending": [
+        12,
+        15
+      ],
+      "disable": [
+        12,
+        15
+      ],
+      "confirm": [
+        398,
+        399
+      ],
+      "local": [
+        12,
+        15
+      ],
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": null
+    },
+    {
+      "g": "ptown-words",
+      "mode": "live",
+      "delay": 600,
+      "cases": 2,
+      "pending": [
+        15,
+        16
+      ],
+      "disable": [
+        15,
+        16
+      ],
+      "confirm": [
+        1235,
+        1235
+      ],
+      "local": [
+        12,
+        16
+      ],
+      "ready": null,
+      "megaNext": [
+        null,
+        null,
+        null
+      ],
+      "paced": null
+    },
+    {
+      "g": "mega-card-golf",
+      "mode": "async",
+      "delay": 180,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        9,
+        16
+      ],
+      "confirm": [
+        194,
+        216
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        [
+          559,
+          565
+        ],
+        [
+          916,
+          933
+        ],
+        [
+          2781,
+          2782
+        ]
+      ],
+      "paced": null
+    },
+    {
+      "g": "mega-card-golf",
+      "mode": "async",
+      "delay": 600,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        14,
+        16
+      ],
+      "confirm": [
+        618,
+        632
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        [
+          997,
+          998
+        ],
+        [
+          1598,
+          1616
+        ],
+        [
+          3182,
+          3197
+        ]
+      ],
+      "paced": null
+    },
+    {
+      "g": "mega-card-golf",
+      "mode": "arcade",
+      "delay": 180,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        14,
+        33
+      ],
+      "confirm": [
+        199,
+        233
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        [
+          581,
+          581
+        ],
+        [
+          1115,
+          1133
+        ],
+        [
+          2965,
+          3015
+        ]
+      ],
+      "paced": null
+    },
+    {
+      "g": "mega-card-golf",
+      "mode": "arcade",
+      "delay": 600,
+      "cases": 2,
+      "pending": null,
+      "disable": [
+        14,
+        16
+      ],
+      "confirm": [
+        615,
+        637
+      ],
+      "local": null,
+      "ready": null,
+      "megaNext": [
+        [
+          997,
+          998
+        ],
+        [
+          1949,
+          1982
+        ],
+        [
+          3831,
+          3832
+        ]
+      ],
+      "paced": null
+    }
+  ],
+  "samples": [
+    {
+      "game": "run21",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 185
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 11,
+          "elapsedMs": 188
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 385,
+          "elapsedMs": 189
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 601,
+          "elapsedMs": 190
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1130,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1447,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1747,
+          "elapsedMs": 196
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2047,
+          "elapsedMs": 195
+        }
+      ],
+      "taps": [
+        {
+          "label": "first-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 213,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-1",
+          "relativeMs": 114,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-2",
+          "relativeMs": 217,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 213,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-3",
+          "relativeMs": 315,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 747,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 200,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1064,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 1364,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 217,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 1664,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 188
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 13,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 272,
+          "elapsedMs": 179
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 472,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1002,
+          "elapsedMs": 184
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1319,
+          "elapsedMs": 180
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1636,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1953,
+          "elapsedMs": 194
+        }
+      ],
+      "taps": [
+        {
+          "label": "first-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 198,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-1",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-2",
+          "relativeMs": 201,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-3",
+          "relativeMs": 299,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 732,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 200,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1049,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 1366,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 1682,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 610
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 9,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 674,
+          "elapsedMs": 603
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1851,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2601,
+          "elapsedMs": 609
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3334,
+          "elapsedMs": 608
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 4066,
+          "elapsedMs": 610
+        }
+      ],
+      "taps": [
+        {
+          "label": "first-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 629,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-1",
+          "relativeMs": 112,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-2",
+          "relativeMs": 212,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-3",
+          "relativeMs": 312,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 1179,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1929,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 2662,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 3394,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 607
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 7,
+          "elapsedMs": 602
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 676,
+          "elapsedMs": 608
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1857,
+          "elapsedMs": 608
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2590,
+          "elapsedMs": 605
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3323,
+          "elapsedMs": 609
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 4056,
+          "elapsedMs": 608
+        }
+      ],
+      "taps": [
+        {
+          "label": "first-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-1",
+          "relativeMs": 116,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-2",
+          "relativeMs": 216,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-3",
+          "relativeMs": 315,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 1182,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 619,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1916,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 616,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 2649,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 3382,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 184
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 9,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 243,
+          "elapsedMs": 187
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 457,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1007,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1322,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1639,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1955,
+          "elapsedMs": 192
+        }
+      ],
+      "taps": [
+        {
+          "label": "first-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-1",
+          "relativeMs": 115,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-2",
+          "relativeMs": 216,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-3",
+          "relativeMs": 315,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 766,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1081,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 1398,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 203,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 1714,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 192
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 6,
+          "elapsedMs": 187
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 255,
+          "elapsedMs": 186
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 468,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1016,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1334,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1650,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1965,
+          "elapsedMs": 196
+        }
+      ],
+      "taps": [
+        {
+          "label": "first-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 13,
+          "confirmedMs": 213,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-1",
+          "relativeMs": 114,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-2",
+          "relativeMs": 216,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-3",
+          "relativeMs": 315,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 764,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 201,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1081,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 1397,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 1713,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 217,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 602
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 10,
+          "elapsedMs": 607
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 654,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1816,
+          "elapsedMs": 613
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2550,
+          "elapsedMs": 609
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3282,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 4018,
+          "elapsedMs": 602
+        }
+      ],
+      "taps": [
+        {
+          "label": "first-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 617,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-1",
+          "relativeMs": 117,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-2",
+          "relativeMs": 216,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-3",
+          "relativeMs": 314,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 1164,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1898,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 2631,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 3365,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 615,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 606
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 5,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 652,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1866,
+          "elapsedMs": 602
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2598,
+          "elapsedMs": 615
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3331,
+          "elapsedMs": 607
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 4064,
+          "elapsedMs": 613
+        }
+      ],
+      "taps": [
+        {
+          "label": "first-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 631,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-1",
+          "relativeMs": 151,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-2",
+          "relativeMs": 249,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "first-burst-3",
+          "relativeMs": 350,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 1216,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 615,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1948,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 2682,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 621,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 3415,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "take-two",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "pair",
+        "pair",
+        "draw",
+        "draw",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 184
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 9,
+          "elapsedMs": 190
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 510,
+          "elapsedMs": 190
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 1175,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 1642,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 1957,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 2273,
+          "elapsedMs": 185
+        }
+      ],
+      "taps": [
+        {
+          "label": "pair-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-1",
+          "relativeMs": 101,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-2",
+          "relativeMs": 216,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-3",
+          "relativeMs": 318,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "second-pair-retry-2",
+          "relativeMs": 767,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-0",
+          "relativeMs": 1234,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-1",
+          "relativeMs": 1550,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-2",
+          "relativeMs": 1866,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 200,
+          "nextDecisionMs": null
+        }
+      ],
+      "selectionAfterBurst": [
+        "Row 5, card 4: 2♥"
+      ]
+    },
+    {
+      "game": "take-two",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "pair",
+        "pair",
+        "draw",
+        "draw",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 189
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 7,
+          "elapsedMs": 183
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 397,
+          "elapsedMs": 180
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 1028,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 1512,
+          "elapsedMs": 188
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 1828,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 2144,
+          "elapsedMs": 191
+        }
+      ],
+      "taps": [
+        {
+          "label": "pair-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 7,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-1",
+          "relativeMs": 108,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-2",
+          "relativeMs": 208,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-3",
+          "relativeMs": 308,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "second-pair-retry-2",
+          "relativeMs": 740,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-0",
+          "relativeMs": 1225,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 200,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-1",
+          "relativeMs": 1541,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 201,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-2",
+          "relativeMs": 1857,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        }
+      ],
+      "selectionAfterBurst": [
+        "Row 5, card 4: 2♥"
+      ]
+    },
+    {
+      "game": "take-two",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "pair",
+        "pair",
+        "draw",
+        "draw",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 608
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 10,
+          "elapsedMs": 600
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 826,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 2023,
+          "elapsedMs": 616
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 2907,
+          "elapsedMs": 604
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 3640,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4374,
+          "elapsedMs": 606
+        }
+      ],
+      "taps": [
+        {
+          "label": "pair-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 11,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-1",
+          "relativeMs": 112,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-2",
+          "relativeMs": 212,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-3",
+          "relativeMs": 312,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "second-pair-retry-2",
+          "relativeMs": 1178,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "second-pair-retry-3",
+          "relativeMs": 1311,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-0",
+          "relativeMs": 2194,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 616,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-1",
+          "relativeMs": 2928,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 616,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-2",
+          "relativeMs": 3661,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 616,
+          "nextDecisionMs": null
+        }
+      ],
+      "selectionAfterBurst": []
+    },
+    {
+      "game": "take-two",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "pair",
+        "pair",
+        "draw",
+        "draw",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 607
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 9,
+          "elapsedMs": 600
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 821,
+          "elapsedMs": 611
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 2019,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 2904,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 3636,
+          "elapsedMs": 607
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4369,
+          "elapsedMs": 609
+        }
+      ],
+      "taps": [
+        {
+          "label": "pair-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 11,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-1",
+          "relativeMs": 111,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-2",
+          "relativeMs": 213,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-3",
+          "relativeMs": 312,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "second-pair-retry-2",
+          "relativeMs": 1178,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "second-pair-retry-3",
+          "relativeMs": 1311,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-0",
+          "relativeMs": 2195,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 615,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-1",
+          "relativeMs": 2927,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 616,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-2",
+          "relativeMs": 3661,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 618,
+          "nextDecisionMs": null
+        }
+      ],
+      "selectionAfterBurst": []
+    },
+    {
+      "game": "take-two",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "pair",
+        "pair",
+        "draw",
+        "draw",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 186
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 188,
+          "elapsedMs": 189
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 517,
+          "elapsedMs": 179
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 717,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 1483,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 1797,
+          "elapsedMs": 189
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 2114,
+          "elapsedMs": 187
+        }
+      ],
+      "taps": [
+        {
+          "label": "pair-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-1",
+          "relativeMs": 98,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-2",
+          "relativeMs": 198,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-3",
+          "relativeMs": 299,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-0",
+          "relativeMs": 1066,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-1",
+          "relativeMs": 1381,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-2",
+          "relativeMs": 1697,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        }
+      ],
+      "selectionAfterBurst": []
+    },
+    {
+      "game": "take-two",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "pair",
+        "pair",
+        "draw",
+        "draw",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 188
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 191,
+          "elapsedMs": 179
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 513,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 729,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 1512,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 1826,
+          "elapsedMs": 195
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 2144,
+          "elapsedMs": 187
+        }
+      ],
+      "taps": [
+        {
+          "label": "pair-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-1",
+          "relativeMs": 99,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-2",
+          "relativeMs": 215,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-3",
+          "relativeMs": 316,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-0",
+          "relativeMs": 1098,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 200,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-1",
+          "relativeMs": 1414,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": 217,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-2",
+          "relativeMs": 1731,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        }
+      ],
+      "selectionAfterBurst": []
+    },
+    {
+      "game": "take-two",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "pair",
+        "pair",
+        "draw",
+        "draw",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 611
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 614,
+          "elapsedMs": 611
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 1367,
+          "elapsedMs": 606
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 2449,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 3334,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4065,
+          "elapsedMs": 611
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4799,
+          "elapsedMs": 611
+        }
+      ],
+      "taps": [
+        {
+          "label": "pair-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 13,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-1",
+          "relativeMs": 113,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 618,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-2",
+          "relativeMs": 230,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-3",
+          "relativeMs": 330,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "second-pair-retry-2",
+          "relativeMs": 1196,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-0",
+          "relativeMs": 2081,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 631,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-1",
+          "relativeMs": 2813,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": 617,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-2",
+          "relativeMs": 3546,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        }
+      ],
+      "selectionAfterBurst": [
+        "Row 5, card 4: 2♥"
+      ]
+    },
+    {
+      "game": "take-two",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "pair",
+        "pair",
+        "draw",
+        "draw",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 613
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 617,
+          "elapsedMs": 604
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 1367,
+          "elapsedMs": 605
+        },
+        {
+          "op": "action",
+          "intent": "pair",
+          "relativeStartMs": 2432,
+          "elapsedMs": 605
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 3314,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4082,
+          "elapsedMs": 609
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4813,
+          "elapsedMs": 612
+        }
+      ],
+      "taps": [
+        {
+          "label": "pair-burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 12,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-1",
+          "relativeMs": 112,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 618,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-2",
+          "relativeMs": 213,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "pair-burst-3",
+          "relativeMs": 312,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "second-pair-retry-2",
+          "relativeMs": 1179,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-0",
+          "relativeMs": 2061,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-1",
+          "relativeMs": 2829,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "draw-2",
+          "relativeMs": 3561,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        }
+      ],
+      "selectionAfterBurst": [
+        "Row 5, card 4: 2♥"
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 191
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 10,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 362,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 574,
+          "elapsedMs": 180
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1107,
+          "elapsedMs": 195
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1424,
+          "elapsedMs": 196
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1740,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2056,
+          "elapsedMs": 180
+        }
+      ],
+      "taps": [
+        {
+          "label": "burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 12,
+          "confirmedMs": 211,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-1",
+          "relativeMs": 129,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-2",
+          "relativeMs": 213,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-3",
+          "relativeMs": 313,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 747,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1063,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 1379,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 1696,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 198,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 188
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 11,
+          "elapsedMs": 184
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 270,
+          "elapsedMs": 180
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 468,
+          "elapsedMs": 180
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1002,
+          "elapsedMs": 183
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1317,
+          "elapsedMs": 195
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1633,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1934,
+          "elapsedMs": 180
+        }
+      ],
+      "taps": [
+        {
+          "label": "burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 197,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-1",
+          "relativeMs": 103,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-2",
+          "relativeMs": 199,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-3",
+          "relativeMs": 300,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 734,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 197,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1049,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 1365,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 1665,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 198,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 600
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 9,
+          "elapsedMs": 607
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 691,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1855,
+          "elapsedMs": 613
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2568,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3303,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 4035,
+          "elapsedMs": 610
+        }
+      ],
+      "taps": [
+        {
+          "label": "burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 631,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-1",
+          "relativeMs": 102,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-2",
+          "relativeMs": 200,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-3",
+          "relativeMs": 300,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 1165,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1882,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 2616,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 631,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 3349,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 613
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 5,
+          "elapsedMs": 608
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 690,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1836,
+          "elapsedMs": 613
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2570,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3303,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 4036,
+          "elapsedMs": 612
+        }
+      ],
+      "taps": [
+        {
+          "label": "burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-1",
+          "relativeMs": 102,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-2",
+          "relativeMs": 200,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-3",
+          "relativeMs": 300,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 1149,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1883,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 2616,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 3349,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 186
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 190,
+          "elapsedMs": 182
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 429,
+          "elapsedMs": 180
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 627,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1160,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1460,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1778,
+          "elapsedMs": 195
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2093,
+          "elapsedMs": 196
+        }
+      ],
+      "taps": [
+        {
+          "label": "burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 197,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-1",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-2",
+          "relativeMs": 198,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-3",
+          "relativeMs": 299,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 731,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1032,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 1350,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 1665,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 183
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 186,
+          "elapsedMs": 188
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 433,
+          "elapsedMs": 180
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 630,
+          "elapsedMs": 179
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1162,
+          "elapsedMs": 183
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1461,
+          "elapsedMs": 196
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1761,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2079,
+          "elapsedMs": 179
+        }
+      ],
+      "taps": [
+        {
+          "label": "burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 12,
+          "confirmedMs": 196,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-1",
+          "relativeMs": 97,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-2",
+          "relativeMs": 198,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 198,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-3",
+          "relativeMs": 298,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 730,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 198,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1030,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 1330,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 199,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 1647,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 198,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 614
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 618,
+          "elapsedMs": 611
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1287,
+          "elapsedMs": 611
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2451,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3183,
+          "elapsedMs": 613
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3901,
+          "elapsedMs": 613
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 4633,
+          "elapsedMs": 614
+        }
+      ],
+      "taps": [
+        {
+          "label": "burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 631,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-1",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-2",
+          "relativeMs": 200,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-3",
+          "relativeMs": 300,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 1165,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1898,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 2616,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 3348,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "place",
+        "place",
+        "place",
+        "place",
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 603
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 606,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 1266,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 2414,
+          "elapsedMs": 614
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3165,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 3897,
+          "elapsedMs": 613
+        },
+        {
+          "op": "action",
+          "intent": "place",
+          "relativeStartMs": 4630,
+          "elapsedMs": 612
+        }
+      ],
+      "taps": [
+        {
+          "label": "burst-0",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 630,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-1",
+          "relativeMs": 100,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-2",
+          "relativeMs": 199,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "burst-3",
+          "relativeMs": 299,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-0",
+          "relativeMs": 1149,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-1",
+          "relativeMs": 1900,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": 630,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-2",
+          "relativeMs": 2631,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "paced-3",
+          "relativeMs": 3365,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "start",
+        "roll",
+        "score",
+        "roll"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 181
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 10,
+          "elapsedMs": 187
+        },
+        {
+          "op": "action",
+          "intent": "start",
+          "relativeStartMs": 268,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 2001,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "score",
+          "relativeStartMs": 4450,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 5666,
+          "elapsedMs": 193
+        }
+      ],
+      "taps": [
+        {
+          "label": "ready-start",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 210,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-roll",
+          "relativeMs": 104,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "roll",
+          "relativeMs": 1736,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-hold",
+          "relativeMs": 2053,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-1",
+          "relativeMs": 3869,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-2",
+          "relativeMs": 3969,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-3",
+          "relativeMs": 4085,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "score",
+          "relativeMs": 4185,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-next-roll",
+          "relativeMs": 4502,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "next-roll",
+          "relativeMs": 5402,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "start",
+        "roll",
+        "score",
+        "roll"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 192
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 6,
+          "elapsedMs": 187
+        },
+        {
+          "op": "action",
+          "intent": "start",
+          "relativeStartMs": 250,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 1998,
+          "elapsedMs": 184
+        },
+        {
+          "op": "action",
+          "intent": "score",
+          "relativeStartMs": 4415,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 5662,
+          "elapsedMs": 194
+        }
+      ],
+      "taps": [
+        {
+          "label": "ready-start",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 214,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-roll",
+          "relativeMs": 115,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "roll",
+          "relativeMs": 1748,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 198,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-hold",
+          "relativeMs": 2066,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-1",
+          "relativeMs": 3863,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-2",
+          "relativeMs": 3964,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-3",
+          "relativeMs": 4064,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "score",
+          "relativeMs": 4165,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 202,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-next-roll",
+          "relativeMs": 4481,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "next-roll",
+          "relativeMs": 5413,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 217,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "start",
+        "roll",
+        "score",
+        "roll"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 606
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 6,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "start",
+          "relativeStartMs": 664,
+          "elapsedMs": 613
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 2834,
+          "elapsedMs": 611
+        },
+        {
+          "op": "action",
+          "intent": "score",
+          "relativeStartMs": 6100,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 8165,
+          "elapsedMs": 612
+        }
+      ],
+      "taps": [
+        {
+          "label": "ready-start",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 629,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-roll",
+          "relativeMs": 106,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "roll",
+          "relativeMs": 2172,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-hold",
+          "relativeMs": 2907,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-1",
+          "relativeMs": 5138,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-2",
+          "relativeMs": 5237,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-3",
+          "relativeMs": 5337,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "score",
+          "relativeMs": 5437,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 619,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-next-roll",
+          "relativeMs": 6171,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "next-roll",
+          "relativeMs": 7503,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "start",
+        "roll",
+        "score",
+        "roll"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 605
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 11,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "start",
+          "relativeStartMs": 681,
+          "elapsedMs": 609
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 2829,
+          "elapsedMs": 611
+        },
+        {
+          "op": "action",
+          "intent": "score",
+          "relativeStartMs": 6078,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 8145,
+          "elapsedMs": 609
+        }
+      ],
+      "taps": [
+        {
+          "label": "ready-start",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-roll",
+          "relativeMs": 100,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "roll",
+          "relativeMs": 2149,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-hold",
+          "relativeMs": 2867,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-1",
+          "relativeMs": 5098,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-2",
+          "relativeMs": 5199,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-3",
+          "relativeMs": 5299,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "score",
+          "relativeMs": 5398,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-next-roll",
+          "relativeMs": 6133,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "next-roll",
+          "relativeMs": 7465,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 618,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "start",
+        "roll",
+        "score",
+        "roll"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 194
+        },
+        {
+          "op": "action",
+          "intent": "start",
+          "relativeStartMs": 274,
+          "elapsedMs": 188
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 466,
+          "elapsedMs": 186
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 2005,
+          "elapsedMs": 195
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 2204,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "score",
+          "relativeStartMs": 4438,
+          "elapsedMs": 194
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 4636,
+          "elapsedMs": 195
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 5671,
+          "elapsedMs": 194
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 5869,
+          "elapsedMs": 181
+        }
+      ],
+      "taps": [
+        {
+          "label": "ready-start",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 203,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-roll",
+          "relativeMs": 115,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "roll",
+          "relativeMs": 1732,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-hold",
+          "relativeMs": 2033,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-1",
+          "relativeMs": 3849,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-2",
+          "relativeMs": 3949,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-3",
+          "relativeMs": 4049,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "score",
+          "relativeMs": 4164,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-next-roll",
+          "relativeMs": 4481,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "next-roll",
+          "relativeMs": 5399,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "start",
+        "roll",
+        "score",
+        "roll"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 187
+        },
+        {
+          "op": "action",
+          "intent": "start",
+          "relativeStartMs": 263,
+          "elapsedMs": 188
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 455,
+          "elapsedMs": 182
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 1994,
+          "elapsedMs": 189
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 2187,
+          "elapsedMs": 185
+        },
+        {
+          "op": "action",
+          "intent": "score",
+          "relativeStartMs": 4427,
+          "elapsedMs": 192
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 4622,
+          "elapsedMs": 182
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 5658,
+          "elapsedMs": 180
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 5840,
+          "elapsedMs": 181
+        }
+      ],
+      "taps": [
+        {
+          "label": "ready-start",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 202,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-roll",
+          "relativeMs": 115,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "roll",
+          "relativeMs": 1732,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 200,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-hold",
+          "relativeMs": 2033,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-1",
+          "relativeMs": 3849,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-2",
+          "relativeMs": 3965,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-3",
+          "relativeMs": 4066,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "score",
+          "relativeMs": 4166,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 215,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-next-roll",
+          "relativeMs": 4483,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "next-roll",
+          "relativeMs": 5381,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "start",
+        "roll",
+        "score",
+        "roll"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "start",
+          "relativeStartMs": 676,
+          "elapsedMs": 605
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 1284,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 2838,
+          "elapsedMs": 608
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 3449,
+          "elapsedMs": 603
+        },
+        {
+          "op": "action",
+          "intent": "score",
+          "relativeStartMs": 6122,
+          "elapsedMs": 601
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 6727,
+          "elapsedMs": 603
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 8187,
+          "elapsedMs": 613
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 8803,
+          "elapsedMs": 600
+        }
+      ],
+      "taps": [
+        {
+          "label": "ready-start",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 620,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-roll",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "roll",
+          "relativeMs": 2163,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 617,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-hold",
+          "relativeMs": 2898,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-1",
+          "relativeMs": 5130,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-2",
+          "relativeMs": 5229,
+          "disabled": false,
+          "explicitPendingMs": 17,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-3",
+          "relativeMs": 5346,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "score",
+          "relativeMs": 5446,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 616,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-next-roll",
+          "relativeMs": 6180,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "next-roll",
+          "relativeMs": 7512,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 634,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "start",
+        "roll",
+        "score",
+        "roll"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 604
+        },
+        {
+          "op": "action",
+          "intent": "start",
+          "relativeStartMs": 681,
+          "elapsedMs": 605
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 1292,
+          "elapsedMs": 617
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 2844,
+          "elapsedMs": 611
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 3459,
+          "elapsedMs": 603
+        },
+        {
+          "op": "action",
+          "intent": "score",
+          "relativeStartMs": 6111,
+          "elapsedMs": 610
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 6726,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "roll",
+          "relativeStartMs": 8175,
+          "elapsedMs": 608
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 8787,
+          "elapsedMs": 604
+        }
+      ],
+      "taps": [
+        {
+          "label": "ready-start",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 631,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-roll",
+          "relativeMs": 115,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "roll",
+          "relativeMs": 2164,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 633,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-hold",
+          "relativeMs": 2900,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-1",
+          "relativeMs": 5130,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-2",
+          "relativeMs": 5230,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "hold-3",
+          "relativeMs": 5330,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "score",
+          "relativeMs": 5431,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "early-next-roll",
+          "relativeMs": 6164,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "next-roll",
+          "relativeMs": 7496,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 618,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "ptown-words",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "delayed_words_inspect",
+          "relativeStartMs": 0,
+          "elapsedMs": 182
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 187,
+          "elapsedMs": 182
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 372,
+          "elapsedMs": 188
+        },
+        {
+          "op": "delayed_words_action",
+          "intent": "place",
+          "relativeStartMs": 1001,
+          "elapsedMs": 189
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 1194,
+          "elapsedMs": 192
+        }
+      ],
+      "taps": [
+        {
+          "label": "select-C",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 13,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-C",
+          "relativeMs": 49,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-1",
+          "relativeMs": 98,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-1",
+          "relativeMs": 131,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-2",
+          "relativeMs": 249,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "submit",
+          "relativeMs": 367,
+          "disabled": false,
+          "explicitPendingMs": 13,
+          "confirmedMs": 400,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "duplicate-submit",
+          "relativeMs": 480,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ],
+      "stagedBeforeSubmit": 3
+    },
+    {
+      "game": "ptown-words",
+      "mode": "live",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 0,
+          "elapsedMs": 192
+        },
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 196,
+          "elapsedMs": 184
+        },
+        {
+          "op": "ptown_words_action",
+          "intent": "place",
+          "relativeStartMs": 703,
+          "elapsedMs": 192
+        },
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 898,
+          "elapsedMs": 191
+        }
+      ],
+      "taps": [
+        {
+          "label": "select-C",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-C",
+          "relativeMs": 16,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-1",
+          "relativeMs": 49,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-1",
+          "relativeMs": 66,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-2",
+          "relativeMs": 165,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "submit",
+          "relativeMs": 266,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 398,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "duplicate-submit",
+          "relativeMs": 364,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ],
+      "stagedBeforeSubmit": 3
+    },
+    {
+      "game": "ptown-words",
+      "mode": "live",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 0,
+          "elapsedMs": 187
+        },
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 190,
+          "elapsedMs": 189
+        },
+        {
+          "op": "ptown_words_action",
+          "intent": "place",
+          "relativeStartMs": 699,
+          "elapsedMs": 186
+        },
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 890,
+          "elapsedMs": 195
+        }
+      ],
+      "taps": [
+        {
+          "label": "select-C",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-C",
+          "relativeMs": 17,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-1",
+          "relativeMs": 50,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-1",
+          "relativeMs": 69,
+          "disabled": false,
+          "explicitPendingMs": 13,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-2",
+          "relativeMs": 169,
+          "disabled": false,
+          "explicitPendingMs": 12,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "submit",
+          "relativeMs": 269,
+          "disabled": false,
+          "explicitPendingMs": 12,
+          "confirmedMs": 399,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "duplicate-submit",
+          "relativeMs": 382,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ],
+      "stagedBeforeSubmit": 3
+    },
+    {
+      "game": "ptown-words",
+      "mode": "live",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 0,
+          "elapsedMs": 608
+        },
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 613,
+          "elapsedMs": 602
+        },
+        {
+          "op": "ptown_words_action",
+          "intent": "place",
+          "relativeStartMs": 1542,
+          "elapsedMs": 610
+        },
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 2155,
+          "elapsedMs": 610
+        }
+      ],
+      "taps": [
+        {
+          "label": "select-C",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-C",
+          "relativeMs": 16,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-1",
+          "relativeMs": 51,
+          "disabled": false,
+          "explicitPendingMs": 13,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-1",
+          "relativeMs": 83,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-2",
+          "relativeMs": 182,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "submit",
+          "relativeMs": 282,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 1235,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "duplicate-submit",
+          "relativeMs": 382,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ],
+      "stagedBeforeSubmit": 3
+    },
+    {
+      "game": "ptown-words",
+      "mode": "live",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 0,
+          "elapsedMs": 599
+        },
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 605,
+          "elapsedMs": 602
+        },
+        {
+          "op": "ptown_words_action",
+          "intent": "place",
+          "relativeStartMs": 1528,
+          "elapsedMs": 613
+        },
+        {
+          "op": "ptown_words_snapshot",
+          "relativeStartMs": 2147,
+          "elapsedMs": 603
+        }
+      ],
+      "taps": [
+        {
+          "label": "select-C",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-C",
+          "relativeMs": 16,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-1",
+          "relativeMs": 51,
+          "disabled": false,
+          "explicitPendingMs": 12,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-1",
+          "relativeMs": 65,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-2",
+          "relativeMs": 166,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "submit",
+          "relativeMs": 265,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": 1235,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "duplicate-submit",
+          "relativeMs": 364,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ],
+      "stagedBeforeSubmit": 3
+    },
+    {
+      "game": "mega-card-golf",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "open",
+        "open",
+        "draw",
+        "replace",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 182
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 11,
+          "elapsedMs": 187
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 2135,
+          "elapsedMs": 180
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 3443,
+          "elapsedMs": 195
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 3647,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "replace",
+          "relativeStartMs": 5226,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 5427,
+          "elapsedMs": 192
+        }
+      ],
+      "taps": [
+        {
+          "label": "open-1",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 194,
+          "nextDecisionMs": 559
+        },
+        {
+          "label": "early-open-2",
+          "relativeMs": 110,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "open-2",
+          "relativeMs": 1309,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": 933
+        },
+        {
+          "label": "replace",
+          "relativeMs": 3092,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 216,
+          "nextDecisionMs": 2782
+        },
+        {
+          "label": "early-replace",
+          "relativeMs": 3192,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "open",
+        "open",
+        "draw",
+        "replace",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 184
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 12,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 2077,
+          "elapsedMs": 190
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 3392,
+          "elapsedMs": 186
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 3590,
+          "elapsedMs": 181
+        },
+        {
+          "op": "action",
+          "intent": "replace",
+          "relativeStartMs": 5192,
+          "elapsedMs": 191
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 5393,
+          "elapsedMs": 194
+        }
+      ],
+      "taps": [
+        {
+          "label": "open-1",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 204,
+          "nextDecisionMs": 565
+        },
+        {
+          "label": "early-open-2",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "open-2",
+          "relativeMs": 1316,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 200,
+          "nextDecisionMs": 916
+        },
+        {
+          "label": "replace",
+          "relativeMs": 3116,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 204,
+          "nextDecisionMs": 2781
+        },
+        {
+          "label": "early-replace",
+          "relativeMs": 3216,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "open",
+        "open",
+        "draw",
+        "replace",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 602
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 10,
+          "elapsedMs": 607
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 2493,
+          "elapsedMs": 607
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 4223,
+          "elapsedMs": 606
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4839,
+          "elapsedMs": 613
+        },
+        {
+          "op": "action",
+          "intent": "replace",
+          "relativeStartMs": 6856,
+          "elapsedMs": 610
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 7474,
+          "elapsedMs": 609
+        }
+      ],
+      "taps": [
+        {
+          "label": "open-1",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 630,
+          "nextDecisionMs": 997
+        },
+        {
+          "label": "early-open-2",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "open-2",
+          "relativeMs": 1731,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 620,
+          "nextDecisionMs": 1616
+        },
+        {
+          "label": "replace",
+          "relativeMs": 4364,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": 3197
+        },
+        {
+          "label": "early-replace",
+          "relativeMs": 4481,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "open",
+        "open",
+        "draw",
+        "replace",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "state",
+          "relativeStartMs": 0,
+          "elapsedMs": 614
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 8,
+          "elapsedMs": 608
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 2488,
+          "elapsedMs": 609
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 4219,
+          "elapsedMs": 608
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4839,
+          "elapsedMs": 605
+        },
+        {
+          "op": "action",
+          "intent": "replace",
+          "relativeStartMs": 6851,
+          "elapsedMs": 607
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 7465,
+          "elapsedMs": 616
+        }
+      ],
+      "taps": [
+        {
+          "label": "open-1",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 631,
+          "nextDecisionMs": 998
+        },
+        {
+          "label": "early-open-2",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "open-2",
+          "relativeMs": 1732,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": 1598
+        },
+        {
+          "label": "replace",
+          "relativeMs": 4364,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 618,
+          "nextDecisionMs": 3182
+        },
+        {
+          "label": "early-replace",
+          "relativeMs": 4482,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "open",
+        "open",
+        "draw",
+        "replace",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "catalog",
+          "relativeStartMs": 0,
+          "elapsedMs": 190
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 194,
+          "elapsedMs": 194
+        },
+        {
+          "op": "leaderboard",
+          "relativeStartMs": 196,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 450,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 1763,
+          "elapsedMs": 188
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 2314,
+          "elapsedMs": 189
+        },
+        {
+          "op": "action",
+          "intent": "replace",
+          "relativeStartMs": 3564,
+          "elapsedMs": 190
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 5963,
+          "elapsedMs": 185
+        }
+      ],
+      "taps": [
+        {
+          "label": "open-1",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 214,
+          "nextDecisionMs": 581
+        },
+        {
+          "label": "early-open-2",
+          "relativeMs": 102,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "open-2",
+          "relativeMs": 1315,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 199,
+          "nextDecisionMs": 1115
+        },
+        {
+          "label": "replace",
+          "relativeMs": 3115,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 201,
+          "nextDecisionMs": 2965
+        },
+        {
+          "label": "early-replace",
+          "relativeMs": 3232,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "mode": "arcade",
+      "delayMs": 180,
+      "sounds": false,
+      "commands": [
+        "open",
+        "open",
+        "draw",
+        "replace",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "catalog",
+          "relativeStartMs": 0,
+          "elapsedMs": 185
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 189,
+          "elapsedMs": 189
+        },
+        {
+          "op": "leaderboard",
+          "relativeStartMs": 191,
+          "elapsedMs": 188
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 436,
+          "elapsedMs": 192
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 1750,
+          "elapsedMs": 190
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 2300,
+          "elapsedMs": 187
+        },
+        {
+          "op": "action",
+          "intent": "replace",
+          "relativeStartMs": 3549,
+          "elapsedMs": 193
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 5965,
+          "elapsedMs": 193
+        }
+      ],
+      "taps": [
+        {
+          "label": "open-1",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 214,
+          "nextDecisionMs": 581
+        },
+        {
+          "label": "early-open-2",
+          "relativeMs": 100,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "open-2",
+          "relativeMs": 1299,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 232,
+          "nextDecisionMs": 1133
+        },
+        {
+          "label": "replace",
+          "relativeMs": 3098,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 233,
+          "nextDecisionMs": 3015
+        },
+        {
+          "label": "early-replace",
+          "relativeMs": 3232,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "open",
+        "open",
+        "draw",
+        "replace",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "catalog",
+          "relativeStartMs": 0,
+          "elapsedMs": 615
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 623,
+          "elapsedMs": 606
+        },
+        {
+          "op": "leaderboard",
+          "relativeStartMs": 626,
+          "elapsedMs": 605
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 1289,
+          "elapsedMs": 616
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 3019,
+          "elapsedMs": 614
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4002,
+          "elapsedMs": 615
+        },
+        {
+          "op": "action",
+          "intent": "replace",
+          "relativeStartMs": 5652,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 8484,
+          "elapsedMs": 612
+        }
+      ],
+      "taps": [
+        {
+          "label": "open-1",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 637,
+          "nextDecisionMs": 998
+        },
+        {
+          "label": "early-open-2",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "open-2",
+          "relativeMs": 1731,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 633,
+          "nextDecisionMs": 1982
+        },
+        {
+          "label": "replace",
+          "relativeMs": 4364,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 632,
+          "nextDecisionMs": 3831
+        },
+        {
+          "label": "early-replace",
+          "relativeMs": 4465,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "mode": "arcade",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "open",
+        "open",
+        "draw",
+        "replace",
+        "draw"
+      ],
+      "requests": [
+        {
+          "op": "catalog",
+          "relativeStartMs": 0,
+          "elapsedMs": 611
+        },
+        {
+          "op": "state",
+          "relativeStartMs": 613,
+          "elapsedMs": 607
+        },
+        {
+          "op": "leaderboard",
+          "relativeStartMs": 615,
+          "elapsedMs": 606
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 1317,
+          "elapsedMs": 606
+        },
+        {
+          "op": "action",
+          "intent": "open",
+          "relativeStartMs": 3048,
+          "elapsedMs": 601
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 4013,
+          "elapsedMs": 608
+        },
+        {
+          "op": "action",
+          "intent": "replace",
+          "relativeStartMs": 5679,
+          "elapsedMs": 612
+        },
+        {
+          "op": "action",
+          "intent": "draw",
+          "relativeStartMs": 8512,
+          "elapsedMs": 609
+        }
+      ],
+      "taps": [
+        {
+          "label": "open-1",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 630,
+          "nextDecisionMs": 997
+        },
+        {
+          "label": "early-open-2",
+          "relativeMs": 99,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "open-2",
+          "relativeMs": 1731,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 615,
+          "nextDecisionMs": 1949
+        },
+        {
+          "label": "replace",
+          "relativeMs": 4363,
+          "disabled": false,
+          "explicitPendingMs": null,
+          "confirmedMs": 633,
+          "nextDecisionMs": 3832
+        },
+        {
+          "label": "early-replace",
+          "relativeMs": 4481,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ]
+    },
+    {
+      "game": "ptown-words",
+      "mode": "async",
+      "delayMs": 180,
+      "sounds": true,
+      "commands": [
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "delayed_words_inspect",
+          "relativeStartMs": 0,
+          "elapsedMs": 195
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 201,
+          "elapsedMs": 195
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 403,
+          "elapsedMs": 185
+        },
+        {
+          "op": "delayed_words_action",
+          "intent": "place",
+          "relativeStartMs": 1025,
+          "elapsedMs": 196
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 1223,
+          "elapsedMs": 191
+        }
+      ],
+      "taps": [
+        {
+          "label": "select-C",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-C",
+          "relativeMs": 48,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-1",
+          "relativeMs": 98,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-1",
+          "relativeMs": 132,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-2",
+          "relativeMs": 249,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "submit",
+          "relativeMs": 365,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 415,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "duplicate-submit",
+          "relativeMs": 465,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ],
+      "stagedBeforeSubmit": 3
+    },
+    {
+      "game": "ptown-words",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": true,
+      "commands": [
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "delayed_words_inspect",
+          "relativeStartMs": 0,
+          "elapsedMs": 602
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 610,
+          "elapsedMs": 612
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 1225,
+          "elapsedMs": 602
+        },
+        {
+          "op": "delayed_words_action",
+          "intent": "place",
+          "relativeStartMs": 2266,
+          "elapsedMs": 605
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 2876,
+          "elapsedMs": 615
+        }
+      ],
+      "taps": [
+        {
+          "label": "select-C",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-C",
+          "relativeMs": 49,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-1",
+          "relativeMs": 99,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-1",
+          "relativeMs": 133,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-2",
+          "relativeMs": 248,
+          "disabled": false,
+          "explicitPendingMs": 16,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "submit",
+          "relativeMs": 366,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 1248,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "duplicate-submit",
+          "relativeMs": 464,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ],
+      "stagedBeforeSubmit": 3
+    },
+    {
+      "game": "ptown-words",
+      "mode": "async",
+      "delayMs": 600,
+      "sounds": false,
+      "commands": [
+        "place"
+      ],
+      "requests": [
+        {
+          "op": "delayed_words_inspect",
+          "relativeStartMs": 0,
+          "elapsedMs": 615
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 627,
+          "elapsedMs": 610
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 1240,
+          "elapsedMs": 612
+        },
+        {
+          "op": "delayed_words_action",
+          "intent": "place",
+          "relativeStartMs": 2278,
+          "elapsedMs": 605
+        },
+        {
+          "op": "delayed_words_snapshot",
+          "relativeStartMs": 2890,
+          "elapsedMs": 613
+        }
+      ],
+      "taps": [
+        {
+          "label": "select-C",
+          "relativeMs": 0,
+          "disabled": false,
+          "explicitPendingMs": 13,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-C",
+          "relativeMs": 32,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-1",
+          "relativeMs": 83,
+          "disabled": false,
+          "explicitPendingMs": 13,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "place-1",
+          "relativeMs": 116,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "select-2",
+          "relativeMs": 233,
+          "disabled": false,
+          "explicitPendingMs": 14,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "submit",
+          "relativeMs": 349,
+          "disabled": false,
+          "explicitPendingMs": 15,
+          "confirmedMs": 1247,
+          "nextDecisionMs": null
+        },
+        {
+          "label": "duplicate-submit",
+          "relativeMs": 464,
+          "disabled": true,
+          "explicitPendingMs": null,
+          "confirmedMs": null,
+          "nextDecisionMs": null
+        }
+      ],
+      "stagedBeforeSubmit": 3
+    }
+  ],
+  "service": [
+    {
+      "game": "run21",
+      "priorOwnResult": false,
+      "delay": 40,
+      "times": [
+        104,
+        98,
+        103
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "priorOwnResult": false,
+      "delay": 120,
+      "times": [
+        268,
+        264,
+        268
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "priorOwnResult": true,
+      "delay": 40,
+      "times": [
+        92,
+        102,
+        102
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        }
+      ]
+    },
+    {
+      "game": "run21",
+      "priorOwnResult": true,
+      "delay": 120,
+      "times": [
+        263,
+        265,
+        263
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        }
+      ]
+    },
+    {
+      "game": "take-two",
+      "priorOwnResult": false,
+      "delay": 40,
+      "times": [
+        207,
+        198,
+        200
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "take-two",
+      "priorOwnResult": false,
+      "delay": 120,
+      "times": [
+        529,
+        533,
+        532
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "take-two",
+      "priorOwnResult": true,
+      "delay": 40,
+      "times": [
+        255,
+        246,
+        251
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "take-two",
+      "priorOwnResult": true,
+      "delay": 120,
+      "times": [
+        664,
+        666,
+        664
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_take_two_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "priorOwnResult": false,
+      "delay": 40,
+      "times": [
+        202,
+        200,
+        200
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "priorOwnResult": false,
+      "delay": 120,
+      "times": [
+        532,
+        534,
+        532
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "priorOwnResult": true,
+      "delay": 40,
+      "times": [
+        242,
+        248,
+        251
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "boxdrop",
+      "priorOwnResult": true,
+      "delay": 120,
+      "times": [
+        645,
+        671,
+        662
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "priorOwnResult": false,
+      "delay": 40,
+      "times": [
+        202,
+        200,
+        199
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "priorOwnResult": false,
+      "delay": 120,
+      "times": [
+        532,
+        518,
+        513
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "priorOwnResult": true,
+      "delay": 40,
+      "times": [
+        249,
+        250,
+        248
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "quintzee",
+      "priorOwnResult": true,
+      "delay": 120,
+      "times": [
+        646,
+        663,
+        654
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "reduce"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        },
+        {
+          "name": "delayed_board_core",
+          "operation": "visible"
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "priorOwnResult": false,
+      "delay": 40,
+      "times": [
+        96,
+        92,
+        104
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        }
+      ]
+    },
+    {
+      "game": "mega-card-golf",
+      "priorOwnResult": false,
+      "delay": 120,
+      "times": [
+        267,
+        254,
+        265
+      ],
+      "calls": [
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        },
+        {
+          "name": "delayed_load"
+        },
+        {
+          "name": "delayed_commit"
+        }
+      ]
+    }
+  ]
+}

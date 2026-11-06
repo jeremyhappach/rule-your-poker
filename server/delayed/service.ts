@@ -28,7 +28,15 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
   if(value.error)throw Error(value.error);
   return value as Awaited<ReturnType<typeof project>>;
  }
- let row:RecordRow=await rpc('delayed_load',{p_child:body.childId,p_actor:userId,p_request:body.op==='action'?body.requestId:null});
+ let boundary:RecordRow|undefined;
+ let reduced:Record<string,unknown>|undefined;
+ if(body.op==='action'&&intent.type!=='start'&&['take-two','quintzee','boxdrop'].includes(body.game)){
+  const step=await rpc('delayed_board_action',{p_child:body.childId,p_actor:userId,p_game:body.game,p_request:body.requestId,p_revision:body.revision,p_segment:body.segment,p_intent:intent});
+  if(step.record)return project(step.record,userId,rpc,step);
+  boundary=step.boundary;
+  reduced=step.reduced;
+ }
+ let row:RecordRow=boundary??await rpc('delayed_load',{p_child:body.childId,p_actor:userId,p_request:body.op==='action'?body.requestId:null});
  if(body.op==='action'){
   if(intent.type==='replace'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>5))throw Error('delayed:invalid_action');
   if(intent.type==='open'&&(!Array.isArray(intent.indices)||intent.indices.length<1||intent.indices.length>5||new Set(intent.indices).size!==intent.indices.length||intent.indices.some(i=>!Number.isInteger(i)||i<0||i>5)))throw Error('delayed:invalid_action');
@@ -46,7 +54,14 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
  if(body.op==='action'){
   if(row.held)throw Error('delayed:held');
   if(row.terminal||row.actor!==userId||row.revision!==body.revision||row.segment!==body.segment)throw Error('delayed:stale_action');
-  const next=await transition(row,intent,rpc);
+  const next=await transition(row,intent,(name,args)=>{
+   if(reduced && args.p_operation==='reduce'){
+    const board=reduced;
+    reduced=undefined;
+    return Promise.resolve(board);
+   }
+   return rpc(name,args);
+  });
   const result=await rpc('delayed_commit',{p_child:row.id,p_actor:userId,p_revision:row.revision,p_state:next.state,
    p_event:'action',p_at:next.at,p_advanced:next.advanced,p_request:body.requestId,p_fingerprint:fingerprint});
   if(!['committed','duplicate'].includes(result.outcome)){

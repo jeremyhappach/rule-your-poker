@@ -6,16 +6,17 @@ import {roundIntro} from '@/lib/run21/roundIntro';
 import {RoundTimeBar} from '@/lib/canonicalShell/RoundTimeBar';
 
 /** The shell owns the active pane; only the viewing player can issue intents. */
-export function Run21PlayerPane({view,now,onIntent,pending=false}:{view:Projection;now:number;onIntent?:(intent:Intent)=>void;pending?:boolean}) {
+export function Run21PlayerPane({view,now,onIntent,pending=false,withPass=false}:{withPass?:boolean;view:Projection;now:number;onIntent?:(intent:Intent)=>void;pending?:boolean}) {
   const board=view.viewerId?view.boards[view.viewerId]:null;
   if(!board)return null;
   if(view.scorePresentation)return null;
   if(!view.revealed&&view.active_player_id!==view.viewerId) return null;
   const active=!roundIntro(view,now)&&view.pausedAt==null&&!view.automaticPlayers?.includes(view.viewerId!)&&!view.revealed&&!board.result&&!!board.current&&(board.deadline===null||now<board.deadline)&&!pending&&!!onIntent;
-  return <div className="run21-player-actions" data-run21-player-actions>
+  return <div className="run21-player-actions" data-run21-player-actions data-run21-table-actions={withPass||undefined}>
     <button className="run21-collect-button" type="button" disabled={!active||!canFinish(board,view.config)} onClick={()=>onIntent?.({type:'collect'})}>
       {multiplierAt(aggregate(board,view.config),view.config)>0?'Take Win':'Give Up'} <small>{aggregate(board,view.config)}</small>
     </button>
+    {withPass&&board.current&&!board.result&&board.passesUsed<view.config.passes&&<button type="button" aria-label="Pass" disabled={!active} onClick={()=>onIntent?.({type:'pass'})}>Pass</button>}
   </div>;
 }
 
@@ -34,4 +35,11 @@ export function Run21Timer({view,now}:{view:Projection;now:number}) {
   const remaining=board.startedAt===null?full:Math.max(0,Math.min(full,board.deadline!-(board.result?.at??at)));
   const speed=speedAt(board,view.config,board.result?.at??at);
   return <div className="run21-speed"><span data-run21-speed={speed}>Speed {speed}</span><RoundTimeBar remaining={remaining} full={full} waiting={board.startedAt===null} speed={speed}/></div>;
+}
+
+export function Run21FullscreenActions(props:Parameters<typeof Run21PlayerPane>[0]) {
+  return <div className="run21-fullscreen-actions">
+    <Run21PlayerPane {...props}/>
+    <Run21Timer view={props.view} now={props.now}/>
+  </div>;
 }

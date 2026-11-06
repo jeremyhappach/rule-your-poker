@@ -34,7 +34,7 @@ import {Run21ScoreCelebration} from '@/components/run21/Run21ScoreCelebration';
 import {useRun21ScoreAudio} from '@/hooks/useRun21ScoreAudio';
 import {useRun21FailureAudio} from '@/hooks/useRun21FailureAudio';
 import {Run21Felt} from '@/components/run21/Run21Felt';
-import {Run21PlayerPane,Run21Timer} from '@/components/run21/Run21PlayerPane';
+import {Run21FullscreenActions} from '@/components/run21/Run21PlayerPane';
 import {Run21ScoringReference} from '@/components/run21/Run21ScoringHelp';
 import {Run21SpaceScene} from '@/components/run21/Run21SpaceScene';
 import {TriTowersBoard,TriTowersRules} from '@/components/triTowers/TriTowersView';
@@ -84,7 +84,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   if(triController.current?.sent){await triController.current.recover();return;}
   const epoch=++generation.current,command=request.current;try{
   const value=await delayedRequest<Snapshot>(command??{op:'state',childId,...(latest.current?.game==='tri-towers'?{game:'tri-towers'}:{})});
-  if(epoch!==generation.current)return;accept(value,command);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');
+  if(epoch!==generation.current)return;accept(value,command);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');return true;
  }catch(e){if(epoch===generation.current){
   interruptAudio();
   const message=e instanceof Error?e.message:'Unable to reconnect.';
@@ -135,7 +135,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
    else if(intent.type==='draw'||intent.type==='take_score')triInput.enqueue({type:intent.type});
    return;
   }
-  request.current={op:'action',...(snapshot.game==='tri-towers'?{game:'tri-towers'}:{}),childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');await refresh();}
+  request.current={op:'action',game:snapshot.game,childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');return await refresh();}
  // A reconnect into an unavailable/terminal segment belongs at the match home.
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
  // Shared presentation completion starts the final readable hold. This only
@@ -166,7 +166,12 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  },[attemptKey,runResult,medalMs,now,presentationActive]);
  useEffect(()=>{const hidden=()=>{if(document.hidden)retireMedal();};window.addEventListener('offline',retireMedal);document.addEventListener('visibilitychange',hidden);
   return()=>{window.removeEventListener('offline',retireMedal);document.removeEventListener('visibilitychange',hidden);};},[retireMedal]);
- const canAct=!!snapshot&&!snapshot.held&&!ended&&!pending&&!error&&!(snapshot.game==='tri-towers'&&triInput.uncertain)&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<board.deadline;
+ const turnAvailable=!!snapshot&&!snapshot.held&&!ended&&!error&&!(snapshot.game==='tri-towers'&&triInput.uncertain)&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<board.deadline;
+ const canAct=turnAvailable&&!pending;
+ const submitted=request.current?.intent as {type:string;column?:number}|undefined;
+ const placement=pending&&!error&&freshAction.current&&snapshot?.game==='run21'&&view&&submitted?.type==='place'&&typeof submitted.column==='number' ? {
+  playerId:userId,roundId:view.roundId,requestId:String(request.current?.requestId),revision:(freshAction.current.before.board as typeof board).revision,intent:{type:'place' as const,column:submitted.column}
+ } : null;
  const home=<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={realMoney}>{participants.map(p=>p.name).join(' vs. ')||'Match home'}</AsyncSessionName></Link>;
  if(!snapshot||!board)return <AsyncTurnStage matchId={matchId} title="Your turn!">
   {autoStart&&!ended&&!error&&!snapshot?.held&&(!snapshot||now<Date.parse(snapshot.expiresAt))?null:<>
@@ -187,20 +192,20 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
    onPresentationDone={()=>{if(ended)navigate('/delayed/'+matchId+(snapshot.terminal?'?review='+childId+'&finished=1':''),{replace:true});}}
    scorecard={frame=><MegaCompetitionScorecard course={board.config.name} holes={board.config.holes} hole={displayRound!} players={participants} results={(snapshot.holeResults??[]).filter(r=>r.actor!==userId||r.hole<frame.view.hole||frame.scoring?.finished)} write={frame.scoring?.finished?{actor:userId,hole:frame.view.hole}:undefined}/>}/></div>;
  if(snapshot.game==='take-two'){
-  const value:TakeTwoSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,round:displayRound!,board,canAct,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:scores};
+  const value:TakeTwoSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,round:displayRound!,board,canAct:turnAvailable,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:scores};
   return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><TakeTwoView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={audio.epoch} liveEntry={audio.liveEntry} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
  }
  if(snapshot.game==='boxdrop'){
   const value:BoxdropSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,round:displayRound!,board,canAct,paused:snapshot.held,pausedAt:snapshot.held?snapshot.serverAt:null,finished:snapshot.terminal,settled:false,solo:false,players:Object.keys(snapshot.totals).map(id=>({id,name:participants.find(p=>p.id===id)?.name??(id===userId?'You':'Opponent'),score:snapshot.totals[id],active:id===(ended?userId:snapshot.actor)}))};
-  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><BoxdropView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={audio.epoch} liveEntry={audio.liveEntry} onIntent={i=>act(i)} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
+  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><BoxdropView navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} view={value} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} epoch={audio.epoch} liveEntry={audio.liveEntry} onIntent={async i=>{await act(i);}} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
  }
  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><FullscreenGameShell className={view?'run21-space-theme':'tri-scene'} title={gameName(snapshot.game)} description={'Round '+displayRound}
   activeTab={tab} setActiveTab={setTab} panel={view?<Run21ScoringReference config={view.config}/>:<TriTowersRules rules={board.rules}/>}
   announcement={false} navigation={<nav>{home}<button onClick={()=>setTab('lobby')}>Rules</button></nav>}
   scores={view&&<div ref={scoreRoot} className="async-score-pills" aria-label="Game scores">{scores.map(item=><TriScorePill key={item.id} root={scoreRoot} item={item} value={item.id===userId?(reduced&&runResult?runTotal:displayedScore(view,userId,now)):item.score}/>)}</div>}
-  actions={view&&<div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={i=>void act(i)} pending={!canAct}/></div></div>}>
+  actions={view&&<div className="run21-fullscreen-footer"><Run21FullscreenActions view={view} now={now} onIntent={i=>void act(i)} pending={!canAct}/></div>}>
    {error&&<div role="alert" className="arcade-error">{error}<button onClick={()=>void refresh()}>Reconnect</button></div>}
-   {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct} hideScoring={!!medal}/></>:
+   {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct} placement={placement} hideScoring={!!medal}/></>:
     <div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard input={triInput} view={board} now={now} canAct={canAct} roundKey={childId+':'+initialSegment.current} result={triResult}
      userId={userId} liveEntry={audio.liveEntry} recoveryEpoch={audio.epoch} connected={!error} presentationActive={tab==='cards'} paused={snapshot.held} roundLabel={'ROUND '+displayRound} scores={scores.map(item=>item.active?{...item,score:board.score}:item)}
      takeScore={board.phase==='playing'?<button className="tri-take-score" disabled={!canAct} onClick={()=>void act({type:'take_score'})}>Take Score</button>:null}

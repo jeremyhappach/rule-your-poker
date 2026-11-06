@@ -28,7 +28,7 @@ describe('Run21 player presentation',()=>{
   it('shows the bot board and frozen speed while the human controls remain inactive',()=>{
     const m=act(prepareRound(createMatch(IDENTITY,[...PLAYERS].reverse(),5,DEFAULT_CONFIG,0,1),uuid(100),null,fixtureDeck(),0),other,{type:'ready'},0);
     const html=render(m);
-    expect(html.match(/disabled=""/g)).toHaveLength(6);
+    expect(html.match(/<button[^>]+class="run21-column"[^>]+disabled=""/g)).toHaveLength(5);
     expect(html).toContain('data-playing-card-face');
     expect(pane(m)).not.toContain('is playing');expect(pane(m)).not.toContain('<button');
     expect(renderToStaticMarkup(<Run21Timer view={project(m,self)} now={1000}/>)).toContain('Speed 250');
@@ -121,7 +121,7 @@ describe('Run21 player presentation',()=>{
     expect(renderToStaticMarkup(<Run21Timer view={view} now={100000}/>)).toContain('data-run21-time-remaining="250000"');
     m=act(m,self,{type:'place',column:0},0);m=act(m,self,{type:'expire'},250000);m=advanceScorePresentation(m,255000);
     const watching=project(m,self),html=render(m);
-    expect(html.match(/disabled=""/g)).toHaveLength(6);
+    expect(html.match(/<button[^>]+class="run21-column"[^>]+disabled=""/g)).toHaveLength(5);
     expect(html).toContain('data-playing-card-face');
     expect(pane(m)).not.toContain('is playing');expect(pane(m)).not.toContain('<button');
     expect(renderToStaticMarkup(<Run21Timer view={watching} now={255000}/>)).toContain('Speed 250');

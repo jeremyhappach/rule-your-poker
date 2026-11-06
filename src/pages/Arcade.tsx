@@ -26,7 +26,7 @@ import {arcadeRequest} from '@/lib/arcade/client';
 import type {ArcadeSnapshot,Leaderboard} from '@/lib/arcade/model';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import {Run21Felt} from '@/components/run21/Run21Felt';
-import {Run21PlayerPane,Run21Timer} from '@/components/run21/Run21PlayerPane';
+import {Run21FullscreenActions} from '@/components/run21/Run21PlayerPane';
 import {Run21ScoringReference} from '@/components/run21/Run21ScoringHelp';
 import {Run21ScoreCelebration} from '@/components/run21/Run21ScoreCelebration';
 import {AlertDialog,AlertDialogContent,AlertDialogTitle,AlertDialogDescription,AlertDialogAction,AlertDialogCancel,AlertDialogFooter} from '@/components/ui/alert-dialog';
@@ -128,7 +128,7 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
  navigation={<nav aria-label="Arcade controls"><button onClick={()=>setTab('lobby')}>Rules</button><button onClick={()=>setAbandon(true)}>Abandon</button></nav>}
  announcement={false}
  scores={<div className="arcade-run-score"><span>Total score</span><strong>{view?displayedScore(view,userId,now).toLocaleString():0}</strong></div>}
- actions={view&&<div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending}/></div></div>}>
+ actions={view&&<div className="run21-fullscreen-footer"><Run21FullscreenActions view={view} now={now} onIntent={onIntent} pending={pending}/></div>}>
  <Run21SpaceScene/>
  {error&&<div role="alert" className="arcade-error">{error} <button onClick={()=>void refresh()}>Reconnect</button></div>}
  {view?<Run21Felt solo layout="fullscreen" view={view} now={now} acceptedEvents={snapshot?.events} onIntent={onIntent} pending={pending} placement={placement} hideScoring={!!celebration}/>:<p role="status">Restoring your game…</p>}

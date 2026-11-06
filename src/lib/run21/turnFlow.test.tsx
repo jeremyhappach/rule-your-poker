@@ -27,7 +27,7 @@ describe('Run21 live sequential turn flow',()=>{
   for(const intent of [{type:'place',column:0},{type:'pass'},{type:'collect'}] as Intent[])
    expect(applyCommand(m,command(m,inactive,intent),{kind:'player',playerId:inactive},100).reason).toBe('not_your_turn');
   const html=renderToStaticMarkup(<Run21Felt view={view} now={100000} drawRect={{x:.4,y:.7,width:.2,height:.2}} onIntent={()=>{}}/>);
-  expect(html).toContain('data-playing-card-face');expect(html.match(/disabled=""/g)).toHaveLength(6);
+  expect(html).toContain('data-playing-card-face');expect(html.match(/<button[^>]+class="run21-column"[^>]+disabled=""/g)).toHaveLength(5);
   const timer=renderToStaticMarkup(<Run21Timer view={view} now={100000}/>);
   expect(timer).toContain('Speed 250');expect(timer).toContain('data-run21-time-remaining="250000"');
   expect(renderToStaticMarkup(<Run21PlayerPane view={view} now={100000} onIntent={()=>{}}/>)).not.toContain('<button');

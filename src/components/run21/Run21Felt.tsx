@@ -99,7 +99,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,placem
     {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
     {slot('currentCard',<><div className="run21-live-card" data-run21-turn-state={turnState}>{tentative?<span className="run21-awaiting-card" role="status">Confirming…</span>:board?.current&&<Run21Card card={board.current}/>}</div><small className="sr-only">{active?'Your turn':watching?'Watching':'Actions unavailable'} · Current card</small></>)}
     {slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{perfectAggregate(view.config)}</small></output>}<Run21ScoringHelp config={view.config} solo={solo}/></>)}
-    {board?.current&&!board.result&&view.active_player_id===playerId&&board.passesUsed<view.config.passes&&slot('pass',
+    {board?.current&&!board.result&&view.active_player_id===playerId&&layout==='fullscreen'&&board.passesUsed<view.config.passes&&slot('pass',
       <button type="button" aria-label="Pass" disabled={!active} onClick={()=>{if(active)onIntent?.({type:'pass'});}}>Pass</button>)}
   </div>:null;
   return <section className={`run21-felt-content${layout === 'fullscreen' ? ' run21-fullscreen-board' : ''}`} data-run21-gameplay aria-label={`Run21 board for ${player.name}`}>

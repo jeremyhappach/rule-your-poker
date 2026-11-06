@@ -14,23 +14,29 @@ export function useQuintzee(id:string,actor:string,transport:QuintzeeTransport){
   if(!alive.current||identity.current!==key||v.id!==id||!acceptQuintzeeSnapshot(current.current,v))return;
   current.current=v;anchor.current={server:v.serverAt,local:performance.now()};setNow(v.serverAt);setSnapshot(v);setError('');
  },[id,key]);
- const reconnect=useCallback(async()=>{
+ const reconnect=useCallback(async(freshId?:string)=>{
   if(flight.current===key){queued.current=key;return;}
   flight.current=key;
   try{
    do{
     if(queued.current===key)queued.current=null;
-    let rejected='';
+    let rejected='',needsLoad=true;
     const saved=sessionStorage.getItem(key);
     if(saved){
      setPending(true);
-     try{accept(await transport.send(JSON.parse(saved)));sessionStorage.removeItem(key);}
+     try{
+      const command=JSON.parse(saved) as QuintzeeCommand;
+      const response=await transport.send(command);
+      accept(response);
+      needsLoad=freshId!==command.requestId||current.current!==response||response.revision<=command.revision;
+      sessionStorage.removeItem(key);
+     }
      catch(e){
       if(!(e as {definitive?:boolean}).definitive)throw e;
       sessionStorage.removeItem(key);rejected=(e as Error).message;
      }
     }
-    accept(await transport.load());
+    if(needsLoad)accept(await transport.load());
     if(rejected&&alive.current&&identity.current===key)setError(rejected);
    }while(queued.current===key&&alive.current&&identity.current===key);
   }catch(e){if(alive.current&&identity.current===key)setError((e as Error).message);}
@@ -39,7 +45,7 @@ export function useQuintzee(id:string,actor:string,transport:QuintzeeTransport){
  const act=useCallback(async(intent:QuintzeeIntent)=>{
   const v=current.current;if(!v||v.id!==id||sessionStorage.getItem(key))return;
   const command={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
-  sessionStorage.setItem(key,JSON.stringify(command));setPending(true);await reconnect();
+  sessionStorage.setItem(key,JSON.stringify(command));setPending(true);await reconnect(command.requestId);
  },[id,key,reconnect]);
  useEffect(()=>{
   alive.current=true;current.current=null;setSnapshot(null);void reconnect();
@@ -59,5 +65,5 @@ export function useQuintzee(id:string,actor:string,transport:QuintzeeTransport){
   const due=snapshot.state.board.deadline-(anchor.current.server+performance.now()-anchor.current.local);
   const timer=setTimeout(()=>void reconnect(),Math.max(0,due)+25);return()=>clearTimeout(timer);
  },[snapshot,reconnect]);
- return {snapshot,error,pending,now,act,reconnect};
+ return {snapshot,error,pending,now,act,reconnect:()=>reconnect()};
 }

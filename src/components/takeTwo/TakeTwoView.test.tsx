@@ -29,15 +29,15 @@ it('shows frozen legacy rules and the current draw-reset rules',()=>{
  ui.rerender(<TakeTwoRules version="take-two/2"/>);expect(screen.getByText(/accepted Next Card draw resets it to 500/)).toBeTruthy();
  expect(screen.getByText(/Drawing never changes the round clock/)).toBeTruthy();
 });
-it('immediately highlights both cards, preserves them until authority, and permits safe next-card selection without a second command',async()=>{
- let resolve!:()=>void;const send=vi.fn(()=>new Promise<void>(r=>{resolve=r;}));const ui=render(<TakeTwoView {...props} onIntent={send}/>);
+it('immediately highlights both cards, preserves them until authority, and retains the second exposed pair until acknowledgment',async()=>{
+ let resolve!:(ok:boolean)=>void;const send=vi.fn(()=>new Promise<boolean>(r=>{resolve=r;}));const ui=render(<TakeTwoView {...props} onIntent={send}/>);
  fireEvent.click(card(1));fireEvent.click(card(2));expect(send).toHaveBeenCalledTimes(1);
  expect(card(1).getAttribute('aria-pressed')).toBe('true');expect(card(2).getAttribute('aria-pressed')).toBe('true');
  fireEvent.click(card(3));fireEvent.click(card(4));expect(send).toHaveBeenCalledTimes(1);expect(card(4).getAttribute('aria-pressed')).toBe('true');
  const next={...view,revision:2,board:{...view.board,slots:[null,null,4,5],exposed:[2,3],legalPairs:[[2,3] as [number,number]],score:900}};
  ui.rerender(<TakeTwoView {...props} view={next} onIntent={send}/>);
  expect(screen.queryByRole('button',{name:/^Row 1, card 1:/})).toBeNull();expect(card(4).getAttribute('aria-pressed')).toBe('true');
- await act(async()=>resolve());fireEvent.click(card(3));expect(send).toHaveBeenCalledTimes(2);
+ await act(async()=>resolve(true));expect(send).toHaveBeenCalledTimes(2);expect(send).toHaveBeenLastCalledWith({type:'pair',items:[2,3]});
 });
 it('releases the view guard after a rejected/no-change action and resets selection across round identity',async()=>{
  const send=vi.fn(async()=>{}),ui=render(<TakeTwoView {...props} onIntent={send}/>);

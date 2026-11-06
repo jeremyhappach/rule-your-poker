@@ -1,3 +1,13 @@
+# Async latency, Run21 controls and Words timed turns — November 6, 2026
+
+Async Run21 shows the pending card and column. Take 2 retains a second exposed pair.
+Run21 puts Give Up / Take Score above Pass outside the columns in each mode.
+Quintzee and Mega show pending choices. Words uses fresh command responses.
+Ordinary Async Take 2, Quintzee and Boxdrop commands use migration `20261106145520`.
+The Words clock is qualified for new admissions after publication of the compatible client.
+See [release measurements, qualification and rollback](ASYNC_LATENCY_RELEASE.md).
+Physical iPhone PWA acceptance is pending. Jeremy reported improved TriTowers feel on the previous build.
+
 # Async review emphasis and TriTowers response — 2026-11-05 — owner smoke pending
 
 TriTowers, Run21, Quintzee, Boxdrop and Words now emphasize the reviewed actor

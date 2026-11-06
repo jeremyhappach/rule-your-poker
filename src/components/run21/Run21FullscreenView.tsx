@@ -8,7 +8,7 @@ import type { ShellTabId } from '@/lib/canonicalShell/ShellTabBar';
 import { FullscreenGameShell } from '@/lib/canonicalShell/FullscreenGameShell';
 import { Run21Felt } from './Run21Felt';
 import { Run21Scoreboard } from './Run21Scoreboard';
-import { Run21PlayerPane, Run21Timer } from './Run21PlayerPane';
+import {Run21FullscreenActions} from './Run21PlayerPane';
 import { Run21Replay } from './Run21Replay';
 
 interface Props {
@@ -36,7 +36,7 @@ export function Run21FullscreenView(props: Props) {
     description={sessionEnded ? 'Session ended' : view ? `Round ${view.roundNumber} · $${view.stake.toLocaleString('en-US')}` : 'Connecting…'}
     activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={props.panel} sessionEnded={sessionEnded}
     scores={view && <Run21Scoreboard view={view} now={now} transportBalances={snapshot.balances}/>}
-    actions={view && !sessionEnded && !replay && <div className="run21-fullscreen-footer"><div className="run21-fullscreen-actions"><Run21Timer view={view} now={now}/><Run21PlayerPane view={view} now={now} onIntent={props.onIntent} pending={props.pending}/></div>{props.participationControls}</div>}>
+    actions={view && !sessionEnded && !replay && <div className="run21-fullscreen-footer"><Run21FullscreenActions view={view} now={now} onIntent={props.onIntent} pending={props.pending}/>{props.participationControls}</div>}>
     <Run21SpaceScene/>
     {props.error}
     {!sessionEnded && (view ? replay ? <Run21Replay replay={replay} renderFrame={(frame, at, controls) => <div className="run21-fullscreen-replay">

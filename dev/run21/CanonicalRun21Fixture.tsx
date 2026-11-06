@@ -41,8 +41,7 @@ function Contents({view,now,pane,geometry,onIntent}:Props) {
     {layer&&area.width>0&&createPortal(<div className="run21-felt-safe-area" data-run21-deadline={view.boards[self.id]?.deadline} data-run21-started={view.boards[self.id]?.startedAt} style={{left:`${area.x*100}%`,top:`${area.y*100}%`,width:`${area.width*100}%`,height:`${area.height*100}%`}}><Run21Felt view={view} now={now} geometry={geometry} drawLayer={layer} drawRect={draw} onIntent={onIntent}/></div>,layer)}
     <ShellHudGrid timer={<Run21Timer view={view} now={now}/>}
       pane={<div className="run21-player-pane">{tab==='cards'?<>
-        <Run21PlayerPane view={view} now={now} onIntent={onIntent}/>
-        <div className="run21-lab-controls"><details open><summary>Preview controls</summary>{pane}</details></div>
+        <div className="run21-controls-and-score"><div className="run21-lab-controls"><details open><summary>Preview controls</summary>{pane}</details></div><Run21PlayerPane withPass view={view} now={now} onIntent={onIntent}/></div>
       </>:<p>Isolated {tab} fixture. Production integration is deferred.</p>}</div>}
       identity={view.viewerId?<div className="run21-self-identity" data-run21-score-owner={self.id}>
         <strong>{self.name}</strong><CanonicalChipDisc amount={100} positionAnchor={self.seat} size="cluster"/>

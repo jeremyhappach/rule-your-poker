@@ -1,3 +1,4 @@
+import {useVisible,usePlayback} from '@/lib/delayed/usePlayback';
 import {AsyncSessionName} from './AsyncSessionName';
 import {MegaHoleReplay} from '@/components/megaCardGolf/MegaHoleReplay';
 import {MegaCompetitionScorecard} from '@/components/megaCardGolf/MegaCompetitionScorecard';
@@ -29,18 +30,6 @@ import {wordsFinalReview} from '@/lib/delayed/wordsFinalReview';
 
 type Identity={childId:string;matchId:string;userId:string};
 const noop=()=>{};
-function useVisible(){
- const [active,setActive]=useState(!document.hidden&&navigator.onLine);
- useEffect(()=>{const update=()=>setActive(!document.hidden&&navigator.onLine);document.addEventListener('visibilitychange',update);window.addEventListener('online',update);window.addEventListener('offline',update);return()=>{document.removeEventListener('visibilitychange',update);window.removeEventListener('online',update);window.removeEventListener('offline',update);};},[]);
- return active;
-}
-function usePlayback(duration:number,key:string){
- const active=useVisible(),[frame,setFrame]=useState({key,elapsed:0}),origin=useRef<number|null>(null);
- useEffect(()=>{origin.current=null;setFrame({key,elapsed:0});},[key]);
- useEffect(()=>{if(!active){origin.current=null;return;}if(frame.key===key&&frame.elapsed>=duration)return;origin.current=performance.now();const id=setInterval(()=>{const elapsed=Math.min(duration,performance.now()-(origin.current??performance.now()));setFrame({key,elapsed});if(elapsed>=duration)clearInterval(id);},50);return()=>clearInterval(id);},[active,duration,key]);
- const elapsed=frame.key===key?frame.elapsed:0;
- return {elapsed,active,done:active&&elapsed>=duration};
-}
 function useReduced(){return useMemo(()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false,[]);}
 class SnapshotBoundary extends Component<{children:ReactNode},{failed:boolean}>{
  state={failed:false};static getDerivedStateFromError(){return {failed:true};}

@@ -28,7 +28,7 @@ vi.mock('@/lib/run21/localClient', () => ({run21Request: (...args: unknown[]) =>
 vi.mock('./Run21Announcement', () => ({Run21Announcement: () => null}));
 vi.mock('./Run21Felt', () => ({Run21Felt: () => null}));
 vi.mock('./Run21Replay', () => ({Run21Replay: () => null}));
-vi.mock('./Run21PlayerPane', () => ({Run21PlayerPane: () => null, Run21Timer: () => null}));
+vi.mock('./Run21PlayerPane', () => ({Run21FullscreenActions:()=>null,Run21PlayerPane: () => null, Run21Timer: () => null}));
 vi.mock('@/lib/canonicalShell/ShellHudChrome', () => ({ShellAnnouncementRail: () => null}));
 import {Run21GameTable} from './Run21GameTable';
 afterEach(cleanup);

@@ -2,7 +2,7 @@ import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {Readable} from 'node:stream';
 const mocks=vi.hoisted(()=>({getUser:vi.fn(),operation:vi.fn(),createClient:vi.fn(),shortcut:vi.fn(),takeTwoShortcut:vi.fn(),tripFlipShortcut:vi.fn(),from:vi.fn(),rpc:vi.fn()}));
 vi.mock('@supabase/supabase-js',()=>({createClient:mocks.createClient}));
-vi.mock('../../../server/arcade/service.js',()=>({arcadeOperation:mocks.operation,triShortcut:mocks.shortcut,takeTwoShortcut:mocks.takeTwoShortcut,tripFlipShortcut:mocks.tripFlipShortcut}));
+vi.mock('../../../server/arcade/service.js',()=>({arcadeOperation:mocks.operation,boxdropShortcut:(b:any)=>b.game==="boxdrop",quintzeeShortcut:(b:any)=>b.game==="quintzee",triShortcut:mocks.shortcut,takeTwoShortcut:mocks.takeTwoShortcut,tripFlipShortcut:mocks.tripFlipShortcut}));
 import handler from '../../../api/arcade';
 async function request(headers:Record<string,string>={},body:unknown={op:'state'},method='POST'){
  const req=Object.assign(Readable.from([]),{method,headers:{host:'holm357.com',...headers},body});
@@ -22,6 +22,10 @@ describe('Arcade HTTP authentication boundary',()=>{
  it('skips only redundant Take 2 display-name reads after fresh bearer verification',async()=>{
   mocks.takeTwoShortcut.mockReturnValue(true);const body={op:'action',game:'take-two',userId:'forged'};
   expect((await request({authorization:'Bearer valid'},body)).status).toBe(200);expect(mocks.getUser).toHaveBeenCalledWith('valid');expect(mocks.from).not.toHaveBeenCalled();expect(mocks.operation).toHaveBeenCalledWith(expect.any(Function),'verified-user','You',body);
+ });
+ it.each(['boxdrop','quintzee','mega-card-golf'])('skips the unused %s profile read while authenticating the request',async game=>{
+  expect((await request({authorization:'Bearer valid'},{game,op:'action'})).status).toBe(200);
+  expect(mocks.getUser).toHaveBeenCalledWith('valid');expect(mocks.from).not.toHaveBeenCalled();
  });
  it('overlaps the Run21 display-name lookup with authority while retaining the same resolved name',async()=>{
   let resolve!:(v:any)=>void;const chain={select:()=>chain,eq:()=>chain,single:()=>new Promise(r=>{resolve=r;})};mocks.from.mockReturnValue(chain);

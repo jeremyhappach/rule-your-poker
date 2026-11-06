@@ -28,7 +28,9 @@ try{
     assert(pass.x+pass.width<=card.x+2&&help.x>=card.x+card.width-2);
     const end=await page.locator('.run21-collect-button').boundingBox();
     const footer=await page.locator('.run21-fullscreen-actions').boundingBox();
-    assert(Math.abs(end.x+end.width-(footer.x+footer.width))<2);
+    const passButton=await page.getByRole('button',{name:'Pass',exact:true}).boundingBox();
+    assert(end.y+end.height<=passButton.y && end.x+end.width<=card.x+2);
+    assert(passButton.y+passButton.height<=bounds.y);
     const speed=await page.locator('.run21-speed').boundingBox();
     assert(speed.width>footer.width*.55);
     assert(await page.getByText('Round 1 · $1',{exact:true}).isVisible());

@@ -46,13 +46,20 @@ export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,can
  const total=completedCount?scoring&&!scoring.finished?view.score-(result?.score??0):view.score:null;
  useEffect(()=>{setTab('cards');setAbandon(false);},[view.id]);
  useEffect(()=>{setOpening([]);setTapIn(null);},[view.id,view.hole,view.phase,view.revision]);
+ const [submitted,setSubmitted]=useState<{id:string;hole:number;revision:number;indices:number[]}|null>(null);
+ useEffect(()=>{if(!busy)setSubmitted(null);},[busy,view.id,view.hole]);
+ const pendingTargets=busy&&submitted?.id===view.id&&submitted.hole===view.hole&&submitted.revision===view.revision?submitted.indices:[];
+ const submit=(intent:Intent)=>{
+  setSubmitted({id:view.id,hole:view.hole,revision:view.revision,indices:intent.type==='replace'?[intent.index]:intent.type==='open'?intent.indices:[]});
+  onIntent(intent);
+ };
  const choose=(index:number)=>{
   if(!available)return;
-  if(view.phase==='opening'&&sequential){if(view.cards[index]===null)onIntent({type:'open',indices:[index]});}
+  if(view.phase==='opening'&&sequential){if(view.cards[index]===null)submit({type:'open',indices:[index]});}
   else if(view.phase==='opening')setOpening(old=>old.includes(index)?old.filter(x=>x!==index):old.length<view.config.initialExposed?[...old,index]:old);
   else if(playable&&view.pending!==null){
    if(view.cards[index]===null&&view.exposed.filter(x=>!x).length===1){setStandPatConfirmation(false);setTapIn({index,revision:view.revision});}
-   else onIntent({type:'replace',index});
+   else submit({type:'replace',index});
   }
  };
  return <div className="mega-game-host" data-shell-presentation-mode="fullscreen"><FullscreenGameShell className={'mega-scene theme-'+COURSE_IDS.indexOf(view.config.id)} title="Mega Card Golf" description="" activeTab={tab} setActiveTab={setTab} announcement={false} scores={competitionScorecard} panelTitle="How to play" panelDescription="The completion failsafe continues while rules are open."
@@ -64,12 +71,12 @@ export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,can
     <div className="mega-hole-tally" aria-label="Running hole score" aria-live="polite"><small>{scoring?'HOLE SCORE':''}</small><strong>{scoring?formatGolfScore(scoring.tally):''}</strong></div><div/>
    </div>
    <div className="mega-play-area"><div className="mega-hand-area">
-    <p className="mega-turn-text" role="status">{presentation?.replacement?'Replaced card':scoring?scoring.revealing?'Revealing your hand…':scoring.finished?'Hole '+view.hole+' complete':scoring.indices.length===2?'Pair cancels · E':formatGolfScore(scoring.points):view.phase==='opening'?'Choose '+(sequential?openingLeft:view.config.initialExposed)+' opening '+(sequential&&openingLeft===1?'card':'cards'):view.pending===null?'Preparing stock…':standPat?'Replace a card or Stand Pat':'Choose any card to replace'}</p>
-    <div className="mega-tableau">{view.cards.map((card,i)=><MegaCard audioIdentity={view.id+'/'+view.hole+'/'+view.revision+'/'+i} onSound={tab==='cards'?onSound:undefined} key={view.id+'/'+view.hole+'/'+i} course={view.config} card={card} label={'Card '+(i+1)} onClick={()=>choose(i)} disabled={!available||now>=view.deadline||(view.phase==='opening'&&sequential&&card!==null)||(view.phase!=='opening'&&(!playable||view.pending===null))} selected={!sequential&&opening.includes(i)} highlight={scoring?.indices.includes(i)} stage={presentation?.replacement?.index===i?presentation.replacement.stage:presentation?.opening?.index===i?'reveal':undefined}/>)}</div>
+    <p className="mega-turn-text" role="status">{pendingTargets.length?'Confirming '+pendingTargets.map(i=>'card '+(i+1)).join(', ')+'…':presentation?.replacement?'Replaced card':scoring?scoring.revealing?'Revealing your hand…':scoring.finished?'Hole '+view.hole+' complete':scoring.indices.length===2?'Pair cancels · E':formatGolfScore(scoring.points):view.phase==='opening'?'Choose '+(sequential?openingLeft:view.config.initialExposed)+' opening '+(sequential&&openingLeft===1?'card':'cards'):view.pending===null?'Preparing stock…':standPat?'Replace a card or Stand Pat':'Choose any card to replace'}</p>
+    <div className="mega-tableau">{view.cards.map((card,i)=><MegaCard audioIdentity={view.id+'/'+view.hole+'/'+view.revision+'/'+i} onSound={tab==='cards'?onSound:undefined} key={view.id+'/'+view.hole+'/'+i} course={view.config} card={card} label={'Card '+(i+1)} onClick={()=>choose(i)} disabled={!available||now>=view.deadline||(view.phase==='opening'&&sequential&&card!==null)||(view.phase!=='opening'&&(!playable||view.pending===null))} selected={pendingTargets.includes(i)||!sequential&&opening.includes(i)} highlight={scoring?.indices.includes(i)} stage={presentation?.replacement?.index===i?presentation.replacement.stage:presentation?.opening?.index===i?'reveal':undefined}/>)}</div>
    </div>
    <aside className="mega-draw-area" data-anytime-stand-pat={anytimeStandPat||undefined}><div className="mega-counters"><div><strong>{view.stockRemaining}</strong><span>stock draws left</span></div><div><strong>{view.discardsRemaining}</strong><span>discards left</span></div></div>
     <div className="mega-draw-card"><MegaCard audioIdentity={view.id+'/'+view.hole+'/'+view.revision+'/stock'} onSound={tab==='cards'?onSound:undefined} course={view.config} card={view.pending} label={view.pending===null?'Next stock card':'Active stock card'} stage={presentation?.stockRevealing?'stock-reveal':undefined} disabled/></div>
-    {view.phase==='opening'&&!sequential&&<button className="mega-start" disabled={!available||now>=view.deadline||opening.length!==view.config.initialExposed} onClick={()=>onIntent({type:'open',indices:opening})}>Reveal selected</button>}
+    {view.phase==='opening'&&!sequential&&<button className="mega-start" disabled={!available||now>=view.deadline||opening.length!==view.config.initialExposed} onClick={()=>submit({type:'open',indices:opening})}>Reveal selected</button>}
     {actionsSettled&&anytimeStandPat&&view.phase==='playing'&&<button className="mega-start" disabled={!available||!playable||!standPat} onClick={()=>{setStandPatConfirmation(true);setTapIn({index:null,revision:view.revision});}}>Stand Pat</button>}
     {actionsSettled&&view.pending!==null&&<button className="mega-secondary" disabled={!available||!playable||((anytimeStandPat||!standPat)&&view.discardsRemaining===0)} onClick={()=>onIntent({type:!anytimeStandPat&&standPat?'stand-pat':'discard'})}>{!anytimeStandPat&&standPat?'Stand Pat':'Discard'}</button>}
    </aside></div>
@@ -80,7 +87,7 @@ export function MegaCardGolfGame({view,onIntent,onExit,busy,now,presentation,can
     </div>
    </section>}
   </div>
-  <AlertDialog open={!!tapIn&&canConfirm} onOpenChange={open=>{if(!open)setTapIn(null);}}><AlertDialogContent><AlertDialogTitle>Tap In?</AlertDialogTitle><AlertDialogDescription>{standPatConfirmation?'Keep your six board cards, reveal any concealed cards and score this hole.':'This replacement exposes your last concealed card and ends the hole.'}</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={!canConfirm} onClick={()=>{if(canConfirm&&tapIn){onIntent(tapIn.index===null?{type:'stand-pat'}:{type:'replace',index:tapIn.index});setTapIn(null);}}}>Tap In?</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  <AlertDialog open={!!tapIn&&canConfirm} onOpenChange={open=>{if(!open)setTapIn(null);}}><AlertDialogContent><AlertDialogTitle>Tap In?</AlertDialogTitle><AlertDialogDescription>{standPatConfirmation?'Keep your six board cards, reveal any concealed cards and score this hole.':'This replacement exposes your last concealed card and ends the hole.'}</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction disabled={!canConfirm} onClick={()=>{if(canConfirm&&tapIn){submit(tapIn.index===null?{type:'stand-pat'}:{type:'replace',index:tapIn.index});setTapIn(null);}}}>Tap In?</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   <AlertDialog open={abandon&&view.status==='active'} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon game?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard. Clocks continue while this dialog is open.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={!available||!canAbandon} onClick={()=>{onExit();setAbandon(false);}}>Abandon Game</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </FullscreenGameShell></div>;
 }

@@ -59,3 +59,5 @@
 /* Passive Async inspection keeps private letters legible and navigation free. */
 .words-view-only{flex-shrink:0;border:1px solid #62768a;border-radius:5px;background:#29394b;color:#f6da76;padding:.2rem .5rem;font-size:.75rem;text-align:center}
 .words-rack[data-view-only=true] button{opacity:1;filter:none}
+
+.words-turn-announcement{text-align:center;font-weight:800;color:#7be1cc}

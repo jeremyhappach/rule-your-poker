@@ -9,8 +9,12 @@ export function usePtownWords(id:string,userId:string,transport:WordsTransport,s
  const recoveryRef=useRef<ReturnType<typeof createAuthoritativeSubscription>|null>(null);
  const key=`${storageScope}:${userId}:${id}`;
  const accept=useCallback((v:WordsSnapshot,token:number)=>{if(token!==generation.current||latest.current&&v.revision<latest.current.revision)return;const next=acceptWordsSnapshot(latest.current,v,id),local=performance.now(),server=latest.current?Math.max(next.serverAt,clock.current.server+local-clock.current.local):next.serverAt;latest.current=next;setSnapshot(next);clock.current={server,local};setNow(server);},[id]);
- const resolve=useCallback(async()=>{if(flight.current)return false;const token=generation.current;flight.current=true;let ok=false;
-  try{const saved=sessionStorage.getItem(key);setPending(!!saved);if(saved){try{accept(await transport.send(JSON.parse(saved) as Command),token);if(token===generation.current)retireAcknowledgedCommand(key,saved);setError('');ok=true;}catch(e){if(/ptown_words:|42501/.test((e as Error).message)){if(token===generation.current)retireAcknowledgedCommand(key,saved);accept(await transport.load(),token);}throw e;}}
+ const resolve=useCallback(async(freshId?:string)=>{if(flight.current)return false;const token=generation.current;flight.current=true;let ok=false;
+  try{const saved=sessionStorage.getItem(key);setPending(!!saved);if(saved){try{const command=JSON.parse(saved) as Command;
+    const response=await transport.send(command);
+    accept(response,token);
+    if(freshId!==command.requestId||response.revision<=command.revision||latest.current!==response)accept(await transport.load(),token);
+    if(token===generation.current)retireAcknowledgedCommand(key,saved);setError('');ok=true;}catch(e){if(/ptown_words:|42501/.test((e as Error).message)){if(token===generation.current)retireAcknowledgedCommand(key,saved);accept(await transport.load(),token);}throw e;}}
    else{accept(await transport.load(),token);setError('');ok=true;}
   }catch(e){if(token===generation.current){setError((e as Error).message);setErrorVersion(n=>n+1);}}finally{if(token===generation.current){flight.current=false;setPending(!!sessionStorage.getItem(key));}}return ok;
  },[key,transport,accept]);
@@ -24,6 +28,6 @@ export function usePtownWords(id:string,userId:string,transport:WordsTransport,s
   const at=clock.current.server+performance.now()-clock.current.local;
   return scheduleAuthoritativeBoundary(snapshot.deadline-at,()=>recoveryRef.current?.refresh());
  },[snapshot?.identity.roundId,snapshot?.deadline,snapshot?.phase,snapshot?.paused,snapshot?.finished]);
- const act=async(intent:Intent)=>{const v=latest.current;if(!v||(!['request_pause','cancel_pause_request'].includes(intent.type)&&!v.canAct)||v.paused||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;sessionStorage.setItem(key,JSON.stringify({requestId:crypto.randomUUID(),revision:v.revision,intent}));return resolve();};
+ const act=async(intent:Intent)=>{const v=latest.current;if(!v||(!['request_pause','cancel_pause_request'].includes(intent.type)&&!v.canAct)||v.paused||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;const requestId=crypto.randomUUID();sessionStorage.setItem(key,JSON.stringify({requestId,revision:v.revision,intent}));return resolve(requestId);};
  return {snapshot,error,errorVersion,pending,connected,now,act,reconnect:()=>recoveryRef.current?.recover()??Promise.resolve(false)};
 }

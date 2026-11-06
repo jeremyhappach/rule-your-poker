@@ -9,6 +9,6 @@ export async function wordsRpc<T>(name:string,args:Record<string,unknown>):Promi
 }
 export function wordsTransport(id:string):WordsTransport{return {
  load:()=>wordsRpc('ptown_words_snapshot',{p_dealer_game_id:id}),
- send:async c=>{await wordsRpc('ptown_words_action',{p_dealer_game_id:id,p_request_id:c.requestId,p_revision:c.revision,p_action:c.intent.type,p_items:'items' in c.intent?c.intent.items:null});return wordsRpc('ptown_words_snapshot',{p_dealer_game_id:id});},
+ send:c=>wordsRpc<WordsSnapshot>('ptown_words_action',{p_dealer_game_id:id,p_request_id:c.requestId,p_revision:c.revision,p_action:c.intent.type,p_items:'items' in c.intent?c.intent.items:null}),
  subscribe:(refresh,status)=>{const channel=supabase.channel(`ptown-words:${id}:${crypto.randomUUID()}`).on('postgres_changes',{event:'*',schema:'public',table:'ptown_words_revisions',filter:`dealer_game_id=eq.${id}`},refresh).subscribe(s=>status(s==='SUBSCRIBED'));return()=>{void supabase.removeChannel(channel);};},
 };}

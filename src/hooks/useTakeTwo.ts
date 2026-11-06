@@ -16,7 +16,7 @@ export function useTakeTwo(id:string,userId:string,transport:TakeTwoTransport){
   flight.current=true;
   try{
    if(saved){setPending(true);const command=JSON.parse(saved) as TakeTwoCommand;
-    try{accept(await transport.send(command),token);if(token===generation.current)retireAcknowledgedCommand(key,saved);}
+    try{accept(await transport.send(command),token);if(token===generation.current){retireAcknowledgedCommand(key,saved);return true;}}
     catch(e){
      // Definitive server rejection retires this intent. Network uncertainty keeps
      // exactly the same UUID/payload across reload; never mint a replacement.
@@ -42,7 +42,7 @@ export function useTakeTwo(id:string,userId:string,transport:TakeTwoTransport){
  const act=async(intent:TakeTwoIntent)=>{
   const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;if(!v||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||intent.type!=='abandon'&&!takeTwoPlayWindow(v.board,at,!v.solo).playable)return;
   const command:TakeTwoCommand={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
-  sessionStorage.setItem(key,JSON.stringify(command));await resolve();
+  sessionStorage.setItem(key,JSON.stringify(command));return await resolve();
  };
  return {snapshot:snapshot?.id===id?snapshot:null,error:error||(connected===false?'Connection interrupted. Reconnecting…':''),connected:connected===true,pending,now,epoch,act,reconnect:()=>{void recoveryRef.current?.recover();}};
 }

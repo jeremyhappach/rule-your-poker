@@ -142,18 +142,18 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
 
 /** Own attempts and acknowledged opponent contributions are public. No future deck, salt,
  * opponent board or unpaired opponent score crosses this boundary. */
-export async function project(row:Child,viewer:string,rpc:Rpc){
+export async function project(row:Child,viewer:string,rpc:Rpc,prepared?:{visible:unknown;ownBoards:unknown[]}){
  const s=row.state??initial(row),paired=Math.min(...s.players.map(p=>s.attempts.filter(a=>a.actor===p).length));
  const disclosed=(p:string,a:Attempt)=>p===viewer||((s.game!=='take-two'||row.terminal||s.attempts.some(own=>own.actor===viewer&&own.round===a.round))&&(row.reviewed?row.reviewed.includes(p+':'+a.round):row.terminal||a.round<=paired));
  const totals=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&disclosed(p,a)).reduce((n,a)=>n+a.score,0)]));
  const pendingResults=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&!disclosed(p,a)).length]));
  let board:unknown=null;
- if(viewer===row.actor&&s.board)board=s.game==='mega-card-golf'?projectPlayerHole(s.board as MegaRun,Number(row.server_at)):s.game==='run21'?structuredClone(s.board):await sqlBoard(s,'visible',row.config,row.server_at,rpc);
+ if(viewer===row.actor&&s.board)board=prepared?prepared.visible:s.game==='mega-card-golf'?projectPlayerHole(s.board as MegaRun,Number(row.server_at)):s.game==='run21'?structuredClone(s.board):await sqlBoard(s,'visible',row.config,row.server_at,rpc);
  return {id:row.id,matchId:row.match_id,game:row.game_type,config:row.config,revision:row.revision,segment:row.segment,
   actor:row.actor,round:s.round,board,totals,pendingResults,reviewRevision:row.reviewed?.length??0,terminal:row.terminal,held:!!row.held,expiresAt:row.expires_at,serverAt:Number(row.server_at),
   holeResults:s.game==='mega-card-golf'?s.attempts.filter(a=>disclosed(a.actor,a)).map(a=>({actor:a.actor,hole:a.round,score:a.score,at:a.at})):[],
-  ownResults:await Promise.all(s.attempts.filter(a=>a.actor===viewer).map(async a=>({round:a.round,score:a.score,at:a.at,result:s.game==='mega-card-golf'?completedHole(a.board as MegaRun):a.board.result,
-   board:s.game==='mega-card-golf'?projectPlayerHole(a.board as MegaRun,Number(row.server_at)):s.game==='run21'?a.board:await sqlBoard({...s,board:a.board},'visible',row.config,row.server_at,rpc)}))),
+  ownResults:await Promise.all(s.attempts.filter(a=>a.actor===viewer).map(async (a,index)=>({round:a.round,score:a.score,at:a.at,result:s.game==='mega-card-golf'?completedHole(a.board as MegaRun):a.board.result,
+   board:prepared?prepared.ownBoards[index]:s.game==='mega-card-golf'?projectPlayerHole(a.board as MegaRun,Number(row.server_at)):s.game==='run21'?a.board:await sqlBoard({...s,board:a.board},'visible',row.config,row.server_at,rpc)}))),
   winner:row.terminal?row.outcome?.winner??null:null,
   result:row.terminal&&row.outcome?{reason:row.outcome.reason,winner:row.outcome.winner,
    delta:viewer===row.organizer?row.outcome.organizer_delta:row.outcome.opponent_delta}:null};
