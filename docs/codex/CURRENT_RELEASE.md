@@ -1,6 +1,6 @@
-# Crib Lab v1 — November 6, 2026 — locally qualified, production closed
+# Crib Lab v1 — November 6, 2026 — hosted qualification passed
 
-Crib Lab adds three-round solo Arcade cribbage using the canonical private shuffle, hand scorer, run receipts, recovery worker and timestamped leaderboards. The new duration default freezes at admission. The local database, concurrency, browser, audio and layout proofs passed. Hosted installation, publication, activation and physical PWA acceptance are pending. See [qualification and owner smoke](CRIB_LAB_V1.md).
+Crib Lab adds three-round solo Arcade cribbage using the canonical private shuffle, hand scorer, run receipts, recovery worker and timestamped leaderboards. The new duration default freezes at admission. Hosted migration `20261106184302` passed candidate and installed rollback proofs with digest `240b547aa5f4df0ff3dbf40faedeed06`. Recovery worker v18 passed exact source verification and reported a healthy production heartbeat. The release checkpoint is `crib-lab-v1-2026-11-06`. Arcade admission is gated on the matching public client and publication receipt. Physical PWA acceptance remains Jeremy’s smoke step. See [qualification and owner smoke](CRIB_LAB_V1.md).
 
 # Cribbage counting clock — November 6, 2026
 

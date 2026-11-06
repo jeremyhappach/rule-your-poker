@@ -1,6 +1,6 @@
 # Crib Lab v1 qualification · November 6, 2026
 
-Crib Lab is a solo Arcade game. The candidate is on `codex/crib-lab-v1` from main `670f5a9f5`. Production release is pending. The approved 1466 × 564 PNG was resized without cropping into the existing 480w and 960w banner slots. Source SHA-256 is `C995D0F039FE43F164ECE18A7245E5003FE189DC074E885DE457254B7B9126C8`.
+Crib Lab is a solo Arcade game. The release checkpoint is `crib-lab-v1-2026-11-06`, based on main `670f5a9f5`. The approved 1466 × 564 PNG was resized without cropping into the existing 480w and 960w banner slots. Source SHA-256 is `C995D0F039FE43F164ECE18A7245E5003FE189DC074E885DE457254B7B9126C8`.
 
 ## Owners and timing
 
@@ -23,9 +23,15 @@ At expiry the server fills missing discard positions from right to left, skips u
 
 Reproduction uses the existing `dev/quintzee/database.mjs` loopback connector and a disposable database named `crib_lab_v1_<digits>` with the current Arcade schema, private Cribbage owners and account access gates. Run `node dev/crib-lab/proof.mjs <database>` before installation, install the candidate in that disposable database and rerun with `--installed`. Run `dev/crib-lab/races.mjs`, `dev/crib-lab/worker.mjs` and `dev/crib-lab/browser.mjs` with the same database name. The browser writes screenshots and its receipt summary under `qualification.local/crib-lab/browser/`.
 
+## Hosted release evidence
+
+On November 6 the candidate and installed PostgreSQL proofs returned the same authority digest, `240b547aa5f4df0ff3dbf40faedeed06`. Each returned zero fixture users, zero Crib Lab runs and zero enabled boards after rollback. The second proof verified installed migration `20261106184302`. The reproducible matrix is in `supabase/tests/crib_lab_hosted_proof.sql`. Run it against closed admission. For candidate verification, the release runner inserts the reviewed migration at the CANDIDATE_DDL marker inside the rollback block.
+
+Worker v18 retains v17’s token authentication and deployed Mega Card Golf shuffle. Its only source change adds the Crib Lab step to the existing game dispatcher. The precise upload passed the isolated bundled worker proof, matched the downloaded production source, and produced a healthy scheduler heartbeat after deployment.
+
 ## Release gates and owner smoke
 
-The migration creates disabled rules. For an approved production release, verify the hosted candidate and installed proofs, publish the matching recovery worker and client, verify the publication SHA and worker health, and only then run the guarded `supabase/crib-lab/activate.sql` with the verified SHA and installed definition hash. Hosted schema, worker and client publication are pending.
+The migration creates disabled rules. For an approved production release, verify the hosted candidate and installed proofs, publish the matching recovery worker and client, verify the publication SHA and worker health, and only then run the guarded `supabase/crib-lab/activate.sql` with the verified SHA and installed definition hash. The activation guard checks the verified publication SHA, installed digest, current default duration and recent healthy worker completion.
 
 1. On an installed iPhone and Android PWA, open Arcade. Check the two-column tile, complete ribbon and separate gold Rules button. Tap Play with Sounds enabled and listen as the rows arrive.
 2. Mark one discard, refresh, then finish two per row. Lock them. Replace two successive offers in the same hand, pass the others and watch for the shared starter after offer five. Mute during stock, then unmute.

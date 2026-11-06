@@ -18,7 +18,7 @@ const suits=['clubs','diamonds','hearts','spades'];
 const cards=spec=>spec.split(' ').map(s=>({rank:s.slice(0,-1),suit:suits[Number(s.at(-1))],value:Math.min(10,'A23456789TJQK'.indexOf(s.slice(0,-1))+1)}));
 try{
   await c.query('begin');
-  if(!process.argv.includes('--installed'))await c.query(readFileSync('supabase/migrations/20261106180931_crib_lab_arcade_v1.sql','utf8'));
+  if(!process.argv.includes('--installed'))await c.query(readFileSync('supabase/migrations/20261106184302_crib_lab_arcade_v1.sql','utf8'));
   assert.equal(await one("select enabled from private.arcade_rulesets where id='crib-lab/1'"),false);
   for(const [spec,category,points] of [
     ['50 51 52 J3 53','total',29],['30 31 42 53 K0','runs',6],['30 31 32 43 50','runs',9],
