@@ -1,3 +1,7 @@
+# Chucky Showdown and Crib Lab — approved Arcade presentation, November 6, 2026
+
+The portrait-left Chucky tile, remaining-use pips, Stay portrait, drifting/shattering Crack and shared round bell are qualified together. Chucky v2 and Crib Lab use the approved centered card face. The existing rulesets and database own all game state. Local browser qualification completed three rounds in each game, including Chucky's three distinct bells, muted play and reload, plus Crib Lab scoring and leaderboard continuation. Owner production iPhone smoke is pending. See [Chucky presentation and smoke steps](CHUCKY_SHOWDOWN_V2.md#approved-arcade-presentation-polish).
+
 # Chucky Showdown v2 — November 6, 2026 — hosted release qualification
 
 Three variable-length Fold/Stay rounds replace the nine-hand format for newly admitted v2 runs. V1 runs and scores retain their original rules and boards. The five-row display adds two hidden community cards, per-round resources, individual 720 ms Chucky reveals, winning-five highlights, and synchronized glass and descending-score audio. Hosted migration `20261106210547` passed pre-install and installed rollback proofs. Activation checks the release SHA, authority digest, recovery heartbeat and real-money play. Physical iPhone acceptance is pending. See [qualification and owner smoke](CHUCKY_SHOWDOWN_V2.md).

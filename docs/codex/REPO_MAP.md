@@ -142,6 +142,11 @@ contains responsive derivatives. `ArcadeSwitchboard` and the game catalog retain
 membership, order and routing. Qualification: `dev/arcade-lobby/` and
 `docs/codex/ARCADE_APPROVED_LOBBY.md`.
 
+Chucky v2's presentation is in `src/components/arcade/ChuckyRoundTable.tsx`.
+Its level strip and loss animation use `ChuckyLevelAvailability.tsx` and
+`ChuckyCrackLoss.tsx` in the same directory. `ArcadeClassicFace.tsx` supplies
+the opt-in Chucky v2 / Crib Lab face inside `PlayingCard`'s resolved-face guard.
+
 ## Notifications — expanded local candidate, activation held
 
 - `src/lib/webPush/` and `src/components/delayed/PushPreferences.tsx`: explicit device opt-in/account binding, personal quiet hours, new-table opt-in and separate new-match defaults versus viewer/match overrides.

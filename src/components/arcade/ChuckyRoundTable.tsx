@@ -12,8 +12,15 @@ import type {ApprovedSound} from '@/lib/audio/approvedSounds';
 import type {Card} from '@/lib/cardUtils';
 import type {V2Scene,V2Snapshot} from '@/lib/chuckyShowdown/model';
 import {admit,handAnnouncement,scoreMotion,seek} from '@/lib/chuckyShowdown/presentationV2';
-import {ArcadeInfo} from './ArcadeInfo';
 import {CardSlot,EndRun,Riffle} from './ChuckyTableParts';
+import {ArcadeInfo} from './ArcadeInfo';
+import {ChuckyLevelAvailability} from './ChuckyLevelAvailability';
+import {ChuckyCrackLoss, crackLiftMs, crackEndMs} from './ChuckyCrackLoss';
+import {RoundIntroArtwork} from '@/components/run21/Run21RoundIntro';
+import {useRun21Bell} from '@/hooks/useRun21Bell';
+import '../run21/run21.css';
+
+const portrait = '/arcade/approved-v1/chucky-portrait.webp';
 
 type Controls=ReturnType<typeof useChuckyShowdown>;
 const tally=(elapsed:number,offset:number,max:number)=>Math.min(max,Math.max(0,1+Math.floor((elapsed-offset)/180)));
@@ -78,13 +85,28 @@ export function ChuckyRoundTable({v,game,userId}:{v:V2Snapshot;game:Controls;use
   const nPrivate=s.phase==='deal'?tally(elapsed,800,4):4;
   const nBoard=s.phase==='deal'?tally(elapsed,1550,4):4;
   const nChucky=s.phase==='showdown'&&!s.chucky.length?tally(elapsed,180,s.level):s.level;
-  const cracks=s.cracks+(s.phase==='crack'&&elapsed<2250?1:0);
+  const liveBeat=live&&!game.silent;
+  const cracking=s.phase==='crack'&&liveBeat;
+  const cracks=s.cracks+(cracking&&elapsed<crackLiftMs?1:0);
+
+  const roundIntro=s.phase==='deal'&&s.hand===1&&same&&liveBeat;
+  const bellRemaining=roundIntro?Math.max(0,Math.min(2500-elapsed,s.due-game.now)):0;
+  useRun21Bell(userId,bellRemaining>0?'chucky:'+v.id+':round:'+s.round:null,bellRemaining);
+
+  const showPortrait=s.phase==='board_reveal'||s.phase==='choose';
+  const portraitHand=useRef<string|null>(null);
+  useLayoutEffect(()=>{
+    if(showPortrait)portraitHand.current=s.roundId;
+    else if(s.phase!=='showdown')portraitHand.current=null;
+  },[showPortrait,s.roundId,s.phase]);
+  useEffect(()=>{const image=new Image();image.src=portrait;},[]);
+  const portraitLeaving=liveBeat&&s.phase==='showdown'&&!s.chucky.length&&elapsed<150&&portraitHand.current===s.roundId;
   const highlight=s.phase==='crack';
   const cards=(group:'chucky'|'community'|'player',faces:Card[],n:number)=>Array.from({length:n},(_,i)=>{
     const card=faces[i],winning=highlight&&group!=='player'&&card&&s.best?.some(c=>faceKey(c)===faceKey(card));
     const flipping=live&&(group==='chucky'&&s.phase==='showdown'||group==='community'&&s.phase==='board_reveal'&&i>=2);
     return <div className="cs-slot" key={s.roundId+':'+group+i} data-winning={winning||undefined} data-dim={highlight&&!winning||undefined}>
-      <CardSlot card={card} flip={flipping} showSuit/></div>;
+      <CardSlot card={card} flip={flipping} classicFace/></div>;
   });
   const banked=s.phase==='round_over',risk=banked?s.beforeRisk-(motion?value:0):value;
   const completed=banked?s.score-risk:s.score;
@@ -99,13 +121,20 @@ export function ChuckyRoundTable({v,game,userId}:{v:V2Snapshot;game:Controls;use
           {Array.from({length:v.config.maxCracks},(_,i)=><HeartCrack key={i} aria-hidden="true" data-active={i<cracks}/>)}</div>
         <GameplaySoundButton/><ArcadeInfo game="chucky-showdown" name="Chucky Showdown" ruleset={v.ruleset}>
           {v.status==='active'&&<EndRun disabled={!game.ready||game.pending} abandon={()=>game.act('abandon')}/>}</ArcadeInfo></header>
-      <section className="cs-band cs-dealer" aria-label="Chucky cards"><h2>Chucky</h2><div className="cs-cards">{cards('chucky',s.chucky,nChucky)}</div></section>
+      <section className="cs-band cs-dealer" aria-label="Chucky cards"><h2>Chucky</h2><div className="cs-cards">
+        {(showPortrait||portraitLeaving)&&<div className="cs-portrait" data-leaving={portraitLeaving} aria-hidden="true">
+          <img src={portrait} alt="" width="427" height="455"/>
+        </div>}
+        {bellRemaining>0&&<div className="cs-round-bell"><RoundIntroArtwork label={'ROUND '+s.round} fading={bellRemaining<=200}/></div>}
+        {cards('chucky',s.chucky,nChucky)}
+      </div></section>
       <section className="cs-band cs-community" aria-label="Community cards"><h2>Community</h2><div className="cs-cards">
         {s.phase==='deal'&&elapsed<800?<Riffle/>:cards('community',s.community,nBoard)}</div></section>
       <section className="cs-choice" aria-label="Decisions and results"><div className="cs-message"><strong role="status" className={announced?'cs-cracked':''}>{title}</strong>
         {deciding&&<div className="cs-clock"><span>{Math.ceil(remaining/1000)}s</span><CountdownDots remaining={remaining} duration={s.phase==='choose'?v.config.selectMs:v.config.foldMs}/></div>}
         {banked&&<TriScorePill root={root} item={{id:userId,score:s.score,active:true}} value={completed}/>}</div>
         {s.phase==='crack'&&announced&&<p className="cs-hand-label">{handAnnouncement(s)}</p>}
+        {s.phase==='fold_stay'&&<ChuckyLevelAvailability uses={s.uses}/>}
         {s.phase==='fold_stay'&&<div className="cs-decisions">
           <button disabled={!canAct} onClick={()=>game.act('fold')}><b>FOLD</b> <small>{s.folds===1?'(Bank Total)':'('+s.folds+' remaining)'}</small></button>
           <button disabled={!canAct} onClick={()=>game.act('stay')}><b>STAY</b> <small>(Choose Chucky level after reveal)</small></button></div>}
@@ -119,6 +148,8 @@ export function ChuckyRoundTable({v,game,userId}:{v:V2Snapshot;game:Controls;use
         <div className="cs-bank-actions"><span>Round <b>{s.round}</b> / 3 · Hand <b>{s.hand}</b></span><span>{14-s.uses.reduce((a,b)=>a+b,0)} / 14 challenges</span></div>
         {game.error&&<div role="alert">{game.error} <button onClick={game.reconnect}>Reconnect</button></div>}
       </section>
+      {cracking&&elapsed>=crackLiftMs&&elapsed<crackEndMs&&<ChuckyCrackLoss key={key}
+        table={root} remaining={s.cracks} elapsed={elapsed} identity={key} userId={userId}/>}
     </div>
     {end&&elapsed>=2350&&elapsed<4650&&<ArcadeCompletion score={s.score} record={v.completion}/>}
   </main>;

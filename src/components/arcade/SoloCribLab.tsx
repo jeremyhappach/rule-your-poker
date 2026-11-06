@@ -20,7 +20,7 @@ const categories: [keyof Omit<Counts,'total'>,string][]=[['fifteens','Fifteens']
 const labels={discard:'Discard',stock:'Stock',cut:'Cut',swap:'Swap',scoring:'Scoring'};
 const cardName=(c:LabCard)=>c.rank+' of '+c.suit;
 const Face=memo(function Face({card,selected=false}:{card:LabCard;selected?:boolean}){
-  return <PlayingCard frontStyle="megatouch" card={{rank:card.rank,suit:suitGlyph[card.suit]}} highlight={selected?'gold':null} size="sm" style={{width:'100%',height:'100%'}}/>;
+  return <PlayingCard frontStyle="arcade-classic" card={{rank:card.rank,suit:suitGlyph[card.suit]}} highlight={selected?'gold':null} size="sm" style={{width:'100%',height:'100%'}}/>;
 });
 
 export function SoloCribLab({runId,userId,transport:provided}:{runId:string;userId:string;transport?:LabTransport}){

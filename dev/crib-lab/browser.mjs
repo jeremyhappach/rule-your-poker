@@ -87,6 +87,7 @@ try{
   await page.setViewportSize({width:390,height:844});
   for(let round=1;round<=3;round++){
     await phase('discard').waitFor();assert.equal(await phase('discard').getAttribute('data-round'),String(round));
+    assert.equal(await page.locator('.lab-row:first-child [data-arcade-classic-suit]').count(),6);
     await card(0,0);
     if(round===1){
       played.push(...await page.evaluate(()=>window.audioEvents));
@@ -98,6 +99,7 @@ try{
     await card(0,1);
     for(let h=1;h<5;h++){await card(h,0);await card(h,1);}
     await action('Lock Discards');await phase('stock').waitFor();
+    assert.equal(await page.locator('.lab-row:first-child [data-arcade-classic-suit]').count(),4);
     if(round===1){
       await page.screenshot({path:out+'/stock.png'});
       await button('Mute sounds').click();const before=await page.evaluate(()=>window.audioEvents.length);

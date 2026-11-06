@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { CanonicalCardBack } from "@/components/canonicalShell/CanonicalCardBack";
+import { ArcadeClassicFace } from './arcade/ArcadeClassicFace';
 import { CartoonCardFace } from './CartoonCardFace';
 import { MegatouchCardFace } from './canonicalShell/MegatouchCardFace';
 import {
@@ -30,7 +31,7 @@ export type CardSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface PlayingCardProps {
   alwaysShowMegatouchSuit?: boolean;
-  frontStyle?: 'canonical' | 'cartoon' | 'megatouch';
+  frontStyle?: 'canonical' | 'cartoon' | 'megatouch' | 'arcade-classic';
   cartoonLayout?: 'standard' | 'tableau' | 'royal';
   card?: CardType;
   jokerFace?: JokerFace;
@@ -230,7 +231,7 @@ export const PlayingCard = ({
 
   // Determine card styling based on effective deck color mode
   const effectiveDeckColorMode = getEffectiveDeckColorMode();
-  const isFourColor = effectiveDeckColorMode === 'four_color';
+  const isFourColor = frontStyle !== 'arcade-classic' && effectiveDeckColorMode === 'four_color';
   const deckFaceMode: DeckFaceMode = isFourColor ? 'four-color' : 'two-color';
   const fourColorConfig = normalizedSuit ? FOUR_COLOR_SUITS[normalizedSuit] : null;
 
@@ -285,6 +286,19 @@ export const PlayingCard = ({
     </Card>;
   }
 
+  let illustratedFace: React.ReactNode = null;
+  if (frontStyle === 'arcade-classic') {
+    illustratedFace = <ArcadeClassicFace rank={card.rank} suit={normalizedSuit!}/>;
+  } else if (frontStyle === 'megatouch') {
+    illustratedFace = <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}>
+      <MegatouchCardFace rank={card.rank} suit={normalizedSuit!} tier={tier} showSuit={alwaysShowMegatouchSuit||!isFourColor}/>
+    </span>;
+  } else if (frontStyle === 'cartoon') {
+    illustratedFace = <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}>
+      <CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/>
+    </span>;
+  }
+
   // For flip animation support
   if (isFlipping !== undefined && !showFront) {
     return (
@@ -327,7 +341,7 @@ export const PlayingCard = ({
             ...(!isFourColor ? { color: normalizedSuit && (normalizedSuit === '♥' || normalizedSuit === '♦') ? '#dc2626' : '#000000' } : {}),
           }}
         >
-          {frontStyle === 'megatouch' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><MegatouchCardFace rank={card.rank} suit={normalizedSuit!} tier={tier} showSuit={alwaysShowMegatouchSuit||!isFourColor}/></span> : frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
+          {illustratedFace ?? <><span
             className={isFourColor ? cardFaceStyle.textColor : ''}
             style={face.rankStyle}
           >
@@ -376,7 +390,7 @@ export const PlayingCard = ({
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
 
-      {frontStyle === 'megatouch' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><MegatouchCardFace rank={card.rank} suit={normalizedSuit!} tier={tier} showSuit={alwaysShowMegatouchSuit||!isFourColor}/></span> : frontStyle === 'cartoon' ? <span className="absolute inset-0" style={{color:isFourColor?'white':undefined}}><CartoonCardFace layout={cartoonLayout} rank={card.rank} suit={normalizedSuit!}/></span> : <><span
+      {illustratedFace ?? <><span
         className={isFourColor ? cardFaceStyle.textColor : ''}
         style={face.rankStyle}
       >

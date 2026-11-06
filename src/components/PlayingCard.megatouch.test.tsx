@@ -33,3 +33,19 @@ it('preserves four-color rank-only semantics for the opt-in face',()=>{
  expect(container.querySelector('[data-megatouch-suit]')).toBeNull();
  expect((container.querySelector('[data-megatouch-face]')!.parentElement as HTMLElement).style.color).toBe('white');
 });
+
+it('keeps an explicit Arcade classic face white in four-color mode and hides unresolved cards',()=>{
+ preferences.mode='four_color';
+ const canvas=vi.spyOn(HTMLCanvasElement.prototype,'getContext').mockReturnValue(null);
+ try{
+  const {container,rerender}=render(<PlayingCard card={{rank:'3',suit:'♥'}} frontStyle="arcade-classic" highlight="gold"/>);
+  expect(container.querySelector('[data-arcade-classic-suit="♥"]')).not.toBeNull();
+  expect((container.querySelector('[data-playing-card-face]') as HTMLElement).style.backgroundColor).toBe('white');
+  expect(container.querySelector('[data-playing-card-highlight="gold"]')).not.toBeNull();
+  rerender(<PlayingCard card={{rank:'4',suit:'♠'}} frontStyle="arcade-classic" isHidden/>);
+  expect(container.querySelector('[data-canonical-card-back]')).not.toBeNull();
+  expect(container.querySelector('[data-arcade-classic-face]')).toBeNull();
+  rerender(<PlayingCard card={{rank:'?',suit:'?'} as any} frontStyle="arcade-classic"/>);
+  expect(container.querySelector('[data-canonical-card-back]')).not.toBeNull();
+ }finally{canvas.mockRestore();}
+});

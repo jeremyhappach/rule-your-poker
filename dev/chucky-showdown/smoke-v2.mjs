@@ -14,9 +14,16 @@ export async function smokeV2({page,actor,c,origin,out,errors,log,act,phase,butt
       const box=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
       return {rows:[...document.querySelectorAll('.cs-table>section')].map(box),
         buttons:[...document.querySelectorAll('.cs-choice button')].map(box),
-        cards:[...document.querySelectorAll('.cs-slot')].map(box),suits:[...document.querySelectorAll('[data-megatouch-suit]')].map(e=>getComputedStyle(e).fontSize)};
+        cards:[...document.querySelectorAll('.cs-slot')].map(box),suits:[...document.querySelectorAll('[data-arcade-classic-suit]')].map(e=>e.getBoundingClientRect().height)};
     });
-    assert.equal(sample.rows.length,5);assert.ok(sample.suits.length>=6);
+    if(label==='selection'){
+      const fits=await page.locator('.cs-portrait img').evaluate(img=>{
+        const art=img.getBoundingClientRect(),slot=img.parentElement.getBoundingClientRect();
+        return img.naturalHeight>0&&art.top>=slot.top-.5&&art.bottom<=slot.bottom+.5;
+      });
+      assert.ok(fits,'the complete portrait fits the Chucky area');
+    }
+    assert.equal(sample.rows.length,5);assert.ok(sample.suits.length>=6&&sample.suits.every(height=>height>0));
     for(const r of [...sample.rows,...sample.cards,...sample.buttons])assert.ok(r.x>=-.5&&r.y>=-.5&&r.x+r.w<=width+1&&r.y+r.h<=height+1,JSON.stringify({width,height,r}));
     for(const r of sample.cards)assert.ok(r.w>=19&&r.h>=26,JSON.stringify(r));
     assert.ok(sample.rows.every((r,i)=>!i||r.y>=sample.rows[i-1].y+sample.rows[i-1].h-.5));
@@ -27,16 +34,25 @@ export async function smokeV2({page,actor,c,origin,out,errors,log,act,phase,butt
     await page.locator('.cs-table[data-phase="fold_stay"][data-round="'+round+'"][data-hand="'+hand+'"]').waitFor();
     assert.equal(await page.locator('.cs-community .cs-slot').count(),4);
     assert.equal(await page.locator('.cs-community [aria-label="Face-down card"]').count(),2);
-    assert.equal(await page.locator('[data-winning=true]').count(),0);
+    assert.equal(await page.locator('[data-winning=true],.cs-portrait,.cs-round-bell,.cs-lost-heart').count(),0);
+    assert.equal(await page.locator('.cs-availability-level').count(),7);
+    const tiles=await page.locator('.cs-availability-level').evaluateAll(es=>es.map(e=>[e.querySelectorAll('i').length,e.dataset.exhausted]));
+    assert.ok(tiles.every(([pips,gray])=>gray===String(pips===0)));
+    if(round===1&&hand===1)assert.ok(tiles.every(([pips])=>pips===2));
+    if(round===1&&hand===4)assert.deepEqual(tiles[0],[0,'true']);
   };
   const challenge=async(n,left)=>{
     await stay();await phase('choose').waitFor();
     assert.equal(await page.locator('.cs-community [aria-label="Face-down card"]').count(),0);
+    await page.locator('.cs-portrait img').evaluate(img=>img.decode());
     await act(level(n,left));await phase('showdown').waitFor();
+    await page.locator('.cs-dealer .cs-slot').first().waitFor();
+    assert.equal(await page.locator('.cs-portrait').count(),0);
   };
   await page.goto(origin+'/arcade');
   const tile=page.getByRole('link',{name:'Chucky Showdown leaderboard'});
   await tile.waitFor();await tile.locator('img').evaluate(img=>img.decode());
+  assert.ok((await tile.locator('img').getAttribute('srcset')).includes('chucky-showdown-a-960.webp'));
   await button('Chucky Showdown rules and info').click();await page.getByRole('heading',{name:'Fold or Stay'}).waitFor();
   await page.keyboard.press('Escape');await tile.click();await button('Play').click();
   await next(1,1);await button(fold(3)).waitFor();
@@ -72,6 +88,9 @@ export async function smokeV2({page,actor,c,origin,out,errors,log,act,phase,butt
   await page.reload();
   await page.getByText('ROUND BUSTED',{exact:true}).waitFor();
   assert.equal((await sounds()).filter(id=>id.endsWith(':glass')).length,0,'reload replayed crack');
+  // A full reload creates a new Web Audio context. Unlock it before the *next* live round.
+  await page.getByRole('heading',{name:'Chucky Showdown',exact:true}).click();
+  await page.locator('.cs-round-bell').getByText('ROUND 2',{exact:true}).waitFor();
   await next(2,1);await button(fold(3)).waitFor();
   await button('Mute sounds').click();const muteAt=(await sounds()).length;
   await challenge(1,2);await phase('win').waitFor();await next(2,2);
@@ -79,7 +98,9 @@ export async function smokeV2({page,actor,c,origin,out,errors,log,act,phase,butt
   await button('Unmute sounds').click();
   for(let n=3;n>=1;n--){await act(fold(n));if(n>1)await next(2,6-n);}
   await page.getByText('ROUND BANKED',{exact:true}).waitFor();await next(3,1);
-  await button('Chucky Showdown rules and info').click();await page.getByRole('dialog').waitFor();await page.keyboard.press('Escape');
+  await button('Chucky Showdown rules and info').click();
+  await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();
+  await page.getByRole('dialog').waitFor({state:'hidden'});
   const deadline=log.filter(r=>r.phase==='fold_stay').at(-1).due;
   await page.getByRole('link',{name:'Back to Chucky Showdown leaderboard'}).click();await page.getByRole('link',{name:'Resume'}).click();await next(3,1);
   assert.equal(log.at(-1).due,deadline);
@@ -93,6 +114,9 @@ export async function smokeV2({page,actor,c,origin,out,errors,log,act,phase,butt
   assert.equal(new Set(played).size,played.length);assert.deepEqual(errors,[]);
   assert.ok(!played.some(id=>id.startsWith('palette:chucky:')||id.includes('laugh')));
   assert.equal(played.filter(id=>id.endsWith(':glass')).length,3);
+  assert.equal(played.filter(id=>id.startsWith('chucky-shatter:')).length,2,'two live shatters before the third result is reloaded');
+  const bells=played.filter(id=>id.startsWith('run21-bell:chucky:'));
+  assert.deepEqual(bells.map(id=>id.split(':').at(-1)),['1','2','3']);
   assert.equal(played.filter(id=>id.includes(':crack:')&&id.endsWith(':count')).length,2,'two positive crack countdowns');
   assert.ok(played.some(id=>id.includes(':win:')&&id.endsWith(':count')));
   const seven=played.find(id=>id.startsWith('palette:chip:')&&id.endsWith(':commit')).slice('palette:chip:'.length,-':commit'.length);

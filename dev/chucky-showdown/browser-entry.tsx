@@ -23,6 +23,10 @@ platformAudio.present=(event,scheduled)=>{
   const cue=event.cue;
   return present({...event,cue:cue&&{...cue,schedule(...args){const started=cue.schedule(...args);if(started)record(event.id);return started;}}},scheduled);
 };
+const request=platformAudio.request.bind(platformAudio);
+platformAudio.request=event=>request({...event,cue:{...event.cue,schedule(...args){
+  const started=event.cue.schedule(...args);if(started)record(event.id);return started;
+}}});
 const follow=platformAudio.follow.bind(platformAudio);
 platformAudio.follow=event=>follow({...event,cueAt:(at,left)=>{
   const cue=event.cueAt(at,left);

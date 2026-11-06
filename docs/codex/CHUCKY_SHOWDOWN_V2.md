@@ -32,10 +32,16 @@ Hosted migration `20261106210547` passed candidate and installed rollback proofs
 
 The release branch is `codex/chucky-showdown-v2` and the checkpoint tag is `chucky-showdown-v2-2026-11-06`. The production Vite build and app typecheck passed. The app suite passed 3,866 cases with ten previously documented Defaults failures matching the base by name. All 241 harness cases passed. The v1 and v2 browser runs both passed. Seven v2 face-down placements spanned 1,083 ms from first to last. The six face-up gaps measured 690–754 ms. Three losses/ties produced three glass cues, and only the two positive losses produced descending counts.
 
+## Approved Arcade presentation polish
+
+The lobby uses the portrait-left Chucky banner with the existing independent Rules control. Chucky v2 and Crib Lab opt into the same white card face with conventional red and black suits. Each rank is centered from its visible glyph bounds. Other card styles and the canonical hidden-card renderer keep their own presentation.
+
+Fold/Stay displays one filled pip per remaining use and grays exhausted levels. Stay admits the lobby portrait during the two community flips and level choice. At commitment the portrait clears before the first Chucky card lands. A live Crack detaches its header heart after the score count, then shatters with a short explosion. Each first deal of a round reuses the Run21/TriTowers artwork and bell cue. Live-frame admission and the existing audio manager guard mute, recovery and replay. The release uses the existing Chucky and Crib Lab rulesets.
+
 ## Owner iPhone smoke
 
-1. Open Chucky Showdown in Arcade with Sounds on. Check the Fold label, three Crack icons, readable suits on all four player cards and two face-down community cards.
-2. Tap Stay. Listen for two distinct flips. Select level 7 and compare the quick face-down deal with the slower seven face-up flips. Verify its use count decreases and the next hand is fresh.
-3. After winning points, watch a loss. Verify the five highlighted cards and hand name, one glass sound, the falling score and the delayed Crack indicator update. A zero-point loss should have glass alone. Check the last-Crack pulse and Reduced Motion.
+1. Open Chucky Showdown in Arcade with Sounds on. Check the round-opening bell, remaining-use strip, three Crack icons, readable suits on all four player cards and two face-down community cards.
+2. Tap Stay. Check the Chucky portrait through the two community flips and level choice. Select level 7 and compare the quick face-down deal with the slower seven face-up flips. Verify its use count decreases and the next hand is fresh.
+3. After winning points, watch a loss. Verify the five highlighted cards and hand name, one glass sound, the falling score and the delayed Crack indicator update. Listen for the small explosion when the drifting heart breaks. A zero-point loss skips the descending count. Check the last-Crack pulse and Reduced Motion.
 4. Fold three times in a round. Confirm the final button says **FOLD (Bank Total)** and the banked amount joins completed rounds. Let each decision clock expire once. Background and return across a reveal and check for duplicate sounds or extra time.
 5. Finish all three rounds. Compare the final score and achieved time in personal history and both leaderboard windows. Use the Rules selector to check the legacy v1 board separately.
