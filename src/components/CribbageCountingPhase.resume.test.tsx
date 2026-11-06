@@ -3,6 +3,7 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { presentSound } from '@/lib/audio/presentationSound';
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
+import { createCountingClock } from '@/lib/cribbage/countingClock';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 
 vi.mock('@/lib/audio/presentationSound', () => ({ presentSound: vi.fn() }));
@@ -47,12 +48,18 @@ describe('first Cribbage counting target on resume', () => {
     { elapsed: 3000, saved: 1, firstHighlightAfter: 0 },
   ])('elapsed $elapsed ms, saved beat $saved', ({ elapsed, saved, firstHighlightAfter }) => {
     vi.useFakeTimers();
+    const clock = createCountingClock(vi.fn());
+    const serverNow = new Date('2026-11-05T18:00:00Z').getTime();
+    const snapshot = { ...state, countingStartedAt: new Date(serverNow - elapsed).toISOString() };
+    clock.accept(clock.request(), performance.now(), new Date(serverNow).toISOString(), {
+      gameId: 'game', dealerGameId: 'dealer-game', roundId: 'round', handNumber: 1, paused: false, pauseVersion: 0, state: snapshot,
+    });
     const score = vi.fn();
     const progress = vi.fn();
     const { container } = render(<CribbageCountingPhase
-      cribbageState={state} players={players} initialScores={baseline}
+      cribbageState={snapshot} players={players} initialScores={baseline}
       cardBackColors={{ color: 'blue', darkColor: 'navy' }}
-      countingStartedAt={new Date(Date.now() - elapsed).toISOString()}
+      countingTime={clock.getSnapshot()!}
       persistedTargetIndex={0} persistedBeatIndex={saved}
       audioActive debugContext={{ gameId: 'game', roundId: 'round', userId: 'viewer', handNumber: 1 }}
       onCountingComplete={vi.fn()} onScoreUpdate={score} onProgressUpdate={progress}

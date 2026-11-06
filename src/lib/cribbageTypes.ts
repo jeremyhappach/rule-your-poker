@@ -89,6 +89,7 @@ export interface CribbageCountingResolution {
   resolvedAt: string;
   successorRoundId?: string;
   successorHandNumber?: number;
+  originalReleaseAt?: string;
   presentationReleaseAt?: string;
   presentationFallbackAt?: string;
 }

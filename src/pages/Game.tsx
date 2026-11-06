@@ -456,6 +456,8 @@ import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { isNoTimersEnabledCached } from "@/lib/geometryLab/noTimersStore";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
+import type { CribbageState } from '@/lib/cribbageTypes';
+import { createCountingClock } from "@/lib/cribbage/countingClock";
 import { dispatchAuthoritativeRecoverySnapshot } from "@/lib/realtimeAuthoritativeCatchup";
 import { createSerializedAuthoritativeFetch } from "@/lib/serializedAuthoritativeFetch";
 import {
@@ -579,6 +581,8 @@ function isAllDecisionsInFor(
 }
 
 interface GameData {
+  pause_version?: number;
+  timer_paused_at?: string | null;
   id: string;
   current_host?: string | null;
   name?: string;
@@ -633,6 +637,7 @@ interface GameData {
 }
 
 interface Round {
+  cribbage_state?: CribbageState | null;
   id: string;
   game_id: string;
   round_number: number;
@@ -3506,6 +3511,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     return () => recoveryScheduler.setActive(false);
   }, [recoveryScheduler, safetyPollsDisabled]);
   const lastKnownGameTypeRef = useRef<string | null>(null);
+  const cribbageClock = useMemo(() => createCountingClock(() => {
+    void fetchGameData('action_surface_mismatch');
+  }), [gameId]);
+  useEffect(() => {
+    if (game?.game_type !== 'cribbage') return;
+    return cribbageClock.observeLifecycle();
+  }, [cribbageClock, game?.game_type]);
   const acceptedSessionRevisionRef = useRef<{ gameId: string; revision: number } | null>(null);
   // A games row has its own revision. Guard every realtime side effect,
   // including routing and card-cache writes, before publishing anything.
@@ -4013,6 +4025,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
            // Synchronous admission also covers reordered events before React
            // renders. Active rows still only request their exact frame below.
            acceptedGamesRowRef.current.row = admittedRow;
+           if (acceptedRow?.game_type === 'cribbage' && (
+             admittedRow.current_game_uuid !== acceptedRow.current_game_uuid
+             || admittedRow.total_hands !== acceptedRow.total_hands
+             || admittedRow.pause_version !== acceptedRow.pause_version
+             || admittedRow.is_paused !== acceptedRow.is_paused
+           )) cribbageClock.invalidate();
            const oldData = payload.old as any;
            const previousGinRouting = gameRealtimeRoutingRef.current;
            // Dealer-draw admission follows accepted game state in
@@ -4782,6 +4800,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
 
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          cribbageClock.invalidate();
           recoveryTransportSubscribedRef.current = false;
           console.warn('[SUBSCRIPTION] Realtime issue; enabling fallback polling:', status);
           startFallbackPolling();
@@ -8888,12 +8907,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
+    let clockReceipt: { request: ReturnType<typeof cribbageClock.request>; received: number; serverNow: string } | null = null;
     if (!exactThreeFiveSevenFrame) {
+      const request = cribbageClock.request();
       const response = await timedQuery('rpc.read_session_frame', 'read_session_frame', () =>
         supabase.rpc('read_session_frame' as any, { p_game_id: gameId } as any));
       const frame = response.data as unknown as {
-        game: GameData; players: Player[]; allow_bot_dealers: boolean | null;
+        game: GameData; players: Player[]; allow_bot_dealers: boolean | null; server_now: string;
       } | null;
+      if (!response.error && frame?.game?.game_type === 'cribbage') {
+        clockReceipt = { request, received: performance.now(), serverNow: frame.server_now };
+      }
       gameResult = { data: frame?.game ?? null, error: response.error };
       playersResult = { data: frame?.players ?? [], error: response.error };
       defaultsResult = { data: { allow_bot_dealers: frame?.allow_bot_dealers ?? allowBotDealersRef.current }, error: response.error };
@@ -9027,6 +9051,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ? incomingRounds.filter((r: any) => r?.dealer_game_id === activeDealerGameId)
         : [];
     }
+
+    if (clockReceipt && gameData.id === gameId) {
+      const round = gameData.rounds?.find(row => row.hand_number === gameData.total_hands);
+      if (round?.cribbage_state && round.dealer_game_id) {
+        cribbageClock.accept(clockReceipt.request, clockReceipt.received, clockReceipt.serverNow, {
+          gameId, dealerGameId: round.dealer_game_id, roundId: round.id, handNumber: round.hand_number!,
+          paused: gameData.is_paused === true, pausedAt: gameData.timer_paused_at, pauseVersion: gameData.pause_version ?? -1,
+          state: round.cribbage_state,
+        });
+      } else cribbageClock.invalidate();
+    } else if (cribbageClock.getSnapshot()) cribbageClock.invalidate();
 
     // Resolve the exact round this browser may present. This is independent
     // from games.total_hands only while PostgreSQL has prepared a non-actionable
@@ -14654,6 +14689,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
             return (
               <CribbageMobileGameTable sessionEndedPhase={_sessionEndedTableActive}
+                countingClock={cribbageClock}
                 isPaused={game.is_paused === true}
                 gameId={gameId!}
                 roundId={cribbageRoundId}

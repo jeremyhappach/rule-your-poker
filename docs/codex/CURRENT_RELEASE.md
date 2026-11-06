@@ -1,3 +1,27 @@
+# Cribbage counting clock — November 6, 2026
+
+Cribbage uses server time from the admitted session frame and monotonic client
+time for the pegging hold, counting entry and release retries. Lifecycle recovery
+invalidates the previous hand clock and resumes from the saved beat. New counts
+retain their original release deadline so that pauses can be excluded on a
+fresh mount. Older ambiguous counts start conservatively. No backfill is needed.
+
+Migration `20261106180514` passed candidate, rollback/reapplication and
+installed PostgreSQL proofs. Two Edge clients against disposable PostgreSQL
+alternated the final actor with ±120-second offsets and 150/900 ms delivery.
+Tests covered wall jumps, reordered frames, simulated interruption, reload before
+and after the first saved beat, pause/resume, silent highlight restoration,
+one successor and concurrent terminal settlement. Both clients scheduled seven
+highlight cues each in the three hands. The terminal race produced one result,
+one balanced transfer batch and two snapshots. Mounted-table tests also cover
+the delayed winning callback across pause and the normal acknowledgement path.
+
+The full app run retained the ten documented Defaults failures; 3,855 passed.
+All 241 harness tests passed. Physical iPhone Safari and Android Chrome smoke
+remains pending. The guarded SQL rollback is in
+`supabase/rollback/cribbage_counting_clock.sql`. Existing fields and stored
+results remain readable by the previous release.
+
 # Cribbage counting transition — November 6, 2026
 
 The counting screen now applies the recovered scoring phase during the half-second

@@ -1,6 +1,6 @@
 import {presentSound} from '@/lib/audio/presentationSound';
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
-import {useCompletionRetry} from '@/hooks/useCompletionRetry';
+import { useState, useEffect, useLayoutEffect, useSyncExternalStore, useRef, useCallback, useMemo, type ReactNode } from 'react';
+import {useCribbageCountRelease, type CountRelease} from '@/hooks/useCribbageCountRelease';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
@@ -127,9 +127,10 @@ import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 import { getCribbageHandIdentity } from '@/lib/cribbage/handIdentity';
 import { applyCribbagePeggingAction, fetchCribbageState } from '@/lib/cribbageAuthority';
+import type { CountingTime, CribbageCountingClock } from '@/lib/cribbage/countingClock';
 import { executeReplaySafeCribbageAction } from '@/lib/cribbageActionRecovery';
 import { createCribbageCountingProgressQueue } from '@/lib/cribbage/countingProgressQueue';
-import { shouldPresentPeggingEventAfterHydration } from '@/lib/cribbage/countingResume';
+import { keepLaterCountingCursor, shouldPresentPeggingEventAfterHydration } from '@/lib/cribbage/countingResume';
 import { readPersistedMatchChatTab, writePersistedMatchChatTab } from '@/lib/matchChatTabPersistence';
 import {
   cribbageAuthoritativeHandCounts,
@@ -219,6 +220,7 @@ function CribbageFeltAdapter(props: {
 
 
 interface CribbageMobileGameTableProps {
+  countingClock: CribbageCountingClock;
   isPaused?: boolean;
   gameId: string;
   /**
@@ -583,6 +585,7 @@ function DealClippedOpponentSeatLayer(props: {
 
 
 export const CribbageMobileGameTable = ({
+  countingClock,
   isPaused = false,
   gameId,
   sessionEndedPhase = false,
@@ -882,6 +885,30 @@ export const CribbageMobileGameTable = ({
   // Forward-only — never regress, even if a prop or identity feed momentarily lags.
   const [currentRoundId, setCurrentRoundId] = useState(roundId);
   const [currentHandNumber, setCurrentHandNumber] = useState(handNumber);
+  const sample = useSyncExternalStore(countingClock.subscribe, countingClock.getSnapshot);
+  const countingTime = !isPaused && !sample?.frame.paused && sample?.frame.gameId === gameId && sample.frame.dealerGameId === dealerGameId
+    && sample.frame.roundId === currentRoundId && sample.frame.handNumber === currentHandNumber ? sample : null;
+  const [presentationTime, setPresentationTime] = useState<CountingTime | null>(null);
+  const holdPausedCount = (isPaused || sample?.frame.paused) && presentationTime?.frame.gameId === gameId
+    && presentationTime.frame.dealerGameId === dealerGameId && presentationTime.frame.roundId === currentRoundId
+    && presentationTime.frame.handNumber === currentHandNumber;
+  useLayoutEffect(() => {
+    if (isPaused && countingClock.getSnapshot() && !countingClock.getSnapshot()?.frame.paused) countingClock.invalidate();
+  }, [isPaused, countingClock]);
+  const countScope = JSON.stringify([gameId, dealerGameId, currentRoundId, currentHandNumber, currentUserId]);
+  const presentedCount = useRef<string | null>(null);
+  const previousCursor = useRef<{ scope: string; target: number; beat: number } | null>(null);
+  const submitPresentedCount = useRef<() => void>(() => {});
+  const winningCountTimer = useRef<ReturnType<typeof setTimeout>>();
+  useLayoutEffect(() => () => clearTimeout(winningCountTimer.current), [countingTime, countScope]);
+  const countingEpochRef = useRef(countingTime);
+  countingEpochRef.current = countingTime;
+  useLayoutEffect(() => {
+    countingEpochRef.current = countingTime;
+    return () => { countingEpochRef.current = null; };
+  }, [countingTime]);
+  const validCount = (time: CountingTime | null, overdueMs = 0) =>
+    time !== null && countingEpochRef.current === time && !pauseRef.current && time.current(overdueMs);
   const roundBoundaryGuardKey = useMemo(
     () => buildBoundaryGuardKey(dealerGameId, currentRoundId, currentHandNumber),
     [dealerGameId, currentRoundId, currentHandNumber],
@@ -2284,16 +2311,6 @@ export const CribbageMobileGameTable = ({
 
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
-  // A normal counting acknowledgement may arrive a fraction early because the
-  // visual sequence and its durable server lease resolve independently. Keep
-  // the finished count on screen and retry at the server-issued release point;
-  // this retry never creates cards or advances client authority.
-  const countingActivationRetryRef = useRef<{
-    handKey: string;
-    roundId: string;
-    timer: ReturnType<typeof setTimeout>;
-  } | null>(null);
-
   // Sync framework handles optimistic write protection — no manual timestamp needed.
 
   // Stable guard key + terminal event id.
@@ -3368,19 +3385,20 @@ export const CribbageMobileGameTable = ({
   ]);
 
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display.
-  // IMPORTANT: depends ONLY on a stable key to avoid cleanup cancelling the timer mid-delay.
-  // On reconnect (countingStartedAt elapsed > 0), skip the delay so animation starts immediately.
+  // A hand or recovery generation change can restart this hold. Ordinary updates cannot.
   useEffect(() => {
-    const state = cribbageStateRef.current;
-    if (!state) return;
-    if (!countingStartKey) return;
+    if (!countingStartKey || !countingTime || !validCount(countingTime) || presentedCount.current === countScope) return;
+    const frameState = countingTime.frame.state;
+    const local = cribbageStateRef.current;
+    const useFrame = frameState.phase === 'complete' || (frameState.phase === 'counting' && local?.phase !== 'complete');
+    const state = useFrame ? frameState : local;
+    if (!state || (state.phase !== 'counting' && state.phase !== 'complete')) return;
+    const recovering = countingDelayFiredRef.current === countingStartKey && presentationTime !== countingTime;
 
     // If we've already started a counting animation, never re-initialize it.
     // This is critical when multiple clients are open and the parent props churn.
-    if (countingAnimationActiveRef.current) return;
-
-    // Only snapshot once per counting phase instance
-    if (countingDelayFiredRef.current === countingStartKey) return;
+    if (countingAnimationActiveRef.current && !recovering) return;
+    if (countingDelayFiredRef.current === countingStartKey && !recovering) return;
 
     // REPLAY GUARD: If counting already completed for this handKey, do NOT replay.
     // This survives roundId boundary resets because countingCompletedHandKeysRef is never cleared.
@@ -3408,7 +3426,7 @@ export const CribbageMobileGameTable = ({
       animationReplayCountRef.current,
       `${countingStartKey}:flyaway`,
     );
-    if (!markGuardConsumed(flyawayAnimationConsumedRef.current, countingStartKey)) {
+    if (!recovering && !markGuardConsumed(flyawayAnimationConsumedRef.current, countingStartKey)) {
       persistSyncDebugEvent({
         gameId,
         gameType: 'cribbage',
@@ -3427,10 +3445,14 @@ export const CribbageMobileGameTable = ({
     }
 
     // ── Reconnect / late-join eligibility check ──────────────────────
-    // If countingStartedAt exists and significant time has elapsed, this is a reconnect.
-    // Determine whether counting animation is still worth showing or should be skipped entirely.
-    const countingStartedAt = state.countingStartedAt;
-    const isReconnect = !!countingStartedAt && (Date.now() - new Date(countingStartedAt).getTime()) > 2500;
+    // Legacy baseline reconstruction also applies when joining a count already in progress.
+    const elapsedMs = countingTime.elapsed(state);
+    const isReconnect = recovering || elapsedMs > 2500;
+    setPresentationTime(countingTime);
+    if (recovering && !winSequenceFiredRef.current) {
+      setCountingWinFrozen(false);
+      winSequenceScheduledRef.current = null;
+    }
 
     // Mark counting animation as active
     countingAnimationActiveRef.current = true;
@@ -3441,7 +3463,14 @@ export const CribbageMobileGameTable = ({
       ? { roundId: currentRoundId, handNumber: currentHandNumber }
       : null;
     // Write countingHandKey to state so reconnecting clients can validate
-    const stateWithHandKey: CribbageState = { ...state, countingHandKey: countingStartKey };
+    let stateWithHandKey: CribbageState = { ...state, countingHandKey: countingStartKey };
+    // A frame, private read, or noisy connection can trail a beat this tab already
+    // displayed. Never rewind presentation within the same exact hand.
+    if (local?.phase === state.phase && local.countingStartedAt === state.countingStartedAt) {
+      stateWithHandKey = keepLaterCountingCursor(stateWithHandKey, local.countingTargetIndex ?? 0, local.countingBeatIndex ?? -1);
+    }
+    const saved = previousCursor.current;
+    if (saved?.scope === countScope) stateWithHandKey = keepLaterCountingCursor(stateWithHandKey, saved.target, saved.beat);
     setCountingStateSnapshot(stateWithHandKey);
     // This key is presentation-only. Persisting it from a stale browser snapshot could
     // overwrite the server's durable countingResolution marker.
@@ -3581,32 +3610,16 @@ export const CribbageMobileGameTable = ({
       },
     });
 
-    if (isReconnect) {
-      // On reconnect, skip the 2-second pegging announcement delay entirely.
-      // The pegging phase is long past — go straight to counting animation.
-      console.log('[CRIBBAGE] Reconnect detected — skipping counting delay', {
-        countingStartedAt,
-        elapsedMs: Date.now() - new Date(countingStartedAt!).getTime(),
-      });
-      setCountingDelayActive(false);
-    } else {
-      // Align every connected client to the same database committed start
-      // anchor instead of beginning a full delay when it receives the state late.
-      const elapsedMs = countingStartedAt
-        ? Math.max(0, Date.now() - new Date(countingStartedAt).getTime())
-        : 0;
-      const remainingDelayMs = Math.max(0, 2000 - elapsedMs);
-      setCountingDelayActive(remainingDelayMs > 0);
-      if (remainingDelayMs === 0) return;
-      const timer = setTimeout(() => {
-        setCountingDelayActive(false);
-      }, remainingDelayMs);
-
-      return () => {
-        clearTimeout(timer);
-      };
-    }
-  }, [countingStartKey, calculateCountingBaselineScores]);
+    const hasSavedBeat = (stateWithHandKey.countingTargetIndex ?? 0) > 0 || (stateWithHandKey.countingBeatIndex ?? -1) >= 0;
+    const remainingDelayMs = hasSavedBeat ? 0 : Math.max(0, 2000 - elapsedMs);
+    setCountingDelayActive(remainingDelayMs > 0);
+    if (!remainingDelayMs) return;
+    const due = performance.now() + remainingDelayMs;
+    const timer = setTimeout(() => {
+      if (validCount(countingTime, performance.now() - due)) setCountingDelayActive(false);
+    }, remainingDelayMs);
+    return () => clearTimeout(timer);
+  }, [countingStartKey, calculateCountingBaselineScores, countingTime]);
 
   // Clear counting overrides when starting a fresh hand (discarding phase).
   // BUG B FIX: Use ONLY presentation state (viewState) — never cribbageState — for clearing logic.
@@ -3942,7 +3955,8 @@ export const CribbageMobileGameTable = ({
   // This works for both counting phase wins AND pegging phase wins.
   // ============================================================================
   useEffect(() => {
-    if (!countingScoreOverrides || !cribbageState) return;
+    if (!countingScoreOverrides || !cribbageState || presentationTime !== countingTime
+      || !validCount(countingTime) || presentedCount.current === countScope) return;
     // Don't re-trigger if win sequence already fired/scheduled for this winner
     
     const pointsToWin = cribbageState.pointsToWin;
@@ -4015,75 +4029,10 @@ export const CribbageMobileGameTable = ({
         
         // Capture identity at schedule time — re-validate at fire time so a hand
         // boundary during the 2s delay aborts the win trigger.
-        const scheduledIdentity = expectedIdentity
-          ? { ...expectedIdentity }
-          : { roundId: currentRoundId, handNumber: currentHandNumber };
-
-        setTimeout(async () => {
-          const liveIdentity = countingIdentityRef.current;
-          if (
-            !liveIdentity ||
-            liveIdentity.roundId !== scheduledIdentity.roundId ||
-            liveIdentity.handNumber !== scheduledIdentity.handNumber
-          ) {
-            console.warn('[CRIBBAGE] Reactive win delayed callback: ABORTED (identity drift during delay)', {
-              scheduled: scheduledIdentity,
-              live: liveIdentity,
-            });
-            persistSyncDebugEvent({
-              gameId,
-              gameType: 'cribbage',
-              handNumber: scheduledIdentity.handNumber,
-              eventType: 'sync-gate',
-              severity: 'warn',
-              eventName: 'crib-reactive-win-delayed-aborted',
-              payload: {
-                scheduledRoundId: scheduledIdentity.roundId?.slice(0, 8),
-                scheduledHandNumber: scheduledIdentity.handNumber,
-                liveRoundId: liveIdentity?.roundId?.slice(0, 8) ?? null,
-                liveHandNumber: liveIdentity?.handNumber ?? null,
-              },
-            });
-            // Release the schedule guard so a legitimate later win for the same
-            // winner key isn't permanently suppressed.
-            if (winSequenceScheduledRef.current === winKey && winSequenceFiredRef.current !== winKey) {
-              recordCribDoubleSkunkTrace('reactive combo-crossing delayed abort clears scheduledRef', {
-                terminalEventId: terminalEventIdFor(playerId),
-                winKey,
-                scheduledIdentity,
-                liveIdentity,
-              });
-              winSequenceScheduledRef.current = null;
-            }
-            return;
-          }
-
-          // PostgreSQL committed scores and terminal identity when pegging
-          // entered counting. The browser only acknowledges the visible
-          // crossing; it never derives or writes a terminal state.
-          if (!scheduledIdentity.roundId) {
-            console.error('[CRIBBAGE] Reactive win: missing round identity for terminal acknowledgement');
-            winSequenceScheduledRef.current = null;
-            return;
-          }
-          const { data, error } = await supabase.rpc('cribbage_complete_counting' as any, {
-            _round_id: scheduledIdentity.roundId,
-          });
-          const result = data as { outcome?: string; state?: CribbageState } | null;
-          const terminalState = result?.state;
-          if (error || result?.outcome !== 'terminal' || !terminalState?.winnerPlayerId) {
-            console.error('[CRIBBAGE] Reactive win: authoritative terminal acknowledgement failed', {
-              error: error?.message ?? null,
-              outcome: result?.outcome ?? null,
-            });
-            winSequenceScheduledRef.current = null;
-            return;
-          }
-          syncHandle.receiveAuthoritativeUpdate(terminalState);
-          setCribbageState(terminalState);
-          cribbageStateRef.current = terminalState;
-          requestCribbageSettlement('reactive-terminal-presentation-complete');
-          triggerWinSequence(terminalState);
+        const due = performance.now() + 2000;
+        winningCountTimer.current = setTimeout(() => {
+          if (!validCount(countingTime, performance.now() - due) || winSequenceScheduledRef.current !== winKey) return;
+          submitPresentedCount.current();
         }, 2000);
         
         return; // Only one winner
@@ -4091,7 +4040,7 @@ export const CribbageMobileGameTable = ({
     }
     // triggerWinSequence intentionally omitted from deps (declared later; captured via closure).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber, currentRoundId, gameId]);
+  }, [countingScoreOverrides, cribbageState, presentationTime, countingTime, countScope, roundId, dealerGameId, currentHandNumber, currentRoundId, gameId]);
 
   // FIX B: Fetch token to prevent overlapping loads from racing
   const cribbageFetchTokenRef = useRef(0);
@@ -5445,7 +5394,11 @@ export const CribbageMobileGameTable = ({
         });
         handleAuthoritativeRealtimeStatus(status, err, {
           source: `cribbage-private-${currentRoundId}`,
-          catchUp: exactStateLoader.refresh,
+          catchUp: (source) => {
+            if (isActive) countingClock.reconcile();
+            return exactStateLoader.refresh(source);
+          },
+          onUnavailable: () => { if (isActive) countingClock.invalidate(); },
         });
       });
 
@@ -6633,6 +6586,8 @@ export const CribbageMobileGameTable = ({
   if (!countingProgressQueueRef.current) {
     countingProgressQueueRef.current = createCribbageCountingProgressQueue({
       write: async ({ roundId: progressRoundId, targetIndex, beatIndex }) => {
+        const time = countingEpochRef.current;
+        if (time?.frame.roundId !== progressRoundId || !validCount(time)) return;
         const { error } = await supabase.rpc('cribbage_record_counting_progress' as any, {
           _round_id: progressRoundId,
           _target_index: targetIndex,
@@ -6658,6 +6613,8 @@ export const CribbageMobileGameTable = ({
     // PostgreSQL owns the monotonic cursor. Never replace the full persisted
     // state from a browser snapshot. One in-flight request retains only the
     // newest queued cursor, so a slow response cannot congest hand release.
+    if (!validCount(presentationTime)) return;
+    previousCursor.current = { scope: countScope, target: targetIndex, beat: beatIndex };
     countingProgressQueueRef.current?.enqueue({
       roundId,
       targetIndex,
@@ -6670,18 +6627,41 @@ export const CribbageMobileGameTable = ({
       handKey: countingHandKeyRef.current,
       roundId,
     });
-  }, [currentRoundId, debugCtx]);
+  }, [currentRoundId, debugCtx, presentationTime, countScope]);
   // Counting presentation is deliberately not a state owner. PostgreSQL has already
   // resolved scores and persisted the successor release lease (or terminal state).
   // This callback releases creation of the next hand only after the visible count.
-  const countingRetry = useCompletionRetry(`${gameId}:${dealerGameId}:${currentRoundId}:${currentHandNumber}:${currentUserId}`);
-  const countingRetryPending = useRef(false);
-  useEffect(() => { countingRetryPending.current = false; }, [gameId,dealerGameId,currentRoundId,currentHandNumber,currentUserId]);
-  const handleCountingComplete = useCallback(async (_winDetected: boolean) => {
-    void _winDetected;
-    if (!cribbageState || !dealerGameId) return;
+  const releaseCount = useCribbageCountRelease(countScope, countingTime, async () => {
+    const { data, error } = await supabase.rpc('cribbage_complete_counting' as any, { _round_id: currentRoundId });
+    if (error) throw error;
+    if (!data) throw new Error('Missing Cribbage counting receipt');
+    return data as unknown as CountRelease;
+  }, result => {
+    if (result.outcome === 'terminal' && result.state?.winnerPlayerId) {
+      const terminalState = result.state;
+      setCountingWinFrozen(true);
+      setTerminalPath(countingStateSnapshot?.countingTargetIndex === terminalState.turnOrder.length ? 'crib-counting' : 'hand-counting');
+      syncHandle.receiveAuthoritativeUpdate(terminalState);
+      setCribbageState(terminalState);
+      cribbageStateRef.current = terminalState;
+      requestCribbageSettlement('counting-terminal-presentation-complete');
+      triggerWinSequence(terminalState);
+      return;
+    }
+    if (result.outcome !== 'activated' && result.outcome !== 'already_active') {
+      throw new Error('Unexpected Cribbage counting outcome: ' + result.outcome);
+    }
+    setCountingStateSnapshot(null);
+    setCountingWinFrozen(false);
+    setPostCountingTransitionActive(true);
+    syncHandle.unfreezePresentation();
+  }, error => {
+    console.error('[CRIBBAGE] Failed to complete durable counting handoff:', error);
+    toast.error('Unable to finish counting. The hand is preserved; reconnect to retry.');
+  });
+  const handleCountingComplete = useCallback((_winDetected: boolean) => {
+    if (!cribbageState || !dealerGameId || !countingTime || !validCount(countingTime)) return;
 
-    const handKey = countingHandKeyRef.current ?? `${dealerGameId}:${currentHandNumber}`;
     const expectedIdentity = countingIdentityRef.current;
     if (
       expectedIdentity &&
@@ -6711,125 +6691,10 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
-    if (startNextHandFiredRef.current === handKey) return;
-    const completionReceipt = countingRetry.begin();
-    if (!completionReceipt) return;
-    startNextHandFiredRef.current = handKey;
-
-    try {
-      const { data, error } = await supabase.rpc('cribbage_complete_counting' as any, {
-        _round_id: expectedIdentity?.roundId ?? currentRoundId,
-      });
-      if (!completionReceipt.isCurrent()) return;
-      if (error) throw error;
-
-      const result = data as {
-        outcome?: 'activated' | 'already_active' | 'presentation_pending' | 'terminal';
-        state?: CribbageState;
-        presentation_release_at?: string;
-      } | null;
-      if (!result?.outcome) throw new Error('Missing counting-handoff outcome');
-
-      if (result.outcome === 'terminal') {
-        const terminalState = result.state;
-        if (!terminalState?.winnerPlayerId) {
-          throw new Error('Terminal counting handoff omitted winner state');
-        }
-        completionReceipt.succeed(() => { countingRetryPending.current = false; });
-        setCountingWinFrozen(true);
-        const targetIndex = countingStateSnapshot?.countingTargetIndex ?? null;
-        setTerminalPath(
-          targetIndex === cribbageState.turnOrder.length ? 'crib-counting' : 'hand-counting',
-        );
-        syncHandle.receiveAuthoritativeUpdate(terminalState);
-        setCribbageState(terminalState);
-        cribbageStateRef.current = terminalState;
-        requestCribbageSettlement('counting-terminal-presentation-complete');
-        triggerWinSequence(terminalState);
-        return;
-      }
-
-      if (result.outcome === 'presentation_pending') {
-        const releaseAtMs = result.presentation_release_at
-          ? new Date(result.presentation_release_at).getTime()
-          : Number.NaN;
-        if (!Number.isFinite(releaseAtMs)) {
-          throw new Error('Counting handoff omitted its presentation release time');
-        }
-        completionReceipt.defer();
-
-        if (countingActivationRetryRef.current?.handKey === handKey) return;
-        if (countingActivationRetryRef.current) {
-          clearTimeout(countingActivationRetryRef.current.timer);
-        }
-
-        const retryDelayMs = Math.max(0, releaseAtMs - Date.now()) + 25;
-        const timer = setTimeout(() => {
-          if (countingActivationRetryRef.current?.handKey !== handKey) return;
-          countingActivationRetryRef.current = null;
-          startNextHandFiredRef.current = null;
-          void handleCountingComplete(false);
-        }, retryDelayMs);
-        countingActivationRetryRef.current = {
-          handKey,
-          roundId: expectedIdentity?.roundId ?? currentRoundId,
-          timer,
-        };
-        return;
-      }
-
-      if (result.outcome !== 'activated' && result.outcome !== 'already_active') {
-        throw new Error(`Unexpected counting-handoff outcome: ${result.outcome}`);
-      }
-      completionReceipt.succeed(() => { countingRetryPending.current = false; });
-
-      // The release RPC creates the successor and advances games.total_hands in one
-      // transaction. The browser must never create or write a successor deal.
-      setCountingStateSnapshot(null);
-      setCountingWinFrozen(false);
-      setPostCountingTransitionActive(true);
-      syncHandle.unfreezePresentation();
-    } catch (error) {
-      completionReceipt.fail(() => { countingRetryPending.current = true; });
-      if (!completionReceipt.isCurrent()) return;
-      if (countingActivationRetryRef.current?.handKey === handKey) {
-        clearTimeout(countingActivationRetryRef.current.timer);
-        countingActivationRetryRef.current = null;
-      }
-      startNextHandFiredRef.current = null;
-      console.error('[CRIBBAGE] Failed to complete durable counting handoff:', error);
-      toast.error('Unable to finish counting. The hand is preserved; reconnect to retry.');
-    }
-  }, [
-    cribbageState,
-    dealerGameId,
-    currentRoundId,
-    currentHandNumber,
-    countingStateSnapshot?.countingTargetIndex,
-    requestCribbageSettlement,
-    triggerWinSequence,
-    syncHandle,
-  ]);
-
-  useEffect(() => {
-    if (countingRetryPending.current) void handleCountingComplete(false);
-  }, [countingRetry.revision,handleCountingComplete]);
-
-  useEffect(() => {
-    return () => {
-      if (countingActivationRetryRef.current) {
-        clearTimeout(countingActivationRetryRef.current.timer);
-        countingActivationRetryRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const pendingRetry = countingActivationRetryRef.current;
-    if (!pendingRetry || pendingRetry.roundId === currentRoundId) return;
-    clearTimeout(pendingRetry.timer);
-    countingActivationRetryRef.current = null;
-  }, [currentRoundId]);
+    presentedCount.current = countScope;
+    releaseCount();
+  }, [cribbageState, dealerGameId, currentRoundId, currentHandNumber, countingTime, countScope, releaseCount]);
+  submitPresentedCount.current = () => handleCountingComplete(true);
 
   /*
    * Deprecated browser-owned counting handoff. Kept as disabled migration
@@ -8909,7 +8774,7 @@ export const CribbageMobileGameTable = ({
                 />
 
                 {/* Counting Phase Overlay */}
-                {countingStateSnapshot && !countingDelayActive && (
+                {countingStateSnapshot && presentationTime && (presentationTime === countingTime || holdPausedCount) && !countingDelayActive && (
                   <CribbageCountingPhase
                     audioActive={activeTab === 'cards' && !sessionEndedPhase}
                     cribbageState={countingStateSnapshot}
@@ -8920,7 +8785,7 @@ export const CribbageMobileGameTable = ({
                     onScoreUpdate={setCountingScoreOverrides}
                     initialScores={countingBaselineScoresRef.current ?? undefined}
                     winFrozen={countingWinFrozen}
-                    countingStartedAt={countingStateSnapshot.countingStartedAt}
+                    countingTime={presentationTime}
                     persistedTargetIndex={countingStateSnapshot.countingTargetIndex}
                     persistedBeatIndex={countingStateSnapshot.countingBeatIndex}
                     persistedHandKey={countingStateSnapshot.countingHandKey}

@@ -1,3 +1,4 @@
+import type { CountingTime } from '@/lib/cribbage/countingClock';
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import {presentSound} from '@/lib/audio/presentationSound';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
@@ -61,7 +62,7 @@ interface CribbageCountingPhaseProps {
   /** When true, the counting animation should freeze - parent detected a win via score subscription */
   winFrozen?: boolean;
   /** ISO timestamp from DB: when counting began. Used to skip ahead on reconnect/late join. */
-  countingStartedAt?: string | null;
+  countingTime: CountingTime;
   /** Persisted counting progress from DB — authoritative target/beat for reconnect resume. */
   persistedTargetIndex?: number | null;
   persistedBeatIndex?: number | null;
@@ -91,13 +92,21 @@ export const CribbageCountingPhase = ({
   onScoreUpdate,
   initialScores,
   winFrozen = false,
-  countingStartedAt,
+  countingTime,
   persistedTargetIndex,
   persistedBeatIndex,
   persistedHandKey,
   onProgressUpdate,
   debugContext,
 }: CribbageCountingPhaseProps) => {
+  const countingStartedAt = cribbageState.countingStartedAt;
+  // A delayed callback can be the first thing to run after device sleep.
+  const schedule = useCallback((callback: () => void, delay: number) => {
+    const due = performance.now() + delay;
+    return setTimeout(() => {
+      if (mountedRef.current && countingTime.current(performance.now() - due)) callback();
+    }, delay);
+  }, [countingTime]);
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
   const [highlightedCards, setHighlightedCards] = useState<CribbageCard[]>([]);
@@ -146,6 +155,7 @@ export const CribbageCountingPhase = ({
   // final Total is pending at a time (per counting owner).
   const pendingFinalTotalRef = useRef<{
     announcementId: string;
+    retireAt: number;
     announcementKey: number;
     roundId: string | null;
     targetIndex: number;
@@ -167,7 +177,7 @@ export const CribbageCountingPhase = ({
   const handleTotalRetired = useCallback(
     (armedKey: number, armedTargetIndex: number, armedRoundId: string | null, armedAnnouncementId: string, _reason: string) => {
       const pending = pendingFinalTotalRef.current;
-      if (!pending) return;
+      if (!pending || !countingTime.current(performance.now() - pending.retireAt)) return;
       // Identity checks (spec):
       //   callback ID == pending final-total ID
       //   round identity == stored round identity
@@ -220,6 +230,7 @@ export const CribbageCountingPhase = ({
         const armedAnnouncementId = `final-total:${armedRoundId ?? 'no-round'}:${targetIndex}:${key}`;
         pendingFinalTotalRef.current = {
           announcementId: armedAnnouncementId,
+          retireAt: performance.now() + 2500,
           announcementKey: key,
           roundId: armedRoundId,
           targetIndex,
@@ -422,7 +433,7 @@ export const CribbageCountingPhase = ({
   const scoringToCutGap = useCardOverlap('cardOverlap.cribbage.scoringHandToCutGap');
   const firstCardRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
-    if (highlightSoundKey && highlightedCards.length) {
+    if (highlightSoundKey && highlightedCards.length && countingTime.current()) {
       presentSound('cribbageHighlight', highlightSoundKey, audioActive ? firstCardRef.current : null);
     }
   }, [highlightSoundKey, highlightedCards, audioActive, winFrozen]);
@@ -822,12 +833,15 @@ export const CribbageCountingPhase = ({
     const hasPersistedProgress = persistedTargetIndex != null && persistedTargetIndex > 0;
     const hasPersistedBeat = persistedBeatIndex != null && persistedBeatIndex > -1;
     const hasPersistedCursor = hasPersistedProgress || hasPersistedBeat;
-    const elapsedMs = countingStartedAt
-      ? Math.max(0, Date.now() - new Date(countingStartedAt).getTime())
-      : 0;
-    const timeFallbackCursor = !hasPersistedCursor && countingStartedAt
+    if (!countingTime.current()) return;
+    const elapsedMs = countingTime.elapsed(cribbageState);
+    const elapsedCursor = !hasPersistedCursor && countingStartedAt
       ? getCountingResumeCursorFromElapsed(buildBeatTimeline().beats, elapsedMs - 2_000)
       : null;
+
+    // Only the exact terminal snapshot may skip the entire presentation. If the
+    // estimated timeline expired but the server still has a count, show its beats.
+    const timeFallbackCursor = elapsedCursor?.complete ? null : elapsedCursor;
 
     // TERMINAL-SNAPSHOT GUARD:
     // If the authoritative cribbage state has already resolved this hand
@@ -861,7 +875,7 @@ export const CribbageCountingPhase = ({
       const { targets: targetTimelines } = buildBeatTimeline();
 
       // Terminal check: if persisted target is beyond all targets, skip to completion
-      if (timeFallbackCursor?.complete || pTargetIdx >= targetTimelines.length) {
+      if (pTargetIdx >= targetTimelines.length) {
         skipIsTerminal = true;
       } else {
 
@@ -960,7 +974,7 @@ export const CribbageCountingPhase = ({
       // Fire completion callback after a brief frame to let state settle.
       // A hand resolved authoritatively reports winDetected=true so the
       // parent routes into the terminal owner instead of next-hand setup.
-      completeTimerRef.current = setTimeout(() => {
+      completeTimerRef.current = schedule(() => {
         if (authoritativeHandResolved) {
           onCountingComplete(true);
         } else if (!winFrozenRef.current) {
@@ -1015,7 +1029,7 @@ export const CribbageCountingPhase = ({
 
     // Start entering animation (skip if already past enter phase)
     if ((skipPhase as TransitionPhase) !== 'scoring' && (skipPhase as TransitionPhase) !== 'exiting') {
-      enterToScoringTimerRef.current = setTimeout(() => {
+      enterToScoringTimerRef.current = schedule(() => {
         if (winFrozenRef.current) return;
         setTransitionPhase('scoring');
       }, ENTER_ANIMATION_MS);
@@ -1081,6 +1095,7 @@ export const CribbageCountingPhase = ({
       finalLowerCleanupRef.current();
       finalLowerCleanupRef.current = null;
     }
+    if (!countingTime.current()) return;
     const resolvedAt = Date.now();
     const resolveReason: CountingTruthEntry['finalComboLowerResolveReason'] =
       reason === 'transitionend' ? 'transitionend-all'
@@ -1187,7 +1202,9 @@ export const CribbageCountingPhase = ({
       finalizeLower('no-cards');
       return;
     }
+    const requestedFrameAt = performance.now();
     const raf = requestAnimationFrame(() => {
+      if (!countingTime.current(performance.now() - requestedFrameAt)) return;
       finalLowerTimersRef.current.raf = null;
       rafSampleCountRef.current += 1;
       const remaining = new Set(cardIds);
@@ -1276,7 +1293,7 @@ export const CribbageCountingPhase = ({
         return;
       }
       const deadmanStartedAt = Date.now();
-      finalLowerTimersRef.current.deadman = setTimeout(() => {
+      finalLowerTimersRef.current.deadman = schedule(() => {
         finalLowerTimersRef.current.deadman = null;
         recordEvent('deadman_fired', {
           eventSource: 'gate.deadman',
@@ -1303,7 +1320,7 @@ export const CribbageCountingPhase = ({
 
     let innerTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const timer = setTimeout(() => {
+    const timer = schedule(() => {
       if (currentComboIndex === -1) {
         if (currentCombos.length === 0) {
           recordEvent('combo_enter', {
@@ -1316,7 +1333,7 @@ export const CribbageCountingPhase = ({
           setHighlightedCards([]);
           publishAnnouncement('0 points', currentTarget.label, 'zero');
 
-          innerTimer = setTimeout(() => {
+          innerTimer = schedule(() => {
             if (!winFrozenRef.current) startExitTransition();
           }, 1000);
         } else {
@@ -1369,7 +1386,7 @@ export const CribbageCountingPhase = ({
           return next;
         });
 
-        innerTimer = setTimeout(() => {
+        innerTimer = schedule(() => {
           if (winFrozenRef.current) return;
           const nextCombo = currentComboIndex + 1;
           const armedTargetIndex = currentTargetIndex;
@@ -1467,7 +1484,7 @@ export const CribbageCountingPhase = ({
     
     // After exit animation, move to next target
     if (exitTransitionTimerRef.current) clearTimeout(exitTransitionTimerRef.current);
-    exitTransitionTimerRef.current = setTimeout(() => {
+    exitTransitionTimerRef.current = schedule(() => {
       if (winFrozenRef.current) return;
 
       if (currentTargetIndex < countingTargets.length - 1) {
@@ -1507,7 +1524,7 @@ export const CribbageCountingPhase = ({
         
         // After enter animation, start scoring
         if (enterTransitionTimerRef.current) clearTimeout(enterTransitionTimerRef.current);
-        enterTransitionTimerRef.current = setTimeout(() => {
+        enterTransitionTimerRef.current = schedule(() => {
           if (winFrozenRef.current) return;
           setTransitionPhase('scoring');
         }, ENTER_ANIMATION_MS);
@@ -1529,7 +1546,7 @@ export const CribbageCountingPhase = ({
 
           
           if (completeTimerRef.current) clearTimeout(completeTimerRef.current);
-          completeTimerRef.current = setTimeout(() => {
+          completeTimerRef.current = schedule(() => {
             if (winFrozenRef.current) return;
             onCountingComplete(false); // No win detected during counting
           }, 1000); // Shorter delay since no announcement to read

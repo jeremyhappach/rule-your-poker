@@ -1,3 +1,11 @@
+import type { CribbageState } from '../cribbageTypes';
+
+export function keepLaterCountingCursor(state: CribbageState, target = 0, beat = -1): CribbageState {
+  const current = state.countingTargetIndex ?? 0;
+  if (target < current || (target === current && beat <= (state.countingBeatIndex ?? -1))) return state;
+  return { ...state, countingTargetIndex: target, countingBeatIndex: beat };
+}
+
 export type CountingTimelineBeatType =
   | 'enter'
   | 'initial'

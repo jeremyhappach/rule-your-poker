@@ -15,6 +15,7 @@ const players=[{id:'p1',user_id:'u1',position:0,profiles:{username:'One'}},{id:'
 const cards=[{rank:'2',suit:'clubs'},{rank:'2',suit:'hearts'},{rank:'8',suit:'clubs'},{rank:'8',suit:'hearts'}];
 const state={phase:'counting',turnOrder:['p1','p2'],dealerPlayerId:'p2',crib:[],cutCard:{rank:'K',suit:'spades'},
  playerStates:{p1:{pegScore:4},p2:{pegScore:0}},pegging:{playedCards:cards.map(card=>({playerId:'p1',card}))}} as unknown as CribbageState;
+const timing = { frame: {gameId:'g',dealerGameId:'d',roundId:'r',handNumber:1,pauseVersion:0,paused:false,state}, current:()=>true, elapsed:()=>0, releaseDelay:()=>0 };
 beforeEach(()=>{vi.useFakeTimers();audio.play.mockReset();vi.spyOn(console,'log').mockImplementation(()=>{});vi.spyOn(console,'warn').mockImplementation(()=>{});});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
 const tick=async(ms:number)=>{for(let n=0;n<ms;n+=100)await act(async()=>{vi.advanceTimersByTime(100);});};
@@ -34,14 +35,14 @@ it('sounds only when an actual peg left-transition ends, once per new score; mou
 it('plays one cue per raised scoring pair; persistent highlights and score totals do not produce more cues',async()=>{
  const props={cribbageState:state,players,cardBackColors:{color:'#123',darkColor:'#012'},onCountingComplete:vi.fn(),initialScores:{p1:0,p2:0},audioActive:true,debugContext:{gameId:'g',roundId:'r',userId:'u1',handNumber:1}};
  audio.play.mockImplementation(()=>expect(document.querySelectorAll('[data-card-highlighted="true"]').length).toBeGreaterThanOrEqual(2));
- const ui=render(<CribbageCountingPhase {...props}/>);expect(audio.play).not.toHaveBeenCalled();
+ const ui=render(<CribbageCountingPhase countingTime={timing} {...props}/>);expect(audio.play).not.toHaveBeenCalled();
  await tick(1500);expect(audio.play).toHaveBeenCalledTimes(1);
- for(let i=0;i<5;i++)ui.rerender(<CribbageCountingPhase {...props}/>);
+ for(let i=0;i<5;i++)ui.rerender(<CribbageCountingPhase countingTime={timing} {...props}/>);
  expect(audio.play).toHaveBeenCalledTimes(1);
  await tick(2600);expect(audio.play).toHaveBeenCalledTimes(2);
  expect(audio.play.mock.calls.map(c=>c[1])).toEqual(['g:r:1:p1:0:0','g:r:1:p1:0:1']);
 });
 it('does not sound an already-highlighted persisted combo on reconnect',async()=>{
- render(<CribbageCountingPhase cribbageState={state} players={players} cardBackColors={{color:'#123',darkColor:'#012'}} onCountingComplete={()=>{}} initialScores={{p1:0,p2:0}} audioActive debugContext={{gameId:'g',roundId:'r',userId:'u1',handNumber:1}} persistedTargetIndex={0} persistedBeatIndex={0} persistedHandKey="r:1"/>);
+ render(<CribbageCountingPhase countingTime={timing} cribbageState={state} players={players} cardBackColors={{color:'#123',darkColor:'#012'}} onCountingComplete={()=>{}} initialScores={{p1:0,p2:0}} audioActive debugContext={{gameId:'g',roundId:'r',userId:'u1',handNumber:1}} persistedTargetIndex={0} persistedBeatIndex={0} persistedHandKey="r:1"/>);
  await tick(300);expect(audio.play).not.toHaveBeenCalled();
 });

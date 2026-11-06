@@ -58,15 +58,23 @@ vi.mock('@/lib/cribbageAuthority',async original=>({...await original<object>(),
 vi.mock('@/lib/useCribbageEventLogging',()=>({useCribbageEventContext:()=>({}),logPeggingPlay:()=>{},logGoPointEvent:()=>{},logHisHeelsEvent:()=>{},logCountingScoringEvents:()=>{},logCutCardEvent:()=>{}}));
 vi.mock('@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider',()=>({CribbageGameplayGeometryProvider:({children}:any)=>children}));
 import {CribbageMobileGameTable} from '@/components/CribbageMobileGameTable';
+import {createCountingClock} from '@/lib/cribbage/countingClock';
+import type {CribbageState} from '@/lib/cribbageTypes';
 import {dispatchAuthoritativeRecoverySnapshot} from '@/lib/realtimeAuthoritativeCatchup';
 const players=['a','b'].map((id,i)=>({id,user_id:'u'+i,position:i+1,chips:100,is_bot:false,profiles:{username:id}}));
 const cards=[{rank:'2',suit:'hearts',value:2},{rank:'4',suit:'clubs',value:4},{rank:'6',suit:'spades',value:6},{rank:'8',suit:'diamonds',value:8}];
 const state=()=>({phase:'counting',dealerPlayerId:'a',cribOwnerPlayerId:'a',playerStates:Object.fromEntries(['a','b'].map(playerId=>[playerId,{playerId,hand:[],pegScore:10,hasCalledGo:false,discardedToCrib:[]}])),turnOrder:['b','a'],crib:cards,cutCard:{rank:'K',suit:'clubs',value:10},pegging:{playedCards:['a','b'].flatMap(playerId=>cards.map(card=>({playerId,card}))),currentCount:0,currentTurnPlayerId:null,lastToPlay:'a',goCalledBy:[],sequenceStartIndex:8,eventSequence:10},anteAmount:2,pot:4,pointsToWin:121,skunkEnabled:false,skunkThreshold:91,doubleSkunkEnabled:false,doubleSkunkThreshold:61,winnerPlayerId:null,loserScore:null,payoutMultiplier:1,countingStartedAt:new Date(1000).toISOString(),countingHandKey:'dealer:1',countingTargetIndex:0,countingBeatIndex:-1,countingPlan:{version:1,baselineScores:{a:10,b:10},targets:[{playerId:'b',type:'hand',comboPoints:[],totalPoints:0},{playerId:'a',type:'hand',comboPoints:[],totalPoints:0},{playerId:'a',type:'crib',comboPoints:[],totalPoints:0}]}});
+let clock: ReturnType<typeof createCountingClock>;
+function acceptFrame(pauseVersion = 0, paused = false, snapshot = state()) {
+  clock.accept(clock.request(), performance.now(), new Date(1000 + performance.now()).toISOString(), {
+    gameId:'session',dealerGameId:'dealer',roundId:'round',handNumber:1,pauseVersion,paused,state:snapshot as CribbageState,
+  });
+}
 let resolveComplete:(v:any)=>void;
 const calls=()=>f.rpc.mock.calls.filter(([n])=>n==='cribbage_complete_counting');
-beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(1000);vi.clearAllMocks();f.counting=null;f.announcements={emit:f.emit,dismiss:()=>{},clearAmbient:()=>{},waitForDismiss:async()=>{}};f.fetch.mockImplementation(async()=>state());f.rpc.mockImplementation((n:string)=>n==='cribbage_complete_counting'?new Promise(r=>{resolveComplete=r;}):Promise.resolve({data:null,error:null}));vi.spyOn(console,'log').mockImplementation(()=>{});vi.spyOn(console,'warn').mockImplementation(()=>{});vi.spyOn(console,'error').mockImplementation(()=>{});});
+beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(1000);clock=createCountingClock(vi.fn());acceptFrame();vi.clearAllMocks();f.counting=null;f.announcements={emit:f.emit,dismiss:()=>{},clearAmbient:()=>{},waitForDismiss:async()=>{}};f.fetch.mockImplementation(async()=>state());f.rpc.mockImplementation((n:string)=>n==='cribbage_complete_counting'?new Promise(r=>{resolveComplete=r;}):Promise.resolve({data:null,error:null}));vi.spyOn(console,'log').mockImplementation(()=>{});vi.spyOn(console,'warn').mockImplementation(()=>{});vi.spyOn(console,'error').mockImplementation(()=>{});});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
-const mount=()=>render(<CribbageMobileGameTable gameId="session" roundId="round" dealerGameId="dealer" handNumber={1} entryMode="historical-entry" players={players} currentUserId="u1" dealerPosition={1} anteAmount={2} pot={4} isHost={false} onGameComplete={()=>{}}/>);
+const mount=()=>render(<CribbageMobileGameTable countingClock={clock} gameId="session" roundId="round" dealerGameId="dealer" handNumber={1} entryMode="historical-entry" players={players} currentUserId="u1" dealerPosition={1} anteAmount={2} pot={4} isHost={false} onGameComplete={()=>{}}/>);
 it('CONTROL Cribbage counting component callback reaches exact authority request',async()=>{
  mount();await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));expect(f.counting).not.toBeNull();
  let done:Promise<void>;act(()=>{done=f.counting.onCountingComplete(false);});await act(async()=>{});expect(calls()).toHaveLength(1);expect(calls()[0][1]).toEqual({_round_id:'round'});
@@ -82,18 +90,41 @@ it('CONTRACT Cribbage failed counting completion retries after shared recovery',
 });
 
 it('cribbage active turn publishes disabled controls through pause and restores them on resume',async()=>{
- f.controls=null;f.fetch.mockResolvedValue({...state(),phase:'discarding',playerStates:Object.fromEntries(['a','b'].map(playerId=>[playerId,{playerId,hand:[...cards,{rank:'3',suit:'clubs',value:3},{rank:'5',suit:'hearts',value:5}],pegScore:0,hasCalledGo:false,discardedToCrib:[]}]))});const p={gameId:'session',roundId:'round',dealerGameId:'dealer',handNumber:1,players,currentUserId:'u1',dealerPosition:1,anteAmount:2,pot:4,isHost:false,onGameComplete:()=>{},entryMode:'historical-entry' as const};const ui=render(<CribbageMobileGameTable {...p}/>);await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
+ f.controls=null;f.fetch.mockResolvedValue({...state(),phase:'discarding',playerStates:Object.fromEntries(['a','b'].map(playerId=>[playerId,{playerId,hand:[...cards,{rank:'3',suit:'clubs',value:3},{rank:'5',suit:'hearts',value:5}],pegScore:0,hasCalledGo:false,discardedToCrib:[]}]))});const p={gameId:'session',roundId:'round',dealerGameId:'dealer',handNumber:1,players,currentUserId:'u1',dealerPosition:1,anteAmount:2,pot:4,isHost:false,onGameComplete:()=>{},entryMode:'historical-entry' as const};const ui=render(<CribbageMobileGameTable countingClock={clock} {...p}/>);await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
  expect(f.controls).not.toBeNull();expect(f.controls.isProcessing).toBe(false);
- ui.rerender(<CribbageMobileGameTable {...p} isPaused/>);expect(f.controls.isProcessing).toBe(true);
+ ui.rerender(<CribbageMobileGameTable countingClock={clock} {...p} isPaused/>);expect(f.controls.isProcessing).toBe(true);
  const rpcCount=f.rpc.mock.calls.length;await act(async()=>{await f.controls.onDiscard([0,1]);await f.controls.onPlayCard(0);});expect(f.rpc.mock.calls).toHaveLength(rpcCount);
- ui.rerender(<CribbageMobileGameTable {...p}/>);expect(f.controls.isProcessing).toBe(false);
+ ui.rerender(<CribbageMobileGameTable countingClock={clock} {...p}/>);expect(f.controls.isProcessing).toBe(false);
 });
 
 it('Cribbage auto-Go waits while paused and wakes on resume without a new card snapshot',async()=>{
  f.rpc.mockImplementation(()=>{const request=Promise.resolve({data:{outcome:'applied'},error:null}) as any;request.abortSignal=()=>request;return request;});
  const s=state();f.fetch.mockResolvedValue({...s,phase:'pegging',pegging:{...s.pegging,currentTurnPlayerId:'b',currentCount:30,goCalledBy:[]},playerStates:{...s.playerStates,b:{...s.playerStates.b,hand:[cards[0]]}}});
  const p={gameId:'session',roundId:'round',dealerGameId:'dealer',handNumber:1,players,currentUserId:'u1',dealerPosition:1,anteAmount:2,pot:4,isHost:false,onGameComplete:()=>{},entryMode:'historical-entry' as const};
- const ui=render(<CribbageMobileGameTable {...p} isPaused/>);await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
+ const ui=render(<CribbageMobileGameTable countingClock={clock} {...p} isPaused/>);await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
  const goCalls=()=>f.rpc.mock.calls.filter(([name])=>name==='cribbage_apply_pegging_action');expect(goCalls()).toHaveLength(0);
- ui.rerender(<CribbageMobileGameTable {...p}/>);await act(()=>vi.advanceTimersByTimeAsync(600));expect(goCalls()).toHaveLength(1);
+ ui.rerender(<CribbageMobileGameTable countingClock={clock} {...p}/>);await act(()=>vi.advanceTimersByTimeAsync(600));expect(goCalls()).toHaveLength(1);
+});
+
+it('gates the delayed winning crossing and previously mounted callbacks through pause and recovery', async () => {
+  mount();
+  await act(async () => {});
+  await act(() => vi.advanceTimersByTimeAsync(3000));
+  const old = f.counting;
+  expect(old).not.toBeNull();
+  act(() => old.onScoreUpdate({ a: 121, b: 10 }));
+  await act(() => vi.advanceTimersByTimeAsync(1000));
+  act(() => acceptFrame(1, true));
+  act(() => old.onCountingComplete(true));
+  await act(() => vi.advanceTimersByTimeAsync(2000));
+  expect(calls()).toHaveLength(0);
+  const restored = { ...state(), countingBeatIndex: 0 };
+  act(() => acceptFrame(2, false, restored));
+  await act(async () => {});
+  expect(f.counting.countingTime).not.toBe(old.countingTime);
+  expect(f.counting.persistedBeatIndex).toBe(0);
+  act(() => f.counting.onScoreUpdate({ a:121, b:10 }));
+  await act(() => vi.advanceTimersByTimeAsync(2000));
+  act(() => f.counting.onCountingComplete(true));
+  expect(calls()).toHaveLength(1);
 });
