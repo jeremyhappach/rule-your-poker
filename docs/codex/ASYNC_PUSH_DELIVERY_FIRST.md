@@ -21,7 +21,7 @@ of that new event, a distinct expired event, all three async kinds, and unchange
 table/registration replacement behavior. These are service-worker harness tests,
 not evidence of physical iPhone delivery.
 
-## Production SQL discrepancy — unresolved
+## Production SQL discrepancy — corrected November 7
 
 Read-only production inspection of project `xvhmbuppghwmwpwrkzao` confirmed
 migration `20261107024144_async_push_delivery_first` in the migration ledger.
@@ -35,26 +35,58 @@ replaced both `public.async_push_claim()` and
 e.kind IN('table_open','turn','last_call') AND private.push_user_active(e.user_id)
 ```
 
-Both live function definitions still contain that predicate. Active-account turn
-and Last Call dispatch therefore remains suppressed despite the earlier migration
-receipt. Quiet Hours and opt-out/binding eligibility checks are still present.
+Both live function definitions contained that predicate when inspected. Active-account
+turn and Last Call dispatch was therefore suppressed despite the earlier migration
+receipt. Quiet Hours and opt-out/binding eligibility checks were still present.
 The installed `private.push_sync(uuid)` retains zero-to-positive availability,
 `turn_epoch`, and one turn event per match/recipient availability cycle.
 
-A separately approved forward migration is needed to replace only that presence
-predicate with `e.kind='table_open' AND private.push_user_active(e.user_id)` in
-both functions, preserving the opponent-name payload and every other guard.
-Do not replay the historical migration or rewrite its ledger. No production
-function or application data was changed during this hotfix investigation.
+Jeremy approved the prepared forward repair. Migration **20261107160240**, named
+`async_push_delivery_first_restore`, replaces only that presence predicate with
+`e.kind='table_open' AND private.push_user_active(e.user_id)` in both functions.
+The opponent-name payload and every other guard remain intact. The historical
+migration and ledger were not replayed or rewritten. The Supabase CLI was not
+available; the supported migration tool assigned the recorded version, which
+was then used for the source filename.
+
+`supabase/web-push/delivery-first-proof.sql` passed before and after installation.
+It copies the inspected owner definitions into transaction-local test functions,
+substitutes only the approved predicate for the candidate, and scopes the claim
+scan to one synthetic subscription. Actual eligibility, Quiet Hours, cycle and
+receipt owners operate on synthetic rows. No global claim or provider call runs.
+The proof rolls back all fixtures and confirms zero remaining fixture profiles.
+Setup was corrected to obey current account-access and frozen-deadline guards;
+no triggers or constraints were disabled.
+
+Cases: both money modes; active turn, Last Call and invitation; background turn;
+Quiet Hours at claim and authorize; match and invitation opt-outs; disabled
+device, changed binding, expired auth session and foreign lease; one turn event
+per cycle, later-child dedupe, clear/rearm, old-cycle rejection; retry identity,
+duplicate receipts; expired invitation, terminal match and service-only dispatch.
+
+Installed function MD5s match exact pre-install definitions with only the approved
+predicate replaced: claim `3589192223fb42e23191516992821761`, authorize
+`b0602f6bb8eba4e62e7a04401fb6fb7a`. Fingerprints for `push_sync`, `push_eligible`,
+`push_quiet_at` and `async_push_receipt` are unchanged. Table-open suppression and
+registration behavior remain unchanged by the exact two-predicate diff.
 
 ## Publication and physical acceptance
 
-Checkpoint tag: `async-push-realert-2026-11-07`. Exact deployed commit and served
-worker verification are reported with the release. The foreground test remains
-blocked by the SQL discrepancy above until its correction is approved and proved.
+Worker checkpoint tag: `async-push-realert-2026-11-07`. Commit
+`f7038cf74f4870c88ae57bfcfbf04c5e97e5a88c` reached Vercel READY and the production
+build manifest on November 7. The public worker SHA-256 matched source exactly:
+`25d91f10eede8d52e92c8d3ba9fefda0a673c039eccb28ba8d17500c85a9b25d`.
+Forward-repair checkpoint: `async-push-delivery-restored-2026-11-07`.
 
-No connected physical-iPhone tool is available. Actual display remains pending
-Jeremy/Hap's observations; provider acceptance alone is not display evidence.
+Jeremy confirmed Hap's iPhone is available for observation. No connected physical
+iPhone tool is available. Actual display remains pending Jeremy/Hap's observations;
+provider acceptance alone is not display evidence. Hap's authoritative account is
+`d7dc1928-3727-4351-b0ff-0e80c81c2953`; its one enabled Apple subscription is
+`17bc3129-f596-4444-83e1-ad4c14682ac8`, with a valid session. Quiet Hours were off
+at inspection. The opted-in play-money match with Happach Gmail is
+`d78bc9e8-2ede-4bbd-9032-80cfdef01aa6`; Hap had two outstanding turns, Run21 and
+TriTowers. A normal clear/rearm is needed for a fresh cycle; existing production
+matches, episode rows and sent receipts were not edited to manufacture a test.
 Reopen the installed app after publication and ensure the updated worker has
 activated (an already-open app can retain the old active worker during update).
 
@@ -63,8 +95,7 @@ activated (an already-open app can retain the old active worker during update).
    Observe the iPhone alert and leave it in Notification Center.
 2. Clear all actionable turns, then create another availability cycle in that
    same match. Keep the first notification present. Observe the second alert.
-3. Once the production presence regression is corrected, include a fresh cycle
-   while the installed app is open. Observe the actual OS notification.
+3. Include a fresh cycle while the installed app is open. Observe the actual OS notification.
 4. Retry an identical event under a scoped test; expect no new audible/banner
    alert. Do not fabricate a new event UUID and call it a retry.
 5. If a fresh alert is absent, correlate its server receipt and Apple subscription

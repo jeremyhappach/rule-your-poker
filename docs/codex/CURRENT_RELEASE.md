@@ -6,7 +6,10 @@ tags, binding, destinations and other notification types are preserved. All 37
 push tests pass. Historical migration `20261107024144` is verified installed and
 tracked without reapplication. Read-only inspection found that later migration
 `20261107034130` restored active-user suppression for turn and Last Call in both
-dispatch functions; a separately approved forward correction is still needed.
+dispatch functions. Jeremy approved the forward correction, installed as
+`20261107160240`; candidate and installed rollback proofs pass in both money modes
+with zero fixture profiles remaining. Exact owner hashes confirm only the two
+presence predicates changed; Quiet Hours, eligibility, cycles and receipts are intact.
 No physical iPhone display is confirmed and the 8:00 AM miss remains unexplained.
 Checkpoint: `async-push-realert-2026-11-07`.
 [Evidence, production discrepancy and phone checks](ASYNC_PUSH_DELIVERY_FIRST.md).
