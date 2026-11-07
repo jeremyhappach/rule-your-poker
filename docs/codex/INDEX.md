@@ -1,5 +1,8 @@
 # Codex context index
 
+357 Drop carry-forward playtest, reversible ruleset switch, responsiveness and
+qualification: `DROP357_CARRY_PLAYTEST.md`.
+
 Horses Blitz rules, Arcade authority, manual round-summary continuation and
 release qualification: `HORSES_BLITZ.md`.
 

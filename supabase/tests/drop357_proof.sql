@@ -50,6 +50,7 @@ BEGIN
  INSERT INTO public.account_access(user_id,enabled,ever_enabled) VALUES(actor,true,true),(stranger,true,true) ON CONFLICT(user_id) DO UPDATE SET enabled=true,ever_enabled=true;
  INSERT INTO public.profiles(id,username,is_active) VALUES(actor,'357 proof A',true),(stranger,'357 proof B',true) ON CONFLICT(id) DO UPDATE SET is_active=true;
  UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=null;
+ UPDATE private.arcade_rulesets SET enabled=false WHERE game='357-drop';
  BEGIN PERFORM public.arcade_start(actor,request,'357-drop');RAISE EXCEPTION 'closed admission accepted'; EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%unavailable%' THEN RAISE;END IF;END;
  UPDATE private.arcade_rulesets SET enabled=true WHERE id='357-drop/1';
  run:=public.arcade_start(actor,request,'357-drop');

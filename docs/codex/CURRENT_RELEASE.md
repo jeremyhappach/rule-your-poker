@@ -1,3 +1,18 @@
+# 357 Drop carry-forward playtest — November 7, 2026 — owner smoke pending
+
+357-drop/3 adds seven permanent placements, five shared passes and printed-card
+inheritance through 3 → 5 → 7. A single private ruleset switch selects playtest
+or frozen /2 for new games; active games stay pinned and scores remain separate.
+Both boards get immediate placement feedback, exact-receipt input release,
+readable Natty badges, gold scoring cards and ALL FILLED before standard tally.
+Three-round banking and persistent final results remain server-owned.
+
+Migration 20261107225845 is installed and rollback-qualified for all versions.
+Local race/recovery, phone-size browser flows, focused tests, TypeScript and build
+qualify delivery. Activation follows matching production publication and signal.
+Checkpoint: 357-drop-carry-playtest-2026-11-07; the verified tag records activation.
+[Rules, evidence, reversal and physical iPhone smoke](DROP357_CARRY_PLAYTEST.md).
+
 # Arcade lobby sections and Admin ordering — November 7, 2026 — owner smoke pending
 
 Arcade now groups P-Town Originals before Other Games and prominently explains

@@ -27,7 +27,7 @@ export default async function handler(req:IncomingMessage&{body?:unknown},res:Se
   // Display name does not admit a command. Auth is complete; RPC access checks stay intact.
   const displayName=body.game==='run21'?name:await name;
   const [result]=await Promise.all([arcadeOperation(rpc,data.user.id,displayName,body),name]);
-  if(body.game==='tri-towers'||body.game==='run21'||body.game==='take-two')res.setHeader('Server-Timing',[...timings,`total;dur=${(performance.now()-started).toFixed(1)}`].join(', '));
+  if(body.game==='tri-towers'||body.game==='run21'||body.game==='take-two'||body.game==='357-drop')res.setHeader('Server-Timing',[...timings,`total;dur=${(performance.now()-started).toFixed(1)}`].join(', '));
   res.statusCode=200;res.end(JSON.stringify(result));
  }catch(error){
   if(res.statusCode===200)res.statusCode=409;

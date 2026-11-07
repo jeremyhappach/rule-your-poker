@@ -3235,3 +3235,11 @@ inventing a historical token event. Future registrations remain unverified;
 changing an email invalidates either evidence method. Genuine later verification
 updates the evidence method to `supabase_email_token`. Access, roles and finances
 are independent and unchanged.
+
+## 2026-11-07 — Reversible 357 Drop carry-forward playtest
+
+Keep independent /2 frozen and introduce /3 with shared scoring, seven placements
+and five passes. Pin admission and isolate leaderboard groups. Carry printed cards
+and resolve zero-score stages once in order. Exact persisted command receipts can
+release the next confirmed card before the prior HTTP reply; presentation never
+reveals an unknown card or advances authority. See DROP357_CARRY_PLAYTEST.md.

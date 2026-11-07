@@ -1,3 +1,13 @@
+# 357 Drop carry-forward — November 7, 2026 — local/hosted qualification passed
+
+Checkpoint 357-drop-carry-playtest-2026-11-07 records both rulesets' three-round
+phone-size smoke, zero-score cascade, isolated leaderboard/switch proof, delayed
+HTTP input, immutable recovery, ALL FILLED before count-up and persistent totals.
+31 focused tests, application TypeScript and build pass. Migration 20261107225845
+passes hosted candidate/installed rollback proof. The verified tag records
+publication/activation; physical iPhone Safari/speaker acceptance remains pending.
+See DROP357_CARRY_PLAYTEST.md. Existing production checkpoints remain below.
+
 # Stable checkpoints — do not reopen without a new repro
 
 ## 2026-11-07 — Chucky / Crib competitive automated smoke

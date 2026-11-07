@@ -8,9 +8,9 @@ export const supabase={
     let patch:Record<string,unknown>={},single=false;
     const chain:any={select:()=>chain,eq:()=>chain,in:()=>chain,update:(v:Record<string,unknown>)=>{patch=v;return chain;},
       single:()=>{single=true;return chain;},maybeSingle:()=>{single=true;return chain;},
-      then:(ok:any,no:any)=>Promise.resolve({data:table==='profiles'?{play_sounds:true,...patch}:single?null:[],error:null}).then(ok,no)};
+      then:(ok:any,no:any)=>Promise.resolve({data:table==='arcade_lobby_layout'?{layout:{originals:['357-drop'],other:[]},revision:1}:table==='profiles'?{play_sounds:true,...patch}:single?null:[],error:null}).then(ok,no)};
     return chain;
   },
-  channel(){const channel={on:()=>channel,subscribe:(cb:(s:string)=>void)=>{queueMicrotask(()=>cb?.('SUBSCRIBED'));return channel;}};return channel;},
-  removeChannel:async()=>{},
+  channel(){let changed=()=>{};const listener=()=>changed();const channel={on:(_event:string,_filter:unknown,cb:()=>void)=>{changed=cb;return channel;},subscribe:(cb:(s:string)=>void)=>{window.addEventListener('357-proof-change',listener);queueMicrotask(()=>cb?.('SUBSCRIBED'));return channel;},dispose:()=>window.removeEventListener('357-proof-change',listener)};return channel;},
+  removeChannel:async(channel:{dispose:()=>void})=>{channel.dispose();},
 };

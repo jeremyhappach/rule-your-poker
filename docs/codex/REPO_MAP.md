@@ -1629,3 +1629,8 @@ Mega competition: `src/lib/megaCardGolf/competition.ts` adapts the shared reduce
 - `src/pages/VerifyEmail.tsx`: explicit possession confirmation from email links.
 - `dev/account-access/`: Auth/SMTP integration, concurrency and browser evidence.
 
+
+357 Drop carry-forward /3: `supabase/drop357/v3.sql` owns new slots, inherited
+printed cards, stage resolution, version dispatch and private select_ruleset switch.
+`src/hooks/useDrop357.ts` owns exact-receipt pending input; `dev/drop357/browser-v3.mjs`
+and `latency.mjs` qualify both board presentations and delayed-response behavior.

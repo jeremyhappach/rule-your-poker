@@ -11,14 +11,14 @@ try{
   await c.query('insert into auth.users(id) values($1)',[user]);
   await c.query('insert into public.account_access(user_id,enabled,ever_enabled) values($1,true,true) on conflict(user_id) do update set enabled=true,ever_enabled=true',[user]);
   await c.query('insert into public.profiles(id,username,is_active) values($1,$2,true) on conflict(id) do update set is_active=true',[user,'Lab '+user.slice(0,8)]);
-  const polish=db.includes('_v2_');
+  const carry=process.argv.includes('--carry'),polish=db.includes('_v2_');
   await c.query("update private.arcade_rulesets set enabled=false where game='357-drop' and enabled");
-  await c.query('update private.arcade_rulesets set enabled=true where id=$1',[polish?'357-drop/2':'357-drop/1']);
+  await c.query('update private.arcade_rulesets set enabled=true where id=$1',[carry?'357-drop/3':polish?'357-drop/2':'357-drop/1']);
   await c.query("update private.arcade_recovery_state set failure=null,last_completed_at=clock_timestamp(),claimed=false,token=$1,expires_at=clock_timestamp()+interval '1 minute'",[token]);
   const {id}=(await c.query("select public.arcade_start($1,$2,'357-drop')->>'id' id",[user,randomUUID()])).rows[0];
   await c.query('select public.arcade_drop357_step($1,$2)',[user,id]);
   if(polish){
-    await c.query("update private.arcade_runs set state=private.drop357_v2_deal(jsonb_build_object('runId',id,'userId',user_id,'status','active','config',config),floor(extract(epoch FROM clock_timestamp())*1000)::bigint-400000,1),due_at=0 where id=$1",[id]);
+    await c.query("update private.arcade_runs set state=private.drop357_deal_dispatch(jsonb_build_object('runId',id,'userId',user_id,'status','active','config',config),floor(extract(epoch FROM clock_timestamp())*1000)::bigint-400000,1),due_at=0 where id=$1",[id]);
   }else await c.query("update private.arcade_runs set state=jsonb_set(state,'{deadline}','0'),due_at=0 where id=$1",[id]);
   globalThis.Deno={env:{get:name=>name==='SUPABASE_URL'?'http://127.0.0.1':'local-only'},serve:fn=>{handler=fn;}};
   const calls=[];
