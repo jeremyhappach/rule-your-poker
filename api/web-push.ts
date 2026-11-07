@@ -1,10 +1,18 @@
 import type {IncomingMessage,ServerResponse} from 'node:http';
 import {createScheduledHandler,scheduledBatch} from '../server/webPush/scheduled.mjs';
 import {createTransport} from '../server/webPush/transport.mjs';
+import {createClient} from '@supabase/supabase-js';
+import {createDiagnosticHandler} from '../server/webPush/diagnostics.mjs';
 
 // No vercel.json schedule is installed by this local candidate. Every switch defaults closed.
 export default function handler(req:IncomingMessage,res:ServerResponse){
  const env=process.env;
+ if(req.method==='POST')return createDiagnosticHandler({enabled:env.VERCEL_ENV==='production',
+  verify:async(token:string)=>{
+   if(env.RUN21_SUPABASE_URL!=='https://xvhmbuppghwmwpwrkzao.supabase.co'||!env.RUN21_SUPABASE_SERVICE_ROLE_KEY)throw Error('push:configuration');
+   const db=createClient(env.RUN21_SUPABASE_URL,env.RUN21_SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+   const {data,error}=await db.auth.getUser(token);return error?null:data.user?.id;
+  },record:(report:unknown)=>console.info('ptown-push-diagnostic '+JSON.stringify(report))})(req,res);
  return createScheduledHandler({enabled:env.WEB_PUSH_DELIVERY_ENABLED==='true'&&env.VERCEL_ENV==='production',secret:env.CRON_SECRET,
   run:async()=>{
    const url=env.RUN21_SUPABASE_URL,key=env.RUN21_SUPABASE_SERVICE_ROLE_KEY;

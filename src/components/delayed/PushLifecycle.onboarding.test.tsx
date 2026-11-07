@@ -2,12 +2,12 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {cleanup,render,waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
-const mock=vi.hoisted(()=>({prepare:vi.fn(),reconcile:vi.fn(),target:vi.fn(),resolved:vi.fn(),setAccount:vi.fn()}));
+const mock=vi.hoisted(()=>({prepare:vi.fn(),reconcile:vi.fn(),target:vi.fn(),resolved:vi.fn(),setAccount:vi.fn(),capture:vi.fn()}));
 vi.mock('@/lib/mobileOnboarding',()=>({resolveOnboardingPushEntry:mock.resolved}));
-vi.mock('@/lib/webPush/browser',()=>({pushEnabled:true,prepare:mock.prepare,reconcile:mock.reconcile,pendingRegistration:mock.target,setAccount:mock.setAccount}));
+vi.mock('@/lib/webPush/browser',()=>({pushEnabled:true,prepare:mock.prepare,reconcile:mock.reconcile,pendingRegistration:mock.target,setAccount:mock.setAccount,capturePushDiagnostics:mock.capture}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:async()=>({data:{session:{user:{id:'a'}}}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe:()=>{}}}})}}}));
 import {PushLifecycle} from './PushLifecycle';
-beforeEach(()=>{vi.clearAllMocks();mock.setAccount.mockResolvedValue(undefined);mock.prepare.mockResolvedValue({});mock.reconcile.mockResolvedValue(undefined);mock.target.mockResolvedValue(null);});
+beforeEach(()=>{vi.clearAllMocks();mock.capture.mockResolvedValue(undefined);mock.setAccount.mockResolvedValue(undefined);mock.prepare.mockResolvedValue({});mock.reconcile.mockResolvedValue(undefined);mock.target.mockResolvedValue(null);});
 afterEach(cleanup);
 const mount=()=>render(<MemoryRouter><PushLifecycle/></MemoryRouter>);
 it('releases onboarding in an iPhone browser without push APIs',async()=>{mock.prepare.mockReturnValue(undefined);mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));expect(mock.target).not.toHaveBeenCalled();expect(mock.reconcile).not.toHaveBeenCalled();});
@@ -15,4 +15,5 @@ it('waits for worker navigation and excludes an administrator deep link',async()
 it('releases a supported browser after checking the pending destination',async()=>{mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));expect(mock.reconcile).toHaveBeenCalled();expect(mock.target).toHaveBeenCalledWith('a');});
 it.each(['prepare','reconcile','setAccount','target'] as const)('does not strand onboarding when %s fails',async(key)=>{mock[key].mockRejectedValue(Error('Device unavailable'));mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));});
 it('does not wait for unrelated device maintenance',async()=>{mock.reconcile.mockReturnValue(new Promise(()=>{}));mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));});
+it('does not block onboarding on diagnostic collection and still reconciles after a diagnostic failure',async()=>{mock.capture.mockRejectedValue(Error('Capture unavailable'));mount();await waitFor(()=>expect(mock.resolved).toHaveBeenCalledWith(null));await waitFor(()=>expect(mock.reconcile).toHaveBeenCalled());});
 it('continues to wait for an unresolved navigation destination',async()=>{mock.target.mockReturnValue(new Promise(()=>{}));mount();await waitFor(()=>expect(mock.target).toHaveBeenCalled());expect(mock.resolved).not.toHaveBeenCalled();});

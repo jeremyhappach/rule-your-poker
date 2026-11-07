@@ -1,6 +1,7 @@
 import {supabase} from '@/integrations/supabase/client';
 import {delayedRpc} from '@/lib/delayed/client';
 import {createDeviceController} from './controller.mjs';
+import {diagnosticUser,diagnosticUntil,pushSnapshot} from './diagnostics.mjs';
 
 export const pushEnabled=import.meta.env.VITE_ASYNC_PUSH_ENABLED==='true';
 const storageKey='ptown:push-device:v1';
@@ -39,6 +40,26 @@ const controller=createDeviceController({environment,load:binding,
  revoke:(old:Binding)=>delayedRpc('async_push_device',{p_id:old.id,p_binding:old.binding,p_disable:true}),
 });
 export const status=controller.status,enableDevice=controller.enable,disableDevice=controller.clear,reconcile=controller.reconcile,setAccount=controller.setAccount;
+let diagnosticFlight:Promise<void>|undefined,lastDiagnostic='';
+export function capturePushDiagnostics(userId:string):Promise<void>{
+ if(userId!==diagnosticUser||Date.now()>=diagnosticUntil||!environment().standalone||document.visibilityState!=='visible')return Promise.resolve();
+ if(diagnosticFlight)return diagnosticFlight;
+ diagnosticFlight=(async()=>{
+  const localBinding=binding(),reg=await prepare();
+  const activeVersion=await new Promise<string>(resolve=>{
+   if(!reg?.active){resolve('no-active-worker');return;}
+   const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();resolve('unavailable');},1000);
+   channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(typeof event.data==='string'?event.data:'invalid');};
+   reg.active.postMessage({type:'push-diagnostic-version'},[channel.port2]);
+  });
+  const report=await pushSnapshot({registration:reg,localBinding,cacheStorage:caches,origin:location.origin,
+   permission:environment().permission,standalone:environment().standalone,visibility:document.visibilityState,activeVersion});
+  const body=JSON.stringify(report);if(body===lastDiagnostic)return;
+  const {data}=await supabase.auth.getSession();if(data.session?.user.id!==diagnosticUser)return;
+  const response=await fetch('/api/web-push',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...report,clientAt:Date.now()}),signal:AbortSignal.timeout(5000)});
+  if(response.ok)lastDiagnostic=body;
+ })().catch(()=>{}).finally(()=>{diagnosticFlight=undefined;});return diagnosticFlight;
+}
 export async function foreground(matchId:string|null){const device=binding();if(device)await delayedRpc('async_push_device',{p_id:device.id,p_binding:device.binding,p_match:matchId});}
 
 async function registrationMessage(type:string,userId:string,targetId?:string):Promise<{registrationUserId:string}|null>{

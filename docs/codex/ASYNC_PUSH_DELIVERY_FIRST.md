@@ -1,5 +1,56 @@
 # Async push re-alert hotfix — November 7, 2026
 
+## Physical smoke failure and temporary diagnostics
+
+Jeremy completed Hap's TriTowers game and current Run21 turn. The database then
+showed no Hap availability keys and `turn_epoch=NULL`; Run21 was with Happach
+Gmail at segment 3. Hap's installed iPhone app was backgrounded. Gmail's normal
+turn completion returned Run21 at segment 4 and opened epoch 4.
+
+Fresh event **ee92e592-013d-4bff-a0ef-510562703c3a** was created
+**2026-11-07 16:15:54.446420 UTC (10:15:54 AM Central)**. The enabled Apple
+subscription recorded `sent`, attempt 1, with `retry_at=16:17:00.889322 UTC`, a
+valid session and matching server binding. Jeremy reported **nothing appeared
+after two minutes**. No service-worker receipt or display result was previously
+observable remotely. A successful provider response does not establish display.
+The failed event, delivery row, subscription and match are preserved.
+
+The original hotfix request explicitly authorized scoped diagnostics after a
+missing fresh alert. Checkpoint `async-push-phone-trace-2026-11-07` adds:
+
+- Local worker trace, capped at 48 records, only for this match and the SHA-256
+  fingerprint of Hap's enrolled binding. Stages are received, binding checked/
+  rejected, show attempted/resolved/rejected, receipt saved and worker error.
+  Diagnostic failures are swallowed independently of the delivery path.
+- A read-only snapshot in Hap's installed app before optional device maintenance:
+  permission, app visibility/standalone state, active/waiting worker state/version,
+  current match notification IDs, historical receipt membership for the failed
+  event and 8:00 AM event, binding and subscription fingerprints, and the trace.
+  It can inspect existing cached receipts even if an old worker is still active.
+- An authenticated POST branch on the existing `/api/web-push` endpoint. Supabase
+  verifies the bearer token; only Hap's UUID may submit. Same-origin, 16 KB input
+  bounds and a strict logging allowlist exclude raw tokens, subscription endpoints,
+  encryption keys and binding values. The server records `ptown-push-diagnostic`
+  lines for investigation; GET scheduler behavior is unchanged. Duplicate
+  snapshots are coalesced within the app process, with no polling loop or new UI.
+
+Collection and upload expire **2026-11-09 00:00 UTC**. No database schema changes,
+reenrollment, historical receipt resets, gameplay mutation or provider send is
+part of this diagnostic publication. Remove the expired instrumentation after
+acceptance. Console records are trace evidence, not physical display acceptance.
+Forty-four push tests, ten mounted onboarding tests and application/API typecheck
+pass, including missing cache, old-worker receipts, binding rejection, display
+failure, diagnostic-write failure, account/origin/expiry/size gates and redaction.
+
+Server comparison fingerprints for subscription `17bc3129-f596-4444-83e1-ad4c14682ac8`:
+
+| Field | SHA-256 |
+| --- | --- |
+| Binding | `ce088752b9efb265bf36c0cb633c195a2d829c9aaf55d0476eaa6ed8c4c78111` |
+| Endpoint | `7e8c2089a55d93c2216cf62665c621bf30780e8a3daf5d17c112ebf83614491e` |
+| p256dh | `5ad7083d0030243ac2981068f0fcbbe9c98546e662061985fdc9ce26806ea573` |
+| auth | `c23a28b51e74fae95e523a59777a2c1c3f90f209889f68dc802bde90323def2b` |
+
 ## Scope and evidence
 
 Jeremy authorized recreating scratch commit `0d1cb74` if unavailable, publishing

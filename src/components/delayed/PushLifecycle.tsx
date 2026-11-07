@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {useLocation,useNavigate} from 'react-router-dom';
 import {supabase} from '@/integrations/supabase/client';
 import {resolveOnboardingPushEntry} from '@/lib/mobileOnboarding';
-import {prepare,reconcile,setAccount,pushEnabled,pendingRegistration} from '@/lib/webPush/browser';
+import {prepare,reconcile,setAccount,pushEnabled,pendingRegistration,capturePushDiagnostics} from '@/lib/webPush/browser';
 
 export function PushLifecycle(){
  const {pathname,search}=useLocation(),navigate=useNavigate(),[userId,setUserId]=useState<string|null|undefined>();
@@ -25,7 +25,8 @@ export function PushLifecycle(){
    if(!registration){if(alive)resolveOnboardingPushEntry(null);return;}
    // Device maintenance is optional. Only a pending navigation destination
    // needs to precede onboarding; failed push setup must not strand admission.
-   void reconcile().catch(()=>{});
+   // Capture this scoped phone investigation before optional maintenance changes evidence.
+   void capturePushDiagnostics(userId).finally(()=>reconcile()).catch(()=>{});
    void registration.then(async()=>{const target=await pendingRegistration(userId);
    const path=target?'/?adminPlayer='+target:null;
    if(alive)resolveOnboardingPushEntry(path);

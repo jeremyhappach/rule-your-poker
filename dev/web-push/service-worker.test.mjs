@@ -1,15 +1,45 @@
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {readFileSync} from 'node:fs';
-function fixture(){
+import {createHash,webcrypto} from 'node:crypto';
+function fixture({trace=false,diagnosticWriteFails=false,now}={}){
  const handlers={},store=new Map(),shown=[],navigation=[];
  const self={location:{origin:'https://local.invalid'},addEventListener:(name,fn)=>handlers[name]=fn,
   registration:{getNotifications:async()=>[],showNotification:async(title,options)=>{const previous=shown.findIndex(n=>n.tag===options.tag);if(previous>=0)shown.splice(previous,1);shown.push({title,...options});}},
   clients:{claim:async()=>{},matchAll:async()=>[],openWindow:async path=>navigation.push(path)}};
- vm.runInNewContext(readFileSync('public/ptown-push-sw.js','utf8'),{self,URL,Response,caches:{open:async()=>({match:async key=>store.get(key)?.clone(),put:async(key,value)=>store.set(key,value)})}});
+ let source=readFileSync('public/ptown-push-sw.js','utf8');
+ if(trace)source=source.replace('d78bc9e8-2ede-4bbd-9032-80cfdef01aa6',payload.matchId).replace('ce088752b9efb265bf36c0cb633c195a2d829c9aaf55d0476eaa6ed8c4c78111',createHash('sha256').update(payload.binding).digest('hex'));
+ const fixedNow=now??(trace?Date.parse('2026-11-07T16:00:00Z'):undefined);
+ vm.runInNewContext(source,{self,URL,Response,TextEncoder,crypto:webcrypto,Date:class extends Date{static now(){return fixedNow??Date.now();}},caches:{open:async()=>({match:async key=>store.get(key)?.clone(),put:async(key,value)=>{if(diagnosticWriteFails&&key.endsWith('/diagnostics'))throw Error('disk unavailable');store.set(key,value);}})}});
  const fire=async(name,event)=>{let task;handlers[name]({...event,waitUntil:p=>task=p});await task;};
  const bind=value=>fire('message',{source:{url:'https://local.invalid/'},data:{type:'push-binding',value},ports:[{postMessage:()=>{}}]});
- return {fire,bind,shown,navigation,self};
+ return {fire,bind,shown,navigation,self,read:async name=>(await store.get('https://local.invalid/__push_local__/'+name)?.clone().json())};
 }
 const payload={eventId:'11111111-1111-4111-8111-111111111111',matchId:'22222222-2222-4222-8222-222222222222',binding:'binding-a',kind:'turn',expiresAt:Date.now()+60000};
+
+test('scoped worker trace distinguishes binding rejection, successful display and silent retry without raw secrets',async()=>{
+ const f=fixture({trace:true});await f.bind({binding:'wrong',userId:'other'});
+ await f.fire('push',{data:{json:()=>payload}});
+ assert.equal(f.shown.length,0);assert.equal((await f.read('diagnostics')).at(-1).stage,'binding_rejected');
+ await f.bind({binding:payload.binding,userId:'d7dc1928-3727-4351-b0ff-0e80c81c2953'});
+ const fresh={...payload,expiresAt:Date.parse('2026-11-08T00:00:00Z')};
+ await f.fire('push',{data:{json:()=>fresh}});await f.fire('push',{data:{json:()=>fresh}});
+ const log=await f.read('diagnostics');
+ assert(log.some(x=>x.stage==='show_resolved'));assert.equal(log.at(-1).stage,'receipt_saved');
+ assert.equal(log.filter(x=>x.stage==='show_attempt').at(-1).silent,true);
+ assert(!JSON.stringify(log).includes('binding-a'));assert(!JSON.stringify(log).includes('wrong'));
+});
+test('worker trace records showNotification rejection and never fabricates a saved receipt',async()=>{
+ const f=fixture({trace:true});await f.bind({binding:payload.binding});
+ f.self.registration.showNotification=async()=>{const e=Error('blocked');e.name='NotAllowedError';throw e;};
+ await assert.rejects(f.fire('push',{data:{json:()=>payload}}),/blocked/);
+ const log=await f.read('diagnostics');assert(log.some(x=>x.stage==='show_rejected'&&x.errorName==='NotAllowedError'));
+ assert(!(await f.read('receipts')).includes(payload.eventId));
+});
+test('diagnostic storage failures, other matches and expired scope cannot affect delivery',async()=>{
+ for(const options of [{trace:true,diagnosticWriteFails:true},{},{trace:true,now:Date.parse('2026-11-10T00:00:00Z')}]){
+  const f=fixture(options);await f.bind({binding:payload.binding});await f.fire('push',{data:{json:()=>payload}});
+  assert.equal(f.shown.length,1);assert((await f.read('receipts')).includes(payload.eventId));assert.equal(await f.read('diagnostics'),undefined);
+ }
+});
 
 test('turns name each opponent and retain the existing match receipt and destination',async()=>{
  const f=fixture();await f.bind({binding:'binding-a'});

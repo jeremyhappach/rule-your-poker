@@ -3,11 +3,23 @@ const STORE='ptown-push-v1';
 const key=name=>new URL('/__push_local__/'+name,self.location.origin).href;
 const read=async name=>{const c=await caches.open(STORE);return (await c.match(key(name)))?.json();};
 const write=async(name,value)=>{const c=await caches.open(STORE);await c.put(key(name),new Response(JSON.stringify(value)));};
+// Temporary, local-only trace for the failed Hap phone test. Expires automatically.
+const TRACE_VERSION='push-trace-20261107-1',TRACE_UNTIL=Date.parse('2026-11-09T00:00:00Z');
+const traceHash=async value=>typeof value==='string'?Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join(''):null;
+async function trace(p,stage,details={}){try{
+ if(Date.now()>=TRACE_UNTIL||p?.matchId!=='d78bc9e8-2ede-4bbd-9032-80cfdef01aa6')return;
+ const payloadBindingHash=await traceHash(p.binding);
+ if(payloadBindingHash!=='ce088752b9efb265bf36c0cb633c195a2d829c9aaf55d0476eaa6ed8c4c78111')return;
+ const {currentBinding,...safe}=details;
+ await write('diagnostics',[...(await read('diagnostics')??[]),{version:TRACE_VERSION,at:Date.now(),eventId:p.eventId,stage,payloadBindingHash,...safe,
+  ...('currentBinding' in details?{currentBindingHash:await traceHash(currentBinding)}:{})}].slice(-48));
+ }catch{/* Diagnostic storage must never affect delivery. */}}
 let queue=Promise.resolve();
 const serial=fn=>{const task=queue.then(fn);queue=task.catch(()=>{});return task;};
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 self.addEventListener('message',event=>{
  if(!event.source?.url||new URL(event.source.url).origin!==self.location.origin)return;
+ if(event.data?.type==='push-diagnostic-version')event.ports[0]?.postMessage(TRACE_VERSION);
  if(event.data?.type==='push-binding')event.waitUntil(serial(async()=>{
   const previous=await read('binding');
   const pending=await read('pending-registration');
@@ -28,9 +40,14 @@ self.addEventListener('push',event=>event.waitUntil(serial(async()=>{
  const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  if(!p||!uuid.test(p.eventId)||!['invite','turn','last_call','table_open','registration'].includes(p.kind))return;
  const table=p.kind==='table_open',registration=p.kind==='registration';if(!uuid.test(registration?p.registrationUserId:table?p.tableId:p.matchId))return;
- const current=await read('binding');if(!current||current.binding!==p.binding)return;
+ try{
+ await trace(p,'received');
+ const current=await read('binding');
+ await trace(p,'binding_checked',{bindingPresent:!!current,currentBinding:current?.binding,currentAccountMatches:current?.userId==='d7dc1928-3727-4351-b0ff-0e80c81c2953'});
+ if(!current||current.binding!==p.binding){await trace(p,'binding_rejected');return;}
  const receipts=await read('receipts')??[];
  const duplicate=receipts.includes(p.eventId),expired=!Number.isFinite(p.expiresAt)||p.expiresAt<=Date.now();
+ await trace(p,'show_attempt',{duplicate,expired,silent:duplicate||expired,renotify:!table&&!registration&&!duplicate&&!expired});
  // Fresh async events re-alert when replacing an earlier card for this match.
  // Safari requires visible handling even for retries; keep retries/expiry silent.
  const title=registration?'New P-Town Poker User':expired?(table?'Table Update':'Match Update'):{invite:'New Match Invitation',turn:'Your turn',last_call:'Last Call!',table_open:'New Table Available'}[p.kind];
@@ -40,8 +57,10 @@ self.addEventListener('push',event=>event.waitUntil(serial(async()=>{
   body:registration?(expired?'Open Admin → Players to check account access.':String(p.username??'New player').slice(0,80)+' — Approval Required'):expired?(table?'Open the app to check available tables.':'Open the app to check your async matches.'):table?'A new table is open for joining.':p.kind==='invite'?'You have a new async match invitation.':p.kind==='last_call'?(opponent?'An async turn with '+opponent+' is still waiting. Check its deadline.':'An async turn is still waiting. Check its deadline.'):turnBody,
   tag:registration?'ptown-registration-'+p.registrationUserId:table?'ptown-table-'+p.tableId:'ptown-match-'+p.matchId,renotify:!table&&!registration&&!duplicate&&!expired,silent:duplicate||expired,
   data:{registrationUserId:p.registrationUserId,matchId:p.matchId,tableId:p.tableId,kind:p.kind,binding:p.binding,eventId:p.eventId},
- });
+ }).then(()=>trace(p,'show_resolved'),async error=>{await trace(p,'show_rejected',{errorName:error?.name??'Error'});throw error;});
  await write('receipts',[...receipts.filter(id=>id!==p.eventId),p.eventId].slice(-128));
+ await trace(p,'receipt_saved');
+ }catch(error){await trace(p,'worker_error',{errorName:error?.name??'Error'});throw error;}
 })));
 self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil(serial(async()=>{
  const p=event.notification.data,current=await read('binding');

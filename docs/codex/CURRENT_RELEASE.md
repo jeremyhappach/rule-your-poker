@@ -1,3 +1,19 @@
+# Async push — November 7, 2026 — physical smoke FAILED, scoped tracing
+
+After both corrections were published, Jeremy cleared Hap's waiting turns and
+returned a Run21 turn from Happach Gmail with Hap's iPhone backgrounded. Event
+`ee92e592-013d-4bff-a0ef-510562703c3a` was generated at 10:15:54 AM Central;
+the enabled Apple subscription recorded `sent`, attempt 1, around 10:17. Jeremy
+reported no notification after two minutes. The failure remains unresolved.
+
+The pre-authorized diagnostic follow-up adds bounded service-worker stages and
+an authenticated Hap-only phone snapshot, automatically expiring November 9
+00:00 UTC. It preserves the failed receipt/subscription and gameplay state.
+No new database migration or push dispatch is included. Forty-four push tests,
+ten onboarding tests and application/API typecheck pass. Checkpoint:
+`async-push-phone-trace-2026-11-07`.
+[Exact failed event and diagnostic scope](ASYNC_PUSH_DELIVERY_FIRST.md).
+
 # Async push re-alert hotfix — November 7, 2026 — phone acceptance pending
 
 Fresh async invitations, turns and Last Call alerts now request re-alerting when
