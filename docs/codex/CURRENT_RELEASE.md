@@ -1,3 +1,21 @@
+# Horses Blitz manual openings and roll presentation — November 7, 2026
+
+New `horses-blitz/2` runs wait with empty dice and holds for Roll (1) on every
+hand. All rolls use Quintzee's face cycling, motion duration and rolling audio;
+only rerolled dice move. A synchronous presentation lock covers the roll and
+its automatic-bank landing. The standard opening bell is admitted once per
+live round. Rounds 1–2 retain Next Round; final results require round 3.
+
+Installed migration `20261107211109` preserves v1 runs and scores. Candidate and
+installed rollback proofs cover both versions, with independent connection
+races and no financial writes.
+Full browser smoke passes three bells, 30 played hands, exact roll sound starts
+and stops, mute, rapid taps and six layouts. All 61 focused tests, application
+TypeScript and the production build pass.
+Checkpoint: `horses-blitz-manual-rolls-2026-11-07`; the matching `-verified` tag
+records publication and v2 activation. Owner phone
+smoke remains pending. See `HORSES_BLITZ.md` for evidence and limitations.
+
 # 357 Drop / 2 smoke corrections — November 7, 2026 — owner smoke pending
 
 New games play three automatic rounds with fresh decks, three passes and 120

@@ -1,3 +1,46 @@
+# First smoke correction — v2, November 7, 2026
+
+Jeremy requested manual opening rolls, Quintzee's roll treatment and sound,
+and a bell at the start of all three rounds. The observed production run was
+active at its round-one timeout summary, with four banked hands and six
+forfeits. No historical run was changed. The source already required round
+three for finalization; full progression remains an explicit acceptance check.
+
+V2 initializes every hand at roll zero with empty dice/holds. Roll (1) creates
+all five dice; later rolls preserve held indices. The clock continues through
+manual openings, rolls and banks. Existing v1 behavior remains dispatched by
+the frozen config, and v2 scores have their own leaderboard version.
+
+`useHorsesBlitzRoll` owns only local presentation and its synchronous input lock.
+It starts Quintzee's rolling sound/motion together, uses independent transitional
+faces, and keeps only unheld dice moving. A received third-roll bank remains
+visible for its bank beat after settling even when recovery has already moved
+the authoritative hand forward. Interrupted presentation is retired, not replayed.
+Global Sounds remains owned by the existing audio manager. Live round identity
+admits the canonical boxing bell; reloading a summary does not replay it.
+The Horses-only bell policy shares the rolling priority, so an immediate Roll
+(1) can sound alongside the bell instead of being suppressed by it. Other games'
+audio policies are unchanged. The browser asserts one actual rolling cue per
+animated roll, cancellation at settling, and silence while globally muted.
+
+Migration `20261107211109_horses_blitz_manual_roll_v2` passes the complete local
+and hosted candidate/installed v1 and v2 rollback matrices. Both versions retain
+replay, authorization, continuation, tie, terminal atomicity and financial-write
+isolation. Independent connections cover starts, banks, rerolls, timeouts and
+Next Round races. Installed authority digest: `934d3e53938ff51453ea984ae607e601`.
+The existing recovery dispatcher supports both versions without redeployment.
+
+Browser smoke uses real pointer taps to unlock browser audio after reloads,
+counts actual scheduled bells, and checks 30 non-forfeited hands, empty opening
+areas, reroll masks, rapid taps, retained summaries, mute, lost acknowledgements,
+leaderboard and six layouts. Its fixtures isolate authentication/realtime on
+loopback while using the real Arcade API and installed SQL. Evidence is in
+`qualification.local/horses-blitz/polish-browser/`.
+The complete smoke passes, as do 61 focused tests, application TypeScript and
+the production build. No tools or dependencies were installed.
+Physical iPhone acceptance remains Jeremy's smoke. Checkpoint: `horses-blitz-manual-rolls-2026-11-07`;
+the annotated `-verified` tag records client publication and activation.
+
 # Horses Blitz / 1 — November 7, 2026
 
 Jeremy approved a solo P-Town Original using the supplied three PNG references.

@@ -1,6 +1,7 @@
 BEGIN;
 SET LOCAL lock_timeout='500ms';
 SET LOCAL statement_timeout='25s';
+UPDATE private.arcade_rulesets SET enabled=false WHERE game='horses-blitz';
 -- CANDIDATE_DDL
 CREATE FUNCTION pg_temp.hb_check(ok boolean,label text) RETURNS void LANGUAGE plpgsql AS $$BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'Horses Blitz proof: %',label;END IF;END$$;
 DO $$

@@ -6,7 +6,9 @@ const candidate=readFileSync('supabase/horses-blitz/rules.sql','utf8')+'\n'+read
 writeFileSync('qualification.local/horses-blitz/candidate.sql',candidate);
 const c=await connect(database);
 try{
- const sql=readFileSync('supabase/tests/horses_blitz_proof.sql','utf8').replace('-- CANDIDATE_DDL',()=>process.argv.includes('--installed')?'':candidate);
- console.log((await c.query(sql)).flatMap(x=>x.rows??[]));
+ for(const path of ['supabase/tests/horses_blitz_proof.sql','supabase/tests/horses_blitz_v2_proof.sql']){
+ const sql=readFileSync(path,'utf8').replace('-- CANDIDATE_DDL',()=>process.argv.includes('--installed')?'':candidate);
+ console.log(path,(await c.query(sql)).flatMap(x=>x.rows??[]));
+ }
  if(process.argv.includes('--install'))await c.query(candidate);
 }finally{await c.end();}

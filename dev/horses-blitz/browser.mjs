@@ -8,7 +8,7 @@ import react from '@vitejs/plugin-react-swc';
 import {connect} from '../quintzee/database.mjs';
 
 const database=JSON.parse(readFileSync('qualification.local/horses-blitz/context.json')).database;if(!/^horses_blitz_v1_\d+$/.test(database??''))throw Error('Expected disposable database');
-const polish=process.argv.includes('--polish'),preview=process.argv.includes('--preview');
+const polish=true,preview=process.argv.includes('--preview');
 const port=preview?Number(process.env.CRIB_LAB_PREVIEW_PORT??15370):polish?15371:15389,origin='http://127.0.0.1:'+port;
 let operation,apiLane=Promise.resolve();
 const c=await connect(database),actor=randomUUID(),out='qualification.local/horses-blitz/'+(polish?'polish-browser':'browser');
@@ -81,6 +81,7 @@ try{
   }else{
   browser=await chromium.launch({channel:'msedge',headless:true});
   const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  page.setDefaultTimeout(15000);
   page.on('pageerror',e=>{errors.push(e.message);console.error(e.message);});
   await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
   const button=name=>page.getByRole('button',{name,exact:true});
@@ -92,6 +93,23 @@ try{
     await el.click();if(ack)assert.equal((await ack).status(),200);
   };
 
+
+  const roll=async(n,count)=>{
+   const before=log.filter(x=>x[0]==='action').length,soundOn=await button('Mute sounds').count()>0,audioBefore=await page.evaluate(()=>window.audioEvents.length);
+   await button('Roll ('+n+')').click({clickCount:3});
+   await page.waitForFunction(n=>document.querySelectorAll('.hb-die[data-rolling=true]').length===n,count);
+   assert.equal(await page.locator('.hb-die[data-held=true][data-rolling=true]').count(),0);
+   assert.equal(await page.locator('.hb-roll').isDisabled(),true);assert.equal(await page.locator('.hb-bank').isDisabled(),true);
+   await page.locator('.hb-bank').evaluate(el=>el.click());
+   await page.waitForFunction(()=>document.querySelectorAll('.hb-die[data-rolling=true]').length===0);
+   if(n<3)await page.waitForFunction(()=>!document.querySelector('.hb-roll').disabled);
+   else await page.waitForFunction(()=>document.querySelector('.hb-board')?.getAttribute('data-phase')==='summary'||(!document.querySelector('.hb-roll')?.disabled&&document.querySelectorAll('.hb-die').length===0));
+   assert.equal(log.filter(x=>x[0]==='action').length,before+1,'animation rapid taps issue one action');
+   const sounds=await page.evaluate(start=>({rolls:window.audioEvents.slice(start).filter(id=>id.startsWith('palette:quintzeeRoll:')),stops:window.audioStops}),audioBefore);
+   assert.equal(sounds.rolls.length,soundOn&&count>0?1:0,'one roll sound with motion');
+   assert.ok(sounds.rolls.every(id=>sounds.stops.includes(id)),'rolling audio stops when dice settle');
+  };
+
   await page.goto(origin+'/arcade');
   const tile=page.getByRole('link',{name:'Horses Blitz leaderboard'});
   await tile.waitFor();await tile.locator('img').evaluate(img=>img.decode());
@@ -99,7 +117,7 @@ try{
   await page.screenshot({path:out+'/tile.png'});
   await button('Horses Blitz rules and info').click();await page.getByText('Three rounds. Ten hands each.',{exact:false}).waitFor();
   await page.keyboard.press('Escape');await tile.click();await button('Play').click();
-  await page.locator('.hb-die').first().waitFor();
+  await button('Roll (1)').waitFor();assert.equal(await page.locator('.hb-die').count(),0);await roll(1,5);
   for(const [width,height] of [[320,568],[375,667],[390,844],[667,375],[844,390],[1280,720]]){
    await page.setViewportSize({width,height});
    const bounds=await page.locator('.hb-die,.hb-actions button,.hb-status,.hb-base').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};}));
@@ -112,7 +130,7 @@ try{
   await page.locator('.hb-die').nth(0).click();await page.locator('.hb-die').nth(1).click();await page.locator('.hb-die').nth(2).click();
   assert.equal(await page.locator('.hb-die[data-held=true]').count(),3);assert.equal(await page.locator('.hb-die[data-wild=true]').count(),1);
   await page.screenshot({path:out+'/example.png'});
-  await action('Roll 2');assert.deepEqual(latest.dice.slice(0,3),[1,4,4]);assert.equal(latest.roll,2);
+  await roll(2,2);assert.deepEqual(latest.dice.slice(0,3),[1,4,4]);assert.equal(latest.roll,2);
   const beforeReload=latest;await page.reload();await page.locator('.hb-die').first().waitFor();assert.equal(latest.deadline,beforeReload.deadline);assert.deepEqual(latest.held,[0,1,2]);
   let dropReplies=2;
   const loseReply=async route=>{const input=route.request().postDataJSON();if(input.op==='action'&&input.intent.type==='bank'&&dropReplies>0){dropReplies--;await route.fetch();await route.abort('failed');}else await route.continue();};
@@ -123,27 +141,31 @@ try{
    while(latest.round===round&&latest.phase!=='summary'){
     await page.locator('.hb-board[data-phase=playing]').waitFor();
     const hand=latest.hand;
+    if(latest.roll===0){assert.equal(await page.locator('.hb-die').count(),0);assert.deepEqual(latest.held,[]);await roll(1,5);continue;}
     if(latest.set.points>0){await action('Bank '+latest.set.points.toLocaleString());}
-    else await action('Roll '+(latest.roll+1));
+    else await roll(latest.roll+1,5-latest.held.length);
     if(latest.phase==='banking')await page.waitForFunction(old=>{const el=document.querySelector('.hb-board');return el?.getAttribute('data-phase')==='summary'||document.querySelector('.hb-hand')?.getAttribute('data-hand')!==old;},latest.handId);
     if(hand===10&&latest.phase==='summary')break;
    }
    assert.equal(latest.phase,'summary');assert.equal(latest.round,round);receipts.set(round,latest.result);
-   await page.screenshot({path:out+'/summary-'+round+'.png'});
+   console.log('Completed round '+round+' with '+latest.result.hands.length+' hands');await page.screenshot({path:out+'/summary-'+round+'.png'});
    if(round<3){
     const old=latest;await page.reload();await button('Next Round').waitFor();assert.equal(latest.round,round);assert.deepEqual(latest.result,old.result);
-    await button('Next Round').evaluate(el=>{el.click();el.click();el.click();});
+    await button('Next Round').click({clickCount:3});
     await page.locator('.hb-board[data-phase=playing]').waitFor();assert.equal(latest.round,round+1);assert.equal(latest.hand,1);
    }
   }
+  const bells=await page.evaluate(()=>window.audioEvents.filter(id=>id.startsWith('run21-bell:horses-blitz:')));
+  assert.equal(bells.length,3,JSON.stringify(bells));
+  assert.ok([...receipts.values()].every(r=>r.hands.length===10&&r.hands.every(h=>!h.forfeit)),'30 played hands');
   assert.equal(latest.status,'completed');assert.equal(latest.score,[...receipts.values()].reduce((n,r)=>n+r.total,0));
   await button('Play Again').waitFor({timeout:12000});
   assert.equal((await c.query('select count(*)::int n from private.arcade_results where user_id=$1',[actor])).rows[0].n,1);
-  await button('Play Again').click();await page.locator('.hb-die').first().waitFor();
-  await button('Mute sounds').click();await button('Unmute sounds').waitFor();await button('Unmute sounds').click();
-  await button('Abandon run').click();await button('Keep Playing').click();assert.equal(latest.status,'active');
-  await button('Abandon run').click();await action('Abandon Game');await button('Play Again').waitFor();
-  assert.deepEqual(errors,[]);writeFileSync(out+'/evidence.json',JSON.stringify({layouts,log,rounds:[...receipts.values()],errors},null,2));
-  console.log('PASS — three rounds, sample holds, lost bank response, summaries, burst Next Round, leaderboard, mute, abandon and six layouts');
+  await button('Play Again').click();await button('Roll (1)').waitFor();assert.equal(await page.locator('.hb-die').count(),0);
+  await button('Mute sounds').click();await button('Unmute sounds').waitFor();const mutedBefore=await page.evaluate(()=>window.audioEvents.length);await roll(1,5);assert.equal(await page.evaluate(()=>window.audioEvents.length),mutedBefore);await button('Unmute sounds').click();
+  await button('Abandon').click();await button('Keep Playing').click();assert.equal(latest.status,'active');
+  await button('Abandon').click();await action('Abandon Game');await button('Play Again').waitFor();
+  assert.deepEqual(errors,[]);writeFileSync(out+'/evidence.json',JSON.stringify({bells,layouts,log,rounds:[...receipts.values()],errors},null,2));
+  console.log('PASS — three opening bells, 30 manual openings, reroll-only motion, mute, animation tap locks, three rounds, sample holds, lost bank response, summaries, burst Next Round, leaderboard, mute, abandon and six layouts');
   }
 }finally{await browser?.close();await server.close();await c.query('rollback');await c.end();}

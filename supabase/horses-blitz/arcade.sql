@@ -1,5 +1,6 @@
 -- Solo lifecycle, shared Arcade persistence. No financial/session owners.
 INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('horses-blitz/1','horses-blitz',private.horses_blitz_rules(),false) ON CONFLICT(id) DO NOTHING;
+INSERT INTO private.arcade_rulesets(id,game,config,enabled) VALUES('horses-blitz/2','horses-blitz',private.horses_blitz_rules('horses-blitz/2'),false) ON CONFLICT(id) DO NOTHING;
 DO $$
 DECLARE definition text; anchor text;
 BEGIN

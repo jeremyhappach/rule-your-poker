@@ -1,3 +1,13 @@
+## 2026-11-07 — Horses Blitz hands begin with a manual opening roll
+
+Jeremy's first smoke supersedes automatic opening rolls. New v2 hands have
+roll zero, no dice, no holds and no scoring set; only Roll (1) generates dice.
+The 100-second clock, score ladder, three ten-hand rounds and retained summaries
+are unchanged. Existing v1 runs and results keep their frozen interpretation.
+Quintzee owns the reused dice faces, rolling audio and presentation duration.
+Horses Blitz latches the authoritative landing during animation; this cannot
+advance a hand, award points or change the server deadline.
+
 ## 2026-11-07 — 357 Drop three-round identity and Arcade timer defaults
 
 357 Drop uses a new frozen `357-drop/2` competitive version for three rounds.
