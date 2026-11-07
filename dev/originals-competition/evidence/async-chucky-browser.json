@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "game": "chucky-showdown",
+      "mode": "async",
+      "picker": true,
+      "send": true,
+      "accept": true,
+      "boards": 6,
+      "handoffs": 5,
+      "settled": true
+    }
+  ]
+}

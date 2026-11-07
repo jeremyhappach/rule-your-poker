@@ -1,0 +1,17 @@
+{
+  "migration": "20261107184515_originals_competitive_release",
+  "packagedIdempotencyRollback": true,
+  "installedFinancialGameplayRollback": true,
+  "worker": {
+    "name": "delayed-recovery",
+    "version": 4,
+    "httpStatus": 200,
+    "processed": 0,
+    "failures": 0,
+    "leaseCleared": true
+  },
+  "gates": "closed pending client publication",
+  "typecheck": true,
+  "focusedTests": 44,
+  "productionBuild": true
+}

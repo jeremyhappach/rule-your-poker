@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "game": "crib-lab",
+      "mode": "live",
+      "pickerOther": true,
+      "selection": true,
+      "setupConsent": true,
+      "legalAction": true,
+      "earnedCompletedBoard": true,
+      "settlement": true,
+      "fullGameShell": true,
+      "twoClients": true,
+      "sessionEnded": true,
+      "freshEndedReconnect": true
+    },
+    {
+      "game": "chucky-showdown",
+      "mode": "live",
+      "pickerOther": true,
+      "selection": true,
+      "setupConsent": true,
+      "legalAction": true,
+      "earnedCompletedBoard": true,
+      "settlement": true,
+      "fullGameShell": true,
+      "twoClients": true,
+      "sessionEnded": true,
+      "freshEndedReconnect": true
+    }
+  ]
+}

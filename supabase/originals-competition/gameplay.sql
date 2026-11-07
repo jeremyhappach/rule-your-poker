@@ -92,7 +92,7 @@ BEGIN
    'transition',b->'transition','result',CASE WHEN phase_i='scoring' THEN b->'results'->-1 END);
  ELSIF game_i='chucky-showdown' THEN
   answer:=private.chucky_showdown_scene_v2(b||jsonb_build_object('phase',phase_i))||
-   jsonb_build_object('config',b->'config','lastShowdown',b->'lastShowdown','lastRound',b->'lastRound','result',b->'result');
+   jsonb_build_object('config',b->'config','lastShowdown',b->'lastShowdown','lastRound',b->'lastRound','lastFold',b->'lastFold','result',b->'result');
  ELSE RAISE EXCEPTION 'originals:game';END IF;
  RETURN answer||jsonb_build_object('serverAt',at_ms,'status',CASE WHEN b->>'phase'='stage_complete' THEN 'completed' ELSE 'active' END,'completion',NULL);
 END $$;

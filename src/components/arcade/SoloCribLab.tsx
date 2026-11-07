@@ -170,7 +170,7 @@ export function CribLabTable({runId,userId,game,competitive=false,onPresentation
             <div className="lab-base-counter"><small>Base score</small><strong ref={baseCounter}>{beat.baseScore}</strong></div>
           </>}
         </div>
-        {(game.error||!game.ready)&&<div className="lab-feedback" role="status">{game.error||'Connecting…'} <button onClick={game.reconnect}>Reconnect</button></div>}
+        {(game.error||!competitive&&!game.ready)&&<div className="lab-feedback" role="status">{game.error||'Connecting…'} <button onClick={game.reconnect}>Reconnect</button></div>}
       </section>
       {r&&beat?.stage==='equation'&&<div className="lab-overlay lab-equation" role="status">
         <div className="lab-formula" aria-hidden="true">

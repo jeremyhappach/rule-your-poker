@@ -1,10 +1,12 @@
-# Chucky / Crib next release candidate — November 7, 2026
+# Chucky / Crib competitive release — November 7, 2026
 
-Approved implementation is isolated on `codex/chucky-crib-competitive-release`.
-Invitation/audio corrections and competitive adapters are implemented locally.
-Financial/service/race proofs and the hosted rollback pass; full browser session
-qualification remains incomplete. Both games remain unactivated in production.
-[Evidence and remaining release blockers](ORIGINALS_COMPETITION_RELEASE.md).
+Approved release on codex/chucky-crib-competitive-release: Async invitation/audio
+corrections and shared-rule competitive adapters. Migration 20261107184515 and
+recovery worker v4 are installed. Live browser and hosted installed financial proofs
+pass. Both games completed the Async and live browser matrix, including both
+players’ final results and fresh ended-session reload. Tag:
+originals-competitive-2026-11-07. Admission activation follows verified production
+publication. Jeremy’s production-device smoke remains the acceptance step. [Release evidence](ORIGINALS_COMPETITION_RELEASE.md).
 
 # Compact async bell and canceled invites — November 7, 2026
 

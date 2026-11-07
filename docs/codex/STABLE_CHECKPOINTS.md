@@ -1,5 +1,15 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## 2026-11-07 — Chucky / Crib competitive automated smoke
+
+Tag originals-competitive-2026-11-07 records both games passing Async selection,
+failed/successful invitations, acceptance, six rounds/five handoffs and final
+results for both players, plus two-client live selection/start/play/completion,
+canonical Session Ended and fresh ended-session reconnect. Hosted financial and
+recovery proofs, Chucky audio outcomes, TypeScript and production build pass.
+This is automated qualification; Jeremy's production-device acceptance is pending.
+See [release evidence](ORIGINALS_COMPETITION_RELEASE.md).
+
 ## 2026-11-07 — Arcade abandon and Chucky automated smoke
 
 Checkpoint tag `arcade-chucky-hotfix-2026-11-07` records the qualified hotfix.
