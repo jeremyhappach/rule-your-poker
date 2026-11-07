@@ -1,3 +1,11 @@
+## 2026-11-07 — 357 Drop final results are presentation only
+
+The third tally completes before a persistent Final Score screen. The database
+already stores each round and the one immutable final result; only numeric
+round summaries are added to its private-state projection. Back to Arcade is
+local navigation, with no score submission or progression authority. A completed
+run reload shows the same saved results without replaying its tally.
+
 ## 2026-11-07 — Horses Blitz hands begin with a manual opening roll
 
 Jeremy's first smoke supersedes automatic opening rolls. New v2 hands have

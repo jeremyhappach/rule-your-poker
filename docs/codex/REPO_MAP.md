@@ -2,9 +2,11 @@
 
 Solo Arcade: `supabase/drop357/rules.sql` owns frozen v1 board rules and scoring;
 `v2.sql` adds versioned three-round orchestration and retains the v1 dispatcher.
+`final-results.sql` projects numeric summaries from saved round evidence.
 `arcade.sql` uses canonical Arcade receipts, results and recovery.
 `src/hooks/useDrop357.ts` owns transport/replay admission;
-`src/components/arcade/SoloDrop357.tsx` owns presentation. Shared catalog, tile,
+`src/components/arcade/SoloDrop357.tsx` owns presentation and the persistent final
+screen using the optional interactive `run21/ArcadeCompletion` layout. Shared catalog, tile,
 Rules, sound and Abandon owners remain in place. Proofs: `dev/drop357/` and
 `supabase/tests/drop357_proof.sql`. See `DROP357_QUALIFICATION.md`.
 

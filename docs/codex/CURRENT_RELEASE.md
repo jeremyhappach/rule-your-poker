@@ -1,3 +1,18 @@
+# 357 Drop final results — November 7, 2026 — owner smoke pending
+
+Completed hands use compact reserved result lines with larger names and scores.
+After round 3's standard tally, Final Score stays visible until Back to Arcade.
+Three server-owned round totals include additive hand and earned-bonus details;
+reload restores the screen. Back performs navigation only; the existing server
+completion still records one final leaderboard result.
+
+Migration 20261107215455 exposes numeric summaries from saved round evidence.
+Rules, score writes, recovery and admissions are preserved. Candidate/installed
+rollback proofs, narrow-phone browser flow, focused tests, TypeScript and build
+qualify the correction. Horses Blitz 62c839ed5 completed publication first.
+Checkpoint: 357-drop-final-results-2026-11-07; the verified tag records publication.
+See [evidence and smoke](DROP357_FINAL_RESULTS.md). Physical iPhone smoke is pending.
+
 # Horses Blitz manual openings and roll presentation — November 7, 2026
 
 New `horses-blitz/2` runs wait with empty dice and holds for Roll (1) on every

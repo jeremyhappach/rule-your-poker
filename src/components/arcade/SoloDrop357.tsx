@@ -37,8 +37,8 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
  const seconds=v.phase==='intro'?120:r?Math.ceil(r.remainingMs/1000):Math.max(0,Math.ceil((v.deadline-game.now)/1000));
  useEffect(()=>{
   if(v.status==='active'||done.current)return;
-  if(game.bornEnded||v.status==='abandoned'||r&&tally>=5000){done.current=true;navigate('/arcade/357-drop?result='+runId,{replace:true});}
- },[v.status,game.bornEnded,r,tally,navigate,runId]);
+  if(v.status==='abandoned'){done.current=true;navigate('/arcade/357-drop?result='+runId,{replace:true});}
+ },[v.status,navigate,runId]);
  useEffect(()=>{
   if(!game.cue||game.cue.intent.type==='abandon')return;
   const cue=approvedSound(game.cue.intent.type==='place'?'slide':'flip');
@@ -46,6 +46,17 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
    {...cue,policy:{priority:50,group:'357-action',intervalMs:0}}:undefined});
  },[game.cue,runId,userId]);
  const locked=v.phase!=='playing'||v.status!=='active'||game.pending||!game.ready||game.now>=v.deadline;
+ const showFinal=v.status==='completed'&&!!r&&(game.bornEnded||tally>=5000);
+ if(showFinal){
+  const naturalBonus=v.laneResults.reduce((sum,lane)=>sum+(lane?.bonus??0),0);
+  const rounds=v.roundScores??(v.ruleset==='357-drop/1'?[{round:1,score:r.score,handPoints:r.base-r.allBonus-naturalBonus,naturalBonus,allBonus:r.allBonus,timeBonus:r.timeBonus}]:[]);
+  return <ArcadeCompletion title="Final Score" score={v.score} record={v.completion} onBackToArcade={()=>navigate('/arcade',{replace:true})}>
+   <dl className="drop357-final-rounds">{rounds.map(round=><div key={round.round} data-round-score={round.round}>
+    <dt>Round {round.round}</dt><dd><strong>{round.score.toLocaleString()}</strong></dd>
+    <dd className="drop357-final-bonuses"><span>Hands {round.handPoints.toLocaleString()}</span>{round.naturalBonus>0&&<span>Natural +{round.naturalBonus.toLocaleString()}</span>}{round.allBonus>0&&<span>All lanes +{round.allBonus.toLocaleString()}</span>}{round.timeBonus>0&&<span>Time +{round.timeBonus.toLocaleString()}</span>}</dd>
+   </div>)}</dl>
+  </ArcadeCompletion>;
+ }
  return <div className="arcade-run drop357-page" ref={surface} data-status={v.status} data-phase={v.phase} data-round={v.round??1}>
   <header className="drop357-header"><div><small>P-TOWN ORIGINAL</small><h1>357 DROP</h1></div><nav aria-label="Game controls"><ArcadeInfo game="357-drop" name="357 Drop" ruleset={v.ruleset}/><GameplaySoundButton/><ArcadeAbandonButton disabled={v.status!=='active'} onClick={()=>setAbandon(true)}/></nav></header>
   <main className="drop357-board" ref={board}>
@@ -64,7 +75,6 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
    {r&&<div className="drop357-tally" role="status"><strong>{r.reason==='timeout'?'TIME UP':'ROUND COMPLETE'}</strong><span className="sr-only">Round award {(r.roundScore??r.score).toLocaleString()}; total {r.score.toLocaleString()}</span></div>}
   </main>
   {game.error&&<div className="drop357-error" role="alert">{game.error}<button onClick={game.reconnect}>Reconnect</button></div>}
-  {r&&v.status==='completed'&&tally>=4300&&<ArcadeCompletion score={r.score} record={v.completion}/>}
   <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon game?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard. The clock continues while this dialog is open.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={game.pending} onClick={()=>game.act('abandon')}>Abandon</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </div>;
 }

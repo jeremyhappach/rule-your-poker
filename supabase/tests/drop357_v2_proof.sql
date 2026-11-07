@@ -43,6 +43,12 @@ BEGIN
    PERFORM pg_temp.assert357v2(public.arcade_drop357_step(actor,run_id_i,(before_v->>'revision')::bigint,before_v->>'roundId',request,'place',ARRAY[i])->>'outcome'='duplicate','exact duplicate');
   END LOOP;END LOOP;
   total:=total+(v#>>'{result,roundScore}')::bigint;
+  PERFORM pg_temp.assert357v2(jsonb_array_length(v->'roundScores')=round_i,'all completed round summaries');
+  PERFORM pg_temp.assert357v2((SELECT sum((x->>'score')::bigint) FROM jsonb_array_elements(v->'roundScores')x)=total,'round summaries sum to final score');
+  PERFORM pg_temp.assert357v2(NOT EXISTS(SELECT FROM jsonb_array_elements(v->'roundScores')x
+   WHERE (x->>'handPoints')::bigint+(x->>'naturalBonus')::bigint+(x->>'allBonus')::bigint+(x->>'timeBonus')::bigint<>(x->>'score')::bigint
+   OR (SELECT count(*) FROM jsonb_object_keys(x))<>6
+   OR NOT x ?& ARRAY['round','score','handPoints','naturalBonus','allBonus','timeBonus']),'bonuses add up and summary exposes no private state');
   PERFORM pg_temp.assert357v2((v->>'score')::bigint=total AND v->>'phase'='stage_complete','banked cumulative total');
   PERFORM pg_temp.assert357v2((SELECT count(*) FROM private.arcade_results WHERE run_id=run_id_i)=CASE WHEN round_i=3 THEN 1 ELSE 0 END,'only final result');
   IF round_i<3 THEN
@@ -56,6 +62,7 @@ BEGIN
   END IF;
  END LOOP;
  SELECT state INTO s FROM private.arcade_runs WHERE arcade_runs.id=run_id_i;
+ PERFORM pg_temp.assert357v2(public.arcade_drop357_step(actor,run_id_i)->'projection'->'roundScores'=v->'roundScores','finished refresh preserves summaries');
  PERFORM pg_temp.assert357v2(private.drop357_valid_dispatch(s) AND NOT private.drop357_valid_dispatch(jsonb_set(s,'{score}','9999999')),'validated final sum');
  PERFORM pg_temp.assert357v2(NOT private.drop357_valid_dispatch(jsonb_set(s,'{rounds,0,score}','9999999')),'historical round tampering rejected');
  run:=public.arcade_start(actor,gen_random_uuid(),'357-drop');

@@ -24,7 +24,7 @@ const port=preview?Number(process.env.CRIB_LAB_PREVIEW_PORT??15370):polish?15371
 
 let operation,apiLane=Promise.resolve();
 
-const c=await connect(database),actor=randomUUID(),out='qualification.local/drop357/'+'browser-v2';
+const c=await connect(database),actor=randomUUID(),out='qualification.local/drop357/'+'browser-second';
 
 mkdirSync(out,{recursive:true});
 
@@ -233,7 +233,16 @@ try{
 
    }else{
 
-    for(let i=0;i<5;i++)await action('Place in 5 lane');if(round===1){assert.ok((await page.locator('.drop357-lane-result').nth(1).innerText()).includes('Four Jacks'));await page.screenshot({path:out+'/results-320.png'});}for(let i=0;i<6;i++)await action('Place in 7 lane');
+    for(let i=0;i<5;i++)await action('Place in 5 lane');
+    if(round===1){
+     assert.ok((await page.locator('.drop357-lane-result').nth(1).innerText()).includes('Four Jacks'));
+     const readable=await page.locator('.drop357-lane-result[data-filled=true]').evaluateAll(rows=>rows.map(row=>{const name=row.querySelector('b'),score=row.querySelector('strong'),r=row.getBoundingClientRect();return {name:name.textContent,font:parseFloat(getComputedStyle(name).fontSize),scoreFont:parseFloat(getComputedStyle(score).fontSize),overflow:row.scrollWidth>row.clientWidth+1,bottom:r.bottom};}));
+     assert.ok(readable.every(x=>x.font>=16&&x.scoreFont>=22&&!x.overflow&&x.bottom<=568),JSON.stringify(readable));
+     assert.equal(await page.locator('.drop357-lane-result').nth(0).locator('small').innerText(),'NATURAL +20%');
+     assert.equal(await page.locator('.drop357-lane-result').nth(1).locator('small').count(),0);
+     layouts.push({readable});await page.screenshot({path:out+'/results-320.png'});
+    }
+    for(let i=0;i<6;i++)await action('Place in 7 lane');
 
     if(round===3){await button('Mute sounds').click();const muted=await page.evaluate(()=>window.audioEvents.length);await action('PASS \u00b7 3');assert.equal(await page.evaluate(()=>window.audioEvents.length),muted);await button('Unmute sounds').click();}
     for(let i=round===3?2:3;i>0;i--)await action('PASS \u00b7 '+i);await action('Place in 7 lane');
@@ -250,7 +259,14 @@ try{
 
   }
 
-  await button('Play Again').waitFor({timeout:7000});
+  await button('Back to Arcade').waitFor({timeout:7000});
+  const finalUrl=page.url(),finalRounds=await page.locator('[data-round-score] dd strong').allTextContents();
+  assert.deepEqual(finalRounds.map(x=>Number(x.replaceAll(',',''))),[...receipts.values()].map(x=>x.roundScore));
+  assert.equal(Number((await page.locator('.arcade-final-total strong').innerText()).replaceAll(',','')),total);
+  assert.equal(await page.locator('[data-round-score]').count(),3);
+  const actionsBefore=log.filter(x=>x[0]==='action').length;
+  await page.waitForTimeout(6000);assert.equal(page.url(),finalUrl);
+  await page.screenshot({path:out+'/final-320.png'});
 
   const events=await page.evaluate(()=>window.audioEvents),bells=events.filter(id=>id.startsWith('run21-bell:tri:357-drop:'));
 
@@ -262,7 +278,13 @@ try{
 
   assert.ok(!events.some(id=>id.startsWith('tri-clear:')||id.startsWith('tri-tower:')));
 
-  await button('Play Again').click();await playing(1);await button('Abandon').click();await button('Keep Playing').click();await button('Abandon').click();await page.getByRole('alertdialog').getByRole('button',{name:'Abandon',exact:true}).click();await button('Play Again').waitFor();
+  await page.reload();await button('Back to Arcade').waitFor();
+  assert.equal(Number((await page.locator('.arcade-final-total strong').innerText()).replaceAll(',','')),total);
+  assert.equal(await page.locator('[data-round-score]').count(),3);
+  assert.equal((await c.query('select count(*)::int n from private.arcade_results where run_id=$1',[runId])).rows[0].n,1);
+  await button('Back to Arcade').click();await page.waitForURL(origin+'/arcade');
+  assert.equal(log.filter(x=>x[0]==='action').length,actionsBefore,'Back button never submits a score');
+  await page.getByRole('link',{name:'357 Drop leaderboard'}).click();await button('Play').click();await playing(1);await button('Abandon').click();await button('Keep Playing').click();await button('Abandon').click();await page.getByRole('alertdialog').getByRole('button',{name:'Abandon',exact:true}).click();await button('Play Again').waitFor();
 
   assert.deepEqual(errors,[]);writeFileSync(out+'/browser.json',JSON.stringify({passed:true,layouts,total,log,audio:events},null,2));console.log('PASS: three rounds, timeout banking, one final result, three bells, distinct filled cues, three count-ups return home, six layouts, bar-only clock and Abandon.');
 

@@ -7,3 +7,8 @@
 .arcade-completion-record{background:radial-gradient(ellipse at center,#68460ff7,#0c0b10f5)}
 @keyframes arcade-record-glow{to{transform:scale(1.12);filter:drop-shadow(0 0 40px #ffd15a)}}
 @media(prefers-reduced-motion:reduce){.arcade-record-star{animation:none}}
+.arcade-completion-persistent{pointer-events:auto;overflow:auto;padding:max(.75rem,env(safe-area-inset-top)) max(.75rem,env(safe-area-inset-right)) max(.75rem,env(safe-area-inset-bottom)) max(.75rem,env(safe-area-inset-left));font-variant-numeric:tabular-nums}
+.arcade-completion-persistent .arcade-record-star{display:none}
+.arcade-completion-persistent h2{font-size:1rem;margin:0 0 .4rem}
+.arcade-results-back{min-height:2.75rem;margin-top:.75rem;padding:.6rem 1.5rem;border:1px solid #e8ce8f;border-radius:.6rem;background:#f5e8ca;color:#101725;font-weight:800;text-shadow:none}
+.arcade-results-back:focus-visible{outline:3px solid white;outline-offset:3px}
