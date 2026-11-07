@@ -1,4 +1,5 @@
-export default function Drop357Rules(){return <div className="space-y-3">
+export default function Drop357Rules({version}:{version?:string}){return <div className="space-y-3">
+ {version!=='357-drop/1'&&<p>Three rounds per game. Every round has a fresh shuffled deck, three passes and a full 120-second clock after the opening bell. Each tally banks into your total; the next round begins automatically after the score pill returns. One final score enters the leaderboard after round 3.</p>}
  <p>One deck. Three lanes. Build your best hands in 120 seconds. Tap an open row to place the current card permanently. The 3, 5 and 7 lanes hold exactly that many cards; matching ranks are wild only in their own lane.</p>
  <p>Three shared passes discard the current card. You may pass with only one slot left. Filled lanes score and lock. No swaps or undo. The clock begins when the first card becomes playable and continues while you are away.</p>
  <p>The 3 lane scores a pair (10 × pair rank + kicker) or trips (150 + 30 × rank). Straights and flushes do not score there. The 5 lane uses all five cards; the 7 lane selects its strongest five by poker order and kickers.</p>

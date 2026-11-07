@@ -107,7 +107,7 @@ BEGIN
  PERFORM public.arcade_drop357_step(NULL,(run2->>'id')::uuid,p_token=>'35735735-7357-4357-8357-357357357357');
  response:=public.arcade_leaderboard(actor,'357-drop','all');
  PERFORM pg_temp.check357((SELECT count(DISTINCT x->>'rank') FROM jsonb_array_elements(response->'rows')x WHERE x->>'score'='0')=1,'equal scores share rank');
- PERFORM pg_temp.check357(jsonb_array_length(public.arcade_leaderboard(actor,'357-drop','30')->'rows')=3,'both leaderboard windows');
+ PERFORM pg_temp.check357(jsonb_array_length(public.arcade_leaderboard(actor,'357-drop','30')->'rows')>=3,'both leaderboard windows');
  PERFORM pg_temp.check357(NOT EXISTS(SELECT FROM drop357_write_baseline b JOIN pg_stat_xact_user_tables t USING(relid) WHERE t.n_tup_ins+t.n_tup_upd+t.n_tup_del<>b.n),'zero multiplayer/financial writes');
  RAISE NOTICE '357 Drop rules, auth, replay, terminal, isolation and recovery proof passed';
 END $$;

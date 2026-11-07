@@ -59,3 +59,10 @@ Solo Run21 finalizes immediately at round three. After the existing medal/score 
 - Production publication and Jeremy's subsequent authenticated smoke are tracked in CURRENT_RELEASE.md. Local qualification does not claim production gameplay acceptance.
 
 The local runner uses the existing ignored qualification.local PostgreSQL installation on port 55439; it installs no dependencies. Its cron stub replaces scheduling only. Production uses pg_cron and pg_net plus the deployed Edge worker. Recovery deployment source is bundled from supabase/functions/arcade-recovery/index.ts, sharing the exact reducer.
+
+## New-game timer presentation default — November 7, 2026
+
+New Arcade games show a timer bar without a visible numeric countdown during
+active play. Keep the server-owned deadline and accessible remaining-time value.
+357 Drop v2 adopts this default; other existing games keep their current timer
+presentation unless separately requested. Shared abandon controls read Abandon.

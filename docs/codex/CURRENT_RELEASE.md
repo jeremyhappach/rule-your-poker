@@ -1,3 +1,22 @@
+# 357 Drop / 2 smoke corrections — November 7, 2026 — owner smoke pending
+
+New games play three automatic rounds with fresh decks, three passes and 120
+playing seconds after each opening bell. Each server-timed tally banks once; only
+round 3 submits a final cumulative score. Frozen v1 runs and boards remain intact.
+
+Reserved ivory result strips show specific hand names, natural badges and large
+scores. The clock is bar-only. Dedicated 357 lane/filled-board sounds precede the
+standard centered score-pill count-up; the pill returns before the next intro.
+Abandon replaces the shared and Chucky-specific Abandon run labels app-wide.
+
+Migration 20261107204844 is installed with v2 closed pending verified publication.
+Hosted candidate/installed rollback proofs, races, the unchanged deployed v21
+worker, three-round browser/audio/layout checks, 57 focused tests, typecheck and
+production build qualify the correction. Horses Blitz completed publication
+before hosted release work. Checkpoint: 357-drop-v2-smoke-2026-11-07; its verified
+tag records exact publication/activation. Physical iPhone acceptance is pending.
+See [qualification](DROP357_V2_SMOKE.md).
+
 # Horses Blitz / 1 — November 7, 2026 — qualified, owner smoke pending
 
 The solo P-Town Original adds three rounds of ten five-dice hands, wild 1s,

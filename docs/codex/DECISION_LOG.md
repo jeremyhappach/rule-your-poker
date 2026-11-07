@@ -1,3 +1,12 @@
+## 2026-11-07 — 357 Drop three-round identity and Arcade timer defaults
+
+357 Drop uses a new frozen `357-drop/2` competitive version for three rounds.
+Each round reuses v1 board scoring, with server-owned intro, gameplay and result
+hold boundaries. Presentation and sound cannot start or delay the game clock.
+One run result contains all three banked round totals; v1 history stays separate.
+New Arcade timer displays default to a bar with accessible time information,
+without a visible numeric countdown. Existing games change only when requested.
+
 ## 2026-11-07 — Horses Blitz preserves a round summary until Next Round
 
 Horses Blitz v1 uses a single server-owned dice/scoring rule core, the selected

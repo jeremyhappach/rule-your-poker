@@ -11,10 +11,10 @@ export const CardSlot=memo(function CardSlot({card,flip,classicFace}:{card?:Card
 });
 export function EndRun({disabled,abandon}:{disabled:boolean;abandon:()=>void}){
   return <AlertDialog><AlertDialogTrigger asChild><ArcadeAbandonButton disabled={disabled}/></AlertDialogTrigger>
-    <AlertDialogContent><AlertDialogTitle>Abandon this run?</AlertDialogTitle>
+    <AlertDialogContent><AlertDialogTitle>Abandon game?</AlertDialogTitle>
       <AlertDialogDescription>This run will end without a leaderboard score. Clocks continue while this dialog is open.</AlertDialogDescription>
       <AlertDialogFooter><AlertDialogCancel>Keep playing</AlertDialogCancel>
-        <AlertDialogAction disabled={disabled} onClick={abandon}>Abandon run</AlertDialogAction></AlertDialogFooter>
+        <AlertDialogAction disabled={disabled} onClick={abandon}>Abandon</AlertDialogAction></AlertDialogFooter>
     </AlertDialogContent></AlertDialog>;
 }
 export function Riffle(){

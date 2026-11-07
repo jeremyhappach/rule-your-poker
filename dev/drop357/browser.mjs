@@ -139,15 +139,15 @@ try{
   assert.ok(await button('PASS · 0').isDisabled());
   await action('Place in 7 lane');
   assert.equal(latest.status,'completed');assert.equal(latest.placements,15);
-  await page.waitForFunction(()=>window.audioEvents.some(id=>id.startsWith('palette:winner:')));
+  await page.waitForFunction(()=>window.audioEvents.some(id=>id.startsWith('357-filled:')));
   assert.equal(latest.result.allBonus,200);
   assert.ok(latest.laneResults.every(r=>r.natural));
   await page.screenshot({path:out+'/completed.png'});
   await button('Play Again').waitFor({timeout:12000});
   assert.equal((await c.query('select count(*)::int n from private.arcade_results where user_id=$1',[actor])).rows[0].n,1);
   await button('Play Again').click();await page.locator('.drop357-lane').first().waitFor();
-  await button('Abandon run').click();await button('Keep Playing').click();assert.equal(latest.status,'active');
-  await button('Abandon run').click();await action('Abandon Game');await button('Play Again').waitFor();
+  await button('Abandon').click();await button('Keep Playing').click();assert.equal(latest.status,'active');
+  await button('Abandon').click();await action('Abandon');await button('Play Again').waitFor();
   assert.equal((await c.query('select count(*)::int n from private.arcade_results where user_id=$1',[actor])).rows[0].n,1);
   await button('Play Again').click();await page.locator('.drop357-lane').first().waitFor();
   await page.emulateMedia({reducedMotion:'reduce'});
