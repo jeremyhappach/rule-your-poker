@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "score": 9900,
+  "manualRolls": 9,
+  "bells": 3,
+  "cupSounds": 9,
+  "landings": 9,
+  "layouts": [
+    {
+      "width": 320,
+      "height": 568,
+      "final": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "final": true
+    },
+    {
+      "width": 412,
+      "height": 915,
+      "final": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "final": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "final": true
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "playing": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "playing": true
+    },
+    {
+      "width": 412,
+      "height": 915,
+      "playing": true
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "playing": true
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "playing": true
+    }
+  ],
+  "errors": [],
+  "fixture": "Deterministic dice only; actual SQL rules, RPCs, receipts and leaderboard"
+}

@@ -1,3 +1,17 @@
+# Ship Cap Voyage / 1 — November 7, 2026 — local preview, publication unapproved
+
+The Arcade-only candidate on `codex/ship-cap-voyage` implements the supplied
+three-round, twelve-roll, three-bank rules with server-owned dice and scoring.
+Manual rolls, all three opening bells, shared dice/audio/tally treatments and a
+persistent final scoreboard are verified locally. The approved 16:9 artwork has
+one functional gold rules target and no Originals badge.
+
+Candidate/installed-local rollback proofs, independent races, 66 focused tests,
+SQL-backed browser/audio checks, ten viewport states, TypeScript and build pass.
+No production schema, admission, deployment or real-money state changed. Physical
+iPhone/Android smoke and Jeremy's explicit production approval remain required.
+See [implementation, evidence and release gate](SHIP_CAP_VOYAGE_IMPLEMENTATION.md).
+
 # 357 Drop carry-forward playtest — November 7, 2026 — owner smoke pending
 
 357-drop/3 adds seven permanent placements, five shared passes and printed-card

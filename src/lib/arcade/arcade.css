@@ -46,3 +46,6 @@ body:has(.arcade-page),body:has(.arcade-run){background:#0c171e}
 .arcade-banner-link:focus-visible{outline:3px solid #ffe294;outline-offset:3px}
 .arcade-info-button--banner:focus-visible{outline:3px solid #ffe294;outline-offset:2px}
 @media (forced-colors:active){.arcade-info-face{border-color:ButtonText;background:ButtonFace;color:ButtonText}.arcade-banner-link:focus-visible,.arcade-info-button--banner:focus-visible{outline-color:Highlight}}
+
+/* Supplied 16:9 tile has one baked-in gold Rules symbol. */
+.arcade-tile--embedded-info .arcade-info-face{visibility:hidden}.arcade-tile--embedded-info .arcade-info-button--banner{right:var(--embedded-info-right);bottom:var(--embedded-info-bottom);width:max(44px,var(--embedded-info-width));height:max(44px,var(--embedded-info-height))}

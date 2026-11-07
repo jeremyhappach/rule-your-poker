@@ -61,6 +61,12 @@ async function cribLabStep(rpc:Rpc,userId:string,id:string,body:Record<string,an
   if(result.outcome==='stale')throw Error('arcade:stale_action');
   return result.projection;
 }
+async function shipCapVoyageStep(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
+ const action=body.op==='action';
+ if(action&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||!body.intent||!['roll','bank','next_round','abandon'].includes(body.intent.type)||!Array.isArray(body.intent.items)||body.intent.items.length!==0))throw Error('arcade:invalid_command');
+ const value=await rpc('arcade_ship_cap_voyage_step',{p_actor:userId,p_run:id,...(action?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_items:body.intent.items}:{})});
+ if(value.outcome==='stale')throw Error('arcade:stale_action');return value.projection;
+}
 async function horsesBlitzStep(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
  const action=body.op==='action';
  if(action&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||!body.intent||!['roll','bank','next_round','abandon'].includes(body.intent.type)||!Array.isArray(body.intent.items)||(body.intent.type==='roll'?body.intent.items.length>5||new Set(body.intent.items).size!==body.intent.items.length:body.intent.items.length!==0)||body.intent.items.some((i:unknown)=>!Number.isInteger(i)||Number(i)<0||Number(i)>4)))throw Error('arcade:invalid_command');
@@ -75,6 +81,7 @@ async function drop357Step(rpc:Rpc,userId:string,id:string,body:Record<string,an
  if(value.outcome==='stale')throw Error('arcade:stale_action');return value.projection;
 }
 export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,token:string|null=null):Promise<RunRecord>{
+ if(input.game==='ship-cap-voyage')return (await rpc('arcade_ship_cap_voyage_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='horses-blitz')return (await rpc('arcade_horses_blitz_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='357-drop')return (await rpc('arcade_drop357_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='crib-lab')return (await rpc('arcade_crib_lab_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
@@ -112,6 +119,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
  if(body.op!=='start'&&!isUuid(body.runId))throw Error('arcade:invalid_run');
  if(body.game==='chucky-showdown'&&body.op!=='start')return showdownStep(rpc,userId,body.runId,body);
  // The locked step checks the stored game and actor before projecting any cards.
+ if(body.game==='ship-cap-voyage'&&body.op!=='start')return shipCapVoyageStep(rpc,userId,body.runId,body);
  if(body.game==='horses-blitz'&&body.op!=='start')return horsesBlitzStep(rpc,userId,body.runId,body);
  if(body.game==='357-drop'&&body.op!=='start')return drop357Step(rpc,userId,body.runId,body);
  if(body.game==='crib-lab'&&body.op!=='start')return cribLabStep(rpc,userId,body.runId,body);
@@ -127,6 +135,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
   body.game==='quintzee'?await rpc('arcade_quintzee_start',{p_actor:userId,p_request:body.requestId,p_theme:body.theme??'modern'}):await rpc('arcade_start',{p_actor:userId,p_request:body.requestId,p_game:body.game}):
   await rpc('arcade_load',{p_actor:userId,p_run:body.runId,p_request:body.op==='action'?body.requestId:null});
  if(row.game==='chucky-showdown')return showdownStep(rpc,userId,row.id,body);
+ if(row.game==='ship-cap-voyage')return shipCapVoyageStep(rpc,userId,row.id,body);
  if(row.game==='horses-blitz')return horsesBlitzStep(rpc,userId,row.id,body);
  if(row.game==='357-drop')return drop357Step(rpc,userId,row.id,body);
  if(row.game==='crib-lab')return cribLabStep(rpc,userId,row.id,body);

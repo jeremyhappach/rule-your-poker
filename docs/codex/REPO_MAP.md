@@ -1634,3 +1634,11 @@ Mega competition: `src/lib/megaCardGolf/competition.ts` adapts the shared reduce
 printed cards, stage resolution, version dispatch and private select_ruleset switch.
 `src/hooks/useDrop357.ts` owns exact-receipt pending input; `dev/drop357/browser-v3.mjs`
 and `latency.mjs` qualify both board presentations and delayed-response behavior.
+
+## Ship Cap Voyage (local preview candidate)
+
+- `supabase/ship-cap-voyage/`: frozen SQL rules, Arcade adapter, rollback proof and unexecuted activation.
+- `src/lib/shipCapVoyage/`, `src/hooks/useShipCapVoyage.ts`: projection, transport, command/recovery ownership.
+- `src/components/arcade/SoloShipCapVoyage.tsx`, `shipCapVoyage.css`: shared dice/audio/tally integration and persistent scoreboard.
+- `src/components/rules/ShipCapVoyageRules.tsx`: versioned help.
+- `dev/ship-cap-voyage/`: isolated local SQL/browser preview, race tests and review evidence.
