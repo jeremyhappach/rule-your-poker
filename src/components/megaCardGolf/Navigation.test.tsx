@@ -13,17 +13,17 @@ const audio={request:vi.fn(()=>vi.fn())} as unknown as AudioManager;
 const catalog={courses:INITIAL_COURSES,boards:[],archives:[],active:null,admission:true,isAdmin:true};
 const row=(score:number,name='Birdie')=>({runId:name,name,score,rank:1});
 afterEach(()=>{cleanup();vi.restoreAllMocks();history.replaceState(null,'','/');});
-it('opens each course without starting; only Start Game admits a run and Return to Clubhouse restores selection',async()=>{
+it('opens each course without starting; only Tee Off admits a run and Return to Clubhouse restores selection',async()=>{
  const request=vi.fn(async(body:any)=>body.op==='catalog'?catalog:body.op==='leaderboard'?{rows:[row(-8)],self:null,personalBest:null}:projectRun(createRun('run','owner',INITIAL_COURSES[0],Array.from({length:9},()=>Array.from({length:52},(_,i)=>i)),Date.now()),Date.now()));
  const back=vi.fn();render(<MegaArcade request={request as any} userId="owner" audio={audio} onBack={back}/>);
- await screen.findByRole('heading',{name:'Select a Course'});expect(screen.queryByRole('button',{name:'Defaults'})).toBeNull();expect(screen.queryByRole('button',{name:'Start Game'})).toBeNull();
+ await screen.findByRole('heading',{name:'Select a Course'});expect(screen.queryByRole('button',{name:'Defaults'})).toBeNull();expect(screen.queryByRole('button',{name:'Tee Off'})).toBeNull();
  for(const course of INITIAL_COURSES){
   fireEvent.click(screen.getByRole('button',{name:'Select '+course.name}));await screen.findByRole('heading',{name:'Top Ten'});
   expect(request.mock.calls.filter(([b])=>b.op==='start')).toHaveLength(0);
   fireEvent.click(screen.getByRole('button',{name:'Return to Clubhouse'}));await screen.findByRole('heading',{name:'Select a Course'});await waitFor(()=>expect(screen.getByRole('button',{name:'Select '+course.name}).hasAttribute('disabled')).toBe(false));
  }
  fireEvent.click(screen.getByRole('button',{name:'Back to Arcade'}));expect(back).toHaveBeenCalledOnce();
- fireEvent.click(screen.getByRole('button',{name:'Select Sunny Meadows'}));fireEvent.click(screen.getByRole('button',{name:'Start Game'}));await screen.findByText('Active game');
+ fireEvent.click(screen.getByRole('button',{name:'Select Sunny Meadows'}));fireEvent.click(screen.getByRole('button',{name:'Tee Off'}));await screen.findByText('Active game');
  expect(request.mock.calls.filter(([b])=>b.op==='start')).toEqual([[expect.objectContaining({courseId:'sunny-meadows',requestId:expect.any(String)})]]);
 });
 it('reads all-time records from the exact active board and never substitutes sample records',async()=>{

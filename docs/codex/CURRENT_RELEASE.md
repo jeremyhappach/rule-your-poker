@@ -1,3 +1,17 @@
+# Mega Card Golf UI polish — November 7, 2026 — qualified, owner smoke pending
+
+Course entry now places Return to Clubhouse left and Tee Off right. Hidden-card
+replacement flashes and progressively dims only the outgoing face, with a steady
+reduced-motion fade. The 1500/350/350 ms reveal/disappearance/flight sequence stays
+intact, and the incoming card stays opaque. The scorecard's cell below Hole is
+visually blank with its alignment preserved. No rules, authority or schema change.
+
+Mobile normal/reduced-motion HTTP-fixture flows, three-width button geometry,
+TypeScript and production build pass. Mega suites passed 124 checks; one existing
+Defaults fixture failure also reproduces with unmodified HEAD. Physical production
+smoke remains pending. Checkpoint: `mega-card-golf-ui-polish-2026-11-07`; publication
+receipt is recorded by its matching `-verified` tag. [Evidence](MEGA_CARD_GOLF_UI_POLISH.md).
+
 # Chucky / Crib competitive release — November 7, 2026
 
 Approved release on codex/chucky-crib-competitive-release: Async invitation/audio

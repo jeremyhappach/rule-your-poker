@@ -17,7 +17,7 @@ export function MegaResultScorecard({view,writeHole}:{view:MegaView;writeHole?:n
  return <section className="mega-result-scorecard" aria-label="Course scorecard">
   <h3>{view.config.name}</h3>
   {groups.map((holes,i)=><table key={i}><caption className="sr-only">Holes {holes[0]} through {holes.at(-1)}</caption><thead><tr><th scope="col">Hole</th>{holes.map(h=><th scope="col" key={h}>{h}</th>)}</tr></thead>
-   <tbody><tr><th scope="row">Score</th>{holes.map(h=>{const result=view.results.find(r=>r.hole===h);return <td key={h} data-mega-write={h===writeHole||undefined} aria-label={'Hole '+h+': '+(result?formatGolfScore(result.score):'not played')}>{result&&<MegaPencilScore value={result.score}/>}</td>;})}</tr></tbody></table>)}
+   <tbody><tr><th scope="row" aria-label="Score"/>{holes.map(h=>{const result=view.results.find(r=>r.hole===h);return <td key={h} data-mega-write={h===writeHole||undefined} aria-label={'Hole '+h+': '+(result?formatGolfScore(result.score):'not played')}>{result&&<MegaPencilScore value={result.score}/>}</td>;})}</tr></tbody></table>)}
   <p className="mega-result-total">Total <MegaPencilScore value={view.results.length?view.score:null}/></p>
  </section>;
 }

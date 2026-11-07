@@ -46,7 +46,7 @@
  .mega-tile-top{flex-wrap:nowrap}.mega-tile-top>strong{font-size:clamp(1.2rem,2.8cqw,2rem)}
  .mega-tile-limits{flex-wrap:wrap;font-size:.75rem}.mega-tile-limits span{white-space:nowrap}
  .mega-clubhouse-content{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-rows:1fr auto;gap:1rem}
- .mega-course-heading{align-self:center}.mega-course-actions{grid-column:1;grid-row:2;flex-direction:column}
+ .mega-course-heading{align-self:center}.mega-course-actions{grid-column:1;grid-row:2}
  .mega-course-board{grid-column:2;grid-row:1/3}
 }
 /* Let the existing admin dialog scroll as one surface for Mega's longer form. */
@@ -71,10 +71,16 @@
 .mega-draw-area{grid-template-rows:1fr 1fr;height:24cqh}.mega-counters{background:#092b2dbb;border-radius:.75rem;padding:.6rem .35rem}.mega-draw-card{height:22cqh}.mega-draw-area>.mega-secondary,.mega-draw-area>.mega-start{min-height:44px;grid-row:1/3;background:#fff3d7;color:#164735;font-weight:800}
 .mega-scorecard{width:100%;justify-content:flex-start;align-items:stretch;gap:.4cqw;padding:.3rem 1cqw;overflow-x:auto;background:#092b2dcc;border-radius:.65rem}
 .mega-scorecard>div{flex:1;min-width:0}.mega-scorecard small{font-size:clamp(9px,1.7cqh,12px)}.mega-scorecard b{font-size:clamp(11px,2.2cqh,16px);padding:.2rem .05rem;white-space:nowrap}.mega-scorecard .mega-course-total{flex:2;border-color:#ffe393;color:#ffe393;min-width:3.3rem}.mega-scorecard .mega-course-total b{font-size:clamp(20px,4cqh,28px);font-weight:900;line-height:1.05}
-.mega-card[data-replacement-stage=dissolve] .mega-card-inner{animation:mega-old-dissolve .35s ease-out both}.mega-card[data-replacement-stage=arrive]{overflow:visible;z-index:5}.mega-card[data-replacement-stage=arrive] .mega-card-inner{transform-origin:top left}
-@keyframes mega-old-dissolve{to{opacity:0;filter:blur(4px)}}@keyframes mega-replacement-arrive{from{opacity:0;transform:translateY(-35%) scale(.9)}to{opacity:1;transform:none}}
+.mega-card-face{display:block;width:100%;height:100%}
+/* Only the committed outgoing face dims; the flip/flight keep their own layer. */
+.mega-card[data-outgoing-replacement][data-replacement-stage=reveal] .mega-card-face{animation:mega-old-flash 1.5s linear both}
+.mega-card[data-outgoing-replacement][data-replacement-stage=dissolve] .mega-card-face{animation:mega-old-dissolve .35s linear both}
+.mega-card[data-replacement-stage=arrive]{overflow:visible;z-index:5}.mega-card[data-replacement-stage=arrive] .mega-card-inner{transform-origin:top left}
+@keyframes mega-old-flash{0%,33%{opacity:1}43%{opacity:.55}56%{opacity:.95}70%{opacity:.38}83%{opacity:.7}100%{opacity:.25}}
+@keyframes mega-old-dissolve{from{opacity:.25}to{opacity:0}}
+@keyframes mega-old-steady{from{opacity:1}to{opacity:.25}}
 @container fullscreen-board (min-aspect-ratio:3/2){.mega-score-strip{flex-basis:15%}.mega-hole-flag{max-height:14cqh}.mega-hand-area{width:68%}.mega-tableau{height:80cqh;width:min(65cqw,104cqh)}.mega-turn-text{font-size:3.6cqh;padding:.2rem .7rem;min-height:0}.mega-draw-area{width:30%;height:100%;gap:1cqh}.mega-draw-card{height:35cqh;width:25cqh}.mega-counters{padding:.3rem .6rem}.mega-scorecard{padding:.15rem 1cqw}.mega-scorecard .mega-course-total b{font-size:clamp(20px,5cqh,28px)}}
-@media(prefers-reduced-motion:reduce){.mega-card-inner{animation:none!important}.mega-card[data-replacement-stage=dissolve] .mega-card-inner{visibility:hidden}}
+@media(prefers-reduced-motion:reduce){.mega-card-inner{animation:none!important}.mega-card[data-outgoing-replacement][data-replacement-stage=reveal] .mega-card-face{animation:mega-old-steady 1.5s linear both!important}.mega-card[data-outgoing-replacement][data-replacement-stage=dissolve] .mega-card-face{animation:mega-old-dissolve .35s linear both!important}}
 .mega-app[data-screen=game]>.mega-topbar{display:none}.mega-app[data-screen=game] .mega-game-host{height:100%!important}.mega-scene.theme-0{background-image:linear-gradient(#102b3155,#102b3188),url('/mega-card-golf/sunny-meadows-v2.png');background-size:cover;background-position:center 60%}
 .mega-scene .fullscreen-game-actions{display:none}.mega-turn-text{font-size:clamp(12px,2.5cqh,18px)}.mega-counters strong{font-size:clamp(16px,4cqh,26px)}.mega-counters span{font-size:clamp(10px,1.7cqh,13px)}
 @container fullscreen-board (min-aspect-ratio:3/2){.mega-turn-text{font-size:clamp(12px,3.6cqh,18px)}.mega-counters strong{font-size:clamp(16px,6cqh,25px)}.mega-counters span{font-size:clamp(10px,2.5cqh,13px)}.mega-draw-area>.mega-start,.mega-draw-area>.mega-secondary{font-size:12px!important}.mega-tableau{height:calc(100% - 1.6rem);width:min(60cqw,120cqh)}.mega-hand-area{justify-content:center}}
