@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": [
+    "gameplay compiles",
+    "async compiles",
+    "live-foundation compiles",
+    "live compiles",
+    "live financial/lifecycle matrix",
+    "async financial matrix",
+    "earned live completion, pause and zero-client recovery"
+  ],
+  "rollback": true
+}

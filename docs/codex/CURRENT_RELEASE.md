@@ -1,3 +1,11 @@
+# Chucky / Crib next release candidate — November 7, 2026
+
+Approved implementation is isolated on `codex/chucky-crib-competitive-release`.
+Invitation/audio corrections and competitive adapters are implemented locally.
+Financial/service/race proofs and the hosted rollback pass; full browser session
+qualification remains incomplete. Both games remain unactivated in production.
+[Evidence and remaining release blockers](ORIGINALS_COMPETITION_RELEASE.md).
+
 # Compact async bell and canceled invites — November 7, 2026
 
 Jeremy approved one compact YOUR TURN row per match, earliest playable deadline,

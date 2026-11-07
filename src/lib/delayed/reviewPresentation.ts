@@ -18,6 +18,11 @@ export function reviewScoreContext(event:ReviewEvent,events:ReviewEvent[],home:H
 /** Rebase saved timestamps only; use the frozen game's existing presentation schedule. */
 export function reviewSchedule(event:ReviewEvent){
  const b=event.board,r=b?.result,rules=b?.rules??event.receipt.rules;
+ if(event.receipt.game==='crib-lab'&&r){
+  const end=r.presentation?.endAt??10000,start=r.presentation?.totalAt??8600;
+  return {duration:end,countStart:start,countEnd:end-400,presentationEnd:end,medal:0};
+ }
+ if(event.receipt.game==='chucky-showdown'&&b)return {duration:4650,countStart:190,countEnd:900,presentationEnd:4650,medal:0};
  if(!b)return {duration:SCORE_HOLD+SCORE_AFTER,countStart:0,countEnd:SCORE_HOLD,presentationEnd:SCORE_HOLD+SCORE_AFTER,medal:0};
  if(event.receipt.game==='take-two'){
   const window=takeTwoCountWindow(r?.reason==='full_clear');
@@ -44,6 +49,15 @@ export function reviewSchedule(event:ReviewEvent){
 export function rebaseReviewBoard(event:ReviewEvent,origin:number,scoreBefore?:number){
  if(!event.board)return null;const b=structuredClone(event.board),schedule=reviewSchedule(event);
  b.deadline=origin+schedule.duration;
+ if(event.receipt.game==='crib-lab'){
+  b.phaseUntil=origin+schedule.duration;
+  if(b.result){b.result.scoredAt=origin;b.result.before=scoreBefore??b.result.before;b.result.cumulative=b.result.before+(event.score??0);b.score=b.result.cumulative;}
+  return b;
+ }
+ if(event.receipt.game==='chucky-showdown'){
+  b.since=origin;b.due=origin+2350;b.score=(scoreBefore??0)+(event.score??0);
+  return b;
+ }
  if(b.result){b.result.at=origin;b.result.completedAt=origin;}
  if(scoreBefore!==undefined&&event.receipt.game!=='run21'&&event.receipt.game!=='ptown-words'){
   b.scoreBefore=scoreBefore;b.score=scoreBefore+(event.score??0);

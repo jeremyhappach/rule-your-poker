@@ -1,4 +1,5 @@
 import {useVisible,usePlayback} from '@/lib/delayed/usePlayback';
+import {OriginalsBoard} from '@/components/originals/OriginalsBoard';
 import {AsyncSessionName} from './AsyncSessionName';
 import {MegaHoleReplay} from '@/components/megaCardGolf/MegaHoleReplay';
 import {MegaCompetitionScorecard} from '@/components/megaCardGolf/MegaCompetitionScorecard';
@@ -83,6 +84,11 @@ function SavedBoard({event,scores,childId,userId,elapsed,holeResults}:{holeResul
  // Saved-result animation is read-only history; do not re-admit its audio.
  if(!board)return <main className="delayed-page"><p>Historic board replay is unavailable.</p><strong>{event.score?.toLocaleString()} points</strong></main>;
  if(event.receipt.game==='mega-card-golf')return <MegaHoleReplay view={event.board} elapsed={elapsed} identity={scope} userId={userId} actorName={name} players={scores.players} sound={!event.seen} results={[...holeResults.filter(r=>r.actor!==actor||r.hole!==event.round),...event.board.results.filter((r:any)=>r.hole===event.round&&elapsed>=schedule.countEnd).map((r:any)=>({actor,hole:r.hole,score:r.score,at:r.startedAt}))]}/>;
+ if(event.receipt.game==='crib-lab'||event.receipt.game==='chucky-showdown')return <OriginalsBoard
+  game={event.receipt.game} board={{...board,id:scope,revision:1,ruleset:event.receipt.rules.ruleset,serverAt:origin}}
+  userId={userId} now={now} pending={false} canAct={false} live={active&&!event.seen} epoch={0}
+  error="" reconnect={noop} onIntent={noop} activeTab={tab} setActiveTab={setTab}
+  navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button></nav>}/>;
  const players=scores.players.map(p=>p.id),base={navigation:<nav aria-label="Saved result information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>,activeTab:tab,setActiveTab:setTab,pending:false,error:'',onReconnect:noop,onIntent:noop};
  if(event.receipt.game==='quintzee')return <QuintzeeView replay {...base} actor={userId} userId={userId} now={now} snapshot={{id:childId,revision:1,scope,serverAt:origin,theme:'modern',pausedAt:null,status:'completed',outcome:'active',playerNames:Object.fromEntries(scores.players.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),round:event.round,turnIndex:players.indexOf(actor),qualified:[],results:[],finished:false,board}} as any}/>;
  if(event.receipt.game==='take-two')return <TakeTwoView replay {...base} userId={userId} now={now} epoch={0} view={{id:childId,revision:1,scope,serverAt:origin,round:event.round,board,canAct:false,paused:false,finished:false,settled:false,solo:false,players:scores.players}}/>;

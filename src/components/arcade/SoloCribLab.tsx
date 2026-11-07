@@ -37,8 +37,13 @@ function PhaseOverlay({hold,live}:{hold:LabTransition;live:boolean}){
 
 export function SoloCribLab({runId,userId,transport:provided}:{runId:string;userId:string;transport?:LabTransport}){
   const transport=useMemo(()=>provided??cribLabTransport(runId),[provided,runId]);
-  const live=useRef(hasTriStart(runId)),navigate=useNavigate();
-  const game=useCribLab(runId,userId,transport,live.current),v=game.snapshot,r=v?.result;
+  const live=useRef(hasTriStart(runId));
+  const game=useCribLab(runId,userId,transport,live.current);
+  return <CribLabTable runId={runId} userId={userId} game={game}/>;
+}
+export function CribLabTable({runId,userId,game,competitive=false,onPresentationDone}:{runId:string;userId:string;game:ReturnType<typeof useCribLab>;competitive?:boolean;onPresentationDone?:()=>void}){
+  const navigate=useNavigate(),v=game.snapshot,r=v?.result;
+  useEffect(()=>{if(v?.result&&game.now>=(v.phaseUntil??Infinity))onPresentationDone?.();},[v?.result,v?.phaseUntil,game.now,onPresentationDone]);
   const root=useRef<HTMLDivElement>(null),baseCounter=useRef<HTMLElement>(null),fly=useRef<HTMLSpanElement>(null);
   const [picks,setPicks]=useState<number[][]>([]);
   const beat=r?scoreBeat(r,game.now):null;
@@ -49,9 +54,9 @@ export function SoloCribLab({runId,userId,transport:provided}:{runId:string;user
   useEffect(()=>()=>retireTriStart(runId),[runId]);
   useEffect(()=>{setPicks([]);},[roundId,v?.revision]);
   useEffect(()=>{
-    if(v&&(v.status==='abandoned'||v.status==='completed'&&(game.bornEnded||game.now>=(v.phaseUntil??0)+1600)))
+    if(!competitive&&v&&(v.status==='abandoned'||v.status==='completed'&&(game.bornEnded||game.now>=(v.phaseUntil??0)+1600)))
       navigate('/arcade/crib-lab?result='+runId,{replace:true});
-  },[game.bornEnded,game.now,v,navigate,runId]);
+  },[game.bornEnded,game.now,v,navigate,runId,competitive]);
   useEffect(()=>{
     if(!cue||cue.roundId!==roundId)return;
     if(cue.intent.type==='pass')presentSound('triInvalid',cue.requestId,root.current);
@@ -102,16 +107,16 @@ export function SoloCribLab({runId,userId,transport:provided}:{runId:string;user
     }
   };
   const reveal=phase==='cut'&&(hold?game.liveTransition===hold.id:!!cue&&cue.revision+1===v.revision);
-  return <main className="arcade-run lab-scene" data-shell-presentation-mode="fullscreen">
+  return <main className="arcade-run lab-scene" data-competitive={competitive||undefined} data-shell-presentation-mode="fullscreen">
     <div ref={root} className="lab-table" data-phase={phase} data-round={v.round}>
-      <header className="lab-header arcade-toolbar"><div className="arcade-toolbar-main"><Link aria-label="Back to Crib Lab leaderboard" to="/arcade/crib-lab"><ArrowLeft size={20}/></Link>
+      {!competitive&&<header className="lab-header arcade-toolbar"><div className="arcade-toolbar-main"><Link aria-label="Back to Crib Lab leaderboard" to="/arcade/crib-lab"><ArrowLeft size={20}/></Link>
         <h1><FlaskConical aria-hidden="true"/>Crib Lab</h1>
         <GameplaySoundButton/><ArcadeInfo game="crib-lab" name="Crib Lab" ruleset={v.ruleset}/></div>
         {v.status==='active'&&<AlertDialog><AlertDialogTrigger asChild><ArcadeAbandonButton/></AlertDialogTrigger>
           <AlertDialogContent><AlertDialogTitle>Abandon this game?</AlertDialogTitle><AlertDialogDescription>This run will end without a leaderboard score.</AlertDialogDescription>
             <AlertDialogFooter><AlertDialogCancel>Keep playing</AlertDialogCancel><AlertDialogAction disabled={!game.ready||game.pending} onClick={()=>game.act('abandon')}>End game</AlertDialogAction></AlertDialogFooter>
           </AlertDialogContent></AlertDialog>}
-      </header>
+      </header>}
       <div className="lab-hud">
         <span className="lab-round">Round <b>{v.round}</b> / 3</span>
         <div className="lab-score" role="group" aria-label="Game total"><TriScorePill root={root} item={{id:userId,score:v.score,active:true}} value={beat?.gameTotal??v.score}/></div>
@@ -177,6 +182,6 @@ export function SoloCribLab({runId,userId,transport:provided}:{runId:string;user
       </div>}
       {hold&&hold.phase!=='cut'&&game.now<hold.endsAt&&<PhaseOverlay key={hold.id} hold={hold} live={game.liveTransition===hold.id}/>}
     </div>
-    {v.status==='completed'&&!game.bornEnded&&game.now>=(v.phaseUntil??Infinity)&&<ArcadeCompletion score={v.score} record={v.completion}/>}
+    {!competitive&&v.status==='completed'&&!game.bornEnded&&game.now>=(v.phaseUntil??Infinity)&&<ArcadeCompletion score={v.score} record={v.completion}/>}
   </main>;
 }

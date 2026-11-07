@@ -1,5 +1,5 @@
 import {supabase} from '@/integrations/supabase/client';
-export interface ChildSummary {holeResults?:{actor:string;hole:number;score:number;at:number}[];id:string;ordinal:number;game:'run21'|'tri-towers'|'ptown-words'|'quintzee'|'boxdrop'|'mega-card-golf'|'take-two';stake:number;config:any;starter:string|null;actor:string|null;
+export interface ChildSummary {holeResults?:{actor:string;hole:number;score:number;at:number}[];id:string;ordinal:number;game:'crib-lab'|'chucky-showdown'|'run21'|'tri-towers'|'ptown-words'|'quintzee'|'boxdrop'|'mega-card-golf'|'take-two';stake:number;config:any;starter:string|null;actor:string|null;
  segment:number;revision:number;terminal:boolean;availableAt:string|null;lastCallAt:string|null;expiresAt:string|null;startedAt:string|null;playable?:boolean;playableDeadline?:string|null;scores?:Record<string,number|null>;pendingResults?:Record<string,number>;progress?:Record<string,string>;bagCount?:number;reviewId?:string;viewed?:boolean;lastMove?:{action:string;points:number};
  result:{reason:string;winner:string|null;delta:number;at:string}|null}
 export interface Home {id:string;status:string;revision:number;realMoney:boolean;offerHash:string;organizer:string;opponent:string;
@@ -8,7 +8,7 @@ export interface Home {id:string;status:string;revision:number;realMoney:boolean
 export async function delayedRpc<T>(name:string,args:Record<string,unknown>={}):Promise<T>{
  const {data,error}=await (supabase.rpc as any)(name,args);if(error)throw Error(error.message);return data;
 }
-export const gameName=(game:string)=>game==='take-two'?'Take 2':game==='mega-card-golf'?'Mega Card Golf':game==='ptown-words'?'Ptown Words':game==='run21'?'Run 21':game==='tri-towers'?'Tri Towers':game==='quintzee'?'Quintzee':game==='boxdrop'?'Box Drop':game;
+export const gameName=(game:string)=>game==='crib-lab'?'Crib Lab':game==='chucky-showdown'?'Chucky Showdown':game==='take-two'?'Take 2':game==='mega-card-golf'?'Mega Card Golf':game==='ptown-words'?'Ptown Words':game==='run21'?'Run 21':game==='tri-towers'?'Tri Towers':game==='quintzee'?'Quintzee':game==='boxdrop'?'Box Drop':game;
 export const signed=(amount:number)=>amount>0?'+'+amount:amount<0?'−'+Math.abs(amount):'0';
 
 export class DelayedRequestError extends Error {constructor(message:string,readonly status:number){super(message);}}

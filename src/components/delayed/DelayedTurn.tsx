@@ -1,4 +1,6 @@
 import {AsyncSessionName} from './AsyncSessionName';
+import type {LabCommand} from '@/lib/cribLab/model';
+import {OriginalsBoard} from '@/components/originals/OriginalsBoard';
 import {MegaCompetitionBoard} from '@/components/megaCardGolf/MegaCompetitionBoard';
 import {MegaCompetitionScorecard} from '@/components/megaCardGolf/MegaCompetitionScorecard';
 import {playingTopic,roundGameplayRunning,usePlayingPresence} from '@/lib/delayed/playingPresence';
@@ -50,8 +52,9 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const initialRound=useRef<number|null>(null);
  const triController=useRef<TriIntentBuffer|null>(null);
  const freshAction=useRef<{id:unknown;before:Snapshot}|null>(null);
+ const [labCue,setLabCue]=useState<LabCommand|null>(null);
  const [audio,setAudio]=useState({liveEntry:false,epoch:0,events:[] as BoardFeedbackEvent[]});
- const interruptAudio=useCallback(()=>{freshAction.current=null;setAudio(p=>({liveEntry:false,epoch:p.epoch+1,events:[]}));},[]);
+ const interruptAudio=useCallback(()=>{freshAction.current=null;setLabCue(null);setAudio(p=>({liveEntry:false,epoch:p.epoch+1,events:[]}));},[]);
  useEffect(()=>{if(tab!=='cards')interruptAudio();},[tab,interruptAudio]);
  const scoreRoot=useRef<HTMLDivElement>(null);
  const [medal,setMedal]=useState<ScoreCelebrationReceipt|null>(null),seenMedal=useRef<string|null>(null);
@@ -65,6 +68,9 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
    freshAction.current=null;
    if(!document.hidden&&navigator.onLine){
     const admitted=localTurnPresentation(fresh.before,value,command,userId);
+    if(value.game==='crib-lab'&&value.revision===fresh.before.revision+1&&fresh.before.board&&value.board&&(fresh.before.board as {roundId:string}).roundId===(value.board as {roundId:string}).roundId){
+     setLabCue({requestId:String(command.requestId),revision:fresh.before.revision,roundId:(value.board as {roundId:string}).roundId,intent:command.intent as LabCommand['intent']});
+    }
     if(admitted.start)setAudio({liveEntry:true,epoch:0,events:[]});
     else if(admitted.event)setAudio(p=>({...p,events:[admitted.event!]}));
    }
@@ -123,9 +129,11 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const [quintEnd,setQuintEnd]=useState<{key:string;at:number}|null>(null);
  const resultTimelineEnd=useCallback((at:number)=>{if(attemptKey)setQuintEnd(previous=>previous?.key===attemptKey&&previous.at===at?previous:{key:attemptKey,at});},[attemptKey]);
  const schedule=ended&&result&&board?reviewSchedule({board,receipt:{game:snapshot!.game,rules:snapshot!.config}} as any):null;
- const animationEnd=runPresentation?.endsAt??(snapshot?.game==='quintzee'?(quintEnd?.key===attemptKey?quintEnd.at:null):schedule?board.deadline-schedule.duration+schedule.presentationEnd:null);
+ const originalsEnd=snapshot?.game==='crib-lab'?board?.phaseUntil:snapshot?.game==='chucky-showdown'?board?.since+4650:null;
+ const animationEnd=runPresentation?.endsAt??originalsEnd??(snapshot?.game==='quintzee'?(quintEnd?.key===attemptKey?quintEnd.at:null):schedule?board.deadline-schedule.duration+schedule.presentationEnd:null);
  const resultUntil=snapshot?.game!=='mega-card-golf'&&ended&&result&&firstPresented.current&&(reduced||animationEnd!==null)?Math.max(reduced?0:animationEnd!,firstPresented.current.at)+ASYNC_SCORE_HOLD_MS:null;
- const due=snapshot&&!snapshot.terminal&&!ended?Math.min(board?.deadline??Infinity,Date.parse(snapshot.expiresAt)):null;
+ const boardDue=snapshot?.game==='crib-lab'?board?.phaseUntil??board?.deadline:snapshot?.game==='chucky-showdown'?board?.due:board?.deadline;
+ const due=snapshot&&!snapshot.terminal&&!ended?Math.min(boardDue??Infinity,Date.parse(snapshot.expiresAt)):null;
  useEffect(()=>{if(due===null||!Number.isFinite(due)||request.current)return;
   const timer=setTimeout(()=>void refresh(),Math.max(0,due-clock.current.at));return()=>clearTimeout(timer);
  },[due,snapshot?.revision,refresh]);
@@ -166,7 +174,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  },[attemptKey,runResult,medalMs,now,presentationActive]);
  useEffect(()=>{const hidden=()=>{if(document.hidden)retireMedal();};window.addEventListener('offline',retireMedal);document.addEventListener('visibilitychange',hidden);
   return()=>{window.removeEventListener('offline',retireMedal);document.removeEventListener('visibilitychange',hidden);};},[retireMedal]);
- const turnAvailable=!!snapshot&&!snapshot.held&&!ended&&!error&&!(snapshot.game==='tri-towers'&&triInput.uncertain)&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<board.deadline;
+ const turnAvailable=!!snapshot&&!snapshot.held&&!ended&&!error&&!(snapshot.game==='tri-towers'&&triInput.uncertain)&&now<Date.parse(snapshot.expiresAt)&&!!board&&now<(snapshot.game==='chucky-showdown'?board.due:board.deadline);
  const canAct=turnAvailable&&!pending;
  const submitted=request.current?.intent as {type:string;column?:number}|undefined;
  const placement=pending&&!error&&freshAction.current&&snapshot?.game==='run21'&&view&&submitted?.type==='place'&&typeof submitted.column==='number' ? {
@@ -182,6 +190,15 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
     <button disabled={snapshot.held||pending||!!error||snapshot.actor!==userId||now>=Date.parse(snapshot.expiresAt)} onClick={()=>void act({type:'start'})}>Begin {snapshot.game==='mega-card-golf'?'hole':'round'} {snapshot.round}</button></>}
  </>}
  </AsyncTurnStage>;
+ if(snapshot.game==='crib-lab'||snapshot.game==='chucky-showdown'){
+  const visible={...board,id:childId,revision:snapshot.revision,ruleset:(snapshot.config as {ruleset:string}).ruleset,serverAt:snapshot.serverAt};
+  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><OriginalsBoard
+   game={snapshot.game} board={visible} cue={labCue} userId={userId} now={now} pending={pending} canAct={canAct}
+   live={audio.liveEntry&&presentationActive} epoch={audio.epoch} error={error} reconnect={()=>void refresh()}
+   onIntent={intent=>void act(intent)} activeTab={tab} setActiveTab={setTab}
+   navigation={<nav>{home}<button onClick={()=>setTab('lobby')}>Rules</button></nav>}
+   scores={<div ref={scoreRoot} className="async-score-pills">{scores.map(item=><TriScorePill key={item.id} root={scoreRoot} item={item} value={item.score}/>)}</div>}/></div>;
+ }
  if(snapshot.game==='quintzee'){
   const players=Object.keys(snapshot.totals),value:QuintzeeSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,theme:'modern',pausedAt:snapshot.held?snapshot.serverAt:null,status:snapshot.terminal?'completed':'active',outcome:'active',playerNames:Object.fromEntries(scores.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:snapshot.totals,round:displayRound!,turnIndex:players.indexOf(ended?userId:snapshot.actor),qualified:[],results:[],finished:snapshot.terminal,board}};
   return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><QuintzeeView onResultTimelineEnd={resultTimelineEnd} awaitingStart={awaitingStart} navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} snapshot={value} actor={userId} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} onIntent={i=>void act({...i})} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;

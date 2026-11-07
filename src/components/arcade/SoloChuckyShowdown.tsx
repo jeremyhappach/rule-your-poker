@@ -1,4 +1,3 @@
-import {winCue} from '@/lib/chuckyShowdown/model';
 import {useEffect,useMemo,useRef} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
 import {ArrowLeft,Check,Spade} from 'lucide-react';
@@ -73,7 +72,6 @@ function LegacyTable({game,v,userId}:{game:ReturnType<typeof useChuckyShowdown>;
     return ()=>timers.forEach(clearTimeout);
     // Each persisted phase owns one cancellable sequence; clock and reveal-prefix updates seek it.
   },[live,phaseKey,runId]);
-  useEffect(()=>{if(live&&v.phase==='win')presentSound(winCue(v.chucky.length),runId+':'+phaseKey+':win',root.current);},[live,phaseKey,runId,v.phase,v.chucky.length]);
   const revealed=v?.chucky.length??0;
   useEffect(()=>{
     if(v?.phase==='showdown'&&live&&revealed>0){

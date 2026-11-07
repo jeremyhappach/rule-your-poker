@@ -11,12 +11,13 @@ import {isSoundSurfaceVisible,presentSound} from '@/lib/audio/presentationSound'
 import type {ApprovedSound} from '@/lib/audio/approvedSounds';
 import type {Card} from '@/lib/cardUtils';
 import type {V2Scene,V2Snapshot} from '@/lib/chuckyShowdown/model';
-import {winBonus,winCue} from '@/lib/chuckyShowdown/model';
+import {winBonus} from '@/lib/chuckyShowdown/model';
 import {admit,handAnnouncement,scoreMotion,seek} from '@/lib/chuckyShowdown/presentationV2';
 import {CardSlot,EndRun,Riffle} from './ChuckyTableParts';
 import {ArcadeInfo} from './ArcadeInfo';
 import {ChuckyLevelAvailability} from './ChuckyLevelAvailability';
 import {ChuckyCrackLoss, crackLiftMs, crackEndMs} from './ChuckyCrackLoss';
+import {useChuckyBustAudio} from '@/hooks/useChuckyBustAudio';
 import {RoundIntroArtwork} from '@/components/run21/Run21RoundIntro';
 import {useRun21Bell} from '@/hooks/useRun21Bell';
 import '../run21/run21.css';
@@ -37,7 +38,7 @@ function cuePlan(s:V2Scene):[number,ApprovedSound,string][]{
   return cues;
 }
 
-export function ChuckyRoundTable({v,game,userId}:{v:V2Snapshot;game:Controls;userId:string}){
+export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentationDone}:{v:V2Snapshot;game:Controls;userId:string;competitive?:boolean;onPresentationDone?:()=>void}){
   const root=useRef<HTMLDivElement>(null),navigate=useNavigate();
   const [frames,setFrames]=useState(()=>seek(v,game.now,game.livePhase===v.phase+':'+v.since&&!game.silent));
   const previous=useRef({snapshot:v,epoch:game.recoveryEpoch});
@@ -71,18 +72,19 @@ export function ChuckyRoundTable({v,game,userId}:{v:V2Snapshot;game:Controls;use
   useEffect(()=>{
     if(!live)return;
     if(s.phase==='fold')presentSound('chuckyFold',key+':fold',root.current);
-    if(s.phase==='win')presentSound(winCue(s.chucky.length),key+':win',root.current);
   },[key,live,s.phase,s.chucky.length]);
+  useChuckyBustAudio(userId,v.id+':round:'+s.roundId,s.phase==='round_over'&&s.reason==='busted',live,root);
   const motion=scoreMotion(s),fraction=motion?Math.max(0,Math.min(1,(elapsed-motion.start)/(motion.end-motion.start))):0;
   const value=motion?Math.round(motion.from+(motion.to-motion.from)*fraction):s.risk;
   const count=motion?{from:motion.from,to:motion.to,startedAt:frame.at+motion.start,endsAt:frame.at+motion.end}:null;
   usePresentedScoreAudio(userId,live&&motion&&elapsed>=motion.start&&elapsed<motion.end&&isSoundSurfaceVisible(root.current)?key+':count':null,
     count,game.now,s.phase==='crack');
+  useEffect(()=>{if(s.phase==='round_over'&&elapsed>=2150)onPresentationDone?.();},[s.phase,elapsed,onPresentationDone]);
   const end=s.phase==='round_over'&&s.round===3&&v.status==='completed';
   useEffect(()=>{
-    if(v.status==='abandoned'||end&&elapsed>=4650)
+    if(!competitive&&(v.status==='abandoned'||end&&elapsed>=4650))
       navigate('/arcade/chucky-showdown?result='+v.id,{replace:true});
-  },[v.status,v.id,end,live,elapsed,game.bornEnded,navigate]);
+  },[v.status,v.id,end,live,elapsed,game.bornEnded,navigate,competitive]);
 
   const deciding=s.phase==='fold_stay'||s.phase==='choose';
   const same=s.roundId===v.roundId&&s.phase===v.phase&&s.since===v.since;
@@ -120,13 +122,14 @@ export function ChuckyRoundTable({v,game,userId}:{v:V2Snapshot;game:Controls;use
     banked?(s.reason==='busted'?'ROUND BUSTED':'ROUND BANKED'):s.phase==='win'?'+'+winBonus(v.config,s.chucky.length).toLocaleString()+' points':
     s.phase==='choose'?'Choose Chucky':s.phase==='showdown'?'Chucky · Level '+s.level:s.phase==='board_reveal'?'Community reveal':
     s.phase==='fold_stay'?'Fold or Stay':s.phase==='fold'?'Folded':'New hand';
-  return <main className="arcade-run cs-scene" data-shell-presentation-mode="fullscreen">
+  return <main className="arcade-run cs-scene" data-competitive={competitive||undefined} data-shell-presentation-mode="fullscreen">
     <div ref={root} className="cs-table cs-v2" data-phase={s.phase} data-hand={s.hand} data-round={s.round}>
-      <header className="cs-header arcade-toolbar"><div className="arcade-toolbar-main"><Link to="/arcade/chucky-showdown" aria-label="Back to Chucky Showdown leaderboard"><ArrowLeft size={20}/></Link>
+      {competitive&&<div className="cs-cracks cs-competitive-cracks" aria-label={cracks+' cracks remaining'}>{Array.from({length:v.config.maxCracks},(_,i)=><HeartCrack key={i} aria-hidden="true" data-active={i<cracks}/>)}</div>}
+      {!competitive&&<header className="cs-header arcade-toolbar"><div className="arcade-toolbar-main"><Link to="/arcade/chucky-showdown" aria-label="Back to Chucky Showdown leaderboard"><ArrowLeft size={20}/></Link>
         <h1>Chucky Showdown</h1><div className="cs-cracks" aria-label={cracks+(cracks===1?' crack remaining':' cracks remaining')} data-last={cracks===1}>
           {Array.from({length:v.config.maxCracks},(_,i)=><HeartCrack key={i} aria-hidden="true" data-active={i<cracks}/>)}</div>
         <GameplaySoundButton/><ArcadeInfo game="chucky-showdown" name="Chucky Showdown" ruleset={v.ruleset}>
-          </ArcadeInfo></div>{v.status==='active'&&<EndRun disabled={!game.ready||game.pending} abandon={()=>game.act('abandon')}/>}</header>
+          </ArcadeInfo></div>{v.status==='active'&&<EndRun disabled={!game.ready||game.pending} abandon={()=>game.act('abandon')}/>}</header>}
       <section className="cs-band cs-dealer" aria-label="Chucky cards"><h2>Chucky</h2><div className="cs-cards">
         {(showPortrait||portraitLeaving)&&<div className="cs-portrait" data-leaving={portraitLeaving} aria-hidden="true">
           <img src={portrait} alt="" width="427" height="455"/>
@@ -157,6 +160,6 @@ export function ChuckyRoundTable({v,game,userId}:{v:V2Snapshot;game:Controls;use
       {cracking&&elapsed>=crackLiftMs&&elapsed<crackEndMs&&<ChuckyCrackLoss key={key}
         table={root} remaining={s.cracks} elapsed={elapsed} identity={key} userId={userId}/>}
     </div>
-    {end&&elapsed>=2350&&elapsed<4650&&<ArcadeCompletion score={s.score} record={v.completion}/>}
+    {!competitive&&end&&elapsed>=2350&&elapsed<4650&&<ArcadeCompletion score={s.score} record={v.completion}/>}
   </main>;
 }

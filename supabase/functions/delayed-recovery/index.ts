@@ -11,7 +11,7 @@ Deno.serve(async request=>{
   const response=await fetch(`${url}/rest/v1/rpc/${name}`,{method:'POST',headers:{'Content-Type':'application/json',apikey:key,Authorization:`Bearer ${key}`},body:JSON.stringify(args),signal:AbortSignal.timeout(10000)});
   if(!response.ok){const failure=await response.json().catch(()=>null);
    // Registration may follow worker publication. Missing new RPC means no Mega matches can exist yet.
-   if(name==='mega_live_recovery_claim'&&response.status===404&&failure?.code==='PGRST202')return [];
+   if((name==='mega_live_recovery_claim'||name==='originals_live_recover')&&response.status===404&&failure?.code==='PGRST202')return [];
    throw Error(typeof failure?.message==='string'&&failure.message.startsWith('delayed:')?failure.message:'delayed:recovery_database_rejected');}
   const body=await response.text();return body?JSON.parse(body):null;
  };
@@ -23,7 +23,8 @@ Deno.serve(async request=>{
   const mega=await rpc('mega_live_recovery_claim',{p_token:token});
   const live=await Promise.allSettled(mega.map((row:any)=>synchronizeMegaMatch(rpc,row,null,token)));
   failures+=live.filter(result=>result.status==='rejected').length;
+  const originals=await rpc('originals_live_recover',{p_token:token});
   await rpc('delayed_recovery_complete',{p_token:token,p_failure:failures?'delayed:recovery_failed':null});
-  return Response.json({processed:records.length+mega.length,failures},{status:failures?503:200});
+  return Response.json({processed:records.length+mega.length+(typeof originals==='number'?originals:0),failures},{status:failures?503:200});
  }catch{return new Response(null,{status:503});}
 });

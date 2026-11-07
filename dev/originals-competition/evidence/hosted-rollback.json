@@ -1,0 +1,18 @@
+{
+  "project": "xvhmbuppghwmwpwrkzao",
+  "passed": true,
+  "rolledBack": true,
+  "checkedAt": "2026-11-07T18:23:55.264Z",
+  "candidateFiles": [
+    "gameplay",
+    "async",
+    "live-foundation",
+    "live"
+  ],
+  "proofs": [
+    "live-proof",
+    "async-financial-proof",
+    "gameplay-proof"
+  ],
+  "activated": false
+}

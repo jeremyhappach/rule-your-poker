@@ -1,0 +1,50 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "game": "crib-lab",
+      "realMoney": false,
+      "invitation": true,
+      "acceptance": true,
+      "rounds": 6,
+      "handoffs": 5,
+      "zeroClient": true,
+      "finalResults": true,
+      "lateReplay": true
+    },
+    {
+      "game": "chucky-showdown",
+      "realMoney": false,
+      "invitation": true,
+      "acceptance": true,
+      "rounds": 6,
+      "handoffs": 5,
+      "zeroClient": true,
+      "finalResults": true,
+      "lateReplay": true
+    },
+    {
+      "game": "crib-lab",
+      "realMoney": true,
+      "invitation": true,
+      "acceptance": true,
+      "rounds": 6,
+      "handoffs": 5,
+      "zeroClient": true,
+      "finalResults": true,
+      "lateReplay": true
+    },
+    {
+      "game": "chucky-showdown",
+      "realMoney": true,
+      "invitation": true,
+      "acceptance": true,
+      "rounds": 6,
+      "handoffs": 5,
+      "zeroClient": true,
+      "finalResults": true,
+      "lateReplay": true
+    }
+  ],
+  "rollback": true
+}

@@ -4,7 +4,6 @@ import {ArrowDownAZ,History} from 'lucide-react';
 import {delayedRpc,gameName,type Home} from '@/lib/delayed/client';
 import {MegaCompetitionSettings} from '@/components/megaCardGolf/MegaCompetitionConfig';
 import type {MegaCompetitionConfig} from '@/lib/megaCardGolf/competition';
-import {toast} from '@/hooks/use-toast';
 import {configurationIssue,readRunback,reconstructRunback,runbackReturn,saveRunback,validDraftId,type Capabilities,type InviteEntry,type InvitePerson,type RunbackDraft} from '@/lib/delayed/runback';
 
 export function AsyncInvite({userId=''}:{userId?:string}){
@@ -69,7 +68,7 @@ export function AsyncInvite({userId=''}:{userId?:string}){
    if(source&&draft){const sending={...draft,lineup,opponent:opponent!,realMoney,submission:payload};saveRunback(userId,draftId,sending);setDraft(sending);}
    await delayedRpc<string>('delayed_create',payload);
    if(source&&draft)saveRunback(userId,draftId,{...draft,lineup,opponent:opponent!,realMoney,submission:payload,sent:true});
-   toast({title:'Invitation sent',duration:3500});navigate('/delayed',{replace:true});
+   navigate('/delayed',{replace:true});
   }catch(e){
    const message=e instanceof Error?e.message:'Unable to invite.';
    // A declared validation rejection rolls the SQL transaction back. A lost response

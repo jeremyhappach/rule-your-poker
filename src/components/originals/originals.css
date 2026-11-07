@@ -1,0 +1,18 @@
+.originals-competition .lab-scene[data-competitive],
+.originals-competition .cs-scene[data-competitive] {
+ position:absolute;
+ inset:0;
+ height:100%;
+ min-height:0;
+ padding:0;
+}
+.originals-competition .lab-table {
+ grid-template:"score" auto "hands" minmax(0,1fr) "clock" auto "actions" auto / minmax(0,1fr);
+}
+.originals-competition .cs-table {
+ grid-template-rows:minmax(0,.88fr) minmax(0,1fr) auto minmax(0,1fr) auto;
+}
+
+.cs-competitive-cracks{position:absolute;top:.5rem;right:1rem;z-index:3}
+
+.originals-scores{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}.originals-scores>div{display:grid;text-align:center;gap:.2rem}.originals-scores [data-active]{color:var(--poker-gold,#edc56e)}

@@ -1,8 +1,5 @@
 import {useLayoutEffect, useRef, useState, type CSSProperties, type RefObject} from 'react';
 import {HeartCrack} from 'lucide-react';
-import {platformAudio} from '@/lib/audio/platformAudio';
-import {isSoundSurfaceVisible} from '@/lib/audio/presentationSound';
-import {chuckyShatterCue} from '@/lib/chuckyShowdown/shatterCue';
 
 export const crackLiftMs = 2050;
 const flightMs = 650;
@@ -62,16 +59,12 @@ export function ChuckyCrackLoss({table, remaining, elapsed, identity, userId}: P
     return () => {observer.disconnect(); animation?.cancel();};
   }, [table, remaining, ageAtMount]);
 
-  function shatter() {
-    platformAudio.present({userId, id: 'chucky-shatter:' + identity,
-      cue: isSoundSurfaceVisible(table.current) ? chuckyShatterCue : undefined});
-  }
 
   return <div ref={flight} className="cs-lost-heart" aria-hidden="true"
     style={{'--impact-delay': (flightMs - ageAtMount) + 'ms'} as CSSProperties}>
     <HeartCrack className="cs-whole-heart" strokeWidth={1.8}/>
     {fragments.map(({clip, x, y, angle}, index) => <span key={clip} className="cs-fragment"
-      onAnimationStart={index === 0 ? shatter : undefined}
+
       style={{clipPath: 'polygon(' + clip + ')', '--scatter': `translate(${x}px,${y}px) rotate(${angle}deg)`} as CSSProperties}>
       <HeartCrack strokeWidth={1.8}/>
     </span>)}

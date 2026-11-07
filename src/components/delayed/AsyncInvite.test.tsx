@@ -2,7 +2,8 @@
 import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {MemoryRouter,useLocation} from 'react-router-dom';
-const mock=vi.hoisted(()=>({rpc:vi.fn(),real:true,fail:false}));
+const mock=vi.hoisted(()=>({rpc:vi.fn(),toast:vi.fn(),real:true,fail:false}));
+vi.mock('@/hooks/use-toast',()=>({toast:mock.toast}));
 vi.mock('@/lib/delayed/client',()=>({delayedRpc:(...args:unknown[])=>mock.rpc(...args),gameName:(game:string)=>game}));
 import {AsyncInvite} from './AsyncInvite';
 const games=['ptown-words','run21','tri-towers','quintzee','boxdrop'];
@@ -48,6 +49,7 @@ it('discards edited real-money stakes when switched off and returns to the async
  fireEvent.click(screen.getByRole('switch'));expect(screen.queryByLabelText('Stake 1')).toBeNull();
  fireEvent.change(screen.getByLabelText('Opponent'),{target:{value:'b'}});fireEvent.click(screen.getByRole('button',{name:'Send Invitation'}));
  await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe('/delayed'));
+ expect(mock.toast).not.toHaveBeenCalled();
  expect(mock.rpc.mock.calls.find(c=>c[0]==='delayed_create')![1]).toMatchObject({p_real_money:false,p_lineup:[{game:'ptown-words',stake:5}]});
 });
 it.each(['0','-1','1.5','10000',''])('blocks invalid stake %s inline',async value=>{

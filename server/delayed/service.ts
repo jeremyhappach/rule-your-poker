@@ -4,7 +4,7 @@ type RecordRow=Child&{held:boolean;receipt?:{child_id:string;fingerprint:unknown
 const due=(row:Child)=>Math.min(Date.parse(row.expires_at),row.state?gameplayDue(row.state)??Infinity:Infinity);
 export async function synchronize(rpc:Rpc,input:RecordRow,actor:string|null):Promise<RecordRow>{
  let row=input;
- for(let guard=0;guard<8;guard++){
+ for(let guard=0;guard<(input.game_type==='crib-lab'||input.game_type==='chucky-showdown'?128:8);guard++){
   if(row.terminal||row.held||due(row)>Number(row.server_at))return row;
   const next=await transition(row,{type:'tick'},rpc);
   const result=await rpc('delayed_commit',{p_child:row.id,p_actor:actor,p_revision:row.revision,p_state:next.state,
@@ -17,7 +17,7 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
  if(!['state','action'].includes(body.op)||!isUuid(body.childId??''))throw Error('delayed:invalid_request');
  if(body.op==='action'&&(!isUuid(body.requestId??'')||!Number.isSafeInteger(body.revision)||!Number.isSafeInteger(body.segment)))throw Error('delayed:invalid_command');
  const intent=body.intent as Intent;
- if(body.op==='action'&&(!intent||!['start','place','pass','collect','remove','draw','take_score','recycle','roll','score','score_zero','pair','open','replace','discard','stand-pat'].includes(intent.type)||
+ if(body.op==='action'&&(!intent||!['start','place','pass','collect','remove','draw','take_score','recycle','roll','score','score_zero','pair','open','replace','discard','stand-pat','select','lock','swap','stand','fold','stay','press'].includes(intent.type)||
   intent.type==='place'&&(!('items'in intent)&&(!Number.isInteger(intent.column)||intent.column<0||intent.column>4))||
   intent.type==='remove'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>27)))throw Error('delayed:invalid_action');
  // A routing hint grants no authority: SQL checks the stored game, owner, frozen
@@ -38,7 +38,8 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
  }
  let row:RecordRow=boundary??await rpc('delayed_load',{p_child:body.childId,p_actor:userId,p_request:body.op==='action'?body.requestId:null});
  if(body.op==='action'){
-  if(intent.type==='replace'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>5))throw Error('delayed:invalid_action');
+  if(intent.type==='replace'&&row.game_type!=='crib-lab'&&(!('index'in intent)||!Number.isInteger(intent.index)||intent.index<0||intent.index>5))throw Error('delayed:invalid_action');
+  if(row.game_type==='chucky-showdown'&&intent.type==='press'&&(!Number.isInteger(intent.level)||intent.level!<1||intent.level!>7))throw Error('delayed:invalid_level');
   if(intent.type==='open'&&(!Array.isArray(intent.indices)||intent.indices.length<1||intent.indices.length>5||new Set(intent.indices).size!==intent.indices.length||intent.indices.some(i=>!Number.isInteger(i)||i<0||i>5)))throw Error('delayed:invalid_action');
   if('items'in intent&&(!Array.isArray(intent.items)||intent.items.length>5||intent.items.some(i=>!Number.isInteger(i)||i<(row.game_type==='take-two'&&intent.type==='pair'?-1:0)||i>2147483647)))throw Error('delayed:invalid_items');
   if(intent.type==='pair'&&(row.game_type!=='take-two'||!('items'in intent)||intent.items.length!==2||new Set(intent.items).size!==2||intent.items.some(i=>i>32)))throw Error('delayed:invalid_items');

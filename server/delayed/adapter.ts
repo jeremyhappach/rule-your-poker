@@ -7,7 +7,7 @@ import {startPlayerHole,playPlayerHole,completedHole,competitionWinner,projectPl
 import {megaDecks} from '../../src/lib/megaCardGolf/shuffle.server.js';
 import type {MegaRun} from '../../src/lib/megaCardGolf/engine.js';
 
-export type Game='run21'|'tri-towers'|'quintzee'|'boxdrop'|'mega-card-golf'|'take-two';
+export type Game='run21'|'tri-towers'|'quintzee'|'boxdrop'|'mega-card-golf'|'take-two'|'crib-lab'|'chucky-showdown';
 export type Rpc=(name:string,args:Record<string,unknown>)=>Promise<any>;
 export interface Attempt {
  actor:string; round:number; score:number; at:number;
@@ -28,6 +28,7 @@ export interface Child {
  outcome?:{winner:string|null;reason:string;organizer_delta:number;opponent_delta:number}|null;
 }
 export type Intent={type:'start'|'tick'|'collect'|'pass'|'draw'|'take_score'}|
+ {type:'select'|'lock'|'replace'|'swap'|'stand';items:number[]}|{type:'fold'|'stay'|'press';level?:number}|
  {type:'discard'|'stand-pat'}|{type:'replace';index:number}|{type:'open';indices:number[]}|
  {type:'place';column:number}|{type:'remove';index:number}|{type:'place'|'recycle'|'roll'|'score'|'score_zero'|'pair';items:number[]};
 
@@ -39,7 +40,7 @@ export function initial(row:Child):State {
 }
 export function gameplayDue(s:State):number|null {
  if(!s.board||s.completed)return null;
- return s.board.deadline??null;
+ return (s.game==='crib-lab'||s.game==='chucky-showdown'?(s.board as Record<string,any>).nextDue:s.board.deadline)??null;
 }
 const actor=(s:State)=>s.players[s.turn];
 
@@ -76,7 +77,7 @@ async function complete(s:State,row:Child,at:number,rpc:Rpc){
   }
  }
  if(s.game==='mega-card-golf'&&s.turn===0&&s.round>(row.config as MegaCompetitionConfig).course.holes)s.completed=true;
- if(s.game==='take-two'&&s.turn===0&&s.round>3)s.completed=true;
+ if(['take-two','crib-lab','chucky-showdown'].includes(s.game)&&s.turn===0&&s.round>3)s.completed=true;
  if(s.completed){
   const [a,b]=s.players;s.winner=s.game==='mega-card-golf'?(competitionWinner(s.totals).length===1?competitionWinner(s.totals)[0]:null):s.totals[a]===s.totals[b]?null:s.totals[a]>s.totals[b]?a:b;
  }
@@ -132,7 +133,7 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
   s.board=playPlayerHole(s.board as MegaRun,intent as import('../../src/lib/megaCardGolf/engine.js').Intent,now);
   if(completedHole(s.board as MegaRun)){await complete(s,row,now,rpc);advanced=true;}
  }else{
-  const allowed=s.game==='take-two'?['pair','draw','take_score']:s.game==='tri-towers'?['remove','draw','take_score']:s.game==='boxdrop'?['place','recycle','take_score']:['roll','score','score_zero'];
+  const allowed=s.game==='crib-lab'?['select','lock','pass','replace','swap','stand']:s.game==='chucky-showdown'?['fold','stay','press']:s.game==='take-two'?['pair','draw','take_score']:s.game==='tri-towers'?['remove','draw','take_score']:s.game==='boxdrop'?['place','recycle','take_score']:['roll','score','score_zero'];
   if(!allowed.includes(intent.type))throw Error('delayed:invalid_action');
   s.board=await sqlBoard(s,'reduce',row.config,now,rpc,intent);
   if((s.board as Record<string,any>).phase==='stage_complete'){await complete(s,row,now,rpc);advanced=true;}
@@ -144,7 +145,8 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
  * opponent board or unpaired opponent score crosses this boundary. */
 export async function project(row:Child,viewer:string,rpc:Rpc,prepared?:{visible:unknown;ownBoards:unknown[]}){
  const s=row.state??initial(row),paired=Math.min(...s.players.map(p=>s.attempts.filter(a=>a.actor===p).length));
- const disclosed=(p:string,a:Attempt)=>p===viewer||((s.game!=='take-two'||row.terminal||s.attempts.some(own=>own.actor===viewer&&own.round===a.round))&&(row.reviewed?row.reviewed.includes(p+':'+a.round):row.terminal||a.round<=paired));
+ const shared=s.game==='take-two'||s.game==='crib-lab'&&!!(row.config as Record<string,unknown>).sharedDeck;
+ const disclosed=(p:string,a:Attempt)=>p===viewer||((!shared||row.terminal||s.attempts.some(own=>own.actor===viewer&&own.round===a.round))&&(row.reviewed?row.reviewed.includes(p+':'+a.round):row.terminal||a.round<=paired));
  const totals=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&disclosed(p,a)).reduce((n,a)=>n+a.score,0)]));
  const pendingResults=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&!disclosed(p,a)).length]));
  let board:unknown=null;
@@ -160,6 +162,7 @@ export async function project(row:Child,viewer:string,rpc:Rpc,prepared?:{visible
 }
 
 async function sqlBoard(s:State,operation:string,config:Child['config'],at:number,rpc:Rpc,intent?:Intent){
+ if(s.game==='crib-lab'||s.game==='chucky-showdown')return rpc('delayed_originals_core',{p_child:s.child,p_operation:operation,p_round:s.round,p_score:s.totals[actor(s)],p_board:s.board,p_action:intent?.type??null,p_items:intent&&'items'in intent?intent.items:null,p_at:at,p_level:intent&&'level'in intent?intent.level:null});
  if(s.game==='take-two')return rpc('delayed_take_two_core',{p_child:s.child,p_operation:operation,p_round:s.round,p_score:s.totals[actor(s)],p_board:s.board,p_action:intent?.type??null,p_items:intent&&'items'in intent?intent.items:null,p_at:at});
  if(s.game==='tri-towers')return rpc('delayed_tri_core',{p_operation:operation,p_config:config,p_score:s.totals[actor(s)],p_board:s.board,p_action:intent?.type??null,p_index:intent?.type==='remove'?intent.index:null,p_at:at});
  return rpc('delayed_board_core',{p_game:s.game,p_operation:operation,p_config:config,p_score:s.totals[actor(s)],p_board:s.board,p_action:intent?.type??null,p_items:intent&&'items'in intent?intent.items:null,p_at:at});

@@ -125,7 +125,7 @@ try{
       await button(name).click();assert.equal((await ack).status(),200);
     };
     if(v2){
-      const {smokeV2}=await import(v3?'./smoke-v3.mjs':'./smoke-v2.mjs');
+      const {smokeV2}=await import(v3?(process.argv.includes('--release-sounds')?'./smoke-release.mjs':'./smoke-v3.mjs'):'./smoke-v2.mjs');
       await smokeV2({page,actor,c,origin,out,errors,log,act,phase,button});
     }else{
     const level=n=>'Level '+n+', '+(n*100)+' points';

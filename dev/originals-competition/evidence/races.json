@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "mode": "live",
+      "game": "crib-lab",
+      "real": false,
+      "concurrentEarnedFinal": true,
+      "oneResult": true,
+      "balanced": true
+    },
+    {
+      "mode": "async",
+      "game": "crib-lab",
+      "real": false,
+      "concurrentStart": true,
+      "oneReceipt": true
+    },
+    {
+      "mode": "live",
+      "game": "chucky-showdown",
+      "real": false,
+      "concurrentEarnedFinal": true,
+      "oneResult": true,
+      "balanced": true
+    },
+    {
+      "mode": "async",
+      "game": "chucky-showdown",
+      "real": false,
+      "concurrentStart": true,
+      "oneReceipt": true
+    },
+    {
+      "mode": "live",
+      "game": "crib-lab",
+      "real": true,
+      "concurrentEarnedFinal": true,
+      "oneResult": true,
+      "balanced": true
+    },
+    {
+      "mode": "async",
+      "game": "crib-lab",
+      "real": true,
+      "concurrentStart": true,
+      "oneReceipt": true
+    },
+    {
+      "mode": "live",
+      "game": "chucky-showdown",
+      "real": true,
+      "concurrentEarnedFinal": true,
+      "oneResult": true,
+      "balanced": true
+    },
+    {
+      "mode": "async",
+      "game": "chucky-showdown",
+      "real": true,
+      "concurrentStart": true,
+      "oneReceipt": true
+    }
+  ]
+}
