@@ -40,6 +40,13 @@ it('never uses a mismatched match or a payload placeholder as invitation identit
 });
 
 it.each(['/delayed','/delayed/m','/delayed/m/play/c','/delayed/m?review=c','/game/session','/arcade','/arcade/tri-towers','/arcade/tri-towers/run/run-id','/profile'])('hides on direct %s entry while keeping updates',async path=>{mocks.items=[notice];mount(path);expect(screen.queryByRole('button',{name:/Notifications/})).toBeNull();await act(async()=>{});const before=mocks.rpc.mock.calls.length;await act(async()=>mocks.changed());expect(mocks.rpc.mock.calls.length).toBeGreaterThan(before);expect(screen.queryByRole('button',{name:/Notifications/})).toBeNull();});
+it('identifies two turn matches by their recipient-specific opponent names',async()=>{
+ mocks.items=['mcru81','Happach Gmail'].map((opponentName,index)=>({...notice,id:'notice-'+index,match_id:'match-'+index,payload:{...notice.payload,opponentName}}));
+ mount();
+ fireEvent.click(await screen.findByRole('button',{name:/pending/}));
+ for(const name of ['mcru81','Happach Gmail'])expect(screen.getByText('Your turn in an async match with '+name+'.')).toBeTruthy();
+ expect(screen.getAllByText('Your turn')).toHaveLength(2);
+});
 function Navigation(){const navigate=useNavigate();return <><button onClick={()=>navigate('/delayed/m/play/c')}>Async</button><button onClick={()=>navigate('/')}>Main</button><NotificationBell/></>;}
 function Path(){const location=useLocation();return <output data-testid="path">{location.pathname+location.search}</output>;}
 it.each([['invitation','/delayed/m'],['results','/delayed/m'],['settled','/delayed/m?finale=1']])('preserves %s notification navigation',async(kind,destination)=>{

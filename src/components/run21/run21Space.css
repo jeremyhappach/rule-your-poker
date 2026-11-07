@@ -14,7 +14,7 @@
 .run21-space-theme .run21-fullscreen-board .run21-column-stack{top:max(14%,2rem)}
 .run21-space-theme .run21-column-total[data-complete=true]{color:#ffe0a3}
 .run21-space-theme .run21-pass button,.run21-space-theme .run21-help button,.run21-space-theme .run21-player-actions button{background:#15243e;border-color:#89aece66}
-.run21-space-theme .run21-player-actions .run21-collect-button:enabled{background:#edc56e;color:#152027}
+.run21-space-theme .run21-player-actions .run21-collect-button[data-eligible]{background:#edc56e;color:#152027}
 .run21-space-theme .run21-scoreboard>[role=row]{background:#15243ee6;border-color:#7b9fc54d}
 .run21-space-theme .run21-scoreboard>[data-active=true]{background:linear-gradient(120deg,#343a46,#182b45);border-color:#dfba637a}
 .run21-space-theme .run21-round-intro-card{background:linear-gradient(150deg,#223454f5,#101c33f5)}

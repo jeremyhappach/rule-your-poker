@@ -11,6 +11,21 @@ function fixture(){
 }
 const payload={eventId:'11111111-1111-4111-8111-111111111111',matchId:'22222222-2222-4222-8222-222222222222',binding:'binding-a',kind:'turn',expiresAt:Date.now()+60000};
 
+test('turns name each opponent and retain the existing match receipt and destination',async()=>{
+ const f=fixture();await f.bind({binding:'binding-a'});
+ for(const [suffix,opponentName] of [['3','mcru81'],['4','Happach Gmail']]){
+  const p={...payload,eventId:suffix.repeat(8)+'-1111-4111-8111-111111111111',matchId:suffix.repeat(8)+'-2222-4222-8222-222222222222',opponentName};
+  await f.fire('push',{data:{json:()=>p}});
+  const notice=f.shown.find(n=>n.tag==='ptown-match-'+p.matchId);
+  assert.equal(notice.body,'Your turn in an async match with '+opponentName+'.');
+  await f.fire('notificationclick',{notification:{data:notice.data,close:()=>{}}});
+  assert.equal(f.navigation.at(-1),'/delayed/'+p.matchId);
+  await f.fire('push',{data:{json:()=>p}});
+  assert.equal(f.shown.find(n=>n.tag===notice.tag).silent,true);
+ }
+ assert.equal(f.shown.length,2);
+});
+
 test('registration alert deduplicates and opens the exact admin player record',async()=>{
  const f=fixture();await f.bind({binding:'binding-a'});
  const p={...payload,kind:'registration',registrationUserId:payload.matchId,username:'newplayer87'};
@@ -27,13 +42,13 @@ test('registration alert deduplicates and opens the exact admin player record',a
 
 test('all push kinds render event titles and ignore unauthorized display fields',async()=>{
  for(const [kind,title,body] of [
-  ['turn','Your Turn!','An async match is ready for your turn.'],
+  ['turn','Your turn','Your turn in an async match.'],
   ['invite','New Match Invitation','You have a new async match invitation.'],
   ['last_call','Last Call!','An async turn is still waiting. Check its deadline.'],
   ['table_open','New Table Available','A new table is open for joining.'],
  ]){
   const f=fixture();await f.bind({binding:'binding-a'});
-  await f.fire('push',{data:{json:()=>({...payload,kind,tableId:payload.matchId,title:'SECRET',body:'SECRET',opponentName:'SECRET',gameName:'SECRET',stake:900,balance:900,rack:'SECRET',score:900})}});
+  await f.fire('push',{data:{json:()=>({...payload,kind,tableId:payload.matchId,title:'SECRET',body:'SECRET',gameName:'SECRET',stake:900,balance:900,rack:'SECRET',score:900})}});
   assert.equal(f.shown.length,1);assert.equal(f.shown[0].title,title);assert.equal(f.shown[0].body,body);
   assert.equal(f.shown[0].silent,false);assert.equal(f.shown[0].renotify,false);
   assert.equal(f.shown[0].tag,(kind==='table_open'?'ptown-table-':'ptown-match-')+payload.matchId);
@@ -82,7 +97,7 @@ test('invitation uses guarded match landing, suppresses duplicate alerts and sha
  await f.fire('push',{data:{json:()=>invite}});assert.equal(f.shown[0].body,'You have a new async match invitation.');
  await f.fire('push',{data:{json:()=>invite}});assert.equal(f.shown.length,1);assert.equal(f.shown[0].silent,true);
  await f.fire('notificationclick',{notification:{data:f.shown[0].data,close:()=>{}}});assert.deepEqual(f.navigation,['/delayed/'+payload.matchId]);
- await f.fire('push',{data:{json:()=>({...payload,eventId:'44444444-4444-4444-8444-444444444444'})}});assert.equal(f.shown.length,1);assert.equal(f.shown[0].body,'An async match is ready for your turn.');
+ await f.fire('push',{data:{json:()=>({...payload,eventId:'44444444-4444-4444-8444-444444444444'})}});assert.equal(f.shown.length,1);assert.equal(f.shown[0].body,'Your turn in an async match.');
  await f.fire('push',{data:{json:()=>({...invite,expiresAt:Date.now()-1})}});assert.equal(f.shown[0].body,'Open the app to check your async matches.');assert.equal(f.shown[0].silent,true);
 });
 

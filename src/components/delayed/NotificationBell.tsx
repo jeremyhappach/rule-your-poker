@@ -62,6 +62,7 @@ function NotificationBellContent({context}:{context:NonNullable<React.ContextTyp
      <strong>{n.kind==='registration'?'Approval required · '+(n.payload.username??'New player'):n.kind==='invitation'?'Pending invite'+(n.payload.opponentName?' from '+n.payload.opponentName:''):n.kind==='turn'?(n.payload.lastCall?'Last Call':'Your turn'):
       n.kind==='accepted'?(n.payload.opponentName??'Your opponent')+' accepted your match!':n.kind==='results'?`${n.payload.completionCount} game completions ready to view`:n.kind==='settled'?'Match complete · View results':'Invitation '+n.payload.status}</strong>
      {n.kind==='registration'&&<><small className="block break-all">{n.payload.email}</small><span className="block underline">Open player approval</span></>}{n.kind==='accepted'&&<small className="block">No turns yet available</small>}
+     {n.kind==='turn'&&<small className="block">{n.payload.opponentName?.trim()?'Your turn in an async match with '+n.payload.opponentName.trim()+'.':'Your turn in an async match.'}</small>}
      {n.payload.earliestDeadline&&<small className="block">Earliest deadline: {new Date(n.payload.earliestDeadline).toLocaleString()}</small>}
      {!n.actionable&&<small className="block">For your records</small>}
     </Link>{n.kind==='turn'&&n.actionable&&<button className="block underline" onClick={()=>void openTurn(n)}>{n.payload.availableCount} available {n.payload.availableCount===1?'turn':'turns'}</button>}</li>)}</ul>}

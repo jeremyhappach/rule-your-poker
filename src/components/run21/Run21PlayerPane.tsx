@@ -11,12 +11,13 @@ export function Run21PlayerPane({view,now,onIntent,pending=false,withPass=false}
   if(!board)return null;
   if(view.scorePresentation)return null;
   if(!view.revealed&&view.active_player_id!==view.viewerId) return null;
-  const active=!roundIntro(view,now)&&view.pausedAt==null&&!view.automaticPlayers?.includes(view.viewerId!)&&!view.revealed&&!board.result&&!!board.current&&(board.deadline===null||now<board.deadline)&&!pending&&!!onIntent;
+  const active=!roundIntro(view,now)&&view.pausedAt==null&&!view.automaticPlayers?.includes(view.viewerId!)&&!view.revealed&&!board.result&&!!board.current&&(board.deadline===null||now<board.deadline)&&!!onIntent;
+  const eligible=active&&canFinish(board,view.config);
   return <div className="run21-player-actions" data-run21-player-actions data-run21-table-actions={withPass||undefined}>
-    <button className="run21-collect-button" type="button" disabled={!active||!canFinish(board,view.config)} onClick={()=>onIntent?.({type:'collect'})}>
+    <button className="run21-collect-button" type="button" data-eligible={eligible||undefined} disabled={!eligible||pending} onClick={()=>onIntent?.({type:'collect'})}>
       {multiplierAt(aggregate(board,view.config),view.config)>0?'Take Win':'Give Up'} <small>{aggregate(board,view.config)}</small>
     </button>
-    {withPass&&board.current&&!board.result&&board.passesUsed<view.config.passes&&<button type="button" aria-label="Pass" disabled={!active} onClick={()=>onIntent?.({type:'pass'})}>Pass</button>}
+    {withPass&&board.current&&!board.result&&board.passesUsed<view.config.passes&&<button type="button" aria-label="Pass" disabled={!active||pending} onClick={()=>onIntent?.({type:'pass'})}>Pass</button>}
   </div>;
 }
 

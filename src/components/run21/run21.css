@@ -42,7 +42,7 @@
 .run21-player-actions button{font:inherit;font-size:.8rem;font-weight:700;border:1px solid #d4dbb14a;border-radius:.5rem;background:#213c30;color:#f5f1df;cursor:pointer;touch-action:manipulation;flex:0 0 auto;padding:.45rem .8rem;min-height:2rem}
 .run21-player-actions button:disabled{opacity:.45;cursor:default}
 .run21-player-actions button:focus-visible{outline:3px solid #ffd477;outline-offset:2px}
-.run21-player-actions .run21-collect-button:enabled{background:#e5b453;color:#182c23}
+.run21-player-actions .run21-collect-button[data-eligible]{background:#e5b453;color:#182c23;opacity:1}
 .run21-player-actions button small{margin-left:.4em;font-weight:400}
 .run21-timer{width:88%;height:45%;max-height:.8rem;margin:auto;overflow:hidden;border-radius:999px;background:#ffffff25;outline:1px solid #ffffff30}
 .run21-timer-fill{height:100%;display:block;border-radius:inherit}

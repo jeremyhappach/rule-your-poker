@@ -1,3 +1,7 @@
+# Async notification identity and Run21 control — November 6, 2026
+
+Jeremy approved publication of these two fixes only. Turn pushes and bell rows identify the correct opponent; Run21's collect control retains stable styling during placement requests. Migration 20261107034130 passed candidate and installed hosted rollback proofs. The release checkpoint is async-notification-run21-2026-11-06. The incomplete Crib Lab/Chucky competitive expansion is excluded. [Validation and owner smoke](ASYNC_NOTIFICATION_RUN21_RELEASE.md).
+
 # Crib Lab Polish Pass 1 — November 6, 2026
 
 Jeremy approved preview 3. It adds gold-only card selection, stable Confirm and Cancel controls, paused phase introductions and slower combination counts. The Base score counts up first, the equation shows the time bonus, then the central pill adds the round to the game total. Crib Lab uses the shared Arcade Classic face from Chucky polish `b8c893aca`. Hosted candidate and installed proofs matched on migration `20261106232247`. V1 runs retain their original clock and boards. The release checkpoint is `crib-lab-polish-1-2026-11-06`. [Hosted qualification and phone smoke](CRIB_LAB_POLISH_1.md).
