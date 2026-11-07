@@ -44,10 +44,22 @@ it('identifies two turn matches by their recipient-specific opponent names',asyn
  mocks.items=['mcru81','Happach Gmail'].map((opponentName,index)=>({...notice,id:'notice-'+index,match_id:'match-'+index,payload:{...notice.payload,opponentName}}));
  mount();
  fireEvent.click(await screen.findByRole('button',{name:/pending/}));
- for(const name of ['mcru81','Happach Gmail'])expect(screen.getByText('Your turn in an async match with '+name+'.')).toBeTruthy();
- expect(screen.getAllByText('Your turn')).toHaveLength(2);
+ for(const name of ['mcru81','Happach Gmail'])expect(screen.getByText('vs '+name)).toBeTruthy();
+ expect(screen.getAllByRole('button',{name:'YOUR TURN'})).toHaveLength(2);
 });
 function Navigation(){const navigate=useNavigate();return <><button onClick={()=>navigate('/delayed/m/play/c')}>Async</button><button onClick={()=>navigate('/')}>Main</button><NotificationBell/></>;}
+it('keeps same-opponent matches separate and renders only the compact action and countdown',async()=>{
+ const serverAt=Date.now();mocks.items=[28*3600000,42*60000].map((duration,i)=>({...notice,id:'same-'+i,match_id:'same-match-'+i,payload:{availableCount:i+1,opponentName:'mcru81',earliestDeadline:new Date(serverAt+duration).toISOString()}}));
+ mocks.rpc.mockImplementation(async()=>({items:mocks.items,actionable:2,serverAt}));mount();fireEvent.click(await screen.findByRole('button',{name:/2 pending/}));
+ expect(screen.getAllByRole('button',{name:'YOUR TURN'})).toHaveLength(2);expect(screen.getAllByText('vs mcru81')).toHaveLength(2);
+ expect(screen.getByText('(28h left)')).toBeTruthy();expect(screen.getByText('(42m left)')).toBeTruthy();
+ expect(screen.queryByText(/available turns|Earliest deadline|Your turn in an async/)).toBeNull();
+ expect(document.querySelectorAll('.async-notification-list [data-match-id]')).toHaveLength(2);
+});
+it('uses the filtered server badge and refreshes deleted invitations from the owner signal',async()=>{
+ mocks.items=[{...notice,kind:'invitation',payload:{opponentId:'inviter'}}];mount();fireEvent.click(await screen.findByRole('button',{name:/1 pending/}));
+ mocks.items=[];await act(async()=>mocks.changed());expect(screen.getByRole('button',{name:'Notifications'})).toBeTruthy();expect(screen.getByText('No notifications.')).toBeTruthy();
+});
 function Path(){const location=useLocation();return <output data-testid="path">{location.pathname+location.search}</output>;}
 it.each([['invitation','/delayed/m'],['results','/delayed/m'],['settled','/delayed/m?finale=1']])('preserves %s notification navigation',async(kind,destination)=>{
  mocks.items=[{...notice,kind,payload:{completionCount:2}}];
@@ -59,7 +71,7 @@ it.each([1,2])('resolves %s actionable child turns using the existing notificati
  mocks.items=[{...notice,payload:{availableCount:count}}];
  mocks.rpc.mockImplementation(async name=>name==='delayed_home'?{id:'m',status:'active',held:false,serverAt:Date.now(),players:[{id:'user',name:'Me'},{id:'other',name:'Other'}],lineup:Array.from({length:count},(_,i)=>({id:'c'+i,actor:'user',terminal:false,expiresAt:new Date(Date.now()+3600000).toISOString()}))}:{items:mocks.items,actionable:1});
  render(<MemoryRouter><NotificationProvider><NotificationBell/><Path/></NotificationProvider></MemoryRouter>);
- fireEvent.click(await screen.findByRole('button',{name:/1 pending/}));fireEvent.click(screen.getByRole('button',{name:count+' available '+(count===1?'turn':'turns')}));
+ fireEvent.click(await screen.findByRole('button',{name:/1 pending/}));fireEvent.click(screen.getByRole('button',{name:'YOUR TURN'}));
  await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe(count===1?'/delayed/m/play/c0':'/delayed/m'));
 });
 it('silently preserves updates when leaving and returning to the main lobby',async()=>{mocks.items=[notice];render(<MemoryRouter><NotificationProvider><Navigation/></NotificationProvider></MemoryRouter>);await screen.findByRole('button',{name:/1 pending/});fireEvent.click(screen.getByRole('button',{name:'Async'}));expect(screen.queryByRole('button',{name:/Notifications/})).toBeNull();expect(mocks.request).not.toHaveBeenCalled();mocks.items=[notice,{...notice,id:'second'}];await act(async()=>mocks.changed());fireEvent.click(screen.getByRole('button',{name:'Main'}));expect(await screen.findByRole('button',{name:/2 pending/})).toBeTruthy();expect(mocks.request).not.toHaveBeenCalled();});

@@ -1,6 +1,6 @@
 import {startTransition,createContext,useContext,useCallback,useEffect,useRef,useState,type ReactNode} from 'react';
 import {Link,useLocation,useNavigate} from 'react-router-dom';
-import {turnDestination,turnEntryHint} from '@/lib/delayed/notifications';
+import {compactTurnTime,turnDestination,turnEntryHint} from '@/lib/delayed/notifications';
 import type {Home} from '@/lib/delayed/client';
 import {Bell} from 'lucide-react';
 import {supabase} from '@/integrations/supabase/client';
@@ -9,17 +9,19 @@ import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {clearPrivateDrafts} from '@/lib/delayed/drafts';
 import '@/lib/delayed/delayed.css';
 type Notice={id:string;match_id:string;registration_user_id?:string;kind:string;actionable:boolean;revision:number;read_revision:number;payload:{username?:string;email?:string;registeredAt?:string;opponentId:string;opponentName?:string;completionCount?:number;availableCount:number;earliestDeadline:string|null;lastCall:boolean;status:string}};
-const NotificationContext=createContext<{userId:string;items:Notice[];count:number;error:string;refresh:()=>Promise<void>;setError:(s:string)=>void}|null>(null);
+const NotificationContext=createContext<{userId:string;items:Notice[];count:number;clock:{server:number;at:number};error:string;refresh:()=>Promise<void>;setError:(s:string)=>void}|null>(null);
 export function NotificationProvider({children}:{children:ReactNode}){
  const [userId,setUserId]=useState<string|null>(null),[items,setItems]=useState<Notice[]>([]),[count,setCount]=useState(0),[error,setError]=useState('');
  const generation=useRef(0);
+ const [clock,setClock]=useState(()=>({server:Date.now(),at:performance.now()}));
  useEffect(()=>{let alive=true;void supabase.auth.getSession().then(({data})=>{if(alive)setUserId(data.session?.user.id??null);});
   const {data}=supabase.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT')clearPrivateDrafts();setUserId(session?.user.id??null);});
   return()=>{alive=false;data.subscription.unsubscribe();};},[]);
  const refresh=useCallback(async()=>{
   const request=++generation.current;if(!userId)return;
-  try{const value=await delayedRpc<{items:Notice[];actionable:number}>('platform_notification_center');
+  try{const value=await delayedRpc<{items:Notice[];actionable:number;serverAt?:number}>('platform_notification_center');
    if(request!==generation.current)return;
+   setClock({server:value.serverAt??Date.now(),at:performance.now()});
    setItems(value.items.map(n=>n.kind==='invitation'?{...n,payload:{...n.payload,opponentName:undefined}}:n));setCount(value.actionable);setError('');
    // Existing invitation rows carry UUIDs, not names. Resolve through the
    // participant-checked match projection; never invent a display identity.
@@ -37,11 +39,17 @@ export function NotificationProvider({children}:{children:ReactNode}){
  },[userId]);
  useEffect(()=>{setItems([]);setCount(0);setError('');if(!userId)return;
   const channel=supabase.channel('platform-notifications:'+userId).on('postgres_changes',{event:'*',schema:'public',table:'platform_notifications',filter:'user_id=eq.'+userId},()=>void refresh())
+   .on('postgres_changes',{event:'UPDATE',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>void refresh())
    .subscribe(status=>{if(status==='SUBSCRIBED')void refresh();});
   const focus=()=>{if(!document.hidden)void refresh();};document.addEventListener('visibilitychange',focus);window.addEventListener('online',focus);void refresh();
   return()=>{generation.current++;void supabase.removeChannel(channel);document.removeEventListener('visibilitychange',focus);window.removeEventListener('online',focus);};
  },[userId,refresh]);
- return <NotificationContext.Provider value={userId?{userId,items,count,error,refresh,setError}:null}>{children}</NotificationContext.Provider>;
+ // A known server deadline invalidates availability once; this is not a poll.
+ useEffect(()=>{if(!userId)return;const deadline=Math.min(...items.filter(n=>n.kind==='turn').map(n=>Date.parse(n.payload.earliestDeadline??'')).filter(Number.isFinite));
+  if(!Number.isFinite(deadline))return;const timer=setTimeout(()=>void refresh(),Math.max(0,deadline-clock.server-(performance.now()-clock.at)));
+  return()=>clearTimeout(timer);
+ },[userId,items,clock,refresh]);
+ return <NotificationContext.Provider value={userId?{userId,items,count,clock,error,refresh,setError}:null}>{children}</NotificationContext.Provider>;
 }
 export function NotificationBell(){
  const context=useContext(NotificationContext);if(!context)return null;
@@ -49,22 +57,23 @@ export function NotificationBell(){
 }
 function NotificationBellContent({context}:{context:NonNullable<React.ContextType<typeof NotificationContext>>}){
  const location=useLocation(),navigate=useNavigate();
+ const [open,setOpen]=useState(false),[tick,setTick]=useState(()=>performance.now());
+ useEffect(()=>{if(!open)return;setTick(performance.now());const timer=setInterval(()=>setTick(performance.now()),60000);return()=>clearInterval(timer);},[open]);
  if(location.pathname!=='/')return null;
- const {userId,items,count,error,refresh,setError}=context;
+ const {userId,items,count,clock,error,refresh,setError}=context;
+ const now=clock.server+Math.max(0,tick-clock.at);
  const destination=(n:Notice)=>n.kind==='registration'?'/?adminPlayer='+n.registration_user_id:'/delayed/'+n.match_id+(n.kind==='settled'?'?finale=1':'');
  const markRead=(n:Notice)=>delayedRpc('delayed_notification_read',{p_id:n.id,p_revision:n.revision}).then(refresh).catch(()=>setError('Unable to mark read.'));
  const openTurn=async(n:Notice)=>{try{const home=await delayedRpc<Home>('delayed_home',{p_match:n.match_id});void markRead(n);const destination=turnDestination(home,userId);startTransition(()=>navigate(destination,{state:turnEntryHint(home,destination.split('/play/')[1]??'',userId)}));}catch{setError('Unable to verify the current turn. Please retry.');}};
- return <Popover><PopoverTrigger asChild><button className="delayed-bell" data-pending={count>0||undefined} data-ring={count>0&&(location.pathname==='/'||location.pathname==='/delayed')||undefined} aria-label={`Notifications${count?`, ${count} pending`:''}`}>
-  <Bell size={19}/>{count>0&&<span>{count}</span>}</button></PopoverTrigger><PopoverContent className="w-80 max-w-full" align="end">
+ return <Popover open={open} onOpenChange={value=>{setOpen(value);if(value)void refresh();}}><PopoverTrigger asChild><button className="delayed-bell" data-pending={count>0||undefined} data-ring={count>0&&(location.pathname==='/'||location.pathname==='/delayed')||undefined} aria-label={`Notifications${count?`, ${count} pending`:''}`}>
+  <Bell size={19}/>{count>0&&<span>{count}</span>}</button></PopoverTrigger><PopoverContent className="w-80 max-w-full async-notification-popover" align="end">
   <h2 className="font-semibold">Notifications</h2>{error?<p role="alert">{error} <button onClick={()=>void refresh()}>Retry</button></p>:
-   items.length===0?<p>No notifications.</p>:<ul className="space-y-3">{items.map(n=><li key={n.id}>
+   items.length===0?<p>No notifications.</p>:<ul className="async-notification-list">{items.map(n=><li key={n.kind==='turn'?'turn:'+n.match_id:n.id} data-match-id={n.match_id}>
+    {n.kind==='turn'?<div className="async-notification-turn"><button onClick={()=>void openTurn(n)}>YOUR TURN</button><span className="async-notification-opponent">vs {n.payload.opponentName?.trim()||'your opponent'}</span>{n.payload.earliestDeadline&&<time>({compactTurnTime(n.payload.earliestDeadline,now)})</time>}</div>:<>
     <Link to={destination(n)} onClick={event=>{void markRead(n);if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();startTransition(()=>navigate(destination(n)));}}}>
-     <strong>{n.kind==='registration'?'Approval required · '+(n.payload.username??'New player'):n.kind==='invitation'?'Pending invite'+(n.payload.opponentName?' from '+n.payload.opponentName:''):n.kind==='turn'?(n.payload.lastCall?'Last Call':'Your turn'):
-      n.kind==='accepted'?(n.payload.opponentName??'Your opponent')+' accepted your match!':n.kind==='results'?`${n.payload.completionCount} game completions ready to view`:n.kind==='settled'?'Match complete · View results':'Invitation '+n.payload.status}</strong>
+     <strong>{n.kind==='registration'?'Approval required · '+(n.payload.username??'New player'):n.kind==='invitation'?'Pending invite'+(n.payload.opponentName?' from '+n.payload.opponentName:''):n.kind==='accepted'?(n.payload.opponentName??'Your opponent')+' accepted your match!':n.kind==='results'?`${n.payload.completionCount} game completions ready to view`:n.kind==='settled'?'Match complete · View results':'Invitation '+n.payload.status}</strong>
      {n.kind==='registration'&&<><small className="block break-all">{n.payload.email}</small><span className="block underline">Open player approval</span></>}{n.kind==='accepted'&&<small className="block">No turns yet available</small>}
-     {n.kind==='turn'&&<small className="block">{n.payload.opponentName?.trim()?'Your turn in an async match with '+n.payload.opponentName.trim()+'.':'Your turn in an async match.'}</small>}
-     {n.payload.earliestDeadline&&<small className="block">Earliest deadline: {new Date(n.payload.earliestDeadline).toLocaleString()}</small>}
      {!n.actionable&&<small className="block">For your records</small>}
-    </Link>{n.kind==='turn'&&n.actionable&&<button className="block underline" onClick={()=>void openTurn(n)}>{n.payload.availableCount} available {n.payload.availableCount===1?'turn':'turns'}</button>}</li>)}</ul>}
+    </Link></>}</li>)}</ul>}
  </PopoverContent></Popover>;
 }

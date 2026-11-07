@@ -1,3 +1,15 @@
+## 2026-11-07 — Pending invitations delete; retry receipts and invalidation survive
+
+Cancel and accept retain the same parent lock. Only a sender's pristine,
+never-accepted invitation may be hard-deleted, together with its unstarted
+children, notices and queued pushes. Immutable request/removal receipts and
+owner-filtered UUID/revision signals survive without parent foreign keys, so
+retries cannot recreate invitations and both clients can refresh through an
+authorized Realtime UPDATE. Accepted games and financial/result restrictions
+remain intact. The bell filters results per match before counting, using current
+server-derived playable turns; hiding a result never acknowledges it.
+See `ASYNC_BELL_CANCEL.md` for installed proof and owner smoke.
+
 ## 2026-11-07 — Chucky bonuses are frozen at admission; Fold is a presentation receipt
 
 V3 adds a bonus table to the admitted configuration and uses one authoritative
@@ -3186,4 +3198,3 @@ inventing a historical token event. Future registrations remain unverified;
 changing an email invalidates either evidence method. Genuine later verification
 updates the evidence method to `supabase_email_token`. Access, roles and finances
 are independent and unchanged.
-

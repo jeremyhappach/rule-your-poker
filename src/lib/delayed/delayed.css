@@ -59,3 +59,12 @@
 .async-finale-exit .delayed-actions a{display:flex;align-items:center;justify-content:center;min-height:2.75rem;padding:.65rem .8rem;border:1px solid #718597;border-radius:.5rem;text-align:center;text-decoration:none}
 .async-finale-exit .delayed-primary{background:#9ee5ce;color:#102d24;font-weight:750}
 .async-finale-exit .delayed-secondary{background:#111e2b;color:#e1eaf1;margin:.2rem}
+/* One match per compact bell row; the name yields space to the action/clock. */
+.async-notification-list { margin-top: .4rem; }
+.async-notification-list > li { padding: .65rem 0; }
+.async-notification-list > li + li { border-top: 1px solid hsl(var(--border) / .55); }
+.async-notification-turn { display: flex; align-items: baseline; gap: .3rem; font-size: .75rem; }
+.async-notification-turn button { flex: none; font-weight: 700; text-decoration: underline; text-underline-offset: .2em; padding-block: .25rem; }
+.async-notification-turn button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.async-notification-opponent { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.async-notification-turn time { flex: none; white-space: nowrap; color: hsl(var(--muted-foreground)); }

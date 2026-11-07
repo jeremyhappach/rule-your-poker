@@ -1,3 +1,17 @@
+# Compact async bell and canceled invites — November 7, 2026
+
+Jeremy approved one compact YOUR TURN row per match, earliest playable deadline,
+per-match results suppression before the badge, and sender-only hard deletion of
+pending invitations. Migration `20261107172637` is installed; both legacy
+sender-canceled never-accepted invites are removed. Accepted/completed matches,
+review receipts, game rules and finances are preserved.
+
+Hosted candidate/installed rollback proofs, six independent-connection races,
+285 focused tests, TypeScript, production build and full-app PostgreSQL-backed
+phone layouts at 375/390/430 pixels passed. Physical iPhone acceptance is pending.
+Checkpoint: `async-bell-cancel-2026-11-07`.
+[Evidence, deletion contract and smoke](ASYNC_BELL_CANCEL.md).
+
 # Async push — November 7, 2026 — physical smoke FAILED, scoped tracing
 
 The first authenticated phone snapshot at 10:32:38 AM Central showed permission

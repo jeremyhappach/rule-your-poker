@@ -57,6 +57,7 @@ function MatchList({userId}:{userId:string}){
    }).catch(e=>setError(e.message)).finally(()=>setLoadingOlder(false));}}>Load older matches</button>}<Link to="/?sessions=completed">Archived / Completed Sessions</Link></>;
 }
 function MatchHome({id,userId}:{id:string;userId:string}){
+ const navigate=useNavigate();
  const [query]=useSearchParams(),historical=query.has('history');
  const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[tick,setTick]=useState(Date.now());
  const [confirmOffer,setConfirmOffer]=useState<string|null>(null);
@@ -64,7 +65,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
  const offset=useRef(0),epoch=useRef(0),busy=useRef(false),request=useRef<{action:string;offerHash:string;id:string}|null>(null);
  const refresh=useCallback(()=>{const generation=++epoch.current;return delayedRpc<Home>(historical?'delayed_history_detail':'delayed_home',{p_match:id}).then(value=>{
   if(generation!==epoch.current)return;offset.current=value.serverAt-Date.now();setHome(old=>old&&old.revision>value.revision?old:value);setError('');
- }).catch(e=>{if(generation===epoch.current)setError(e.message);});},[id,historical]);
+ }).catch(e=>{if(generation!==epoch.current)return;if(e.message==='delayed:invitation_cancelled'){navigate('/delayed',{replace:true});return;}setError(e.message);});},[id,historical,navigate]);
  useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
  useEffect(()=>{const timer=setInterval(()=>setTick(Date.now()),1000);return()=>clearInterval(timer);},[]);
  async function respond(action:string,confirmedOffer?:string){
@@ -72,7 +73,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   if(action==='accept'&&home.realMoney&&confirmedOffer!==home.offerHash)return;
   busy.current=true;setPending(true);setConfirmOffer(null);setError('');
   if(request.current?.action!==action||request.current?.offerHash!==home.offerHash)request.current={action,offerHash:home.offerHash,id:crypto.randomUUID()};
-  try{await delayedRpc('delayed_respond',{p_match:id,p_request:request.current.id,p_offer_hash:home.offerHash,p_action:action});await refresh();}
+  try{const response=await delayedRpc<{deleted?:boolean}>('delayed_respond',{p_match:id,p_request:request.current.id,p_offer_hash:home.offerHash,p_action:action});if(response?.deleted){navigate('/delayed',{replace:true});return;}await refresh();}
   catch(e){setError(e instanceof Error?e.message:'Unable to respond.');}finally{busy.current=false;setPending(false);}}
  if(!home)return <p role={error?'alert':'status'}>{error||'Loading match…'}</p>;
  if(home.removedAt&&!historical)return <section className="delayed-match-home"><Link to="/delayed">← All matches</Link><h2>Match deleted</h2><p>The creator removed this play-money match for both players. Its history has been retained.</p></section>;

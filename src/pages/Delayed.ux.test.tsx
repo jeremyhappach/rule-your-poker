@@ -21,6 +21,17 @@ beforeEach(()=>{
 afterEach(cleanup);
 function mount(path='/delayed/match'){return render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/delayed" element={<Delayed/>}/><Route path="/delayed/:matchId" element={<Delayed/>}/><Route path="/" element={<h1>Multiplayer lobby</h1>}/></Routes></MemoryRouter>);}
 const responses=()=>mock.rpc.mock.calls.filter(c=>c[0]==='delayed_respond');
+it('leaves a hard-deleted invitation and refreshes the list without a cancellation alert',async()=>{
+ mock.home.organizer='me';mock.home.opponent='other';let cancelled=false;
+ mock.rpc.mockImplementation(async name=>{if(name==='delayed_respond'){cancelled=true;return {status:'cancelled',deleted:true};}if(name==='delayed_list')return cancelled?[]:[mock.home];return mock.home;});
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Cancel invitation'}));await screen.findByText('No active async matches.');
+ expect(responses()[0][1].p_action).toBe('cancel');expect(screen.queryByText('Invitation cancelled')).toBeNull();
+});
+it('returns the recipient to the list when the pending invitation is deleted remotely',async()=>{
+ mount();await screen.findByRole('button',{name:'Accept lineup and stakes'});
+ mock.rpc.mockImplementation(async name=>{if(name==='delayed_list')return [];throw Error('delayed:invitation_cancelled');});
+ await act(async()=>mock.changed());await screen.findByText('No active async matches.');expect(screen.queryByRole('button',{name:'Accept lineup and stakes'})).toBeNull();
+});
 it('requires the live warning for real money; cancel leaves the invitation pending',async()=>{
  mount();fireEvent.click(await screen.findByRole('button',{name:'Accept lineup and stakes'}));
  expect(screen.getByRole('alertdialog')).toBeTruthy();expect(screen.getByText('This is a Real Money Game!')).toBeTruthy();
