@@ -1,3 +1,12 @@
+## 357 Drop
+
+Solo Arcade: `supabase/drop357/rules.sql` owns frozen v1 rules and scoring;
+`arcade.sql` uses canonical Arcade receipts, results and recovery.
+`src/hooks/useDrop357.ts` owns transport/replay admission;
+`src/components/arcade/SoloDrop357.tsx` owns presentation. Shared catalog, tile,
+Rules, sound and Abandon owners remain in place. Proofs: `dev/drop357/` and
+`supabase/tests/drop357_proof.sql`. See `DROP357_QUALIFICATION.md`.
+
 ## Arcade abandon and Chucky feedback
 
 `src/components/arcade/ArcadeAbandonButton.tsx` supplies the common visible control;

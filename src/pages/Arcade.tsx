@@ -1,3 +1,4 @@
+import {SoloDrop357} from '@/components/arcade/SoloDrop357';
 import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {AchievementTime} from '@/components/arcade/AchievementTime';
@@ -50,12 +51,13 @@ export default function Arcade(){
  if(!isReady||!user)return <main className="arcade-page"><p role="status">Connecting…</p></main>;
  if(!game)return <ArcadeSwitchboard userId={user.id}/>;
  if(game==='chucky-showdown')return runId?<SoloChuckyShowdown key={user.id+runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
+ if(game==='357-drop')return runId?<SoloDrop357 key={user.id+runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
  if(game==='crib-lab')return runId?<SoloCribLab key={runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
  if(game==='mega-card-golf')return <MegaArcadePage userId={user.id}/>;
  if(game!=='run21'&&game!=='tri-towers'&&game!=='eleven-up'&&game!=='royal-flash'&&game!=='quintzee'&&game!=='boxdrop'&&game!=='trip-flip'&&game!=='take-two')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
  return runId?(game==='quintzee'?<SoloQuintzee key={runId} runId={runId} userId={user.id}/>:game==='boxdrop'?<SoloBoxdrop key={runId} runId={runId} userId={user.id}/>:game==='trip-flip'?<SoloTripFlip key={runId} runId={runId} userId={user.id}/>:game==='take-two'?<SoloTakeTwo key={runId} runId={runId} userId={user.id}/>:game==='royal-flash'?<SoloRoyalFlash key={runId} runId={runId} userId={user.id}/>:game==='eleven-up'?<SoloElevenUp key={runId} runId={runId} userId={user.id}/>:game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game+user.id} game={game} userId={user.id}/>;
 }
-export function GameBoard({game,userId}:{userId:string;game:'crib-lab'|'chucky-showdown'|'run21'|'tri-towers'|'eleven-up'|'royal-flash'|'quintzee'|'boxdrop'|'trip-flip'|'take-two'}){
+export function GameBoard({game,userId}:{userId:string;game:'357-drop'|'crib-lab'|'chucky-showdown'|'run21'|'tri-towers'|'eleven-up'|'royal-flash'|'quintzee'|'boxdrop'|'trip-flip'|'take-two'}){
  const name=findGame(game)?.name??game;
  const [classic,setClassic]=useQuintzeeTheme(userId);
  const navigate=useNavigate(),[search]=useSearchParams(),result=search.get('result');
@@ -66,7 +68,7 @@ export function GameBoard({game,userId}:{userId:string;game:'crib-lab'|'chucky-s
  useEffect(()=>{let alive=true;setBoard(null);void arcadeRequest<Leaderboard>({op:'leaderboard',game,window,result,ruleset}).then(value=>{if(alive){setBoard(value);setError('');}}).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};},[game,window,result,ruleset]);
  async function start(){
   if(pending)return;setPending(true);setError('');
-  try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game,requestId:createId.current,...(game==='quintzee'?{theme:classic?'classic':'modern'}:{})});if((game==='chucky-showdown'||game==='crib-lab'||game==='tri-towers'||game==='eleven-up'||game==='royal-flash'||game==='quintzee'||game==='boxdrop'||game==='trip-flip'||game==='take-two')&&!document.hidden)grantTriStart(run.id);navigate('/arcade/'+game+'/run/'+run.id);}
+  try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game,requestId:createId.current,...(game==='quintzee'?{theme:classic?'classic':'modern'}:{})});if((game==='357-drop'||game==='chucky-showdown'||game==='crib-lab'||game==='tri-towers'||game==='eleven-up'||game==='royal-flash'||game==='quintzee'||game==='boxdrop'||game==='trip-flip'||game==='take-two')&&!document.hidden)grantTriStart(run.id);navigate('/arcade/'+game+'/run/'+run.id);}
   catch(e){setError(e instanceof Error?e.message:'Unable to start.');}finally{setPending(false);}
  }
  return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>

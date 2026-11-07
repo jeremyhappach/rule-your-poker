@@ -1,5 +1,6 @@
 /** Approved 2026-11-01 handoff. Catalog still owns eligibility, names and order. */
 export const APPROVED_TILE_ARTWORK: Readonly<Record<string, {slug:string; infoBottom?:string}>> = {
+  '357-drop': {slug:'357-drop'},
   run21: {slug:'run21', infoBottom:'9.2cqi'},
   'tri-towers': {slug:'tri-towers'},
   'eleven-up': {slug:'eleven-up'},

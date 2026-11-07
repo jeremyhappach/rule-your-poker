@@ -1,3 +1,18 @@
+# 357 Drop / 1 — November 7, 2026 — qualified, owner smoke pending
+
+357 Drop adds a solo 120-second Arcade run with three fixed lanes, lane-specific
+wilds, three passes, best-five scoring, natural bonuses and a separate time bonus.
+Jeremy approved revised upper-category bases that preserve poker category order.
+The supplied banner and mobile concept use existing Arcade controls and artwork.
+
+Candidate/installed rollback proofs, independent wild-assignment comparisons,
+concurrency/recovery tests, browser progression, six layouts, audio/mute checks,
+TypeScript and production build qualify the candidate. Migration 20261107195319
+and recovery worker v20 are installed. Admission opens only after matching client
+publication is verified. Checkpoint: 357-drop-v1-2026-11-07; the matching verified
+tag records publication. Physical iPhone smoke remains pending.
+[Rules](DROP357_RULES.md) · [Qualification and smoke](DROP357_QUALIFICATION.md).
+
 # Mega Card Golf UI polish — November 7, 2026 — qualified, owner smoke pending
 
 Course entry now places Return to Clubhouse left and Tee Off right. Hidden-card

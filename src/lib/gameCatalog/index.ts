@@ -1,3 +1,4 @@
+import drop357 from './games/357-drop';
 import chuckyShowdown from './games/chucky-showdown';
 import cribLab from './games/crib-lab';
 import words from './games/ptown-words';
@@ -24,7 +25,7 @@ import game14 from './games/royal-flash';
 import racePoker from './games/race-poker';
 import type {GameDescriptor, Category, Capability} from './types';
 export type {GameDescriptor, Category, Capability} from './types';
-export const GAME_CATALOG: readonly GameDescriptor[] = [words,game0,game1,game2,game3,game4,game5,game6,game7,game8,game9,game10,game11,game12,game13,game14,canasta,golf,racePoker,battle31,megaGolf,quintzee,cribLab,chuckyShowdown];
+export const GAME_CATALOG: readonly GameDescriptor[] = [drop357,words,game0,game1,game2,game3,game4,game5,game6,game7,game8,game9,game10,game11,game12,game13,game14,canasta,golf,racePoker,battle31,megaGolf,quintzee,cribLab,chuckyShowdown];
 export const CATEGORIES: readonly Category[] = ['cards','dice','other'];
 export const CATEGORY_LABELS: Record<Category,string> = {cards:'Cards',dice:'Dice',other:'Other'};
 export function findGame(id: string | null | undefined) {
