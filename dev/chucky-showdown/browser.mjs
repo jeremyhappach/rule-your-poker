@@ -7,8 +7,8 @@ import {createServer} from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import {connect} from '../quintzee/database.mjs';
 
-const database=process.argv[2];if(!/^chucky_showdown_v[12]_\d+$/.test(database??''))throw Error('Expected disposable database');
-const v2=database.startsWith('chucky_showdown_v2_');
+const database=process.argv[2];if(!/^chucky_showdown_v[123]_\d+$/.test(database??''))throw Error('Expected disposable database');
+const v3=database.startsWith('chucky_showdown_v3_'),v2=v3||database.startsWith('chucky_showdown_v2_');
 const preview=process.argv.includes('--preview'), port=(preview?15474:15473)+(v2?4:0);
 const origin='http://127.0.0.1:'+port;
 let operation,apiLane=Promise.resolve();
@@ -54,7 +54,7 @@ try{
   await c.query('insert into public.account_access(user_id,enabled,ever_enabled) values($1,true,true) on conflict(user_id) do update set enabled=true,ever_enabled=true',[actor]);
   await c.query('insert into public.profiles(id,username,is_active) values($1,$2,true) on conflict(id) do update set is_active=true',[actor,'Showdown '+actor.slice(0,8)]);
   await c.query("update private.arcade_rulesets set enabled=false where game='chucky-showdown' and enabled");
-  await c.query('update private.arcade_rulesets set enabled=true where id=$1',[v2?'chucky-showdown/2':'chucky-showdown/1']);
+  await c.query('update private.arcade_rulesets set enabled=true where id=$1',[v3?'chucky-showdown/3':v2?'chucky-showdown/2':'chucky-showdown/1']);
   // Script only the draw source, within the disposable transaction. All timing, outcome,
   // revisions, bank/timeout and result posting still run through the installed authority.
   if(!preview){
@@ -125,7 +125,7 @@ try{
       await button(name).click();assert.equal((await ack).status(),200);
     };
     if(v2){
-      const {smokeV2}=await import('./smoke-v2.mjs');
+      const {smokeV2}=await import(v3?'./smoke-v3.mjs':'./smoke-v2.mjs');
       await smokeV2({page,actor,c,origin,out,errors,log,act,phase,button});
     }else{
     const level=n=>'Level '+n+', '+(n*100)+' points';

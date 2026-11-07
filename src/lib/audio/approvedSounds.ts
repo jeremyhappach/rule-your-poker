@@ -27,7 +27,7 @@ import triInvalid from '@/assets/audio/tritowers-invalid-b.wav?url';
 import run21Bust from '@/assets/audio/run21-bust-b.wav?url';
 
 const files = {slide, flip, diceMany, diceOne, peg, cracked, winner, noQualify, midnight, fiveOnes, scorePost, yahtzee, myLeg, opponentLeg, sweep, cupRoll, quintzeeRoll, dropCountdown, chucky, farkleBust, upperBonus, allFilled, chip, triInvalid, run21Bust};
-export type ApprovedSound = keyof typeof files | 'cribbageHighlight' | 'riffle';
+export type ApprovedSound = keyof typeof files | 'cribbageHighlight' | 'riffle' | 'chuckyFold' | 'chuckyWin' | 'chuckySix' | 'chuckySeven';
 const cues = new Map<ApprovedSound, AudioCue>();
 const countdown = new Map<string, AudioCue>();
 let loading: Promise<void> | undefined;
@@ -110,7 +110,25 @@ function riffleSound(pcm:ReturnType<typeof decodePCM>):AudioCue{
   }
   return {...pcmCue({samples,rate:pcm.rate}),policy:{priority:25,group:'shuffle',intervalMs:0}};
 }
+// Quiet result accents share the global mixer, mute and once-only presentation ledger.
+function chuckySuccess(notes:number[]):AudioCue {
+ return {durationMs:notes.length*85+180,policy:{priority:60,group:'chucky-result',intervalMs:0},
+  schedule(ctx,destination,track){
+   notes.forEach((hz,i)=>{
+    const tone=track(ctx.createOscillator()),gain=track(ctx.createGain()),at=ctx.currentTime+i*.085;
+    tone.type='sine';tone.frequency.value=hz;
+    gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.028,at+.008);gain.gain.exponentialRampToValueAtTime(.0001,at+.18);
+    tone.connect(gain);gain.connect(destination);tone.start(at);tone.stop(at+.19);
+   });return true;
+  }};
+}
+const chuckySuccessCues={chuckyWin:chuckySuccess([659.25,783.99]),chuckySix:chuckySuccess([783.99,1046.5,987.77]),chuckySeven:chuckySuccess([523.25,659.25,783.99,1046.5])};
 export function approvedSound(name: ApprovedSound) {
+  if(name==='chuckyWin'||name==='chuckySix'||name==='chuckySeven')return chuckySuccessCues[name];
+  if(name==='chuckyFold'&&!cues.has(name)&&paperRecording){
+    const samples=paperRecording.samples.slice(0,Math.ceil(paperRecording.rate*.3)).map(v=>v*.45);
+    cues.set(name,{...pcmCue({samples,rate:paperRecording.rate}),policy:{priority:30,group:'cards',intervalMs:0}});
+  }
   if(name==='riffle'&&!cues.has(name)&&paperRecording)cues.set(name,riffleSound(paperRecording));
   return name === 'cribbageHighlight' ? cribbageHighlightCue : cues.get(name);
 }

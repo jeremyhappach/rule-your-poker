@@ -1,3 +1,14 @@
+## Arcade abandon and Chucky feedback
+
+`src/components/arcade/ArcadeAbandonButton.tsx` supplies the common visible control;
+`FullscreenGameShell.endControl` and the Chucky/Crib headers own its top-right slot.
+Existing game owners retain confirmation and authoritative abandon.
+`private.chucky_showdown_bonus` is the frozen-config scoring helper used by the
+shared Chucky reducer and completion validator. `lastFold` is a redacted receipt;
+`presentationV2.ts` owns its connected-only sweep. Qualification and activation
+are in `dev/chucky-showdown/`, `supabase/tests/chucky_showdown_v3_proof.sql` and
+`supabase/chucky-showdown/activate-v3.sql`.
+
 ## Async TriTowers operation and reviewed-score emphasis
 
 `supabase/delayed/tri-step.sql` defines the single-operation Async orchestration

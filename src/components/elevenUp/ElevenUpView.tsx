@@ -1,3 +1,4 @@
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {ElevenUpRules} from '@/components/rules/ElevenUpRules';
 export {ElevenUpRules} from '@/components/rules/ElevenUpRules';
 import {useLayoutEffect,useRef,useState,type ReactNode,type CSSProperties} from 'react';
@@ -25,7 +26,8 @@ export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=fa
  const motion=useTriRoundPresentation({scope:'eleven:'+v.scope,phase:b.phase,connected:!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards',modern:true,liveEntry,recoveryEpoch:epoch,celebrationMs:b.rules.clearCelebrationMs});
  const scores=<div ref={scoreGroup} className="eleven-scores" data-multiplayer={!v.solo} data-overflow={v.players.length>2} data-stacked={v.players.length===2} aria-label="Scores" tabIndex={v.players.length>2?0:undefined}>{scorePlayers.map(p=><div className="eleven-score-pill" key={p.id} data-active={p.active} data-winner={!v.solo&&!!v.terminal?.winnerIds.includes(p.id)&&(terminalPresenting||now<v.terminal.deadline)}>{!v.solo&&<span title={p.name}>{p.autoplay&&p.id!==v.viewerId&&!sessionEnded&&!v.settled&&<Bot className="eleven-autoplay-icon" role="img" aria-label={`${p.name}: Auto-play`}/>}{p.name}</span>}<strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>)}</div>;
  return <FullscreenGameShell className="eleven-scene" title="11 Up" description={v.board.phase==='complete'?'Final scores':''}
-  activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} navigation={v.solo?<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
+  activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} endControl={v.solo&&onAbandon&&<ArcadeAbandonButton disabled={pending} onClick={onAbandon}/>}
+ navigation={v.solo?<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>:undefined}
   announcement={v.solo?false:undefined} panelTitle={v.solo?"Rules":undefined} panelDescription={`P-Town scoring · ${b.rules.version}`} panel={panel??<ElevenUpRules stageMs={b.rules.stageMs}/>}>
   <ElevenBoard {...{v,userId,now,pending,error,epoch,liveEntry,onIntent,onReconnect,onFinish,onResume,motion,result,sessionEnded,scores}} active={tab==='cards'}/>
  </FullscreenGameShell>;

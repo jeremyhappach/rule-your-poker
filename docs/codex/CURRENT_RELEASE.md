@@ -1,3 +1,13 @@
+# Arcade abandon and Chucky feedback — November 7, 2026
+
+Jeremy approved the shared top-right Abandon run control across all eleven Arcade games,
+accepted-Fold sweep/swoosh, three confirmed-win cues and frozen Chucky v3 bonuses.
+Hosted migration `20261107141549` passed candidate and installed rollback proofs;
+old runs and historical scores retain their rules. Mobile automation passed cancel
+and confirmed abandon in every game, plus Chucky mute/reload and all seven bonuses.
+Checkpoint: `arcade-chucky-hotfix-2026-11-07`. Activation follows verified publication;
+Jeremy's physical iPhone acceptance is pending. [Evidence and smoke](ARCADE_CHUCKY_HOTFIX.md).
+
 # Async notification identity and Run21 control — November 6, 2026
 
 Jeremy approved publication of these two fixes only. Turn pushes and bell rows identify the correct opponent; Run21's collect control retains stable styling during placement requests. Migration 20261107034130 passed candidate and installed hosted rollback proofs. The release checkpoint is async-notification-run21-2026-11-06. The incomplete Crib Lab/Chucky competitive expansion is excluded. [Validation and owner smoke](ASYNC_NOTIFICATION_RUN21_RELEASE.md).

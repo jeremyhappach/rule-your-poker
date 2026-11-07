@@ -93,8 +93,8 @@ it('timeout invalidates confirmation without waiting for consent; pending-only d
 it('abandon requires canonical confirmation and animation lock prevents play',()=>{
  const run=fixture(),intent=vi.fn(),exit=vi.fn(),props={view:projectRun(run,4),now:4,busy:false,onIntent:intent,onExit:exit};
  const {rerender}=render(<MegaCardGolfGame {...props}/>);
- fireEvent.click(screen.getByRole('button',{name:'Abandon'}));fireEvent.click(screen.getByRole('button',{name:'Keep Playing'}));expect(exit).not.toHaveBeenCalled();
- fireEvent.click(screen.getByRole('button',{name:'Abandon'}));fireEvent.click(screen.getByRole('button',{name:'Abandon Game'}));expect(exit).toHaveBeenCalledOnce();
+ fireEvent.click(screen.getByRole('button',{name:'Abandon run'}));fireEvent.click(screen.getByRole('button',{name:'Keep Playing'}));expect(exit).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Abandon run'}));fireEvent.click(screen.getByRole('button',{name:'Abandon Game'}));expect(exit).toHaveBeenCalledOnce();
  rerender(<MegaCardGolfGame {...props} busy/>);
  fireEvent.click(screen.getByRole('button',{name:/Card 5/}));fireEvent.click(screen.getByRole('button',{name:'Discard'}));expect(intent).not.toHaveBeenCalled();
 });

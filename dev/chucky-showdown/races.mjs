@@ -2,7 +2,7 @@
 import {randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {connect} from '../quintzee/database.mjs';
-const source=process.argv[2];if(!/^chucky_showdown_v[12]_\d+$/.test(source??''))throw Error('Expected Chucky Showdown fixture database');
+const source=process.argv[2];if(!/^chucky_showdown_v[123]_\d+$/.test(source??''))throw Error('Expected Chucky Showdown fixture database');
 const db='chucky_showdown_race_'+Date.now(),admin=await connect('postgres');
 await admin.query('create database '+db+' template '+source);
 const clients=[await connect(db),await connect(db)],c=clients[0],user=randomUUID(),token=randomUUID();
@@ -11,9 +11,9 @@ try{
   await c.query('insert into auth.users(id) values($1)',[user]);
   await c.query('insert into public.account_access(user_id,enabled,ever_enabled) values($1,true,true) on conflict(user_id) do update set enabled=true,ever_enabled=true',[user]);
   await c.query('insert into public.profiles(id,username,is_active) values($1,$2,true) on conflict(id) do update set is_active=true',[user,'Lab '+user.slice(0,8)]);
-  const v2=source.startsWith('chucky_showdown_v2_');
+  const v3=source.startsWith('chucky_showdown_v3_'),v2=v3||source.startsWith('chucky_showdown_v2_');
   await c.query("update private.arcade_rulesets set enabled=false where game='chucky-showdown' and enabled");
-  await c.query('update private.arcade_rulesets set enabled=true where id=$1',[v2?'chucky-showdown/2':'chucky-showdown/1']);
+  await c.query('update private.arcade_rulesets set enabled=true where id=$1',[v3?'chucky-showdown/3':v2?'chucky-showdown/2':'chucky-showdown/1']);
   await c.query("update private.arcade_recovery_state set failure=null,last_completed_at=clock_timestamp(),claimed=true,token=$1,expires_at=clock_timestamp()+interval '1 minute'",[token]);
   const req=randomUUID();
   const starts=await Promise.all(clients.map(conn=>get(conn,"select public.arcade_start($1,$2,'chucky-showdown') r",[user,req])));

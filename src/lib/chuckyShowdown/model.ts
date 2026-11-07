@@ -37,16 +37,19 @@ export function scoreFrame(v:ShowdownSnapshot, now:number){
   return {risk,bank};
 }
 
-export interface V2Config {version:'chucky-showdown/2';foldMs:number;selectMs:number;maxFolds:number;maxCracks:number}
+export type V2Config={foldMs:number;selectMs:number;maxFolds:number;maxCracks:number}&(
+  {version:'chucky-showdown/2'}|{version:'chucky-showdown/3';winBonuses:number[]});
+export const winBonus=(config:V2Config,level:number)=>config.version==='chucky-showdown/3'?config.winBonuses[level-1]:100*level;
+export const winCue=(cards:number)=>cards===7?'chuckySeven':cards===6?'chuckySix':'chuckyWin';
 export interface V2Scene {
   round:number;hand:number;roundId:string;
-  phase:'deal'|'fold_stay'|'board_reveal'|'choose'|'showdown'|'win'|'crack'|'round_over';
+  phase:'deal'|'fold_stay'|'fold'|'board_reveal'|'choose'|'showdown'|'win'|'crack'|'round_over';
   since:number;due:number;player:Card[];community:Card[];chucky:Card[];
   folds:number;cracks:number;uses:number[];level:number;risk:number;beforeRisk:number;score:number;
   reason:'folds'|'exhausted'|'busted'|null;best:Card[]|null;label:string|null;tie:boolean|null;
 }
 export interface V2Snapshot extends V2Scene, Pick<ShowdownSnapshot,'id'|'revision'|'status'|'ruleset'|'serverAt'|'completion'> {
-  config:V2Config;lastShowdown:V2Scene|null;lastRound:V2Scene|null;
+  config:V2Config;lastShowdown:V2Scene|null;lastRound:V2Scene|null;lastFold?:V2Scene|null;
 }
 export type ShowdownView=ShowdownSnapshot|V2Snapshot;
 export const isV2=(v:ShowdownView):v is V2Snapshot=>'uses' in v;

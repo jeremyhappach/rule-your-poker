@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {admit,seek,scoreMotion} from './presentationV2';
 import type {V2Snapshot} from './model';
+import {winBonus,winCue} from './model';
 import type {Card} from '@/lib/cardUtils';
 import {scoreCountCue} from '@/lib/run21/scoreCountCue';
 
@@ -12,6 +13,27 @@ const original:V2Snapshot={
   config:{version:'chucky-showdown/2',foldMs:30000,selectMs:30000,maxFolds:3,maxCracks:3},lastShowdown:null,lastRound:null,
 };
 describe('connected reveal and result continuity',()=>{
+ it('holds each accepted fold once before its same-timestamp deal, and never replays on recovery',()=>{
+   const old={...original,phase:'fold_stay' as const};
+   const fold={...old,phase:'fold' as const,since:2000,due:2000};
+   const next={...old,phase:'deal' as const,since:2000,hand:2,roundId:'run:1:2',lastFold:fold};
+   const frames=admit(seek(old,1000,true),next,2000);
+   expect(frames.map(f=>f.scene.phase)).toEqual(['fold_stay','fold','deal']);
+   expect(frames[2].at-frames[1].at).toBe(350);
+   expect(admit(frames,next,2050).filter(f=>f.scene.phase==='fold')).toHaveLength(1);
+   expect(seek(next,2050)).toMatchObject([{scene:{phase:'deal'},live:false}]);
+   const bank={...next,phase:'round_over' as const,hand:1,roundId:old.roundId};
+   expect(admit(seek(old,1000,true),bank,2000).map(f=>f.scene.phase)).toEqual(['fold_stay','fold','round_over']);
+ });
+ it('uses the frozen run bonus table and exactly one cue for the confirmed card count',()=>{
+   const bonuses=[100,250,500,800,1250,2000,3000];
+   const current={...original.config,version:'chucky-showdown/3' as const,winBonuses:bonuses};
+   for(let n=1;n<=7;n++){
+     expect(winBonus(original.config,n)).toBe(n*100);
+     expect(winBonus(current,n)).toBe(bonuses[n-1]);
+     expect(winCue(n)).toBe(n===7?'chuckySeven':n===6?'chuckySix':'chuckyWin');
+   }
+ });
  it('drains missed individual faces and a complete Crack before showing the next hand',()=>{
    const result={...original,phase:'crack' as const,since:3470,due:6620,chucky:[card('K'),card('Q')],cracks:2,best:[card('K')],risk:0};
    const next:V2Snapshot={...original,roundId:'run:1:2',hand:2,phase:'deal',since:6620,due:9120,lastShowdown:result};

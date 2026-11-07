@@ -1,3 +1,4 @@
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {useQuintzeeRollAudio} from './useQuintzeeRollAudio';
 import {presentQuintzeeHold} from '@/lib/audio/quintzeeHoldCue';
 import {QuintzeeBonuses} from './QuintzeeBonuses';
@@ -52,7 +53,8 @@ export function QuintzeeView({replay=false,awaitingStart=false,onResultTimelineE
  };
  const status=v.status==='expired'?'Start time expired':s.finished?'Match complete':v.pausedAt!==null?'Paused':b.phase==='intro'?'Get Ready':b.phase==='stage_complete'?quintzeeRoundLabel(b.result?.reason):'';
  return <FullscreenGameShell gameplay={!replay} className={`quintzee-shell quintzee-${v.theme}`} title="QUINTZEE" description={s.round===3?'Bonus round':`Round ${s.round} of 2`} activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} announcement={s.players.length===1?false:undefined}
-  navigation={navigation??(s.players.length===1?<nav aria-label="Quintzee controls"><button onClick={()=>setTab('lobby')}>Rules</button>{s.players.length===1&&v.status==='active'&&<button disabled={pending} onClick={()=>setAbandon(true)}>Abandon</button>}</nav>:undefined)}
+  endControl={!navigation&&s.players.length===1&&v.status==='active'&&<ArcadeAbandonButton disabled={pending} onClick={()=>setAbandon(true)}/>}
+ navigation={navigation??(s.players.length===1?<nav aria-label="Quintzee controls"><button onClick={()=>setTab('lobby')}>Rules</button></nav>:undefined)}
   panel={panel??<div><p>Five dice. Hold any dice and reroll up to twice. {v2?'Choose any open category; confirm zero only when another open category can score.':'Choose a matching category.'} No jokers.</p><p>Upper subtotal 63 earns +35. All twelve categories earn +{b.rules.clearBonus}. Multiply the whole card by ×100–×300 according to time remaining.</p><p>Two rounds. A total of 80,000 earns one bonus round. Its score adds to your final total.</p><p>Each round allows {b.rules.durationMs/1000} seconds{v2?' after Start. You have 30 seconds to start each round.':'.'} The clock continues through rolls{b.rules.version==='quintzee/3'?', except the fixed upper-bonus celebration pause.':' and animations.'}</p></div>}>
  <div ref={root}>{layer&&createPortal(<div className="quintzee-plane" ref={viewport} data-theme={v.theme} data-quintzee="">
   <div className="q-players" aria-label="Cumulative player scores">{s.players.map((p,i)=><TriScorePill key={p} root={viewport} item={{id:p,name:s.players.length===1?'TOTAL SCORE':playerName(p,i),score:s.scores[p],active:p===active,balance:balance?.(p)}} value={p===active&&result?(motion.displayScore??s.scores[p]):s.scores[p]} fraction={p===active&&!sessionEnded?motion.fraction:0}/>)}</div>

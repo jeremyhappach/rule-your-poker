@@ -74,3 +74,8 @@
 .cs-fragment{opacity:0;animation:cs-shatter .36s linear var(--impact-delay) forwards}
 @keyframes cs-shatter{from{opacity:1;transform:none}to{opacity:0;transform:var(--scatter)}}
 @media(prefers-reduced-motion:reduce){.cs-portrait{animation:none}.cs-portrait[data-leaving=true],.cs-lost-heart{opacity:0}}
+
+.cs-cards[data-folding] .cs-slot {animation:cs-fold-sweep .35s ease-in both}
+@keyframes cs-fold-sweep {to {transform:translateX(85%) translateY(-30%) rotate(12deg) scale(.7);opacity:0}}
+@media (prefers-reduced-motion:reduce) {.cs-cards[data-folding] .cs-slot {animation-name:cs-fold-fade}}
+@keyframes cs-fold-fade {to {opacity:0}}

@@ -1,3 +1,4 @@
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {useVisibleCardChangeAudio} from '@/hooks/useVisibleCardChangeAudio';
 import {TakeTwoRules} from '@/components/rules/TakeTwoRules';
 export {TakeTwoRules} from '@/components/rules/TakeTwoRules';
@@ -81,7 +82,8 @@ export function TakeTwoView({replay=false,navigation,view:v,userId,now,pending,e
  const active=v.players.find(p=>p.active),meter=takeTwoMeter(b,at),lit=Math.ceil(Math.min(window.remaining,b.rules.stageMs)/b.rules.stageMs*15),rows=(b.layout.at(-1)?.row??0)+1;
  useLayoutEffect(()=>{playersRef.current?.querySelector('[data-active=true]')?.scrollIntoView({block:'nearest',inline:'nearest'});},[active?.id]);
  return <FullscreenGameShell gameplay={!replay} className="take-scene" title="Take 2" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
- navigation={navigation??(v.solo?<nav aria-label="Take 2 controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined)}
+ endControl={v.solo&&onAbandon&&<ArcadeAbandonButton disabled={pending} onClick={onAbandon}/>}
+ navigation={navigation??(v.solo?<nav aria-label="Take 2 controls"><button onClick={()=>setTab('lobby')}>Rules</button></nav>:undefined)}
  announcement={v.solo?false:undefined} panelTitle={v.solo?'Rules':undefined} panelDescription={`P-Town rules · ${b.rules.version}`} panel={panel??<TakeTwoRules version={b.rules.version}/>}>
  <div className="take-root" ref={root} data-take-two={sessionEnded?undefined:''}>
  {error&&!sessionEnded&&<div className="take-error" role="alert">{error} <button onClick={onReconnect}>Reconnect</button></div>}

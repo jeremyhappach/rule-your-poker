@@ -5,6 +5,7 @@ export const flipGap=720;
 const prefix=(s:V2Scene)=>s.phase==='board_reveal'?s.community.length:s.phase==='showdown'?s.chucky.length:0;
 function hold(s:V2Scene){
   switch(s.phase){
+    case 'fold':return 350;
     case 'deal':return 2450;
     case 'board_reveal':return s.community.length===2?220:s.community.length===3?600:450;
     case 'showdown':return !s.chucky.length?s.level*180+540:s.chucky.length===s.level?850:flipGap;
@@ -27,7 +28,9 @@ export function admit(frames:Frame[],s:V2Snapshot,now:number):Frame[]{
   if(active)queue.unshift(active);
   function add(scene:V2Scene){
     const last=queue.at(-1);
-    if(last&&(scene.since<last.scene.since||(scene.since===last.scene.since&&prefix(scene)<=prefix(last.scene))))return;
+    // Fold receipts and the following authoritative deal share a timestamp.
+    const order=(v:V2Scene)=>v.phase==='fold'?-1:prefix(v);
+    if(last&&(scene.since<last.scene.since||(scene.since===last.scene.since&&order(scene)<=order(last.scene))))return;
     queue.push({scene,at:Math.max(now,last?last.at+last.hold:now),hold:hold(scene),live:true});
   }
   function showdown(scene:V2Scene,origin:number){
@@ -48,7 +51,7 @@ export function admit(frames:Frame[],s:V2Snapshot,now:number):Frame[]{
     add(scene);
   }
   // Historical receipts allow visible catch-up without revealing an uncommitted card.
-  const scenes=[s.lastShowdown,s.lastRound,s].filter((v):v is V2Scene=>!!v).sort((a,b)=>a.since-b.since);
+  const scenes=[s.lastShowdown,s.lastRound,s.lastFold,s].filter((v):v is V2Scene=>!!v).sort((a,b)=>a.since-b.since||(a.phase==='fold'?-1:b.phase==='fold'?1:0));
   for(const scene of scenes)present(scene);
   return queue;
 }

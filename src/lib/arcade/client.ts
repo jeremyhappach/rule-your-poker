@@ -27,7 +27,7 @@ export async function arcadeRequest<T>(body:Record<string,unknown>):Promise<T>{
  for(let attempt=0;attempt<2;attempt++){
   let response:Response;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
-  try {if(timed)triTiming('fetch-dispatch',id,performance.now()-started,String(attempt));mark('fetch-dispatch');response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:body.game==='chucky-showdown'?2:['quintzee','eleven-up','royal-flash','boxdrop','trip-flip','take-two'].includes(body.game as string)?1:4}),signal:controller.signal});}
+  try {if(timed)triTiming('fetch-dispatch',id,performance.now()-started,String(attempt));mark('fetch-dispatch');response=await fetch('/api/arcade',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({...body,presentationVersion:body.game==='chucky-showdown'?3:['quintzee','eleven-up','royal-flash','boxdrop','trip-flip','take-two'].includes(body.game as string)?1:4}),signal:controller.signal});}
   catch{mark('request-failed');clearTimeout(timeout);lostResponse=true;if(attempt===0)continue;throw run21?new UncertainRun21Action('Connection lost.'):timed?new UncertainTriAction('Connection lost. Reconnect to restore your game.'):Error('Connection lost. Reconnect to restore your run.');}
   finally{if(!run21)clearTimeout(timeout);}
   mark('response-headers',response.headers.get('Server-Timing')??undefined);

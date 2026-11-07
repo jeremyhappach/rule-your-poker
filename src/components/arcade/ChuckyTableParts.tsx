@@ -1,4 +1,6 @@
-import {memo,useState,type CSSProperties} from 'react';
+import {AlertDialog,AlertDialogTrigger,AlertDialogContent,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter,AlertDialogCancel,AlertDialogAction} from '@/components/ui/alert-dialog';
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
+import {memo,type CSSProperties} from 'react';
 import {PlayingCard} from '@/components/PlayingCard';
 import type {Card} from '@/lib/cardUtils';
 export const CardSlot=memo(function CardSlot({card,flip,classicFace}:{card?:Card;flip?:boolean;classicFace?:boolean}){
@@ -8,13 +10,12 @@ export const CardSlot=memo(function CardSlot({card,flip,classicFace}:{card?:Card
     </span></span>;
 });
 export function EndRun({disabled,abandon}:{disabled:boolean;abandon:()=>void}){
-  const [confirm,setConfirm]=useState(false);
-  return <div className="cs-exit">
-    {confirm?<><p>End this run without a leaderboard score?</p>
-      <button disabled={disabled} onClick={abandon}>End run</button>
-      <button onClick={()=>setConfirm(false)}>Keep playing</button></>:
-      <button disabled={disabled} onClick={()=>setConfirm(true)}>Abandon run</button>}
-  </div>;
+  return <AlertDialog><AlertDialogTrigger asChild><ArcadeAbandonButton disabled={disabled}/></AlertDialogTrigger>
+    <AlertDialogContent><AlertDialogTitle>Abandon this run?</AlertDialogTitle>
+      <AlertDialogDescription>This run will end without a leaderboard score. Clocks continue while this dialog is open.</AlertDialogDescription>
+      <AlertDialogFooter><AlertDialogCancel>Keep playing</AlertDialogCancel>
+        <AlertDialogAction disabled={disabled} onClick={abandon}>Abandon run</AlertDialogAction></AlertDialogFooter>
+    </AlertDialogContent></AlertDialog>;
 }
 export function Riffle(){
   return <div className="cs-riffle" role="img" aria-label="Shuffling the remaining deck">

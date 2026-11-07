@@ -1,3 +1,4 @@
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {RoyalFlashRules} from '@/components/rules/RoyalFlashRules';
 export {RoyalFlashRules} from '@/components/rules/RoyalFlashRules';
 import {useLayoutEffect,useRef,useState,type ReactNode} from 'react';
@@ -41,7 +42,8 @@ export function RoyalFlashView({view:v,userId,now,pending,error,epoch,liveEntry=
  const send=(intent:RoyalIntent)=>{if(!canAct||submitted.current)return;submitted.current=true;onIntent(intent);};
  const active=v.players.find(p=>p.active),score=frame?.score??v.terminal?.score??b.score;
  return <FullscreenGameShell className="royal-scene" title="Royal Flash" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
- navigation={v.solo?<nav aria-label="Royal Flash controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
+ endControl={v.solo&&onAbandon&&<ArcadeAbandonButton disabled={pending} onClick={onAbandon}/>}
+ navigation={v.solo?<nav aria-label="Royal Flash controls"><button onClick={()=>setTab('lobby')}>Rules</button></nav>:undefined}
  announcement={v.solo?false:undefined} panelTitle={v.solo?'Rules':undefined} panelDescription={`P-Town rules · ${b.rules.version}`} panel={panel??<RoyalFlashRules version={b.rules.version}/>}>
  <div className="royal-root" ref={root} data-royal-flash={sessionEnded?undefined:''}>
  {error&&!sessionEnded&&<div className="royal-error" role="alert">{error} <button onClick={onReconnect}>Reconnect</button></div>}

@@ -20,6 +20,7 @@ interface Props {
   sessionEnded?: boolean;
   children: ReactNode;
   navigation?: ReactNode;
+  endControl?: ReactNode;
   announcement?: ReactNode;
   panelTitle?: string;
   panelDescription?: string;
@@ -28,18 +29,21 @@ interface Props {
 }
 
 /** Layout only. PersistentTableShell keeps the existing session/overlay providers. */
-export function FullscreenGameShell({className="", ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, announcement, panelTitle, sessionLabel = 'Session', panelDescription = 'Game clocks continue while this panel is open.', gameplay = true}: Props) {
+export function FullscreenGameShell({className="", ready = true, title, description, activeTab, setActiveTab, panel, scores, timer, actions, sessionEnded, children, navigation, endControl, announcement, panelTitle, sessionLabel = 'Session', panelDescription = 'Game clocks continue while this panel is open.', gameplay = true}: Props) {
   usePresentationSurfaceReady('fullscreen', ready);
   const sessionButton = useRef<HTMLButtonElement>(null);
+  const toolbar = <>
+    <div className="fullscreen-game-heading"><strong>{title}</strong><span>{description}</span></div>
+    {gameplay && ready && !sessionEnded && <GameplaySoundButton />}
+    {navigation ?? <nav aria-label="Game information">
+      <button ref={sessionButton} onClick={() => setActiveTab('lobby')}>{sessionLabel}</button>
+      <button onClick={() => setActiveTab('chat')}>Chat</button>
+      <button onClick={() => setActiveTab('history')}>History</button>
+    </nav>}
+  </>;
   return <section className={`fullscreen-game ${className}`} data-fullscreen-game-shell aria-label={`${title} fullscreen game`}>
-    <header className="fullscreen-game-toolbar">
-      <div className="fullscreen-game-heading"><strong>{title}</strong><span>{description}</span></div>
-      {gameplay && ready && !sessionEnded && <GameplaySoundButton />}
-      {navigation ?? <nav aria-label="Game information">
-        <button ref={sessionButton} onClick={() => setActiveTab('lobby')}>{sessionLabel}</button>
-        <button onClick={() => setActiveTab('chat')}>Chat</button>
-        <button onClick={() => setActiveTab('history')}>History</button>
-      </nav>}
+    <header className={endControl ? "fullscreen-game-toolbar arcade-toolbar" : "fullscreen-game-toolbar"}>
+      {endControl ? <><div className="arcade-toolbar-main">{toolbar}</div>{endControl}</> : toolbar}
     </header>
     {scores && <div className="fullscreen-game-scores">{scores}</div>}
     {announcement ?? <ShellAnnouncementRail />}

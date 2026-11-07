@@ -1,3 +1,4 @@
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {AchievementTime} from '@/components/arcade/AchievementTime';
 import {NotificationBell} from '@/components/delayed/NotificationBell';
@@ -131,7 +132,8 @@ function SoloRun({runId,userId}:{runId:string;userId:string}){
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen">
  <FullscreenGameShell className="run21-space-theme" title="Run21" panelTitle="Rules" panelDescription="Scoring for this game." description={view?'Round '+view.roundNumber+' of 3':'Connecting…'} ready={!!view}
  activeTab={tab} setActiveTab={setTab} panel={view&&<Run21ScoringReference config={view.config} solo/>}
- navigation={<nav aria-label="Arcade controls"><button onClick={()=>setTab('lobby')}>Rules</button><button onClick={()=>setAbandon(true)}>Abandon</button></nav>}
+ endControl={snapshot?.status==='active'&&<ArcadeAbandonButton disabled={pending} onClick={()=>setAbandon(true)}/>}
+ navigation={<nav aria-label="Arcade controls"><button onClick={()=>setTab('lobby')}>Rules</button></nav>}
  announcement={false}
  scores={<div className="arcade-run-score"><span>Total score</span><strong>{view?displayedScore(view,userId,now).toLocaleString():0}</strong></div>}
  actions={view&&<div className="run21-fullscreen-footer"><Run21FullscreenActions view={view} now={now} onIntent={onIntent} pending={pending}/></div>}>

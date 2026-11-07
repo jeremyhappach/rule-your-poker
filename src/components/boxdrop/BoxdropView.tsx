@@ -1,3 +1,4 @@
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {BoxdropRules} from '@/components/rules/BoxdropRules';
 export {BoxdropRules} from '@/components/rules/BoxdropRules';
 import {useEffect,useLayoutEffect,useRef,useState,type ReactNode} from 'react';
@@ -43,7 +44,8 @@ export function BoxdropView({replay=false,view:v,userId,now,pending,error,epoch,
  const active=v.players.find(p=>p.active),displayScore=result?(presentation?.displayScore??result.score):b.score;
  const seconds=Math.ceil(window.remaining/1000),clearing=result?.reason==='full_clear'&&result.elapsed<3000;
  return <FullscreenGameShell gameplay={!replay} className="box-scene" title="Boxdrop" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
- navigation={navigation??(v.solo?<nav aria-label="Boxdrop controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined)}
+ endControl={v.solo&&onAbandon&&<ArcadeAbandonButton disabled={pending} onClick={onAbandon}/>}
+ navigation={navigation??(v.solo?<nav aria-label="Boxdrop controls"><button onClick={()=>setTab('lobby')}>Rules</button></nav>:undefined)}
  announcement={v.solo?false:undefined} panelTitle={v.solo?'Rules':undefined} panelDescription={`P-Town rules · ${b.rules.version}`} panel={panel??<BoxdropRules/>}>
  <div ref={root}>{layer&&createPortal(<div className="box-plane" ref={viewportRef} data-boxdrop="">
  <header className="box-scoreband"><span className="box-round">{v.round===3?'Bonus round':`Round ${v.round}/2`}</span><div className="box-scores" data-multiplayer={!v.solo} aria-label="Player scores">{v.players.map(p=><BoxdropScorePill key={p.id} root={viewportRef} name={v.solo?'SCORE':p.name} value={p.active?displayScore:p.score} active={p.active} fraction={p.active&&!sessionEnded?(presentation?.fraction??0):0} balance={!v.solo?balance?.(p):undefined}/>)}</div>{!sessionEnded&&<button className="box-bank" disabled={!canAct} onClick={()=>send({type:'take_score'},-2)}>Take Score</button>}</header>

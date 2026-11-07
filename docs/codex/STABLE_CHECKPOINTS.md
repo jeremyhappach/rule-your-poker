@@ -1,5 +1,15 @@
 # Stable checkpoints — do not reopen without a new repro
 
+## 2026-11-07 — Arcade abandon and Chucky automated smoke
+
+Checkpoint tag `arcade-chucky-hotfix-2026-11-07` records the qualified hotfix.
+All eleven Arcade games passed three mobile sizes, cancel, confirmed abandon
+and no leaderboard result in the real-component/service/database fixture.
+Chucky passed all seven bonus values, three exclusive win accents, Fold feedback,
+mute and silent reload. Hosted candidate/installed authority digest:
+`b873e2f649b36feab582af16d050d67b`. Physical iPhone acceptance is still pending;
+this checkpoint records automated smoke only. See `ARCADE_CHUCKY_HOTFIX.md`.
+
 2026-11-05 Jeremy's iPhone PWA Async TriTowers retest passed on product commit
 `84696641119d3aaa2c432f6284cb82343fe067a2`: the starting bell plays once at own-turn
 entry after the opponent review without another tap. Provenance: reply `2` to

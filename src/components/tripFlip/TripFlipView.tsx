@@ -1,3 +1,4 @@
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {useVisibleCardChangeAudio} from '@/hooks/useVisibleCardChangeAudio';
 import {TripFlipRules} from '@/components/rules/TripFlipRules';
 export {TripFlipRules} from '@/components/rules/TripFlipRules';
@@ -51,7 +52,8 @@ export function TripFlipView({view:v,userId,now,pending,error,epoch,liveEntry=fa
  const active=v.players.find(p=>p.active),lit=window.phase==='intro'?b.rules.dots:result?result.timeDots:window.phase==='playing'?tripFlipDots(b,window.remaining):0;
  const displayScore=result?(presentation?.displayScore??result.score):b.score;
  return <FullscreenGameShell className="trip-scene" title="Trip Flip" description="" activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded}
- navigation={v.solo?<nav aria-label="Trip Flip controls"><button onClick={()=>setTab('lobby')}>Rules</button>{onAbandon&&<button onClick={onAbandon}>Abandon</button>}</nav>:undefined}
+ endControl={v.solo&&onAbandon&&<ArcadeAbandonButton disabled={pending} onClick={onAbandon}/>}
+ navigation={v.solo?<nav aria-label="Trip Flip controls"><button onClick={()=>setTab('lobby')}>Rules</button></nav>:undefined}
  announcement={v.solo?false:undefined} panelTitle={v.solo?'Rules':undefined} panelDescription={`P-Town rules · ${b.rules.version}`} panel={panel??<TripFlipRules/>}>
  <div className="trip-root" ref={root} data-trip-flip={sessionEnded?undefined:''}>
  {error&&!sessionEnded&&<div className="trip-error" role="alert">{error} <button onClick={onReconnect}>Reconnect</button></div>}

@@ -1,6 +1,7 @@
+import {ArcadeAbandonButton} from '@/components/arcade/ArcadeAbandonButton';
 import {memo,useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
-import {ArrowLeft,ArrowLeftRight,FlaskConical,Layers,LogOut} from 'lucide-react';
+import {ArrowLeft,ArrowLeftRight,FlaskConical,Layers} from 'lucide-react';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {CountdownDots} from '@/components/ui/CountdownDots';
 import {PlayingCard} from '@/components/PlayingCard';
@@ -103,10 +104,10 @@ export function SoloCribLab({runId,userId,transport:provided}:{runId:string;user
   const reveal=phase==='cut'&&(hold?game.liveTransition===hold.id:!!cue&&cue.revision+1===v.revision);
   return <main className="arcade-run lab-scene" data-shell-presentation-mode="fullscreen">
     <div ref={root} className="lab-table" data-phase={phase} data-round={v.round}>
-      <header className="lab-header"><Link aria-label="Back to Crib Lab leaderboard" to="/arcade/crib-lab"><ArrowLeft size={20}/></Link>
+      <header className="lab-header arcade-toolbar"><div className="arcade-toolbar-main"><Link aria-label="Back to Crib Lab leaderboard" to="/arcade/crib-lab"><ArrowLeft size={20}/></Link>
         <h1><FlaskConical aria-hidden="true"/>Crib Lab</h1>
-        <GameplaySoundButton/><ArcadeInfo game="crib-lab" name="Crib Lab" ruleset={v.ruleset}/>
-        {v.status==='active'&&<AlertDialog><AlertDialogTrigger asChild><button className="lab-abandon" aria-label="Abandon game"><LogOut size={16}/>Abandon</button></AlertDialogTrigger>
+        <GameplaySoundButton/><ArcadeInfo game="crib-lab" name="Crib Lab" ruleset={v.ruleset}/></div>
+        {v.status==='active'&&<AlertDialog><AlertDialogTrigger asChild><ArcadeAbandonButton/></AlertDialogTrigger>
           <AlertDialogContent><AlertDialogTitle>Abandon this game?</AlertDialogTitle><AlertDialogDescription>This run will end without a leaderboard score.</AlertDialogDescription>
             <AlertDialogFooter><AlertDialogCancel>Keep playing</AlertDialogCancel><AlertDialogAction disabled={!game.ready||game.pending} onClick={()=>game.act('abandon')}>End game</AlertDialogAction></AlertDialogFooter>
           </AlertDialogContent></AlertDialog>}

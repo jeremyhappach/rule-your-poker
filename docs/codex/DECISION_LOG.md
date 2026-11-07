@@ -1,3 +1,11 @@
+## 2026-11-07 — Chucky bonuses are frozen at admission; Fold is a presentation receipt
+
+V3 adds a bonus table to the admitted configuration and uses one authoritative
+helper for scoring and final validation. V1/v2 continue their original curve;
+no historical result is rewritten. Accepted Fold retains only an already-public
+scene. The connected client may sweep it before the next scene; recovery does
+not replay it and no gameplay deadline changes.
+
 ## 2026-11-05 — Review identity is presentation-only; TriTowers commits in one RPC
 
 Saved Async results emphasize their receipt actor through the final hold. The
