@@ -156,6 +156,18 @@ presentation identities; it has no admission role. Separate derivatives live in
 `public/game-branding/async-v1/`. Preview/proofs are in `dev/async-branding/`;
 qualification and the explicit publication hold are in `ASYNC_APPROVED_BRANDING.md`.
 
+## Arcade lobby ordering
+
+`src/lib/arcade/lobbyLayout.ts` owns placement/default merging and visibility-safe
+section projection. `lobbyLayoutClient.ts` reads and compare-and-swaps the shared
+`public.arcade_lobby_layout` row; `useArcadeLobbyLayout.ts` refreshes on entry/focus.
+`ArcadeSwitchboard.tsx` renders nonempty sections using unchanged `ArcadeTile`.
+`admin/ArcadeOrderingPanel.tsx` stages and saves from the existing Admin tab in
+`pages/Index.tsx`. Installed migration `20261107220812` owns validation, revision and RLS.
+`dev/arcade-ordering/verify.mjs` proves the local browser/client/SQL boundary.
+Hosted rollback/API/production checks are in `hosted-proof.sql` and
+`hosted-smoke.mjs` in that directory. See `ARCADE_LOBBY_ORDERING.md`.
+
 ## Approved Arcade lobby
 
 `src/components/arcade/ArcadeTile.tsx` owns the shared compact banner/link and

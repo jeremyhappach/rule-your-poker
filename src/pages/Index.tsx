@@ -63,6 +63,7 @@ import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog"
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
 // LayoutTuningAdminSection now lives inside Geometry Lab.
 import { DebugPillsAdminSection } from "@/components/admin/DebugPillsAdminSection";
+import { ArcadeOrderingPanel } from "@/components/admin/ArcadeOrderingPanel";
 import { GeometryLab } from "@/components/admin/GeometryLab";
 import { GeometryLabCrashBoundary } from "@/components/admin/GeometryLabCrashBoundary";
 import { GeometryLabDraftProvider } from "@/lib/geometryLab/GeometryLabDraftProvider";
@@ -616,6 +617,7 @@ const Index = () => {
                 <ScrollArea className="h-full pr-4 overscroll-contain">
                   <div className="space-y-4 pt-2">
                     <Button variant="outline" onClick={() => setShowRecentLogins(true)}>Recent logins</Button>
+                    <ArcadeOrderingPanel />
                     {/* Under Maintenance Toggle */}
                     <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
                       <div className="space-y-0.5">

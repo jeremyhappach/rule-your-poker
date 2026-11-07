@@ -14,6 +14,12 @@ export type Database = {
   }
   public: {
     Tables: {
+      arcade_lobby_layout: {
+        Row: {id:boolean;layout:Json;revision:number;updated_at:string;updated_by:string|null}
+        Insert: {id?:boolean;layout:Json;revision?:number;updated_at?:string;updated_by?:string|null}
+        Update: {layout?:Json}
+        Relationships: []
+      }
       arcade_game_artwork: {
         Row: {game:string;object_path:string|null;updated_at:string;updated_by:string|null}
         Insert: {game:string;object_path?:string|null;updated_at?:string;updated_by?:string|null}

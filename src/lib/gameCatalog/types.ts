@@ -6,6 +6,8 @@ export type Capability = 'horses-blitz' | '357-drop' | 'crib-lab' | 'chucky-show
 export type GameDescriptor = {
  id: string; defaultsKey: string; name: string; category: Category; order: number;
  family: 'traditional' | 'megatouch'; modes: readonly ('multiplayer' | 'arcade')[];
+ /** Default placement only; saved Arcade layout may override it. */
+ arcadeSection?: 'originals' | 'other';
  players: {min: number; max: number; selection: 'active-roster' | 'solo'};
  bots: 'supported' | 'fake-money-only' | 'unsupported';
  moneyModes?: readonly ('fake' | 'real')[];

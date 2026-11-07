@@ -1,3 +1,19 @@
+# Arcade lobby sections and Admin ordering — November 7, 2026 — owner smoke pending
+
+Arcade now groups P-Town Originals before Other Games and prominently explains
+“Click the info icon to view game rules”. Existing artwork, two-column geometry,
+visibility, Rules and launch owners are preserved. Admin offers drag, section
+selection, keyboard moves and explicit Save of both sections atomically.
+
+Installed migration `20261107220812` protects the shared revisioned layout with
+existing admin/account authorization. Candidate and installed hosted rollback
+proofs, authenticated PostgREST checks, local two-session browser/layout checks,
+focused tests, TypeScript and build pass. The release preserves main
+`74c2c5dc5`, including Horses Blitz v2 and 357 Drop final results.
+Checkpoint: `arcade-lobby-ordering-2026-11-07`; its verified tag records exact
+production publication and full-app browser checks. Physical phone smoke remains
+pending. See [release evidence and smoke](ARCADE_LOBBY_ORDERING.md).
+
 # 357 Drop final results — November 7, 2026 — owner smoke pending
 
 Completed hands use compact reserved result lines with larger names and scores.

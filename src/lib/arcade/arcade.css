@@ -1,4 +1,7 @@
 body:has(.arcade-page),body:has(.arcade-run){background:#0c171e}
+.arcade-section+.arcade-section{margin-top:1.25rem}
+.arcade-section-heading{font-size:1.05rem;font-weight:750;color:#eac16d;margin-bottom:.55rem}
+.arcade-rules-hint{display:flex;align-items:center;gap:.65rem;margin-bottom:1rem;padding:.75rem;border:1px solid #eac16d66;border-radius:.65rem;background:#eac16d12;color:#ffe3a5;font-size:1rem;font-weight:650;line-height:1.4}.arcade-rules-hint svg{flex-shrink:0}
 .arcade-page{container-type:inline-size;max-width:52rem;margin:auto;padding:clamp(.75rem,3%,1.5rem);color:#f5f1df;min-height:100%;background:radial-gradient(ellipse at top,#172b36,#0c171e 85%)}
 .arcade-back{display:inline-flex;align-items:center;gap:.4rem;color:#c9d3d7;min-height:2.75rem;margin-bottom:.35rem}
 .arcade-heading{display:flex;align-items:center;gap:.65rem;margin-bottom:1rem;color:#eac16d}.arcade-heading h1{font-size:clamp(1.4rem,5cqi,1.8rem);font-weight:800}.arcade-heading p{font-size:.9rem;color:#b9c7cc}
