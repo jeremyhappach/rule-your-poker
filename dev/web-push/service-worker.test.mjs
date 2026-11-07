@@ -50,13 +50,40 @@ test('all push kinds render event titles and ignore unauthorized display fields'
   const f=fixture();await f.bind({binding:'binding-a'});
   await f.fire('push',{data:{json:()=>({...payload,kind,tableId:payload.matchId,title:'SECRET',body:'SECRET',gameName:'SECRET',stake:900,balance:900,rack:'SECRET',score:900})}});
   assert.equal(f.shown.length,1);assert.equal(f.shown[0].title,title);assert.equal(f.shown[0].body,body);
-  assert.equal(f.shown[0].silent,false);assert.equal(f.shown[0].renotify,false);
+  assert.equal(f.shown[0].silent,false);assert.equal(f.shown[0].renotify,kind!=='table_open');
   assert.equal(f.shown[0].tag,(kind==='table_open'?'ptown-table-':'ptown-match-')+payload.matchId);
   assert(!/SECRET|900|poker|ptown|money/i.test(JSON.stringify({title:f.shown[0].title,body:f.shown[0].body})));
   await f.fire('push',{data:{json:()=>({...payload,kind,tableId:payload.matchId,expiresAt:Date.now()-1})}});
   assert.equal(f.shown[0].title,kind==='table_open'?'Table Update':'Match Update');assert.equal(f.shown[0].silent,true);
  }
 });
+test('fresh async events re-alert over an earlier same-match alert, but retries and expired events stay silent',async()=>{
+ for(const kind of ['invite','turn','last_call']){
+  const f=fixture();await f.bind({binding:'binding-a'});
+  await f.fire('push',{data:{json:()=>payload}});
+  const fresh={...payload,kind,eventId:'44444444-4444-4444-8444-444444444444'};
+  await f.fire('push',{data:{json:()=>fresh}});
+  assert.equal(f.shown.length,1);assert.equal(f.shown[0].tag,'ptown-match-'+payload.matchId);
+  assert.equal(f.shown[0].data.eventId,fresh.eventId);
+  assert.equal(f.shown[0].renotify,true);assert.equal(f.shown[0].silent,false);
+  await f.fire('push',{data:{json:()=>fresh}});
+  assert.equal(f.shown.length,1);assert.equal(f.shown[0].renotify,false);assert.equal(f.shown[0].silent,true);
+  const expired={...fresh,eventId:'55555555-5555-4555-8555-555555555555',expiresAt:Date.now()-1};
+  await f.fire('push',{data:{json:()=>expired}});
+  assert.equal(f.shown[0].renotify,false);assert.equal(f.shown[0].silent,true);
+ }
+});
+
+test('fresh table and registration replacements retain their existing alert behavior',async()=>{
+ for(const kind of ['table_open','registration']){
+  const f=fixture();await f.bind({binding:'binding-a'});
+  const p={...payload,kind,tableId:payload.matchId,registrationUserId:payload.matchId};
+  await f.fire('push',{data:{json:()=>p}});
+  await f.fire('push',{data:{json:()=>({...p,eventId:'44444444-4444-4444-8444-444444444444'})}});
+  assert.equal(f.shown.length,1);assert.equal(f.shown[0].renotify,false);assert.equal(f.shown[0].silent,false);
+ }
+});
+
 test('worker persists receipt across duplicate delivery and never displays private game data',async()=>{
  const f=fixture();await f.bind({binding:'binding-a'});await f.fire('push',{data:{json:()=>({...payload,rack:'SECRET',score:900})}});await f.fire('push',{data:{json:()=>payload}});
  assert.equal(f.shown.length,1);assert.equal(f.shown[0].silent,true);assert(!JSON.stringify(f.shown).includes('SECRET'));assert(!JSON.stringify(f.shown).includes('900'));

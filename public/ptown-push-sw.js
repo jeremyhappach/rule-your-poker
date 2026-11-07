@@ -31,14 +31,14 @@ self.addEventListener('push',event=>event.waitUntil(serial(async()=>{
  const current=await read('binding');if(!current||current.binding!==p.binding)return;
  const receipts=await read('receipts')??[];
  const duplicate=receipts.includes(p.eventId),expired=!Number.isFinite(p.expiresAt)||p.expiresAt<=Date.now();
- // Valid retransmissions replace the same visible card without renotify. Safari
- // requires user-visible handling for each received push, including retries.
+ // Fresh async events re-alert when replacing an earlier card for this match.
+ // Safari requires visible handling even for retries; keep retries/expiry silent.
  const title=registration?'New P-Town Poker User':expired?(table?'Table Update':'Match Update'):{invite:'New Match Invitation',turn:'Your turn',last_call:'Last Call!',table_open:'New Table Available'}[p.kind];
  const opponent=typeof p.opponentName==='string'?p.opponentName.trim():'';
  const turnBody=opponent?'Your turn in an async match with '+opponent+'.':'Your turn in an async match.';
  await self.registration.showNotification(title,{
   body:registration?(expired?'Open Admin → Players to check account access.':String(p.username??'New player').slice(0,80)+' — Approval Required'):expired?(table?'Open the app to check available tables.':'Open the app to check your async matches.'):table?'A new table is open for joining.':p.kind==='invite'?'You have a new async match invitation.':p.kind==='last_call'?(opponent?'An async turn with '+opponent+' is still waiting. Check its deadline.':'An async turn is still waiting. Check its deadline.'):turnBody,
-  tag:registration?'ptown-registration-'+p.registrationUserId:table?'ptown-table-'+p.tableId:'ptown-match-'+p.matchId,renotify:false,silent:duplicate||expired,
+  tag:registration?'ptown-registration-'+p.registrationUserId:table?'ptown-table-'+p.tableId:'ptown-match-'+p.matchId,renotify:!table&&!registration&&!duplicate&&!expired,silent:duplicate||expired,
   data:{registrationUserId:p.registrationUserId,matchId:p.matchId,tableId:p.tableId,kind:p.kind,binding:p.binding,eventId:p.eventId},
  });
  await write('receipts',[...receipts.filter(id=>id!==p.eventId),p.eventId].slice(-128));

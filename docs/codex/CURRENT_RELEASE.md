@@ -1,3 +1,16 @@
+# Async push re-alert hotfix — November 7, 2026 — phone acceptance pending
+
+Fresh async invitations, turns and Last Call alerts now request re-alerting when
+replacing the same match notification. Retries and expired events remain silent;
+tags, binding, destinations and other notification types are preserved. All 37
+push tests pass. Historical migration `20261107024144` is verified installed and
+tracked without reapplication. Read-only inspection found that later migration
+`20261107034130` restored active-user suppression for turn and Last Call in both
+dispatch functions; a separately approved forward correction is still needed.
+No physical iPhone display is confirmed and the 8:00 AM miss remains unexplained.
+Checkpoint: `async-push-realert-2026-11-07`.
+[Evidence, production discrepancy and phone checks](ASYNC_PUSH_DELIVERY_FIRST.md).
+
 # Arcade abandon and Chucky feedback — November 7, 2026
 
 Jeremy approved the shared top-right Abandon run control across all eleven Arcade games,
