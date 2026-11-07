@@ -34,8 +34,9 @@ export function PushLifecycle(){
   }).catch(()=>{if(alive)resolveOnboardingPushEntry(null);});};
   const message=(event:MessageEvent)=>{if(event.data?.type==='push-navigation')sync();};
   sync();document.addEventListener('visibilitychange',sync);window.addEventListener('online',sync);
+  window.addEventListener('ptown-push-device-change',sync);
   navigator.serviceWorker?.addEventListener('message',message);
-  return()=>{alive=false;document.removeEventListener('visibilitychange',sync);window.removeEventListener('online',sync);navigator.serviceWorker?.removeEventListener('message',message);};
+  return()=>{alive=false;document.removeEventListener('visibilitychange',sync);window.removeEventListener('online',sync);window.removeEventListener('ptown-push-device-change',sync);navigator.serviceWorker?.removeEventListener('message',message);};
  },[userId,pathname,search,navigate]);
  return null;
 }

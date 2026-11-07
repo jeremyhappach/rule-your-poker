@@ -4,12 +4,12 @@ const key=name=>new URL('/__push_local__/'+name,self.location.origin).href;
 const read=async name=>{const c=await caches.open(STORE);return (await c.match(key(name)))?.json();};
 const write=async(name,value)=>{const c=await caches.open(STORE);await c.put(key(name),new Response(JSON.stringify(value)));};
 // Temporary, local-only trace for the failed Hap phone test. Expires automatically.
-const TRACE_VERSION='push-trace-20261107-1',TRACE_UNTIL=Date.parse('2026-11-09T00:00:00Z');
+const TRACE_VERSION='push-trace-20261107-2',TRACE_UNTIL=Date.parse('2026-11-09T00:00:00Z');
 const traceHash=async value=>typeof value==='string'?Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),b=>b.toString(16).padStart(2,'0')).join(''):null;
 async function trace(p,stage,details={}){try{
  if(Date.now()>=TRACE_UNTIL||p?.matchId!=='d78bc9e8-2ede-4bbd-9032-80cfdef01aa6')return;
  const payloadBindingHash=await traceHash(p.binding);
- if(payloadBindingHash!=='ce088752b9efb265bf36c0cb633c195a2d829c9aaf55d0476eaa6ed8c4c78111')return;
+ if(payloadBindingHash!=='ce088752b9efb265bf36c0cb633c195a2d829c9aaf55d0476eaa6ed8c4c78111'&&(await read('binding'))?.userId!=='d7dc1928-3727-4351-b0ff-0e80c81c2953')return;
  const {currentBinding,...safe}=details;
  await write('diagnostics',[...(await read('diagnostics')??[]),{version:TRACE_VERSION,at:Date.now(),eventId:p.eventId,stage,payloadBindingHash,...safe,
   ...('currentBinding' in details?{currentBindingHash:await traceHash(currentBinding)}:{})}].slice(-48));

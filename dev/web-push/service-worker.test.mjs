@@ -34,6 +34,15 @@ test('worker trace records showNotification rejection and never fabricates a sav
  const log=await f.read('diagnostics');assert(log.some(x=>x.stage==='show_rejected'&&x.errorName==='NotAllowedError'));
  assert(!(await f.read('receipts')).includes(payload.eventId));
 });
+test('trace follows Hap reenrollment in the scoped match without tracing another account',async()=>{
+ for(const userId of ['d7dc1928-3727-4351-b0ff-0e80c81c2953','other-account']){
+  const f=fixture({trace:true});await f.bind({binding:'new-binding',userId});
+  await f.fire('push',{data:{json:()=>({...payload,binding:'new-binding'})}});
+  assert.equal(f.shown.length,1);
+  if(userId==='other-account')assert.equal(await f.read('diagnostics'),undefined);
+  else assert.equal((await f.read('diagnostics')).at(-1).stage,'receipt_saved');
+ }
+});
 test('diagnostic storage failures, other matches and expired scope cannot affect delivery',async()=>{
  for(const options of [{trace:true,diagnosticWriteFails:true},{},{trace:true,now:Date.parse('2026-11-10T00:00:00Z')}]){
   const f=fixture(options);await f.bind({binding:payload.binding});await f.fire('push',{data:{json:()=>payload}});

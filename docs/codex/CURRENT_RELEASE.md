@@ -1,5 +1,14 @@
 # Async push — November 7, 2026 — physical smoke FAILED, scoped tracing
 
+The first authenticated phone snapshot at 10:32:38 AM Central showed permission
+granted but no local binding, worker binding or browser PushSubscription. Neither
+missed event had a cached worker receipt. Jeremy confirmed no Notification Center
+entry and reported that he may have switched accounts and switched back without
+manually disabling notifications. Account switching intentionally clears local
+enrollment; the exact historical cleanup is not logged. Jeremy has now explicitly
+enabled the device again. Binding persistence and actual delivery remain unverified.
+The expiring trace now follows Hap's replacement binding in the same scoped match.
+
 After both corrections were published, Jeremy cleared Hap's waiting turns and
 returned a Run21 turn from Happach Gmail with Hap's iPhone backgrounded. Event
 `ee92e592-013d-4bff-a0ef-510562703c3a` was generated at 10:15:54 AM Central;

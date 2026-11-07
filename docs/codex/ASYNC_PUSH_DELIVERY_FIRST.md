@@ -2,6 +2,37 @@
 
 ## Physical smoke failure and temporary diagnostics
 
+### First actual phone report and reenrollment
+
+At **16:32:38 UTC / 10:32:38 AM Central**, the authenticated installed-app
+snapshot from `https://holm357.com` showed `permission=granted`,
+`subscriptionPresent=false`, null local/worker binding hashes, no notification
+cards and no cached receipt for either failed event. The old active worker did
+not support the version query; the diagnostic worker was waiting to activate.
+Jeremy also confirmed there was no new Notification Center entry.
+
+This establishes that the current installation was unenrolled despite retained
+OS permission. It does not retrospectively prove exactly when enrollment was
+removed. `controller.setAccount` intentionally calls `clear` on logout or account
+switch, clearing local and worker binding/receipts and unsubscribing before a
+best-effort server revoke. That revoke can fail after authentication changes,
+leaving an enabled server row. Jeremy reported he may have switched accounts and
+switched back but had not manually disabled notifications, which is consistent
+with this path. Do not describe that possible history as a directly observed
+cleanup event.
+
+Jeremy used the existing **Enable on this device** gesture and reported enabled.
+The trace now accepts the original binding fingerprint or Hap's current local
+account binding, still only for this match and within the existing expiry. Other
+accounts remain out of scope. Device-change events also request a snapshot.
+Close/reopen persistence and actual physical display are the next gates.
+The new subscription is `e1b77cb9-5fba-4475-bdc2-a97a4cec908f`, created at
+16:36:24 UTC with a valid session. Its binding fingerprint is
+`033771a6cadd0cc6185bde9baeef052aa9db989cb77309356671834a6f363f44`.
+The original enabled subscription and failed delivery have not been rewritten.
+The reenrollment trace update passes 45 push tests, ten onboarding tests and the
+application/API typecheck. Checkpoint: `async-push-reenrollment-trace-2026-11-07`.
+
 Jeremy completed Hap's TriTowers game and current Run21 turn. The database then
 showed no Hap availability keys and `turn_epoch=NULL`; Run21 was with Happach
 Gmail at segment 3. Hap's installed iPhone app was backgrounded. Gmail's normal
