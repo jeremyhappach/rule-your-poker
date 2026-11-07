@@ -1,0 +1,35 @@
+import {readFileSync} from 'node:fs';
+import {randomUUID} from 'node:crypto';
+import assert from 'node:assert/strict';
+import {connect} from '../quintzee/database.mjs';
+const source=JSON.parse(readFileSync('qualification.local/horses-blitz/context.json')).database;
+if(!/^horses_blitz_v1_\d+$/.test(source))throw Error('Disposable database required');
+const db='horses_blitz_race_'+Date.now(),admin=await connect('postgres');
+await admin.query('CREATE DATABASE '+db+' TEMPLATE '+source);
+const clients=[await connect(db),await connect(db)],c=clients[0],actor=randomUUID(),token=randomUUID();
+const get=async(conn,sql,args=[])=>(await conn.query(sql,args)).rows[0].r;
+try{
+ await c.query('insert into auth.users(id) values($1)',[actor]);
+ await c.query('insert into public.account_access(user_id,enabled,ever_enabled) values($1,true,true) on conflict(user_id) do update set enabled=true,ever_enabled=true',[actor]);
+ await c.query('insert into public.profiles(id,username,is_active) values($1,$2,true) on conflict(id) do update set is_active=true',[actor,'HB race '+actor.slice(0,8)]);
+ await c.query("update private.arcade_rulesets set enabled=true where id='horses-blitz/1'");
+ await c.query("update private.arcade_recovery_state set failure=null,last_completed_at=clock_timestamp(),claimed=true,token=$1,expires_at=clock_timestamp()+interval '1 minute'",[token]);
+ const request=randomUUID(),starts=await Promise.all(clients.map(conn=>get(conn,"select public.arcade_start($1,$2,'horses-blitz') r",[actor,request])));assert.equal(starts[0].id,starts[1].id);
+ const id=starts[0].id,step=(conn,who,rev=null,round=null,req=null,action=null,items=[])=>get(conn,'select public.arcade_horses_blitz_step($1,$2,$3,$4,$5,$6,$7,$8) r',[who,id,rev,round,req,action,items,who?null:token]);
+ let v=(await step(c,actor)).projection;
+ await c.query("update private.arcade_runs set state=state||jsonb_build_object('dice','[1,4,4,2,6]'::jsonb,'set',private.horses_blitz_set('[1,4,4,2,6]',1)) where id=$1",[id]);
+ const bank=randomUUID();
+ const duplicate=await Promise.all(clients.map(conn=>step(conn,actor,v.revision,v.roundId,bank,'bank')));
+ assert.deepEqual(duplicate.map(x=>x.outcome).sort(),['committed','duplicate']);assert.equal(duplicate[0].projection.base,390);
+ await c.query("update private.arcade_runs set state=jsonb_set(state,'{phaseUntil}','0') where id=$1",[id]);v=(await step(c,actor)).projection;assert.equal(v.hand,2);
+ const contested=await Promise.all(clients.map(conn=>step(conn,actor,v.revision,v.roundId,randomUUID(),'roll',[0,1,2,3,4])));
+ assert.deepEqual(contested.map(x=>x.outcome).sort(),['committed','stale']);v=(await step(c,actor)).projection;
+ await c.query("update private.arcade_runs set state=state||jsonb_build_object('deadline',100000,'startedAt',0),due_at=0 where id=$1",[id]);
+ const timed=await Promise.all([step(c,null),step(clients[1],actor,v.revision,v.roundId,randomUUID(),'roll')]);
+ assert.equal(timed[1].outcome,'stale');assert.equal(timed[0].projection.phase,'summary');assert.equal(timed[0].projection.base,390);
+ v=timed[0].projection;
+ const next=await Promise.all(clients.map(conn=>step(conn,actor,v.revision,v.roundId,randomUUID(),'next_round')));
+ assert.deepEqual(next.map(x=>x.outcome).sort(),['committed','stale']);assert.equal(next[0].projection.round,2);
+ assert.equal((await step(c,actor,duplicate[0].projection.revision-1,duplicate[0].projection.roundId,bank,'bank')).outcome,'duplicate');
+ console.log('PASS — concurrent starts, bank UUID replay, competing rolls, deadline race, late replay and competing Next Round');
+}finally{for(const conn of clients)await conn.end();await admin.query('DROP DATABASE '+db);await admin.end();}

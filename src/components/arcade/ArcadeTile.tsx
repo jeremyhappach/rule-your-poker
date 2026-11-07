@@ -13,7 +13,7 @@ export function ArcadeTile(props: ComponentProps<typeof ArcadeInfo>) {
     <Link className="arcade-banner-link" to={'/arcade/'+game} aria-label={name+' leaderboard'}>
       <h2 className={useApproved ? 'sr-only' : 'arcade-banner-title'}>{name}</h2>
       {useApproved ? <img className="arcade-banner-art" alt="" width={1466} height={564}
-        src={source+'-480.webp'} srcSet={`${source}-480.webp 480w, ${source}-960.webp 960w`}
+        src={approved.source??source+'-480.webp'} srcSet={approved.source?undefined:`${source}-480.webp 480w, ${source}-960.webp 960w`}
         sizes="(min-width: 832px) 387px, calc((100vw - 36px) / 2)" decoding="async"/>
         : <ArcadeArtwork path={artwork?.object_path??null}/>}
     </Link>

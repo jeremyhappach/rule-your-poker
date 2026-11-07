@@ -1,5 +1,6 @@
 /** Approved 2026-11-01 handoff. Catalog still owns eligibility, names and order. */
-export const APPROVED_TILE_ARTWORK: Readonly<Record<string, {slug:string; infoBottom?:string}>> = {
+export const APPROVED_TILE_ARTWORK: Readonly<Record<string, {slug:string; infoBottom?:string;source?:string}>> = {
+  'horses-blitz': {source:"/arcade/approved-v1/horses-blitz.png",slug:"horses-blitz"},
   '357-drop': {slug:'357-drop'},
   run21: {slug:'run21', infoBottom:'9.2cqi'},
   'tri-towers': {slug:'tri-towers'},

@@ -1,3 +1,13 @@
+## 2026-11-07 — Horses Blitz preserves a round summary until Next Round
+
+Horses Blitz v1 uses a single server-owned dice/scoring rule core, the selected
+Take 2 timer policy (100 seconds and 50 points per whole second remaining), and
+three ten-hand rounds. Jeremy explicitly requested Next Round after rounds one
+and two: these summaries persist with no deadline until an authorized command.
+The third round uses canonical atomic Arcade completion and leaderboard flow.
+The early-bank scoring ladder and completion-only timer bonus remain separate.
+See `HORSES_BLITZ.md` for the installed proof and release record.
+
 ## 2026-11-07 — Pending invitations delete; retry receipts and invalidation survive
 
 Cancel and accept retain the same parent lock. Only a sender's pristine,

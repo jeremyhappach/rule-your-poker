@@ -1,5 +1,8 @@
 # Codex context index
 
+Horses Blitz rules, Arcade authority, manual round-summary continuation and
+release qualification: `HORSES_BLITZ.md`.
+
 This directory is the durable project memory for P-Town Poker. New sessions should read this index, `CURRENT_RELEASE.md`, and only the files relevant to the task.
 
 Mobile Round 2 onboarding, complete rules/mode audit, Mega under Other and splash

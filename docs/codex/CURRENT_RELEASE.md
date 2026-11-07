@@ -1,3 +1,18 @@
+# Horses Blitz / 1 — November 7, 2026 — qualified, owner smoke pending
+
+The solo P-Town Original adds three rounds of ten five-dice hands, wild 1s,
+the approved early-roll scoring ladder and Take 2's 100-second / 50-per-second
+timer policy. Durable summaries wait for Next Round; final totals use Arcade
+results. The supplied banner and portrait design retain shared header controls.
+
+Hosted candidate/installed rollback proofs, independent races, exact worker
+recovery, all three rounds at 320px, six layouts, lost-response replay, 61 focused
+tests, TypeScript and production build qualify the release. Migration
+`20261107202340` and healthy recovery worker v21 are installed; activation follows
+verified client publication. Checkpoint: `horses-blitz-v1-2026-11-07`, with the
+matching `-verified` tag recording publication. Physical iPhone smoke is pending.
+[Rules, ownership, evidence and smoke](HORSES_BLITZ.md).
+
 # 357 Drop / 1 — November 7, 2026 — qualified, owner smoke pending
 
 357 Drop adds a solo 120-second Arcade run with three fixed lanes, lane-specific
