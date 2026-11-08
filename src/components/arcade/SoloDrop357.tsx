@@ -34,20 +34,20 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
  const [carryDraft,setCarryDraft]=useState<{roundId:string;lane:number;cards:number[]}>({roundId:'',lane:-1,cards:[]});
  const carryLane=v.carryChoices?.[0]===null?0:1;
  const choices=carryDraft.roundId===v.roundId&&carryDraft.lane===carryLane?carryDraft.cards:[];
- const toggleCarry=(slot:number)=>setCarryDraft(previous=>{const selected=previous.roundId===v.roundId&&previous.lane===carryLane?previous.cards:[];return {roundId:v.roundId,lane:carryLane,cards:carryLane===0?[slot]:selected.includes(slot)?selected.filter(c=>c!==slot):selected.length<2?[...selected,slot]:[selected[1],slot]};});
+ const toggleCarry=(slot:number)=>setCarryDraft(previous=>{const selected=previous.roundId===v.roundId&&previous.lane===carryLane?previous.cards:[];return {roundId:v.roundId,lane:carryLane,cards:selected.includes(slot)?selected.filter(c=>c!==slot):carryLane===0?[slot]:selected.length<2?[...selected,slot]:[selected[1],slot]};});
  const tally=r?Math.max(0,game.now-r.completedAt):0;
  const bonusDelay=r&&r.allBonus>0?(v.allFilledMs??0):0;
  const bonusCount=r&&bonusDelay?{from:0,to:r.allBonus,startedAt:r.completedAt+1000,endsAt:r.completedAt+2000}:null;
  const bonusValue=bonusCount?Math.round(r!.allBonus*Math.max(0,Math.min(1,(game.now-bonusCount.startedAt)/1000))):0;
  usePresentedScoreAudio(userId,bonusCount&&!game.bornEnded&&game.liveRevision>=0&&tally>=1000&&tally<2000?'357-all-filled:'+v.roundId:null,bonusCount,game.now);
- const result=r?{...r,id:r.id??v.roundId+':result',completedAt:r.completedAt+bonusDelay,elapsed:tally-bonusDelay,scoreBefore:r.scoreBefore??0,displayScore:r.score}:null;
+ const result=r?{...r,id:r.id??v.roundId+':result',completedAt:r.completedAt+bonusDelay,elapsed:tally-bonusDelay,scoreBefore:(r.scoreBefore??0)+(bonusDelay?r.allBonus:0),displayScore:r.score}:null;
  const presentation=useTriRoundPresentation({scope:'357-drop:'+v.roundId,phase:r?'stage_complete':v.phase,connected:game.ready&&!game.error,paused:false,result,
   now:game.now,deadline:v.deadline,userId,active:true,modern:true,liveEntry,recoveryEpoch:game.recoveryEpoch});
  const seconds=v.phase==='intro'?120:r?Math.ceil(r.remainingMs/1000):Math.max(0,Math.ceil((v.deadline-game.now)/1000));
  useEffect(()=>{
   if(v.status==='active'||done.current)return;
-  if(v.status==='abandoned'){done.current=true;navigate('/arcade/357-drop?result='+runId,{replace:true});}
- },[v.status,navigate,runId]);
+  if(v.status==='abandoned'||game.bornEnded||r&&tally>=8000+bonusDelay){done.current=true;navigate('/arcade/357-drop?result='+runId,{replace:true});}
+ },[v.status,game.bornEnded,r,tally,bonusDelay,navigate,runId]);
  useEffect(()=>{
   if(!game.cue||game.cue.intent.type==='abandon')return;
   const cue=approvedSound(game.cue.intent.type!=='pass'?'slide':'flip');
@@ -59,7 +59,7 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
  if(showFinal){
   const naturalBonus=v.laneResults.reduce((sum,lane)=>sum+(lane?.bonus??0),0);
   const rounds=v.roundScores??(v.ruleset==='357-drop/1'?[{round:1,score:r.score,handPoints:r.base-r.allBonus-naturalBonus,naturalBonus,allBonus:r.allBonus,timeBonus:r.timeBonus}]:[]);
-  return <ArcadeCompletion title="Final Score" score={v.score} record={v.completion} backLabel="Back to Leaderboard" onBackToArcade={()=>navigate('/arcade/357-drop?result='+runId,{replace:true})}>
+  return <ArcadeCompletion title="Final Score" score={v.score} record={v.completion}>
    <dl className="drop357-final-rounds">{rounds.map(round=><div key={round.round} data-round-score={round.round}>
     <dt>Round {round.round}</dt><dd><strong>{round.score.toLocaleString()}</strong></dd>
     <dd className="drop357-final-bonuses"><span>Hands {round.handPoints.toLocaleString()}</span>{round.naturalBonus>0&&<span>Natural +{round.naturalBonus.toLocaleString()}</span>}{round.allBonus>0&&<span>All lanes +{round.allBonus.toLocaleString()}</span>}{round.timeBonus>0&&<span>Time +{round.timeBonus.toLocaleString()}</span>}</dd>
@@ -70,7 +70,7 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
   <header className="drop357-header"><div><small>{partial?'PARTIAL CARRY TEST':carry?'CARRY-FORWARD TEST':'P-TOWN ORIGINAL'}</small><h1>357 DROP</h1></div><nav aria-label="Game controls"><ArcadeInfo game="357-drop" name="357 Drop" ruleset={v.ruleset}/><GameplaySoundButton/><ArcadeAbandonButton disabled={v.status!=='active'} onClick={()=>setAbandon(true)}/></nav></header>
   <main className="drop357-board" ref={board}>
    <div className="drop357-bridge" style={{backgroundImage:`url(${bridge})`}} aria-hidden="true"/>
-   <div className="drop357-score"><span className="drop357-round">ROUND <b>{v.round??1}/{v.rounds??1}</b></span><TriScorePill item={{id:userId,active:true,score:v.score}} root={board} fraction={presentation.fraction} value={r?presentation.displayScore??r.score:v.banked??v.score}/><meter min={0} max={120} value={seconds} aria-label="Time remaining" aria-valuetext={`${seconds} seconds remaining`}/></div>
+   <div className="drop357-score"><span className="drop357-round">ROUND <b>{v.round??1}/{v.rounds??1}</b></span><TriScorePill item={{id:userId,active:true,score:v.score}} root={board} fraction={presentation.fraction} value={r?bonusDelay&&tally<bonusDelay?r.scoreBefore??0:presentation.displayScore??r.score:v.banked??v.score}/><meter min={0} max={120} value={seconds} aria-label="Time remaining" aria-valuetext={`${seconds} seconds remaining`}/></div>
    <div className="drop357-draw"><div className="drop357-stock"><PlayingCard card={{rank:'2',suit:'♣'}} isHidden size="sm" style={{width:'100%',height:'100%'}}/><span>{v.stockLeft}</span></div><div className="drop357-current" aria-label="Current card">{v.current!==null?game.pending?<span>Placing…</span>:<Face card={v.current}/>:<span>{partial&&v.phase==='playing'?'Choose carry':'DONE'}</span>}</div><button className="drop357-pass" disabled={locked||v.current===null||v.passesLeft===0} onClick={()=>game.act('pass',[],v.revision)}>PASS · {v.passesLeft}</button></div>
    {laneSizes.map((size,index)=>{const scored=v.laneResults[index],fresh=!!scored&&game.liveLanes.includes(index)&&game.now-scored.completedAt<800;
     const inherited=partial?index:carry?[0,3,5][index]:0,Tag=carry?'div':'button';
@@ -86,7 +86,7 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
        {card==null?<span className="drop357-slot-hint" aria-hidden="true">{Inherited?'↳':'+'}</span>:<Face card={card}/>}</Slot>;
      })}</span>
      <span className="drop357-lane-result" data-filled={!!scored}>{scored&&<><span className="drop357-hand"><b>{dropHandLabel(scored)}</b></span><strong>{scored.score.toLocaleString()}</strong></>}</span>
-     {choosing&&<span className="drop357-carry-controls"><span>Pick {index+1} · {choices.length}/{index+1}</span><button disabled={locked||choices.length!==index+1} onClick={()=>game.act('carry',[index,...choices],v.revision)}>Confirm</button></span>}
+     {choosing&&<span className="drop357-carry-controls"><span>Pick {index+1} · {choices.length}/{index+1}</span>{choices.length===index+1&&<button disabled={locked} onClick={()=>game.act('carry',[index,...choices],v.revision)}>Confirm</button>}</span>}
      {scored?.natural&&<small className="drop357-natty" aria-label="Natural bonus, 20 percent">Natty +20%</small>}
     </Tag>;
    })}

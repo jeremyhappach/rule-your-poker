@@ -93,6 +93,8 @@ try{
   };
   await page.goto(origin+'/arcade');await page.getByRole('link',{name:'Ship Cap Voyage leaderboard'}).waitFor();
   for(const width of [320,390,1280]){await page.setViewportSize({width,height:844});const tiles=await page.locator('.arcade-banner-tile').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect(),button=n.querySelector('button'),b=button.getBoundingClientRect();return {height:r.height,width:r.width,hitWidth:b.width,hitHeight:b.height}}));assert.ok(tiles.every(t=>Math.abs(t.height-tiles[0].height)<1&&t.hitWidth>=44&&t.hitHeight>=44),JSON.stringify(tiles));layouts.push({tileWidth:width,tiles});await page.screenshot({path:out+'/lobby-'+width+'.png',fullPage:true});}
+  const outlines=await page.locator('.arcade-banner-tile').evaluateAll(nodes=>nodes.map(n=>({original:n.dataset.original==='true',outline:getComputedStyle(n).outlineWidth,color:getComputedStyle(n).outlineColor,rules:n.querySelector('button')?.closest('a')===null})));
+  assert.ok(outlines.some(t=>t.original));assert.ok(outlines.some(t=>!t.original));assert.ok(outlines.filter(t=>t.original).every(t=>t.outline==='2px'&&t.color==='rgb(245, 205, 101)'));assert.ok(outlines.filter(t=>!t.original).every(t=>t.color!=='rgb(245, 205, 101)'));assert.ok(outlines.every(t=>t.rules));
   await page.setViewportSize({width:390,height:844});const tile=page.getByRole('link',{name:'357 Drop leaderboard'});await tile.click();
   await button('357 Drop rules and info').click();await page.getByRole('heading',{name:'How to play',exact:true}).waitFor();await page.keyboard.press('Escape');await button('Play').click();
   await playing(1);
@@ -112,9 +114,9 @@ try{
      for(const [lane,first,last] of [[5,2,5],[7,3,7],[3,1,3]])for(let slot=first;slot<=last;slot++)await action('Place in '+lane+' lane slot '+slot);
      assert.equal(latest.current,null);assert.equal(latest.phase,'playing');assert.ok(latest.laneResults[0].score>0);assert.equal(latest.laneResults[1],null);
      await page.screenshot({path:out+'/pending-carry-320.png'});
-     await button('Carry 3 lane card 2').click();assert.equal(latest.carryChoices[0],null);await button('Carry 3 lane card 1').click();assert.equal(await button('Carry 3 lane card 1').getAttribute('aria-pressed'),'true');await action('Confirm');assert.deepEqual(latest.lanes[1],[9,22,12,6,1]);assert.equal(latest.laneResults[1].natural,false);
+     await button('Carry 3 lane card 2').click();assert.equal(latest.carryChoices[0],null);await button('Carry 3 lane card 2').click();assert.equal(await button('Carry 3 lane card 2').getAttribute('aria-pressed'),'false');assert.equal(await button('Confirm').count(),0);assert.equal(latest.carryChoices[0],null);await button('Carry 3 lane card 1').click();assert.equal(await button('Carry 3 lane card 1').getAttribute('aria-pressed'),'true');await action('Confirm');assert.deepEqual(latest.lanes[1],[9,22,12,6,1]);assert.equal(latest.laneResults[1].natural,false);
      await button('Select carry 5 lane card 1').click();await button('Select carry 5 lane card 2').click();
-     await button('Select carry 5 lane card 2').click();assert.ok(await button('Confirm').isDisabled());await button('Select carry 5 lane card 2').click();
+     await button('Select carry 5 lane card 2').click();assert.equal(await button('Confirm').count(),0);await button('Select carry 5 lane card 2').click();
      await action('Confirm');assert.equal(latest.result.allBonus,0);assert.deepEqual(latest.lanes[2],[9,22,0,13,26,39,2]);
     }else{
      for(let slot=1;slot<=3;slot++)await action('Place in 3 lane slot '+slot);
@@ -139,7 +141,7 @@ try{
      }
     }
     if(latest.result.allBonus>0){await page.getByText('ALL FILLED',{exact:true}).waitFor();assert.ok(!await page.evaluate(round=>window.audioEvents.some(id=>id.startsWith('tri-count:357-drop:')&&id.includes(':'+round+':')),round));}
-    if(latest.result.allBonus===0)assert.equal(await page.getByText('ALL FILLED',{exact:true}).count(),0);if(latest.result.allBonus===500){await page.waitForFunction(()=>document.querySelector('.drop357-bonus-award')?.textContent==='+500');await page.screenshot({path:out+'/all-filled-500.png'});await page.waitForTimeout(1800);assert.equal(await page.locator('.drop357-bonus-award').innerText(),'+500');}
+    if(latest.result.allBonus===0)assert.equal(await page.getByText('ALL FILLED',{exact:true}).count(),0);if(latest.result.allBonus===500){await page.waitForFunction(()=>document.querySelector('.drop357-bonus-award')?.textContent==='+500');await page.screenshot({path:out+'/all-filled-500.png'});const beforeBonus=latest.result.scoreBefore;assert.equal(Number((await page.locator('.tri-score-pill strong').innerText()).replaceAll(',','')),beforeBonus);await page.waitForTimeout(1800);assert.equal(await page.locator('.drop357-bonus-award').innerText(),'+500');await page.waitForFunction(()=>!document.querySelector('.drop357-bonus-award'));assert.equal(Number((await page.locator('.tri-score-pill strong').innerText()).replaceAll(',','')),beforeBonus+500);}
     total+=latest.result.roundScore;assert.equal(latest.score,total);await tally();
     assert.equal((await c.query('select count(*)::int n from private.arcade_results where run_id=$1',[runId])).rows[0].n,round===3?1:0);
     continue;
@@ -176,13 +178,13 @@ try{
    total+=latest.result.roundScore;assert.equal(latest.score,total);await tally();
    assert.equal((await c.query('select count(*)::int n from private.arcade_results where run_id=$1',[runId])).rows[0].n,round===3?1:0);
   }
-  await button('Back to Leaderboard').waitFor({timeout:12000});
+  await page.locator('.arcade-final-total').waitFor({timeout:12000});assert.equal(await button('Back to Leaderboard').count(),0);
   const finalUrl=page.url(),finalRounds=await page.locator('[data-round-score] dd strong').allTextContents();
   assert.deepEqual(finalRounds.map(x=>Number(x.replaceAll(',',''))),[...receipts.values()].map(x=>x.roundScore));
   assert.equal(Number((await page.locator('.arcade-final-total strong').innerText()).replaceAll(',','')),total);
   assert.equal(await page.locator('[data-round-score]').count(),3);
   const actionsBefore=log.filter(x=>x[0]==='action').length;
-  await page.waitForTimeout(6000);assert.equal(page.url(),finalUrl);
+  await page.waitForTimeout(1500);assert.equal(page.url(),finalUrl);
   await page.screenshot({path:out+'/final-320.png'});
   const events=await page.evaluate(()=>window.audioEvents),bells=events.filter(id=>id.startsWith('run21-bell:tri:357-drop:'));
   assert.equal(bells.length,3,JSON.stringify(bells));assert.equal(new Set(bells).size,3);
@@ -191,12 +193,10 @@ try{
 
   assert.equal(new Set(events.filter(id=>id.startsWith('tri-count:357-drop:'))).size,3);
   assert.ok(!events.some(id=>id.startsWith('tri-clear:')||id.startsWith('tri-tower:')));
-  await page.reload();await button('Back to Leaderboard').waitFor();
-  assert.equal(Number((await page.locator('.arcade-final-total strong').innerText()).replaceAll(',','')),total);
-  assert.equal(await page.locator('[data-round-score]').count(),3);
+  await page.waitForURL(origin+'/arcade/357-drop?result='+runId);
+  assert.equal(log.filter(x=>x[0]==='action').length,actionsBefore,'Automatic return never submits a score');
+  await page.goto(finalUrl);await page.waitForURL(origin+'/arcade/357-drop?result='+runId);
   assert.equal((await c.query('select count(*)::int n from private.arcade_results where run_id=$1',[runId])).rows[0].n,1);
-  await button('Back to Leaderboard').click();await page.waitForURL(origin+'/arcade/357-drop?result='+runId);
-  assert.equal(log.filter(x=>x[0]==='action').length,actionsBefore,'Back button never submits a score');
-  await button('Play').click();await playing(1);await button('Abandon').click();await button('Keep Playing').click();await button('Abandon').click();await page.getByRole('alertdialog').getByRole('button',{name:'Abandon',exact:true}).click();await button('Play Again').waitFor();
-  assert.deepEqual(errors,[]);writeFileSync(out+'/browser.json',JSON.stringify({passed:true,layouts,total,log,audio:events},null,2));console.log('PASS: three rounds, timeout banking, one final result, three bells, distinct filled cues, three count-ups return home, six layouts, bar-only clock and Abandon.');
+  await button('Play Again').click();await playing(1);await button('Abandon').click();await button('Keep Playing').click();await button('Abandon').click();await page.getByRole('alertdialog').getByRole('button',{name:'Abandon',exact:true}).click();await button('Play Again').waitFor();
+  assert.deepEqual(errors,[]);writeFileSync(out+'/browser.json',JSON.stringify({passed:true,layouts,outlines,total,log,audio:events},null,2));console.log('PASS: three rounds, timeout banking, one final result, three bells, distinct filled cues, three count-ups return home, six layouts, bar-only clock and Abandon.');
 }catch(e){console.error(JSON.stringify({latest,errors,log:log.slice(-12),audio:browser?await browser.contexts()[0].pages()[0].evaluate(()=>window.audioEvents):[]}));if(browser)await browser.contexts()[0]?.pages()[0]?.screenshot({path:out+'/failure.png'});throw e;}finally{await browser?.close();await server.close();await c.query('rollback');await c.end();}

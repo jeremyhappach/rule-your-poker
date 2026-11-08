@@ -83,6 +83,34 @@ try{
   browser=await chromium.launch({channel:'msedge',headless:true});
   const page=await browser.newPage({viewport:{width:320,height:568},isMobile:true,hasTouch:true});page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
+  const acceptance=[];
+  const rollDefinition=(await c.query("select pg_get_functiondef('private.horses_blitz_roll(jsonb,integer[])'::regprocedure) d")).rows[0].d;
+  for(const [faces,label,natural,points] of [[[5,6,6,5,5],'Three 5s',true,382],[[6,2,1,3,4],'Pair of 6s',false,99],[[2,3,4,5,6],'High card',false,33]]){
+   await c.query(rollDefinition.replace('get_byte(extensions.gen_random_bytes(1),0)','(ARRAY['+faces.map(n=>n-1).join(',')+'])[i+1]'));
+   await page.goto(origin+'/arcade/horses-blitz');await page.getByRole('button',{name:'Play',exact:true}).click();
+   await page.locator('.hb-roll').click();await page.waitForFunction(()=>document.querySelector('.hb-set')?.textContent!=='Rolling…'&&document.querySelectorAll('.hb-die').length===5&&!document.querySelector('.hb-bank').disabled);
+   assert.equal(latest.ruleset,'horses-blitz/4');assert.equal(latest.roll,1);assert.deepEqual(latest.dice,faces);
+   assert.equal(await page.locator('.hb-set>span').innerText(),label);assert.equal(await page.locator('.hb-natty').count(),natural?1:0);
+   if(natural)assert.equal(await page.locator('.hb-natty').innerText(),'Natty +20%');
+   await page.waitForFunction(n=>document.querySelector('.hb-bank strong')?.textContent===String(n),points);
+   assert.equal(await page.locator('.hb-bonus-note').innerText(),'Early Bank Bonus\nRoll 1 +30% · Roll 2 +10%\nNatty earns +20%');
+   if(natural){
+    const count=()=>page.evaluate(()=>window.audioEvents.filter(id=>id.startsWith('quintzee-hold:')).length);
+    const before=await count();await page.locator('.hb-die').first().click();assert.equal(await page.locator('.hb-die').first().getAttribute('aria-pressed'),'true');await page.waitForFunction(n=>window.audioEvents.filter(id=>id.startsWith('quintzee-hold:')).length===n,before+1);
+    await page.locator('.hb-die').first().click();assert.equal(await page.locator('.hb-die').first().getAttribute('aria-pressed'),'false');await page.waitForFunction(n=>window.audioEvents.filter(id=>id.startsWith('quintzee-hold:')).length===n,before+2);
+    await page.getByRole('button',{name:'Mute sounds',exact:true}).click();const muted=await count();await page.locator('.hb-die').first().click();await page.locator('.hb-die').first().click();assert.equal(await count(),muted);await page.waitForTimeout(1050);await page.getByRole('button',{name:'Unmute sounds',exact:true}).click();
+   }
+   await page.screenshot({path:out+'/acceptance-'+points+'.png'});
+   const before=latest.score,id=latest.id;
+   await page.locator('.hb-bank').click({clickCount:2});await page.waitForFunction(()=>document.querySelector('.hb-hand')?.getAttribute('data-hand')?.endsWith(':2'));
+   const stored=(await c.query('select state from private.arcade_runs where id=$1',[id])).rows[0].state;
+   assert.equal(latest.score-before,points);assert.equal(stored.hands.length,1);assert.equal(stored.hands[0].points,points);assert.equal(stored.base,points);
+   acceptance.push({dice:faces,displayedResult:label,natty:natural,offer:points,banked:latest.score-before,storedBank:stored.hands[0].points});
+   await page.getByRole('button',{name:'Abandon',exact:true}).click();await page.getByRole('alertdialog').getByRole('button',{name:'Abandon Game',exact:true}).click();await page.waitForURL(origin+'/arcade/horses-blitz?result='+id);
+  }
+  await c.query(rollDefinition);
+  writeFileSync(out+'/acceptance.json',JSON.stringify({physicalIPhone:false,simulation:'Edge touch viewport, actual Arcade UI/API service/PostgreSQL rules and bank receipts; deterministic local random source',cases:acceptance,holdUnholdMute:true},null,2));
+  console.log(JSON.stringify(acceptance));
   await page.goto(origin+'/arcade/horses-blitz');await page.getByRole('button',{name:'Play',exact:true}).click();
   const roll=async()=>{await page.locator('.hb-roll').click();await page.getByText('Rolling…',{exact:true}).waitFor();await page.waitForFunction(()=>document.querySelector('.hb-set')?.textContent!=='Rolling…');};
   await page.locator('.hb-roll').waitFor();assert.equal(latest.durationMs,180000);assert.equal(latest.deadline-latest.startedAt,180000);assert.equal(await page.locator('.hb-roll').innerText(),'Roll (1)');await page.getByText('Early Bank Bonus',{exact:true}).waitFor();await page.getByText('Roll 1 +30% · Roll 2 +10%',{exact:true}).waitFor();await page.getByText('Natty earns +20%',{exact:true}).waitFor();await roll();assert.equal(await page.locator('.hb-roll').innerText(),'Roll (2)');
@@ -102,4 +130,4 @@ try{
   await roll();assert.equal(latest.set.points,2798);const presented=Number((await page.locator('.hb-bank strong').textContent()).replaceAll(',',''));assert.ok(presented>=260&&presented<2798);await page.locator('.hb-bank').click();await page.waitForFunction(()=>document.querySelector('.hb-bank-award')?.textContent==='+2,798');assert.equal(latest.bank.points,2798,'tap during count banks newest quote');
   await page.getByRole('button',{name:'Horses Blitz rules and info'}).click();await page.getByRole('heading',{name:'Examples',exact:true}).waitFor();await page.getByText('Roll 1 natural three 4s: 200 × 1.30 × 1.20 = 312.',{exact:true}).waitFor();await page.screenshot({path:out+'/rules.png'});assert.deepEqual(errors,[]);writeFileSync(out+'/smoke-evidence.json',JSON.stringify({passed:true,squareDice:true,fallingOffers:[260,220,200],manualThirdRoll:true,positiveHighCard:true,errors},null,2));console.log('PASS square dice/pip containment, decreasing full offers, third-roll hold, manual positive high-card bank, next-hand progression');
   }
-}finally{await browser?.close();await server.close();await c.query('rollback');await c.end();}
+}catch(e){console.error(JSON.stringify({latest,errors,audio:browser?await browser.contexts()[0]?.pages()[0]?.evaluate(()=>window.audioEvents):[]}));if(browser)await browser.contexts()[0]?.pages()[0]?.screenshot({path:out+'/failure.png'});throw e;}finally{await browser?.close();await server.close();await c.query('rollback');await c.end();}

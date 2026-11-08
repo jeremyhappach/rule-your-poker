@@ -1,3 +1,6 @@
+November 8 seven-fix follow-up, exact Horses bank evidence, collation-stable
+activation guard and automatic final return: [PTOWN_SMOKE_FOLLOWUP.md](PTOWN_SMOKE_FOLLOWUP.md).
+
 November 8 complete ZIP handoff, precedence reconciliation, rules qualification,
 release procedure and outstanding physical iPhone acceptance:
 [PTOWN_POLISH_COMPLETE.md](PTOWN_POLISH_COMPLETE.md).

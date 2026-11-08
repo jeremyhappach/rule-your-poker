@@ -3,7 +3,7 @@ import {useNavigate} from 'react-router-dom';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {ArcadeAbandonButton} from './ArcadeAbandonButton';
 import {AlertDialog,AlertDialogContent,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter,AlertDialogAction,AlertDialogCancel} from '@/components/ui/alert-dialog';
-import {hasTriStart,retireTriStart,grantTriStart} from '@/lib/triTowers/roundTimeline';
+import {hasTriStart,retireTriStart} from '@/lib/triTowers/roundTimeline';
 import {TriScorePill,TriRoundIntro,useTriRoundPresentation} from '@/components/triTowers/TriTowersPresentation';
 import {voyageTransport,type VoyageTransport} from '@/lib/shipCapVoyage/client';
 import {type VoyageSnapshot} from '@/lib/shipCapVoyage/model';
@@ -18,7 +18,6 @@ import {boxingBellCue} from '@/lib/run21/boxingBell';
 import {usePresentedScoreAudio} from '@/hooks/usePresentedScoreAudio';
 import {useBankOffer} from '@/hooks/useBankOffer';
 import {supabase} from '@/integrations/supabase/client';
-import {arcadeRequest} from '@/lib/arcade/client';
 import '../quintzee/quintzee.css';
 import './shipCapVoyage.css';
 import {cargoBankCue} from '@/lib/shipCapVoyage/cues';
@@ -30,10 +29,10 @@ export function SoloShipCapVoyage({runId,userId,transport:provided}:{runId:strin
  const transport=useMemo(()=>provided??voyageTransport(runId),[provided,runId]),live=useRef(hasTriStart(runId));
  const game=useShipCapVoyage(runId,userId,transport,live.current),navigate=useNavigate(),{durationMs}=useQuintzeeRollTiming();
  const [motion,setMotion]=useState<Motion|null>(null),motionRef=useRef<Motion|null>(null),surface=useRef<HTMLDivElement>(null),board=useRef<HTMLDivElement>(null);
- const [abandon,setAbandon]=useState(false),[again,setAgain]=useState(false),[againError,setAgainError]=useState('');
+ const [abandon,setAbandon]=useState(false),done=useRef(false);
  const [flight,setFlight]=useState<Flight|null>(null),flightRef=useRef<Flight|null>(null),landed=useRef(new Set<string>());
  const nowRef=useRef(game.now);nowRef.current=game.now;
- const restartRequest=useRef<string>(),haptic=useRef(false),landingStop=useRef<()=>void>(()=>{});
+ const haptic=useRef(false),landingStop=useRef<()=>void>(()=>{});
  const v=motion?.source??game.snapshot,r=v?.result,elapsed=r?game.now-r.completedAt:0;
  const final=v?.status==='completed'&&!!r&&(game.bornEnded||elapsed>=5000);
  const intro=v&&game.roundCue===v.roundId?Math.max(0,2500-(game.now-v.startedAt)):0;
@@ -48,7 +47,7 @@ export function SoloShipCapVoyage({runId,userId,transport:provided}:{runId:strin
  function stopMotion(){flightRef.current=null;setFlight(null);motionRef.current=null;setMotion(null);navigator.vibrate?.(0);landingStop.current();}
  useEffect(()=>{let active=true;void supabase.from('profiles').select('use_haptic').eq('id',userId).maybeSingle().then(({data})=>{if(active)haptic.current=data?.use_haptic===true;});return()=>{active=false;};},[userId]);
  useEffect(()=>()=>retireTriStart(runId),[runId]);
- useEffect(()=>{if(v?.status==='abandoned')navigate('/arcade/ship-cap-voyage',{replace:true});},[v?.status,navigate]);
+ useEffect(()=>{if(!v||v.status==='active'||done.current)return;if(v.status==='abandoned'||game.bornEnded||r&&elapsed>=11000){done.current=true;navigate('/arcade/ship-cap-voyage?result='+runId,{replace:true});}},[v?.status,game.bornEnded,r,elapsed,navigate,runId]);
  useEffect(()=>{
   if(!game.roundCue)return;const at=performance.now();
   return platformAudio.follow({userId,id:'run21-bell:ship-cap-voyage:'+game.roundCue,startedAt:at,expiresAt:at+2500,cueAt:()=>isSoundSurfaceVisible(surface.current)?boxingBellCue:undefined});
@@ -84,13 +83,11 @@ export function SoloShipCapVoyage({runId,userId,transport:provided}:{runId:strin
   platformAudio.present({userId,id:'voyage-bank:'+runId+':'+cue.command.requestId,cue:isSoundSurfaceVisible(surface.current)?cargoBankCue:undefined});
  },[game.cue,runId,userId]);
  function roll(){if(locked||motionRef.current||flightRef.current||!v)return;const command=game.act('roll');if(command){const m={identity:command.requestId,source:v,until:performance.now()+durationMs};motionRef.current=m;setMotion(m);vibrate([25,40,25]);}}
- async function playAgain(){if(again)return;setAgain(true);setAgainError('');try{restartRequest.current??=crypto.randomUUID();const next=await arcadeRequest<VoyageSnapshot>({op:'start',game:'ship-cap-voyage',requestId:restartRequest.current});grantTriStart(next.id);navigate('/arcade/ship-cap-voyage/run/'+next.id);}catch(e){setAgainError((e as Error).message);}finally{setAgain(false);}}
  return <div className="arcade-run scv-page" ref={surface} data-phase={final?'final':r?'result':motion?'rolling':'playing'}>
  <header className="scv-header"><h1>SHIP CAP <em>VOYAGE</em></h1><nav aria-label="Game controls"><GameplaySoundButton/>{v?.status==='active'&&<ArcadeAbandonButton disabled={game.pending||!!motion} onClick={()=>setAbandon(true)}/>}</nav></header>
  {!v?<p role="status">{game.error||'Preparing your voyage…'}</p>:final?<main className="scv-final">
   <h2>VOYAGE COMPLETE</h2><dl>{v.results.map(x=><div key={x.round}><dt>Round {x.round}</dt><dd>{x.total.toLocaleString()}</dd></div>)}</dl>
   <section className="scv-grand"><h3>GRAND TOTAL</h3><strong aria-label="Grand total">{finalScore.toLocaleString()}</strong>{v.completion?.kind==='broken'&&<p>New personal best</p>}</section>
-  <div className="scv-actions"><button disabled={again} onClick={()=>void playAgain()}>Play Again</button><button onClick={()=>navigate('/arcade/ship-cap-voyage?result='+runId)}>Back to Arcade</button></div>{againError&&<p role="alert">{againError}</p>}
  </main>:<main className="scv-board" ref={board} data-canonical-felt-interaction-layer>
   <div className="scv-status"><div><strong>ROUND {v.round} OF 3</strong></div><div className="scv-score"><small>{r?'ROUND SCORE':'GAME SCORE'}</small><TriScorePill item={{id:userId,score:v.score,active:true}} root={board} fraction={r?tally.fraction:0} value={r?tally.displayScore??r.total:v.score}/></div></div>
   <section className="scv-qualification" aria-label="Qualification">{['Ship','Captain','Crew'].map((label,i)=>{const travelling=flight?.dice.find(d=>d.slot===i),arrived=!travelling||game.now-flight!.at>=(flight!.dice.indexOf(travelling)+1)*500;return <div key={label} data-locked={v.locked.length>i}><span>{label}</span><div className="scv-qualified-die" data-qualification-slot={i}>{v.locked.length>i&&arrived&&<QuintzeeDie value={6-i} rolling={false}/>}</div></div>;})}</section>

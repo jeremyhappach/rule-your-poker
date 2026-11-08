@@ -1,3 +1,16 @@
+# P-Town seven-fix smoke follow-up — November 8, 2026 — owner smoke pending
+
+Horses /4 and Drop /5 were installed but disabled; the guarded activation now
+uses a collation-stable authority digest. Actual UI/API/SQL Roll 1 banks prove
+382 (natural Three 5s), 99 (wild Pair of 6s) and 33 (High card). Holds/mute,
+Originals outlines, transparent Voyage dice area, reversible Drop carry choices,
+separate 500 bonus and automatic final leaderboard return are qualified.
+Eight hosted lifecycle proofs plus guarded admission/bank proof, 88 focused
+tests, TypeScript, build and phone-size SQL-backed browser smokes pass.
+Physical iPhone acceptance remains pending; leaderboard theming stays deferred.
+See [evidence and release gate](PTOWN_SMOKE_FOLLOWUP.md). The verified checkpoint
+records publication and activation; old admitted runs retain their versions.
+
 # Complete P-Town polish handoff — November 8, 2026 — owner smoke pending
 
 Words Last labels/landing totals, Async clock compatibility/help, shared speaker
