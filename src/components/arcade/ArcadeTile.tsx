@@ -2,9 +2,10 @@ import type {CSSProperties, ComponentProps} from 'react';
 import {Link} from 'react-router-dom';
 import {ArcadeArtwork, ArcadeInfo} from './ArcadeInfo';
 import {APPROVED_TILE_ARTWORK, hasNewerTileArtwork} from '@/lib/arcade/tileArtwork';
+import type {Artwork} from '@/lib/arcade/artwork';
 
-export function ArcadeTile({original=false,...props}: ComponentProps<typeof ArcadeInfo>&{original?:boolean}) {
-  const {game, name, artwork} = props;
+export function ArcadeTile({original=false,artwork,...props}: ComponentProps<typeof ArcadeInfo>&{original?:boolean;artwork?:Artwork}) {
+  const {game, name} = props;
   const approved = APPROVED_TILE_ARTWORK[game];
   const useApproved = !!approved && !hasNewerTileArtwork(artwork);
   const source = approved ? '/arcade/approved-v1/' + approved.slug : '';

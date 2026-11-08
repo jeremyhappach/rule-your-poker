@@ -1,3 +1,21 @@
+# Arcade compact lobby header and rules cleanup — November 8, 2026 — owner smoke pending
+
+The gamepad, Arcade Mode title and existing speaker now share one row beneath
+Main Lobby. The introductory byline is removed; the rules hint remains.
+All shared Arcade rules dialogs omit artwork-upload/replacement controls.
+Existing tile artwork, rules, ordering, navigation and sound preference/cooldown
+remain intact. No migration, gameplay or financial changes.
+
+TypeScript, production Vite build and both tile/rules unit tests pass. Installed
+Edge checks pass at six phone/landscape/desktop sizes (320–1280 wide): aligned
+44-pixel header, no horizontal overflow, 44-pixel sound target and mute/unmute.
+All 14 rules dialogs open without upload controls or browser errors, using local
+fixtures with no production writes. Screenshots and results are retained at
+`qualification.local/arcade-header/`. The already-queued switchboard fixture
+failure remains: it expects 13 games and omits Ship Cap Voyage. Physical iPhone
+smoke remains pending. Checkpoint: `arcade-lobby-header-2026-11-08`; its
+`-verified` tag records the production deployment and public build identity.
+
 # Arcade leaderboard themes — November 8, 2026 — owner smoke pending
 
 Approved revision 3 is implemented across all 13 shared Arcade leaderboards;
