@@ -69,3 +69,9 @@ it('describes Async Words without live turn clocks, banks or bots',async()=>{
  expect(screen.queryByText(/Two time banks/)).toBeNull();
  expect(screen.queryByText(/Bots are available/)).toBeNull();
 });
+it('shows partial carries from the lobby and preserves explicit legacy Drop help',async()=>{
+ const ui=render(<RulesContent game="357-drop" mode="arcade"/>);
+ expect(await screen.findByText(/Place four new cards and add the carried card/)).toBeTruthy();
+ ui.rerender(<RulesContent game="357-drop" mode="arcade" version="357-drop/2"/>);
+ expect(await screen.findByText(/Fill the 3s, 5s and 7s rows with three, five and seven cards/)).toBeTruthy();
+});

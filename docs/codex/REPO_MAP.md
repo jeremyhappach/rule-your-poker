@@ -1,3 +1,9 @@
+Arcade smoke polish: `src/hooks/useBankOffer.ts` presents server quotes for
+Voyage and Horses. Voyage's SQL adapter owns automatic result continuation;
+Horses /3 owns manual final banking. Chucky's committed lastFold receipt exposes
+the rabbit cards and presentationV2 owns their three-second hold. Qualification
+and release details: `ARCADE_SMOKE_POLISH.md` and `dev/arcade-smoke/`.
+
 357 Drop partial carry: supabase/drop357/v4.sql owns /4 deal/actions/validation;
 SoloDrop357 owns inline selection presentation. DROP357_PARTIAL_CARRY.md documents
 rules, reversal and evidence. ArcadeTile's inner frame fits non-banner artwork
