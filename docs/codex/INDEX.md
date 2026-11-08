@@ -1,3 +1,6 @@
+357 Drop partial carry /4 and shared Arcade tile height qualification:
+[DROP357_PARTIAL_CARRY.md](DROP357_PARTIAL_CARRY.md).
+
 # Codex context index
 
 357 Drop carry-forward playtest, reversible ruleset switch, responsiveness and

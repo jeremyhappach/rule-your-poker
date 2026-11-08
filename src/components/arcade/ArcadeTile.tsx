@@ -9,7 +9,8 @@ export function ArcadeTile(props: ComponentProps<typeof ArcadeInfo>) {
   const useApproved = !!approved && !hasNewerTileArtwork(artwork);
   const source = approved ? '/arcade/approved-v1/' + approved.slug : '';
   return <article className={"arcade-tile arcade-banner-tile"+(useApproved&&approved.embeddedInfo?' arcade-tile--embedded-info':'')}
-    style={{aspectRatio:useApproved&&approved.width&&approved.height?`${approved.width}/${approved.height}`:undefined,'--embedded-info-right':approved?.embeddedInfo?.right,'--embedded-info-bottom':approved?.embeddedInfo?.bottom,'--embedded-info-width':approved?.embeddedInfo?.width,'--embedded-info-height':approved?.embeddedInfo?.height,'--arcade-info-bottom':useApproved ? approved.infoBottom : undefined} as CSSProperties}>
+    style={{'--embedded-info-right':approved?.embeddedInfo?.right,'--embedded-info-bottom':approved?.embeddedInfo?.bottom,'--embedded-info-width':approved?.embeddedInfo?.width,'--embedded-info-height':approved?.embeddedInfo?.height,'--arcade-info-bottom':useApproved ? approved.infoBottom : undefined} as CSSProperties}>
+    <div className="arcade-banner-frame" style={{width:useApproved&&approved.width&&approved.height?`${Math.min(1,approved.width/approved.height/(1466/564))*100}%`:undefined}}>
     <Link className="arcade-banner-link" to={'/arcade/'+game} aria-label={name+' leaderboard'}>
       <h2 className={useApproved ? 'sr-only' : 'arcade-banner-title'}>{name}</h2>
       {useApproved ? <img className="arcade-banner-art" alt="" width={approved.width??1466} height={approved.height??564}
@@ -18,5 +19,6 @@ export function ArcadeTile(props: ComponentProps<typeof ArcadeInfo>) {
         : <ArcadeArtwork path={artwork?.object_path??null}/>}
     </Link>
     <ArcadeInfo {...props} banner/>
+    </div>
   </article>;
 }

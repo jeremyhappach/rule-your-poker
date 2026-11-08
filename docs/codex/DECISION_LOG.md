@@ -1,3 +1,11 @@
+# 2026-11-08 — Partial carry is a separate frozen 357 ruleset
+
+/4 carries selected printed cards (one then two), with 3/4/5 new slots and three
+passes. Carry confirmations are server actions and do not consume the deck. A
+board finishes when all lanes resolve, not when its last new slot fills. The
+boolean switch selects /4 or /2; text selection retains /3. Admission pins config
+and leaderboard groups remain separate. See DROP357_PARTIAL_CARRY.md.
+
 ## 2026-11-07 — 357 Drop final results are presentation only
 
 The third tally completes before a persistent Final Score screen. The database

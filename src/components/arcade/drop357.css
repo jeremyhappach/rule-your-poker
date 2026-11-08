@@ -53,3 +53,15 @@
 .drop357-tally[data-filled="true"] strong{font-size:clamp(1.6rem,8cqi,3rem);font-weight:950;letter-spacing:.06em}
 @keyframes drop357-land{from{transform:scale(.9)}to{transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.drop357-slot[data-pending="true"]{animation:none}}
+
+/* Carry choices share the reserved header row; card/result geometry never shifts. */
+.drop357-page[data-partial="true"] .drop357-lane{grid-template-rows:1.55rem minmax(0,1fr) auto}
+.drop357-carry-controls{grid-row:1;grid-column:2;display:flex;align-items:center;gap:.3rem;font-size:.6875rem;line-height:1;font-weight:800;color:#fff1bd;justify-self:start}
+.drop357-carry-controls button{border:1px solid #ffe09b;border-radius:.25rem;padding:.3rem;background:#ffe09b;color:#171b22;font-weight:900;touch-action:manipulation}
+.drop357-carry-controls button:disabled{opacity:.45}
+.drop357-slot[data-carry-choice="true"]{opacity:1;outline:1px dashed #fff0c5;outline-offset:1px;cursor:pointer}
+.drop357-slot[data-carry-picked="true"]{outline:3px solid #57ffee;outline-offset:1px;box-shadow:0 0 .4rem #57ffee}
+.drop357-page[data-partial="true"] .drop357-natty{font-size:.6875rem;padding:.08rem .12rem}
+
+.drop357-page[data-partial="true"] .drop357-board{grid-template-rows:8% 9% 16% repeat(3,20%)}
+@container (min-aspect-ratio:3/2){.drop357-page[data-partial="true"] .drop357-board{grid-template-rows:12% 10% repeat(3,24%)}}

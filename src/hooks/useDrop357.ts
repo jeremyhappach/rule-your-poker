@@ -36,7 +36,7 @@ export function useDrop357(id:string,userId:string,transport:DropTransport,liveE
   sending.current.add(saved);setPending(true);const ticket=epoch.current;
   try {const before=latest.current,command=JSON.parse(saved) as DropCommand,value=await transport.send(command);retireAcknowledgedCommand(key,saved);
    if(mounted.current){if(!sessionStorage.getItem(key)){setUncertain(false);setPlacement(null);}const fresh=live&&ticket===epoch.current;accept(value,!fresh);
-    const moved=before&&value.roundId===command.roundId&&(command.intent.type==='place'?value.placements===before.placements+1:command.intent.type==='pass'?value.passesLeft===before.passesLeft-1:value.status==='abandoned');
+    const moved=before&&value.roundId===command.roundId&&(command.intent.type==='place'?value.placements===before.placements+1:command.intent.type==='pass'?value.passesLeft===before.passesLeft-1:command.intent.type==='carry'?value.acceptedRequestId===command.requestId:value.status==='abandoned');
     if(fresh&&moved&&value.revision===command.revision+1)setCue(command);}
   }catch(e){const stillPending=sessionStorage.getItem(key)===saved,definitive=!!(e as {definitive?:boolean}).definitive;if(definitive)retireAcknowledgedCommand(key,saved);if(mounted.current&&stillPending){setUncertain(!definitive);if(definitive)setPlacement(null);setError((e as Error).message);void lane.current?.refresh();}}
   finally{sending.current.delete(saved);if(mounted.current)setPending(!!sessionStorage.getItem(key));}

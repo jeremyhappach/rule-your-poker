@@ -27,9 +27,12 @@ export function SoloDrop357({runId,userId,transport:provided}:{runId:string;user
  return <DropBoard game={game} userId={userId} liveEntry={live.current}/>;
 }
 function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;userId:string;liveEntry:boolean}){
- const v=game.snapshot!,carry=v.ruleset==='357-drop/3',r=v.result,navigate=useNavigate(),runId=v.id;
+ const v=game.snapshot!,partial=v.ruleset==='357-drop/4',carry=partial||v.ruleset==='357-drop/3',r=v.result,navigate=useNavigate(),runId=v.id;
  const surface=useRef<HTMLDivElement>(null),board=useRef<HTMLDivElement>(null),[abandon,setAbandon]=useState(false),done=useRef(false);
  useDrop357Audio(userId,v,game.liveLanes,game.now,surface);
+ const [carryDraft,setCarryDraft]=useState<{roundId:string;cards:number[]}>({roundId:'',cards:[]});
+ const choices=carryDraft.roundId===v.roundId?carryDraft.cards:[];
+ const toggleCarry=(slot:number)=>setCarryDraft(previous=>{const selected=previous.roundId===v.roundId?previous.cards:[];return {roundId:v.roundId,cards:selected.includes(slot)?selected.filter(c=>c!==slot):selected.length<2?[...selected,slot]:[selected[1],slot]};});
  const tally=r?Math.max(0,game.now-r.completedAt):0;
  const result=r?{...r,id:r.id??v.roundId+':result',elapsed:tally,scoreBefore:r.scoreBefore??0,displayScore:r.score}:null;
  const presentation=useTriRoundPresentation({scope:'357-drop:'+v.roundId,phase:r?'stage_complete':v.phase,connected:game.ready&&!game.error,paused:false,result,
@@ -41,7 +44,7 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
  },[v.status,navigate,runId]);
  useEffect(()=>{
   if(!game.cue||game.cue.intent.type==='abandon')return;
-  const cue=approvedSound(game.cue.intent.type==='place'?'slide':'flip');
+  const cue=approvedSound(game.cue.intent.type!=='pass'?'slide':'flip');
   platformAudio.present({userId,id:'357-action:'+runId+':'+game.cue.requestId,cue:isSoundSurfaceVisible(surface.current)&&cue?
    {...cue,policy:{priority:50,group:'357-action',intervalMs:0}}:undefined});
  },[game.cue,runId,userId]);
@@ -57,25 +60,27 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
    </div>)}</dl>
   </ArcadeCompletion>;
  }
- return <div className="arcade-run drop357-page" ref={surface} data-status={v.status} data-phase={v.phase} data-round={v.round??1}>
-  <header className="drop357-header"><div><small>{carry?'CARRY-FORWARD TEST':'P-TOWN ORIGINAL'}</small><h1>357 DROP</h1></div><nav aria-label="Game controls"><ArcadeInfo game="357-drop" name="357 Drop" ruleset={v.ruleset}/><GameplaySoundButton/><ArcadeAbandonButton disabled={v.status!=='active'} onClick={()=>setAbandon(true)}/></nav></header>
+ return <div className="arcade-run drop357-page" ref={surface} data-status={v.status} data-phase={v.phase} data-round={v.round??1} data-partial={partial}>
+  <header className="drop357-header"><div><small>{partial?'PARTIAL CARRY TEST':carry?'CARRY-FORWARD TEST':'P-TOWN ORIGINAL'}</small><h1>357 DROP</h1></div><nav aria-label="Game controls"><ArcadeInfo game="357-drop" name="357 Drop" ruleset={v.ruleset}/><GameplaySoundButton/><ArcadeAbandonButton disabled={v.status!=='active'} onClick={()=>setAbandon(true)}/></nav></header>
   <main className="drop357-board" ref={board}>
    <div className="drop357-bridge" style={{backgroundImage:`url(${bridge})`}} aria-hidden="true"/>
    <div className="drop357-score"><span className="drop357-round">ROUND <b>{v.round??1}/{v.rounds??1}</b></span><TriScorePill item={{id:userId,active:true,score:v.score}} root={board} fraction={presentation.fraction} value={r?presentation.displayScore??r.score:v.banked??v.score}/><meter min={0} max={120} value={seconds} aria-label="Time remaining" aria-valuetext={`${seconds} seconds remaining`}/></div>
-   <div className="drop357-draw"><div className="drop357-stock"><PlayingCard card={{rank:'2',suit:'♣'}} isHidden size="sm" style={{width:'100%',height:'100%'}}/><span>{v.stockLeft}</span></div><div className="drop357-current" aria-label="Current card">{v.current!==null?game.pending?<span>Placing…</span>:<Face card={v.current}/>:<span>DONE</span>}</div><button className="drop357-pass" disabled={locked||v.passesLeft===0} onClick={()=>game.act('pass',[],v.revision)}>PASS · {v.passesLeft}</button></div>
+   <div className="drop357-draw"><div className="drop357-stock"><PlayingCard card={{rank:'2',suit:'♣'}} isHidden size="sm" style={{width:'100%',height:'100%'}}/><span>{v.stockLeft}</span></div><div className="drop357-current" aria-label="Current card">{v.current!==null?game.pending?<span>Placing…</span>:<Face card={v.current}/>:<span>{partial&&v.phase==='playing'?'Choose carry':'DONE'}</span>}</div><button className="drop357-pass" disabled={locked||v.current===null||v.passesLeft===0} onClick={()=>game.act('pass',[],v.revision)}>PASS · {v.passesLeft}</button></div>
    {laneSizes.map((size,index)=>{const scored=v.laneResults[index],fresh=!!scored&&game.liveLanes.includes(index)&&game.now-scored.completedAt<800;
-    const inherited=carry?[0,3,5][index]:0,Tag=carry?'div':'button';
+    const inherited=partial?index:carry?[0,3,5][index]:0,Tag=carry?'div':'button';
+    const choosing=partial&&index<2&&!!scored&&v.carryChoices?.[index]===null;
     return <Tag key={size} className="drop357-lane" data-lane={size} data-wild={!scored&&v.current!==null&&cardRank(v.current)===size} data-natural={scored?.natural??false} data-fresh={fresh}
      data-category={scored?.category} {...(!carry?{disabled:locked||!!scored,'aria-label':'Place in '+size+' lane',onClick:()=>game.act('place',[index],v.revision)}:{})}>
      <span className="drop357-label"><strong>{size}</strong><small>WILD</small></span>
      <span className="drop357-slots">{Array.from({length:size},(_,slot)=>{const accepted=v.lanes[index][slot];
       const landing=game.placement?.roundId===v.roundId&&game.placement.revision===v.revision&&game.placement.lane===index&&game.placement.slot===slot;
-      const card=landing?game.placement!.card:accepted,Inherited=slot<inherited,Slot=carry&&!Inherited?'button':'span';
-      return <Slot key={slot} className="drop357-slot" data-inherited={Inherited} data-pending={landing} data-selected={!!scored&&scored.score>0&&scored.selected.includes(slot)} data-muted={!!scored&&!scored.selected.includes(slot)}
-       {...(carry&&!Inherited?{disabled:locked||accepted!=null,'aria-label':'Place in '+size+' lane slot '+(slot+1),onClick:()=>game.act('place',[index,slot],v.revision)}:{'aria-label':Inherited?'Inherited from '+(index===1?'3':'5')+' lane':undefined})}>
+      const card=landing?game.placement!.card:accepted,Inherited=slot<inherited,Slot=choosing||carry&&!Inherited?'button':'span';
+      return <Slot key={slot} className="drop357-slot" data-inherited={Inherited} data-carry-choice={choosing} data-carry-picked={choosing&&index===1&&choices.includes(slot)} data-pending={landing} data-selected={!!scored&&scored.score>0&&scored.selected.includes(slot)} data-muted={!!scored&&!scored.selected.includes(slot)}
+       {...(choosing?{disabled:locked,'aria-label':(index===0?'Carry':'Select carry')+' '+size+' lane card '+(slot+1),'aria-pressed':index===1?choices.includes(slot):undefined,onClick:()=>index===0?game.act('carry',[0,slot],v.revision):toggleCarry(slot)}:carry&&!Inherited?{disabled:locked||accepted!=null,'aria-label':'Place in '+size+' lane slot '+(slot+1),onClick:()=>game.act('place',[index,slot],v.revision)}:{'aria-label':Inherited?'Inherited from '+(index===1?'3':'5')+' lane':undefined})}>
        {card==null?<span className="drop357-slot-hint" aria-hidden="true">{Inherited?'↳':'+'}</span>:<Face card={card}/>}</Slot>;
      })}</span>
      <span className="drop357-lane-result" data-filled={!!scored}>{scored&&<><span className="drop357-hand"><b>{dropHandLabel(scored)}</b></span><strong>{scored.score.toLocaleString()}</strong></>}</span>
+     {choosing&&<span className="drop357-carry-controls">{index===0?'Tap 1 card to carry':<><span>Pick 2 · {choices.length}/2</span><button disabled={locked||choices.length!==2} onClick={()=>game.act('carry',[1,...choices],v.revision)}>Confirm</button></>}</span>}
      {scored?.natural&&<small className="drop357-natty" aria-label="Natural bonus, 20 percent">Natty +20%</small>}
     </Tag>;
    })}

@@ -1,3 +1,11 @@
+# 357 Drop partial carry — November 8, 2026 — automated qualification
+
+Checkpoint 357-drop-partial-carry-2026-11-08 records four-version rollback proof,
+partial/original three-round browser flows, carry races, readable results, audio
+order and persistent final totals. Ship Cap Voyage and sibling tiles share equal
+heights at phone and desktop widths. The verified tag records exact publication
+and activation. Physical iPhone acceptance remains pending. See DROP357_PARTIAL_CARRY.md.
+
 # Ship Cap Voyage — November 7, 2026 — automated qualification passed
 
 Checkpoint `ship-cap-voyage-v1-2026-11-07` records the approved Arcade release.

@@ -1,12 +1,12 @@
 import type {CompletionRecord,RunStatus} from '@/lib/arcade/model';
-export type DropAction='place'|'pass'|'abandon';
+export type DropAction='place'|'pass'|'carry'|'abandon';
 export interface DropCommand {requestId:string;revision:number;roundId:string;intent:{type:DropAction;items:number[]}}
 export interface LaneResult {vector:number[];selected:number[];natural:boolean;points:number;bonus:number;score:number;category:string;completedAt:number}
 export interface DropResult {id?:string;scoreBefore?:number;roundScore?:number;reason:'filled'|'timeout';base:number;allBonus:number;timeBonus:number;score:number;completedAt:number;remainingMs:number}
 export interface DropRoundScore {round:number;score:number;handPoints:number;naturalBonus:number;allBonus:number;timeBonus:number}
 export interface DropSnapshot {
  id:string;revision:number;acceptedRequestId?:string|null;status:RunStatus;ruleset:string;serverAt:number;roundId:string;round?:number;rounds?:number;banked?:number;score:number;phase:'intro'|'playing'|'stage_complete'|'complete';
- lanes:(number|null)[][];laneResults:(LaneResult|null)[];current:number|null;stockLeft:number;passesLeft:number;placements:number;
+ carryChoices?:(number[]|null)[];lanes:(number|null)[][];laneResults:(LaneResult|null)[];current:number|null;stockLeft:number;passesLeft:number;placements:number;
  startedAt:number;deadline:number;result:DropResult|null;roundScores?:DropRoundScore[];completion:CompletionRecord|null;
 }
 export const laneSizes=[3,5,7] as const;

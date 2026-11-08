@@ -12,7 +12,7 @@ BEGIN
  INSERT INTO public.profiles(id,username,is_active) VALUES(actor,'357 v3 proof',true),(stranger,'357 v3 stranger',true) ON CONFLICT(id) DO UPDATE SET is_active=true;
  UPDATE private.arcade_rulesets SET enabled=false WHERE game='357-drop';
  BEGIN PERFORM public.arcade_start(actor,gen_random_uuid(),'357-drop');RAISE EXCEPTION 'closed admission accepted';EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%unavailable%' THEN RAISE;END IF;END;
- PERFORM private.drop357_select_ruleset(true);
+ IF to_regprocedure('private.drop357_select_ruleset(text)') IS NULL THEN PERFORM private.drop357_select_ruleset(true);ELSE PERFORM private.drop357_select_ruleset('357-drop/3'::text);END IF;
  UPDATE private.arcade_recovery_state SET failure=null,last_completed_at=clock_timestamp(),token='35735735-7357-4357-8357-357357357357',claimed=true,expires_at=clock_timestamp()+interval '1 minute';
  CREATE TEMP TABLE v3_write_baseline ON COMMIT DROP AS SELECT relid,n_tup_ins+n_tup_upd+n_tup_del n FROM pg_stat_xact_user_tables WHERE schemaname IN('public','private') AND relname NOT LIKE 'arcade_%';
  request:=gen_random_uuid();run:=public.arcade_start(actor,request,'357-drop');run_id_i:=(run->>'id')::uuid;
@@ -112,7 +112,7 @@ BEGIN
  INSERT INTO auth.users(id) VALUES(actor);
  INSERT INTO public.account_access(user_id,enabled,ever_enabled) VALUES(actor,true,true) ON CONFLICT(user_id) DO UPDATE SET enabled=true,ever_enabled=true;
  INSERT INTO public.profiles(id,username,is_active) VALUES(actor,'357 switch proof',true) ON CONFLICT(id) DO UPDATE SET is_active=true;
- PERFORM private.drop357_select_ruleset(true);run:=public.arcade_start(actor,gen_random_uuid(),'357-drop');old_id:=(run->>'id')::uuid;
+ IF to_regprocedure('private.drop357_select_ruleset(text)') IS NULL THEN PERFORM private.drop357_select_ruleset(true);ELSE PERFORM private.drop357_select_ruleset('357-drop/3'::text);END IF;run:=public.arcade_start(actor,gen_random_uuid(),'357-drop');old_id:=(run->>'id')::uuid;
  PERFORM private.drop357_select_ruleset(false);
  PERFORM pg_temp.assert357v3(public.arcade_start(actor,gen_random_uuid(),'357-drop')->>'ruleset'='357-drop/3','active game pinned across switch');
  v:=public.arcade_drop357_step(actor,old_id)->'projection';PERFORM public.arcade_drop357_step(actor,old_id,(v->>'revision')::bigint,v->>'roundId',gen_random_uuid(),'abandon','{}');

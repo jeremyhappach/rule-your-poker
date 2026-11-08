@@ -1,3 +1,16 @@
+# 357 Drop partial carry and Arcade tile height — November 8, 2026
+
+Approved /4 adds twelve placements, three passes and chosen 1/2-card inheritance.
+The reversible switch preserves /2 and /3, pins live games and separates scores.
+Pending carries keep the timer live; only resolved lanes bank on timeout. Existing
+three-round tally, audio, results and Abandon behavior are preserved. Ship Cap
+Voyage now shares the lobby tile height while retaining its complete artwork.
+
+Migration 20261108133655 passes candidate and installed rollback qualification.
+The verified checkpoint records publication and activation after the matching
+release signal. Physical iPhone smoke remains pending. See
+[implementation, qualification and reversal](DROP357_PARTIAL_CARRY.md).
+
 # Ship Cap Voyage / 1 — November 7, 2026 — published, owner smoke pending
 
 The Arcade-only candidate on `codex/ship-cap-voyage` implements the supplied

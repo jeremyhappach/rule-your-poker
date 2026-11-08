@@ -1,3 +1,8 @@
+357 Drop partial carry: supabase/drop357/v4.sql owns /4 deal/actions/validation;
+SoloDrop357 owns inline selection presentation. DROP357_PARTIAL_CARRY.md documents
+rules, reversal and evidence. ArcadeTile's inner frame fits non-banner artwork
+inside the common lobby tile ratio.
+
 ## 357 Drop
 
 Solo Arcade: `supabase/drop357/rules.sql` owns frozen v1 board rules and scoring;

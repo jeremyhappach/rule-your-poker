@@ -75,8 +75,9 @@ async function horsesBlitzStep(rpc:Rpc,userId:string,id:string,body:Record<strin
 }
 async function drop357Step(rpc:Rpc,userId:string,id:string,body:Record<string,any>){
  const action=body.op==='action';
- if(action&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||!body.intent||!['place','pass','abandon'].includes(body.intent.type)||!Array.isArray(body.intent.items)||(body.intent.type==='place'?![1,2].includes(body.intent.items.length):body.intent.items.length!==0)||body.intent.items.some((i:unknown)=>!Number.isInteger(i)||Number(i)<0||Number(i)>6)))throw Error('arcade:invalid_command');
+ if(action&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||typeof body.roundId!=='string'||!body.intent||!['place','pass','carry','abandon'].includes(body.intent.type)||!Array.isArray(body.intent.items)||(body.intent.type==='place'?![1,2].includes(body.intent.items.length):body.intent.type==='carry'?![2,3].includes(body.intent.items.length):body.intent.items.length!==0)||body.intent.items.some((i:unknown)=>!Number.isInteger(i)||Number(i)<0||Number(i)>6)))throw Error('arcade:invalid_command');
  if(action&&body.intent.type==='place'&&body.intent.items[0]>2)throw Error('arcade:invalid_command');
+ if(action&&body.intent.type==='carry'&&body.intent.items[0]>1)throw Error('arcade:invalid_command');
  const value=await rpc('arcade_drop357_step',{p_actor:userId,p_run:id,...(action?{p_revision:body.revision,p_round:body.roundId,p_request:body.requestId,p_action:body.intent.type,p_items:body.intent.items}:{})});
  if(value.outcome==='stale')throw Error('arcade:stale_action');return value.projection;
 }

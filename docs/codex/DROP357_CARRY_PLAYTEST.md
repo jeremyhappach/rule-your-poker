@@ -11,8 +11,8 @@ best-five/natural eligibility are reevaluated per stage. Five passes reset per
 round; a filled board exposes at most twelve cards. Full-board celebration does
 not imply the +200 all-three-scoring bonus.
 
-The administrative switch is SELECT private.drop357_select_ruleset(true) for the
-playtest, false for the original. Only database administration can execute it.
+The full-carry trial remains selectable with private.drop357_select_ruleset('357-drop/3'::text).
+Since /4, boolean true selects partial carry; false selects the original. Only database administration can execute it.
 It atomically selects one enabled version. Existing arcade_start pins ruleset
 and config at admission and returns an already-active run across switch changes.
 Frozen /1 and /2 remain supported; /2 retains 15 placements and three passes.
