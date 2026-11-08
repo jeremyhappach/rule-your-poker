@@ -1,3 +1,13 @@
+# 2026-11-08 — Async push taps preserve the authorized document
+
+The push worker transfers a UUID-bound destination to AccountAccessGate's
+always-mounted receiver. A receipt acknowledges capture, never authorization.
+The existing gate drains one destination after valid session/access admission;
+it does not restart an in-flight check. Unresponsive/legacy windows and cold
+starts retain guarded URL navigation. Same-match taps re-read server availability.
+No gameplay or financial ownership moves into the worker or navigation hook.
+See ASYNC_PUSH_TAP.md for evidence and pending physical-device acceptance.
+
 # 2026-11-08 — Frozen polish scoring and rounded ties
 
 Drop /5 changes only the earned ALL FILLED award/presentation interval from /4.

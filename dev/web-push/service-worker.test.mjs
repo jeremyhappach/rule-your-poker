@@ -8,7 +8,8 @@ function fixture({trace=false,diagnosticWriteFails=false,now}={}){
  let source=readFileSync('public/ptown-push-sw.js','utf8');
  if(trace)source=source.replace('d78bc9e8-2ede-4bbd-9032-80cfdef01aa6',payload.matchId).replace('ce088752b9efb265bf36c0cb633c195a2d829c9aaf55d0476eaa6ed8c4c78111',createHash('sha256').update(payload.binding).digest('hex'));
  const fixedNow=now??(trace?Date.parse('2026-11-07T16:00:00Z'):undefined);
- vm.runInNewContext(source,{self,URL,Response,TextEncoder,crypto:webcrypto,Date:class extends Date{static now(){return fixedNow??Date.now();}},caches:{open:async()=>({match:async key=>store.get(key)?.clone(),put:async(key,value)=>{if(diagnosticWriteFails&&key.endsWith('/diagnostics'))throw Error('disk unavailable');store.set(key,value);}})}});
+ class Channel{constructor(){this.port1={close(){},onmessage:null};this.port2={postMessage:data=>this.port1.onmessage?.({data})};}}
+ vm.runInNewContext(source,{self,URL,Response,TextEncoder,MessageChannel:Channel,setTimeout,clearTimeout,crypto:webcrypto,Date:class extends Date{static now(){return fixedNow??Date.now();}},caches:{open:async()=>({match:async key=>store.get(key)?.clone(),put:async(key,value)=>{if(diagnosticWriteFails&&key.endsWith('/diagnostics'))throw Error('disk unavailable');store.set(key,value);}})}});
  const fire=async(name,event)=>{let task;handlers[name]({...event,waitUntil:p=>task=p});await task;};
  const bind=value=>fire('message',{source:{url:'https://local.invalid/'},data:{type:'push-binding',value},ports:[{postMessage:()=>{}}]});
  return {fire,bind,shown,navigation,self,read:async name=>(await store.get('https://local.invalid/__push_local__/'+name)?.clone().json())};
@@ -183,4 +184,25 @@ test('warm registration clicks navigate and wake an existing window; failed navi
  const p={...payload,kind:'registration',registrationUserId:payload.matchId};await f.fire('notificationclick',{notification:{data:p,close(){}}});
  assert.equal(calls[0],'/?adminPlayer='+payload.matchId);if(failure)assert.equal(f.navigation[0],calls[0]);else assert(calls.includes('push-navigation'));
  }
+});
+
+test('warm async tap hands exact owner/match/event to existing app without document navigation',async()=>{
+ const f=fixture();await f.bind({binding:payload.binding,userId:'owner'});const calls=[];
+ f.self.clients.matchAll=async()=>[{url:'https://local.invalid/arcade',navigate:async()=>{throw Error('must not reload');},focus:async()=>calls.push('focus'),postMessage:(message,ports)=>{
+  calls.push(JSON.parse(JSON.stringify(message)));ports[0].postMessage({accepted:true,eventId:message.destination.eventId});
+ }}];
+ await f.fire('notificationclick',{notification:{data:payload,close(){}}});
+ assert.deepEqual(calls,['focus',{type:'push-match-navigation',destination:{eventId:payload.eventId,matchId:payload.matchId,userId:'owner'}}]);
+ assert.equal(f.navigation.length,0);
+});
+test('a legacy window without the handoff receiver falls back to the exact guarded URL',async()=>{
+ const f=fixture();await f.bind({binding:payload.binding,userId:'owner'});const calls=[];
+ f.self.clients.matchAll=async()=>[{url:'https://local.invalid/',postMessage(){},navigate:async p=>calls.push(p),focus:async()=>{}}];
+ await f.fire('notificationclick',{notification:{data:payload,close(){}}});
+ assert.deepEqual(calls,['/delayed/'+payload.matchId]);
+});
+test('focus failure with accepted handoff never opens a duplicate window',async()=>{
+ const f=fixture();await f.bind({binding:payload.binding,userId:'owner'});
+ f.self.clients.matchAll=async()=>[{url:'https://local.invalid/',focus:async()=>{throw Error('cannot focus');},postMessage:(message,ports)=>ports[0].postMessage({accepted:true,eventId:message.destination.eventId})}];
+ await f.fire('notificationclick',{notification:{data:payload,close(){}}});assert.deepEqual(f.navigation,[]);
 });

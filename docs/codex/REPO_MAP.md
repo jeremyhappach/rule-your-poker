@@ -1,3 +1,9 @@
+Async push navigation: `public/ptown-push-sw.js` wakes and hands an existing app
+the account/match/event UUIDs; `src/hooks/usePushMatchNavigation.ts` receives above
+gated children through `AccountAccessGate.tsx`. The gate owns session/access
+admission; `Delayed.tsx` refreshes same-match notification arrivals through
+`delayed_home`. See `ASYNC_PUSH_TAP.md` and `dev/web-push/tap-browser.mjs`.
+
 Complete polish ownership: `supabase/horses-blitz/matrix.sql` owns /4 ranked offers;
 `supabase/ptown-polish/` composes frozen Drop /5, qualification and guarded activation.
 AccountAccessGate/accountCheckTimeout own bounded launch verification; AudioManager

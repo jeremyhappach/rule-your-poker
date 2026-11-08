@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
-import {MemoryRouter,Route,Routes} from 'react-router-dom';
+import {MemoryRouter,Route,Routes,useNavigate} from 'react-router-dom';
 const mock=vi.hoisted(()=>({rpc:vi.fn(),home:{} as any,changed:()=>{}}));
 vi.mock('@/hooks/useAuthGuard',()=>({useAuthGuard:()=>({user:{id:'me'},isReady:true})}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:()=>{const c={on:(_a:any,_b:any,cb:()=>void)=>{mock.changed=cb;return c;},subscribe:()=>c};return c;},removeChannel:vi.fn()}}));
@@ -86,4 +86,15 @@ it('keeps one lobby parent card and navigation to setup, archive and multiplayer
  expect(screen.getByRole('link',{name:'New Async Match'}).getAttribute('href')).toBe('/delayed/new');
  expect(screen.getByRole('link',{name:'Archived / Completed Sessions'}).getAttribute('href')).toBe('/?sessions=completed');
  fireEvent.click(screen.getByRole('link',{name:'Lobby'}));expect(screen.getByRole('heading',{name:'Multiplayer lobby'})).toBeTruthy();
+});
+it('refreshes the same match on a new notification tap and removes stale turn actions',async()=>{
+ mock.home={...mock.home,status:'active',acceptedAt:new Date().toISOString()};
+ function Tap(){const navigate=useNavigate();return <button onClick={()=>navigate('/delayed/match',{state:{asyncPushEventId:'new-event'}})}>Push tap</button>;}
+ render(<MemoryRouter initialEntries={['/delayed/match']}><Tap/><Routes><Route path="/delayed/:matchId" element={<Delayed/>}/></Routes></MemoryRouter>);
+ await screen.findByRole('link',{name:'Take Turn'});
+ mock.home={...mock.home,revision:2,lineup:mock.home.lineup.map((c:any)=>({...c,actor:'other'}))};
+ fireEvent.click(screen.getByRole('button',{name:'Push tap'}));
+ await waitFor(()=>expect(screen.queryByRole('link',{name:'Take Turn'})).toBeNull());
+ expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_home')).toHaveLength(2);
+ expect(mock.rpc.mock.calls.every(c=>c[0]==='delayed_home')).toBe(true);
 });

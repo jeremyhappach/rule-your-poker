@@ -1,3 +1,19 @@
+# Async push tap continuity — November 8, 2026 — physical iPhone acceptance pending
+
+Async notification taps hand the exact match to an existing app without reloading
+its valid access state. An in-flight check completes before one pending route is
+consumed. Expired/cold/disabled gates, server membership and turn authority remain;
+Retry and Back to Lobby provide recovery. Same-match taps refresh current state.
+The forced document reload is confirmed; the exact phone request stall remains
+unproven. A separate ignored-auth-event restoration race is corrected and tested.
+
+70 component/auth tests, 21 worker tests, eight compiled-App desktop Edge scenarios,
+TypeScript and production build pass. Native worker messaging uses synthetic
+clicks and fixture HTTP; real iPhone foreground/background/closed/stale push taps
+remain unverified. No migration, financial change or production-data mutation.
+See [trace, correction and physical acceptance](ASYNC_PUSH_TAP.md).
+Checkpoint: `async-push-tap-2026-11-08`; its verified tag records publication.
+
 # Arcade compact lobby header and rules cleanup — November 8, 2026 — owner smoke pending
 
 The gamepad, Arcade Mode title and existing speaker now share one row beneath

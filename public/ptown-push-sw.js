@@ -16,7 +16,19 @@ async function trace(p,stage,details={}){try{
  }catch{/* Diagnostic storage must never affect delivery. */}}
 let queue=Promise.resolve();
 const serial=fn=>{const task=queue.then(fn);queue=task.catch(()=>{});return task;};
+// Push-only worker: activation does not replace a cached application shell.
+self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+function handoffMatch(target,destination){
+ return new Promise(resolve=>{
+  const channel=new MessageChannel();
+  const finish=accepted=>{clearTimeout(timeout);channel.port1.close();resolve(accepted);};
+  // Bounded capability handshake for older app bundles / discarded windows.
+  const timeout=setTimeout(()=>finish(false),1500);
+  channel.port1.onmessage=event=>finish(event.data?.accepted===true&&event.data.eventId===destination.eventId);
+  try{target.postMessage({type:'push-match-navigation',destination},[channel.port2]);}catch{finish(false);}
+ });
+}
 self.addEventListener('message',event=>{
  if(!event.source?.url||new URL(event.source.url).origin!==self.location.origin)return;
  if(event.data?.type==='push-diagnostic-version')event.ports[0]?.postMessage(TRACE_VERSION);
@@ -71,5 +83,10 @@ self.addEventListener('notificationclick',event=>{event.notification.close();eve
  if(registration)await write('pending-registration',{registrationUserId:p.registrationUserId,binding:p.binding,userId:current.userId,eventId:p.eventId});
  const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
  const target=windows.find(w=>new URL(w.url).origin===self.location.origin);
+ if(target&&!table&&!registration){
+  // Wake a backgrounded PWA before waiting for its receiver to acknowledge.
+  try{await target.focus();}catch{/* Still try the existing receiver. */}
+  if(await handoffMatch(target,{eventId:p.eventId,matchId:p.matchId,userId:current.userId}))return;
+ }
  if(target){try{await target.navigate(path);await target.focus();target.postMessage?.({type:'push-navigation'});}catch{await self.clients.openWindow(path);}}else await self.clients.openWindow(path);
 }));});

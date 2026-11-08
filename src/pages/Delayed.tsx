@@ -9,7 +9,7 @@ import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {turnEntryHint} from '@/lib/delayed/notifications';
 import {AsyncInvite} from '@/components/delayed/AsyncInvite';
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {Link,useNavigate,useParams,useSearchParams} from 'react-router-dom';
+import {Link,useLocation,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Clock} from 'lucide-react';
 import {money,turnTime,mayViewFinale,needsChildReview} from '@/lib/delayed/reviews';
 import {AsyncTurnStage} from '@/components/delayed/AsyncTurnStage';
@@ -58,6 +58,7 @@ function MatchList({userId}:{userId:string}){
 }
 function MatchHome({id,userId}:{id:string;userId:string}){
  const navigate=useNavigate();
+ const notificationEvent=useLocation().state?.asyncPushEventId;
  const [query]=useSearchParams(),historical=query.has('history');
  const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false),[tick,setTick]=useState(Date.now());
  const [confirmOffer,setConfirmOffer]=useState<string|null>(null);
@@ -66,7 +67,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
  const refresh=useCallback(()=>{const generation=++epoch.current;return delayedRpc<Home>(historical?'delayed_history_detail':'delayed_home',{p_match:id}).then(value=>{
   if(generation!==epoch.current)return;offset.current=value.serverAt-Date.now();setHome(old=>old&&old.revision>value.revision?old:value);setError('');
  }).catch(e=>{if(generation!==epoch.current)return;if(e.message==='delayed:invitation_cancelled'){navigate('/delayed',{replace:true});return;}setError(e.message);});},[id,historical,navigate]);
- useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
+ useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh,notificationEvent]);useUpdates(userId,refresh);
  useEffect(()=>{const timer=setInterval(()=>setTick(Date.now()),1000);return()=>clearInterval(timer);},[]);
  async function respond(action:string,confirmedOffer?:string){
   if(!home||busy.current||historical||home.status!=='invited')return;

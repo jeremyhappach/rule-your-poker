@@ -7,7 +7,8 @@ vi.mock('@/lib/accountAccess',()=>({accountRpc:fake.rpc,sendVerification:vi.fn()
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:fake.session,signOut:fake.signOut,onAuthStateChange:(fn:any)=>{fake.auth=fn;return {data:{subscription:{unsubscribe:vi.fn()}}};}},channel:()=>({on:(_a:any,_b:any,fn:any)=>{fake.realtime=fn;return {subscribe:fake.subscribe};}}),removeChannel:vi.fn()}}));
 import {AccountAccessGate} from './AccountAccessGate';
 const enabled={userId:'owner',enabled:true,status:'enabled',revision:1,email:'owner@example.invalid',verified:false,admin:false};
-beforeEach(()=>{vi.resetAllMocks();fake.session.mockResolvedValue({data:{session:{user:{id:'owner'}}}});fake.rpc.mockResolvedValue(enabled);});
+const session=()=>({user:{id:'owner'},expires_at:Math.floor(Date.now()/1000)+3600});
+beforeEach(()=>{vi.resetAllMocks();fake.session.mockResolvedValue({data:{session:session()}});fake.rpc.mockResolvedValue(enabled);});
 afterEach(cleanup);
 const mount=()=>render(<MemoryRouter><AccountAccessGate><div>Playable content</div></AccountAccessGate></MemoryRouter>);
 it('shows pending approval and withholds gameplay while authenticated',async()=>{
@@ -17,10 +18,10 @@ it('shows pending approval and withholds gameplay while authenticated',async()=>
 it('permits unverified play and dismisses the reminder until the next login',async()=>{
  mount();expect(await screen.findByText('Your email is not verified')).toBeTruthy();
  expect(screen.getByText('Playable content')).toBeTruthy();fireEvent.click(screen.getByText('Continue playing'));
- await act(async()=>fake.auth('TOKEN_REFRESHED',{user:{id:'owner'}}));
+ await act(async()=>fake.auth('TOKEN_REFRESHED',session()));
  expect(screen.queryByText('Your email is not verified')).toBeNull();
  await act(async()=>fake.auth('SIGNED_OUT',null));
- await act(async()=>fake.auth('SIGNED_IN',{user:{id:'owner'}}));
+ await act(async()=>fake.auth('SIGNED_IN',session()));
  expect(await screen.findByText('Your email is not verified')).toBeTruthy();
 });
 it('boots on a newer suspension event and rejects a stale enabled response',async()=>{
@@ -59,7 +60,7 @@ it('times out a stalled check, retries in place and ignores its late result',asy
  expect(screen.getByText('/delayed/match-id?review=child-id')).toBeTruthy();vi.useRealTimers();
 });
 it('retries stalled session restoration without reloading or admitting an unchecked account',async()=>{
- vi.useFakeTimers();fake.session.mockImplementationOnce(()=>new Promise(()=>{})).mockResolvedValue({data:{session:{user:{id:'owner'}}}});fake.rpc.mockResolvedValue({...enabled,enabled:false,status:'suspended'});mount();
+ vi.useFakeTimers();fake.session.mockImplementationOnce(()=>new Promise(()=>{})).mockResolvedValue({data:{session:session()}});fake.rpc.mockResolvedValue({...enabled,enabled:false,status:'suspended'});mount();
  await act(async()=>{await vi.advanceTimersByTimeAsync(10001);});
  await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Retry'})));
  expect(screen.getByText('Account Suspended — Contact Administrator.')).toBeTruthy();expect(screen.queryByText('Playable content')).toBeNull();vi.useRealTimers();
