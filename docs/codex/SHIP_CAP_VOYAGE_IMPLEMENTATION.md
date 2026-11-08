@@ -1,10 +1,14 @@
-# Ship Cap Voyage / 1 — local preview candidate, November 7, 2026
+# Ship Cap Voyage / 1 — approved release, November 7, 2026
 
 Implemented on `codex/ship-cap-voyage`, based on `origin/main` at `e4b930712`.
 The separate worktree preserves the original checkout's unfinished Golf work.
-Jeremy requested implementation and a preview, but explicitly withheld production
-publication. No hosted schema, admission, client, worker or real-money state was
-changed. This is not a production-qualified release.
+Jeremy approved production publication after the local preview. Migration
+`20261108000024_ship_cap_voyage_arcade_v1.sql` is installed with admission closed
+until matching client publication. Candidate and installed production rollback
+proofs pass, including financial isolation. Recovery worker v22 preserves the
+exact deployed v21 code plus one Ship Cap Voyage dispatch line. Its packaged
+entrypoint passes dispatch, authentication, no-action and rejected-replay checks.
+No multiplayer or financial gameplay changes are included.
 
 ## Rules and ownership
 
@@ -89,15 +93,19 @@ nothing was installed. `dev/quintzee/database.mjs` enforces loopback access.
 The preview is `http://127.0.0.1:15380/arcade/ship-cap-voyage` and uses a synthetic
 local account. The server rolls that account's transaction back when stopped.
 
-## Remaining release gate and owner smoke
+## Publication and owner smoke
 
-Production publication remains explicitly unapproved. Candidate SQL is retained
-under `supabase/ship-cap-voyage/`; no production migration was generated/applied.
-Before publication, package it with the installed migration tooling, rerun the
-proof against the then-current production schema without committing fixtures,
-publish the matching client and recovery dispatcher, and open admission only
-after Jeremy approves a production-safe window. The tracked activation SQL is
-not executed. Existing live and async games remain untouched.
+The migration was installed through Supabase's migration API; its server-issued
+version is recorded in the repository. All proof fixtures rolled back. The
+worker packaging script rejects any change to the qualified v21 baseline.
+Checkpoint `ship-cap-voyage-v1-2026-11-07` records the release commit; the subsequent
+verified tag records exact production publication, release signal and admission
+activation. `dev/ship-cap-voyage/hosted-smoke.mjs <sha>` checks both production
+aliases, real authenticated leaderboard access, the mobile tile/Rules control
+and Play surface without starting a production game. Its screenshots and receipt
+are stored under `qualification.local/ship-cap-voyage/production/`.
+Disable only `ship-cap-voyage/1` in `private.arcade_rulesets` to close new admission
+without affecting other games or interrupting pinned active runs.
 
 Physical iPhone PWA and Android checks are still required: actual speaker/cup
 sound quality, supported vibration, saved Haptics off, Sounds off/on, screen
@@ -108,4 +116,4 @@ there is no new native iOS haptics bridge or gamepad actuator integration.
 Owner smoke: open Rules through the gold tile icon, play all three rounds, wait
 before every first roll and after a bank, verify the bell at each opening, inspect
 the round tally, then leave and reload the final scoreboard. Use Play Again or
-Back to Arcade explicitly. Do not activate production until that review passes.
+Back to Arcade explicitly. This physical-device review remains owner acceptance.

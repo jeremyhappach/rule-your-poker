@@ -1,3 +1,12 @@
+# Ship Cap Voyage — November 7, 2026 — automated qualification passed
+
+Checkpoint `ship-cap-voyage-v1-2026-11-07` records the approved Arcade release.
+Candidate/installed hosted rollback proofs, independent local races, 66 focused
+tests, the packaged recovery worker, SQL-backed three-round browser/audio flow,
+ten viewport states, TypeScript and build pass. The verified tag records exact
+publication and activation. Physical phone/speaker/haptics acceptance remains
+pending. See SHIP_CAP_VOYAGE_IMPLEMENTATION.md.
+
 # 357 Drop carry-forward — November 7, 2026 — local/hosted qualification passed
 
 Checkpoint 357-drop-carry-playtest-2026-11-07 records both rulesets' three-round
