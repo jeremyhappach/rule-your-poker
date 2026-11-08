@@ -16,6 +16,7 @@ import {isSoundSurfaceVisible} from '@/lib/audio/presentationSound';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {boxingBellCue} from '@/lib/run21/boxingBell';
 import {usePresentedScoreAudio} from '@/hooks/usePresentedScoreAudio';
+import {useBankOffer} from '@/hooks/useBankOffer';
 import {supabase} from '@/integrations/supabase/client';
 import {arcadeRequest} from '@/lib/arcade/client';
 import '../quintzee/quintzee.css';
@@ -36,6 +37,7 @@ export function SoloShipCapVoyage({runId,userId,transport:provided}:{runId:strin
  const finalPhase=r&&v?{from:0,to:v.score,startedAt:r.completedAt+5000,endsAt:r.completedAt+8000}:null;
  usePresentedScoreAudio(userId,final&&!game.bornEnded&&game.liveRevision>=0&&elapsed<8000?'voyage-final:'+runId:null,finalPhase,game.now);
  const finalScore=final&&!game.bornEnded&&game.liveRevision>=0&&finalPhase?Math.round(v!.score*Math.min(1,Math.max(0,(game.now-finalPhase.startedAt)/3000))):v?.score??0;
+ const offer=useBankOffer({scope:runId+':'+v?.roundId+':'+v?.banks.length,receipt:String(v?.roll),points:v?.quote?.points??null,bankable:!!v&&v.cargo!==null&&v.cargo>=3,now:game.now,live:game.liveRevision>=0&&!motion,userId,surface});
  const locked=!!motion||!v||v.status!=='active'||v.phase!=='playing'||game.pending||!game.ready||!!game.error||intro>0;
  function vibrate(pattern:number|number[]){if(haptic.current&&!document.hidden)navigator.vibrate?.(pattern);}
  function stopMotion(){motionRef.current=null;setMotion(null);navigator.vibrate?.(0);landingStop.current();}
@@ -66,15 +68,15 @@ export function SoloShipCapVoyage({runId,userId,transport:provided}:{runId:strin
   <section className="scv-grand"><h3>GRAND TOTAL</h3><strong aria-label="Grand total">{finalScore.toLocaleString()}</strong>{v.completion?.kind==='broken'&&<p>New personal best</p>}</section>
   <div className="scv-actions"><button disabled={again} onClick={()=>void playAgain()}>Play Again</button><button onClick={()=>navigate('/arcade/ship-cap-voyage?result='+runId)}>Back to Arcade</button></div>{againError&&<p role="alert">{againError}</p>}
  </main>:<main className="scv-board" ref={board} data-canonical-felt-interaction-layer>
-  <div className="scv-status"><div><strong>ROUND {v.round} OF 3</strong><small>Rolls left: {12-v.roll}</small></div><div className="scv-score"><small>{r?'ROUND SCORE':'GAME SCORE'}</small><TriScorePill item={{id:userId,score:v.score,active:true}} root={board} fraction={r?tally.fraction:0} value={r?tally.displayScore??r.total:v.score}/></div></div>
+  <div className="scv-status"><div><strong>ROUND {v.round} OF 3</strong></div><div className="scv-score"><small>{r?'ROUND SCORE':'GAME SCORE'}</small><TriScorePill item={{id:userId,score:v.score,active:true}} root={board} fraction={r?tally.fraction:0} value={r?tally.displayScore??r.total:v.score}/></div></div>
   <section className="scv-qualification" aria-label="Qualification">{['Ship','Captain','Crew'].map((label,i)=><div key={label} data-locked={v.locked.length>i}><span>{label} · {6-i}</span><b>{v.locked.length>i?'LOCKED':'NEEDED'}</b></div>)}</section>
   <section className="scv-tray" aria-label="Dice tray">
    {r?<div className="scv-result"><h2>{r.reason==='complete'?'MANIFEST COMPLETE':'INCOMPLETE MANIFEST'}</h2><strong style={{visibility:tally.fraction>0?'hidden':'visible'}}>{r.total.toLocaleString()}</strong><p>{r.reason==='incomplete'?'Round scores zero · cargo forfeited':'All three cargo banks secured'}</p></div>:<>
-   <div className="scv-dice">{Array.from({length:5},(_,i)=>{const held=v.locked.includes(i),rolling=!!motion&&!held,empty=!rolling&&(!v.dice.length||v.locked.length===3&&v.cargo===null&&!held);return <div key={i} className="scv-die" data-rolling={rolling} data-locked={held} aria-label={'Die '+(i+1)+': '+(rolling?'rolling':empty?'unrolled':v.dice[i])}>{empty?<span className="scv-empty"/>:<QuintzeeDie value={v.dice[i]??1} rolling={rolling}/>}</div>;})}</div>
+   <div className="scv-rolls-left" data-left={12-v.roll} role="status">Rolls Left <strong>{12-v.roll}</strong></div><div className="scv-dice">{Array.from({length:5},(_,i)=>{const held=v.locked.includes(i),rolling=!!motion&&!held,empty=!rolling&&(!v.dice.length||v.locked.length===3&&v.cargo===null&&!held);return <div key={i} className="scv-die" data-rolling={rolling} data-locked={held} aria-label={'Die '+(i+1)+': '+(rolling?'rolling':empty?'unrolled':v.dice[i])}>{empty?<span className="scv-empty"/>:<QuintzeeDie value={v.dice[i]??1} rolling={rolling}/>}</div>;})}</div>
    <div className="scv-candidate" role="status">{motion?'Rolling…':v.cargo!==null?<>CARGO <strong>{v.cargo}</strong><small>{v.cargo>=3?`${v.quote?.base} base + ${v.quote?.bonus} roll bonus = ${v.quote?.points}`:'Snake eyes · roll again'}</small></>:v.roll===0?'Ready when you are':v.locked.length===3?'Roll your next cargo':'Qualify 6 → 5 → 4'}</div></>}
   </section>
   <section className="scv-manifest" aria-label="Cargo manifest"><h2>CARGO MANIFEST</h2><div>{[0,1,2].map(i=>{const b=v.banks[i];return <article key={i} data-highlight={!!r&&r.total>0&&Math.floor(Math.max(0,elapsed-1000)/1000)===i} data-forfeit={r?.total===0}><small>BANK {i+1}</small><strong>{b?.cargo??'—'}</strong><span>{b?`${b.base} + ${b.bonus}`:'EMPTY'}</span><b>{b?b.points+' PTS':'—'}</b></article>;})}</div></section>
-  <div className="scv-actions">{r?<button disabled={game.pending||!game.ready||elapsed<5000} onClick={()=>game.act('next_round')}>{v.round<3?'Continue to Round '+(v.round+1):'Preparing scoreboard…'}</button>:<><button onClick={roll} disabled={locked||v.roll>=12}>{motion?'Rolling…':v.roll===0?'Roll (1)':'Roll Again'}</button><button disabled={locked||v.cargo===null||v.cargo<3} onClick={()=>{if(!motionRef.current)game.act('bank');}}>Bank Cargo{v.cargo!==null&&v.cargo>=3?<strong>{v.quote?.points}</strong>:null}</button></>}</div>
+  <div className="scv-actions">{r?<p role="status">{v.round<3?'Next round opens after the score tally':'Preparing scoreboard…'}</p>:<><button className="scv-bank" disabled={locked||v.cargo===null||v.cargo<3} onClick={()=>{if(!motionRef.current)game.act('bank');}}><strong>{offer??'—'}</strong><span>Bank Cargo</span></button><button onClick={roll} disabled={locked||v.roll>=12}>{motion?'Rolling…':v.roll===0?'Roll (1)':'Roll Again'}</button></>}</div>
   {intro>0&&<div className="scv-intro"><TriRoundIntro remaining={intro} roundLabel={'ROUND '+v.round} paused={false}/></div>}
  </main>}
  {game.error&&<div role="alert">{game.error} <button onClick={game.reconnect}>Reconnect</button></div>}

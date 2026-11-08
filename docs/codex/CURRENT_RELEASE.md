@@ -1,3 +1,13 @@
+# Arcade smoke polish — November 8, 2026 — owner smoke pending
+
+The fifteen-item handoff adds clear Arcade rules, two-step Drop carry choices,
+Voyage banner/roll warnings/automatic continuation, shared bank-offer presentation,
+Chucky rabbit/final-fold continuity, and square Horses dice with manual final banking.
+Horses /3 preserves historical rules and is activated after matching publication.
+Migration `20261108160027`, hosted rollback proofs, local SQL-backed phone checks,
+focused tests, TypeScript and production build pass. Physical iPhone smoke remains
+pending. See [scope, evidence and release procedure](ARCADE_SMOKE_POLISH.md).
+
 # 357 Drop partial carry and Arcade tile height — November 8, 2026
 
 Approved /4 adds twelve placements, three passes and chosen 1/2-card inheritance.

@@ -52,18 +52,18 @@ BEGIN
  s:=run.state;
  IF run.status='active' THEN
   IF s IS NULL THEN s:=private.ship_cap_voyage_round(jsonb_build_object('runId',run.id,'userId',run.user_id,'status','active','config',run.config,'round',0,'score',0,'results','[]'::jsonb),floor(extract(epoch FROM run.created_at)*1000)::bigint); END IF;
-
+  IF s->>'phase'='summary' AND (s->>'round')::int<3 AND at_ms>=(s#>>'{result,completedAt}')::bigint+8000 THEN s:=private.ship_cap_voyage_round(s,at_ms);END IF;
  END IF;
  IF p_action IS NOT NULL AND outcome<>'duplicate' THEN
   IF s IS DISTINCT FROM run.state OR run.status<>'active' OR p_revision<>run.revision OR p_round IS DISTINCT FROM s->>'roundId' THEN outcome:='stale';
   ELSE s:=private.ship_cap_voyage_action(s,p_action,p_items,at_ms);command_id:=p_request;outcome:='committed'; END IF;
  END IF;
  IF s IS DISTINCT FROM run.state THEN
-  PERFORM public.arcade_commit(p_actor,p_run,run.revision,s,NULL,command_id,fingerprint,p_token);
+  PERFORM public.arcade_commit(p_actor,p_run,run.revision,s,CASE WHEN s->>'phase'='summary' AND s->>'status'='active' THEN (s#>>'{result,completedAt}')::bigint+8000 END,command_id,fingerprint,p_token);
   SELECT * INTO STRICT run FROM private.arcade_runs WHERE id=p_run;
  END IF;
  projection:=jsonb_build_object('id',run.id,'revision',run.revision,'status',run.status,'ruleset',run.ruleset,'serverAt',at_ms,
-  'roundId',s->'roundId','round',s->'round','score',run.score,'phase',s->'phase','roll',s->'roll','dice',s->'dice','locked',s->'locked','cargo',s->'cargo','quote',private.ship_cap_voyage_quote((s->>'cargo')::int,(s->>'roll')::int),'banks',s->'banks','results',s->'results','startedAt',s->'startedAt','result',s->'result','completion',(SELECT record FROM private.arcade_results WHERE run_id=run.id));
+  'dueAt',run.due_at,'roundId',s->'roundId','round',s->'round','score',run.score,'phase',s->'phase','roll',s->'roll','dice',s->'dice','locked',s->'locked','cargo',s->'cargo','quote',private.ship_cap_voyage_quote((s->>'cargo')::int,(s->>'roll')::int),'banks',s->'banks','results',s->'results','startedAt',s->'startedAt','result',s->'result','completion',(SELECT record FROM private.arcade_results WHERE run_id=run.id));
  RETURN jsonb_build_object('outcome',outcome,'record',jsonb_build_object('id',run.id,'game',run.game,'revision',run.revision,'status',run.status),'projection',projection);
 END $$;
 REVOKE ALL ON FUNCTION public.arcade_ship_cap_voyage_step(uuid,uuid,bigint,text,uuid,text,integer[],uuid) FROM PUBLIC,anon,authenticated;

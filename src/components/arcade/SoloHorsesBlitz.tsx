@@ -15,6 +15,7 @@ import {boxingBellCue} from '@/lib/run21/boxingBell';
 import {QuintzeeDie} from '../quintzee/QuintzeeDie';
 import {useQuintzeeRollAudio} from '../quintzee/useQuintzeeRollAudio';
 import {useHorsesBlitzRoll} from './useHorsesBlitzRoll';
+import {useBankOffer} from '@/hooks/useBankOffer';
 import {Dices} from 'lucide-react';
 import '../quintzee/quintzee.css';
 import './horsesBlitz.css';
@@ -25,6 +26,7 @@ export function SoloHorsesBlitz({runId,userId,transport:provided}:{runId:string;
  const v=motion?(motion.settled?motion.landing:motion.source):game.snapshot,r=v?.result,navigate=useNavigate();
  const [selection,setSelection]=useState<{handId:string;indices:number[]}>({handId:'',indices:[]}),[abandon,setAbandon]=useState(false);
  const surface=useRef<HTMLDivElement>(null),done=useRef(false);
+ const offer=useBankOffer({scope:runId+':'+v?.handId,receipt:String(v?.roll),points:v&&v.roll>0?v.set.points:null,bankable:!!v&&(v.set.points>0||v.roll===3),now:game.now,live:game.liveRevision>=0&&!motion,userId,surface});
  const held=motion?.held??(selection.handId===v?.handId?selection.indices:v?.held??[]);
  const locked=!!motion||!v||v.status!=='active'||v.phase!=='playing'||game.pending||!game.ready||v.deadline===null||game.now>=v.deadline;
  const rumble=motion&&!motion.settled?motion:null;
@@ -55,7 +57,7 @@ export function SoloHorsesBlitz({runId,userId,transport:provided}:{runId:string;
     <dl><div><dt>Base score</dt><dd>{r.base.toLocaleString()}</dd></div><div><dt>Timer bonus</dt><dd>+{r.timerBonus.toLocaleString()}</dd></div><div className="hb-total"><dt>Round total</dt><dd>{r.total.toLocaleString()}</dd></div></dl>
     {v.round<3?<button className="hb-next" disabled={game.pending||!game.ready} onClick={()=>game.act('next_round')}>Next Round</button>:<p className="hb-run-total">TOTAL SCORE <strong>{v.score.toLocaleString()}</strong></p>}
    </section>:<div className="hb-play">
-    <div className="hb-status"><span>Round {v.round}/3</span><span>Hand {v.hand}/10</span><time aria-label="Time remaining">{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</time></div>
+    <div className="hb-status"><span>Round {v.round}/3</span><span><b className="hb-hand-badge" key={v.handId}>Hand {v.hand}/10</b></span><time aria-label="Time remaining">{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</time></div>
     <div className="hb-base"><span>BASE SCORE</span><strong aria-label="Round base score">{v.base.toLocaleString()}</strong></div>
     <section className="hb-hand" aria-label="Current hand" data-hand={v.handId}>
      <div className="hb-markers" aria-label={'Roll '+v.roll+' of 3'}>{[1,2,3].map(n=><i key={n} data-used={n<=v.roll}/>)}</div>
@@ -64,7 +66,7 @@ export function SoloHorsesBlitz({runId,userId,transport:provided}:{runId:string;
      </button>;})}</div>
      <div className="hb-set" role="status">{rumble?'Rolling…':v.phase==='banking'?<><span>{v.set.label}</span><strong className="hb-bank-award">+{v.bank?.points.toLocaleString()}</strong></>:v.set.label}</div>
     </section>
-    <div className="hb-actions" data-canonical-felt-interaction-layer><button className="hb-bank" disabled={locked||v.set.points===0} onClick={bank}>Bank <strong>{v.set.points.toLocaleString()}</strong></button><button className="hb-roll" disabled={locked} onClick={roll}><Dices aria-hidden="true"/> Roll ({Math.min(3,v.roll+1)})</button></div>
+    <div className="hb-actions" data-canonical-felt-interaction-layer><button className="hb-bank" disabled={locked||v.roll===0||v.set.points===0&&v.roll<3} onClick={bank}><strong>{(offer??0).toLocaleString()}</strong><span>Bank</span></button><button className="hb-roll" disabled={locked||v.roll>=3} onClick={roll}><Dices aria-hidden="true"/> {v.roll===0?'Roll (1)':'Roll Again'}</button></div>
    </div>}
   </main>}
   {game.error&&v&&<div className="hb-error" role="alert">{game.error}<button onClick={game.reconnect}>Reconnect</button></div>}

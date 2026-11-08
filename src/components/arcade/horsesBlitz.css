@@ -11,3 +11,8 @@
 @keyframes hb-bank{from{transform:translateY(.35rem);opacity:0}to{transform:translateY(-.2rem);opacity:1}}@media(prefers-reduced-motion:reduce){.hb-bank-award{animation:none}}
 .hb-dice{min-height:min(15cqi,16cqb)}.hb-die .q-die{width:100%;height:100%;padding:3%;gap:9%;background:none;box-shadow:none;border-radius:0}.hb-die .q-die i{background:radial-gradient(circle at 70% 70%,#29231b,#030302);box-shadow:inset 0 1px 2px #000}.hb-roll{display:flex;align-items:center;justify-content:center;gap:.35em}.hb-roll svg{width:1em;height:1em}
 @media(prefers-reduced-motion:no-preference){.hb-die[data-rolling=true]{animation:q-roll .12s linear infinite}.hb-die[data-held=true]{animation:none}}
+
+/* Square border boxes and bounded grid tracks keep every pip inside its face. */
+.hb-dice{align-items:center}.hb-die{box-sizing:border-box;width:100%;height:auto;aspect-ratio:1;align-self:center;padding:0}.hb-die .q-die{position:absolute;inset:0;width:100%;height:100%;box-sizing:border-box;padding:17%;gap:12%;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));border-radius:18%}.hb-die .q-die i{min-width:0;min-height:0}
+.hb-bank{display:flex;flex-direction:column;justify-content:center;align-items:center;line-height:1.1}.hb-bank strong{font-size:1.3em}.hb-bank span{font-size:.55em}.hb-hand-badge{display:inline-block;font-weight:inherit}.hb-roll:disabled{background:#464440;color:#c3c0b9;border-color:#75716b}
+@media(prefers-reduced-motion:no-preference){.hb-hand-badge{animation:hb-next-hand .7s ease-out}}@keyframes hb-next-hand{30%{transform:scale(1.2);color:#ffdc69}100%{transform:scale(1)}}

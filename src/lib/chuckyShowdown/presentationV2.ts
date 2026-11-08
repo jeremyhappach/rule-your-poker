@@ -5,7 +5,7 @@ export const flipGap=720;
 const prefix=(s:V2Scene)=>s.phase==='board_reveal'?s.community.length:s.phase==='showdown'?s.chucky.length:0;
 function hold(s:V2Scene){
   switch(s.phase){
-    case 'fold':return 350;
+    case 'fold':return s.community.length===4?3000:350;
     case 'deal':return 2450;
     case 'board_reveal':return s.community.length===2?220:s.community.length===3?600:450;
     case 'showdown':return !s.chucky.length?s.level*180+540:s.chucky.length===s.level?850:flipGap;

@@ -79,3 +79,6 @@
 @keyframes cs-fold-sweep {to {transform:translateX(85%) translateY(-30%) rotate(12deg) scale(.7);opacity:0}}
 @media (prefers-reduced-motion:reduce) {.cs-cards[data-folding] .cs-slot {animation-name:cs-fold-fade}}
 @keyframes cs-fold-fade {to {opacity:0}}
+
+/* All decision phases occupy the same row; actions cannot shift the player hand. */
+.cs-v2{grid-template-rows:auto minmax(0,.88fr) minmax(0,1fr) minmax(0,24%) minmax(0,1fr) auto}.cs-v2 .cs-choice{min-height:0}

@@ -90,7 +90,8 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
   const same=s.roundId===v.roundId&&s.phase===v.phase&&s.since===v.since;
   const remaining=Math.max(0,s.due-(game.choice?.at??game.now));
   const canAct=same&&deciding&&remaining>0&&game.ready&&!game.pending;
-  const nPrivate=s.phase==='deal'?tally(elapsed,800,4):4;
+  const folded=s.phase==='fold'||s.phase==='round_over'&&s.reason==='folds';
+  const nPrivate=folded?0:s.phase==='deal'?tally(elapsed,800,4):4;
   const nBoard=s.phase==='deal'?tally(elapsed,1550,4):4;
   const nChucky=s.phase==='showdown'&&!s.chucky.length?tally(elapsed,180,s.level):s.level;
   const liveBeat=live&&!game.silent;
@@ -112,7 +113,7 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
   const highlight=s.phase==='crack';
   const cards=(group:'chucky'|'community'|'player',faces:Card[],n:number)=>Array.from({length:n},(_,i)=>{
     const card=faces[i],winning=highlight&&group!=='player'&&card&&s.best?.some(c=>faceKey(c)===faceKey(card));
-    const flipping=live&&(group==='chucky'&&s.phase==='showdown'||group==='community'&&s.phase==='board_reveal'&&i>=2);
+    const flipping=live&&(group==='chucky'&&s.phase==='showdown'||group==='community'&&(s.phase==='board_reveal'||s.phase==='fold')&&i>=2);
     return <div className="cs-slot" key={s.roundId+':'+group+i} data-winning={winning||undefined} data-dim={highlight&&!winning||undefined}>
       <CardSlot card={card} flip={flipping} classicFace/></div>;
   });
@@ -121,7 +122,7 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
   const title=s.phase==='crack'?(announced?'YOU GOT CRACKED!':'Chucky’s winning five'):
     banked?(s.reason==='busted'?'ROUND BUSTED':'ROUND BANKED'):s.phase==='win'?'+'+winBonus(v.config,s.chucky.length).toLocaleString()+' points':
     s.phase==='choose'?'Choose Chucky':s.phase==='showdown'?'Chucky · Level '+s.level:s.phase==='board_reveal'?'Community reveal':
-    s.phase==='fold_stay'?'Fold or Stay':s.phase==='fold'?'Folded':'New hand';
+    s.phase==='fold_stay'?'Fold or Stay':s.phase==='fold'?'Rabbit hunt':'New hand';
   return <main className="arcade-run cs-scene" data-competitive={competitive||undefined} data-shell-presentation-mode="fullscreen">
     <div ref={root} className="cs-table cs-v2" data-phase={s.phase} data-hand={s.hand} data-round={s.round}>
       {competitive&&<div className="cs-cracks cs-competitive-cracks" aria-label={cracks+' cracks remaining'}>{Array.from({length:v.config.maxCracks},(_,i)=><HeartCrack key={i} aria-hidden="true" data-active={i<cracks}/>)}</div>}

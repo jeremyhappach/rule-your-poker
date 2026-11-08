@@ -7,6 +7,7 @@ LANGUAGE plpgsql IMMUTABLE SET search_path='' AS $$
 BEGIN
  IF version='horses-blitz/1' THEN RETURN private.horses_blitz_rules();END IF;
  IF version='horses-blitz/2' THEN RETURN private.horses_blitz_rules()||'{"version":"horses-blitz/2","manualOpening":true}'::jsonb;END IF;
+ IF version='horses-blitz/3' THEN RETURN private.horses_blitz_rules()||'{"version":"horses-blitz/3","manualOpening":true,"manualFinalBank":true}'::jsonb;END IF;
  RAISE EXCEPTION 'horses_blitz:rules';
 END$$;
 
@@ -39,7 +40,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION private.horses_blitz_round(s jsonb,at_ms bigint) RETURNS jsonb
 LANGUAGE plpgsql SET search_path='' AS $$
-DECLARE r integer:=coalesce((s->>'round')::integer,0)+1;manual boolean:=s#>>'{config,version}'='horses-blitz/2';dice jsonb;
+DECLARE r integer:=coalesce((s->>'round')::integer,0)+1;manual boolean:=s#>>'{config,version}' IN ('horses-blitz/2','horses-blitz/3');dice jsonb;
 BEGIN
  dice:=CASE WHEN manual THEN '[]'::jsonb ELSE private.horses_blitz_roll('[]','{}') END;
  RETURN s||jsonb_build_object('round',r,'roundId',(s->>'runId')||':'||r,'hand',1,'handId',(s->>'runId')||':'||r||':1',
@@ -76,7 +77,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION private.horses_blitz_advance(s jsonb,at_ms bigint) RETURNS jsonb
 LANGUAGE plpgsql SET search_path='' AS $$
-DECLARE dice jsonb;boundary bigint;hand_i integer;manual boolean:=s#>>'{config,version}'='horses-blitz/2';
+DECLARE dice jsonb;boundary bigint;hand_i integer;manual boolean:=s#>>'{config,version}' IN ('horses-blitz/2','horses-blitz/3');
 BEGIN
  IF s->>'status'<>'active' OR s->>'phase'='summary' THEN RETURN s;END IF;
  -- The tenth committed bank ends scoring immediately; its 450 ms beat is presentation only.
@@ -101,12 +102,12 @@ BEGIN
  IF action='abandon' AND cardinality(items)=0 THEN RETURN s||jsonb_build_object('status','abandoned');END IF;
  IF action='next_round' AND s->>'phase'='summary' AND (s->>'round')::integer<3 AND cardinality(items)=0 THEN RETURN private.horses_blitz_round(s,at_ms);END IF;
  IF s->>'phase'<>'playing' OR at_ms>=(s->>'deadline')::bigint THEN RAISE EXCEPTION 'horses_blitz:phase';END IF;
- IF action='bank' AND cardinality(items)=0 AND (s->>'roll')::integer<3 AND (s#>>'{set,points}')::integer>0 THEN RETURN private.horses_blitz_bank(s,at_ms);END IF;
+ IF action='bank' AND cardinality(items)=0 AND ((s->>'roll')::integer<3 AND (s#>>'{set,points}')::integer>0 OR s#>>'{config,manualFinalBank}'='true' AND s->>'roll'='3') THEN RETURN private.horses_blitz_bank(s,at_ms);END IF;
  IF action='roll' AND (s->>'roll')::integer<3 THEN
   IF s->>'roll'='0' AND cardinality(items)<>0 THEN RAISE EXCEPTION 'horses_blitz:holds';END IF;
   dice:=private.horses_blitz_roll(s->'dice',items);roll_i:=(s->>'roll')::integer+1;
   s:=s||jsonb_build_object('dice',dice,'held',to_jsonb(items),'roll',roll_i,'set',private.horses_blitz_set(dice,roll_i));
-  IF roll_i=3 THEN s:=private.horses_blitz_bank(s,at_ms);END IF;RETURN s;
+  IF roll_i=3 AND coalesce(s#>>'{config,manualFinalBank}','false')<>'true' THEN s:=private.horses_blitz_bank(s,at_ms);END IF;RETURN s;
  END IF;
  RAISE EXCEPTION 'horses_blitz:illegal_action';
 END $$;

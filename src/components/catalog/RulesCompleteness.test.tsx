@@ -5,10 +5,13 @@ import {readFileSync} from 'node:fs';
 import {GAME_CATALOG,ARCADE_GAMES} from '@/lib/gameCatalog';
 import {ASYNC_RULES_GAMES,rulesModes} from '@/lib/gameCatalog/rulesModes';
 import audit from '../../../dev/lobby-catalog/rules-audit-20261104.json';
-// The November 4 production audit stays historical. This row is the locally qualified candidate.
+// Preserve the historical audit and enumerate additions separately.
 const candidates=vi.hoisted(()=>[
  {game:'crib-lab',id:'crib-lab/1',config:{version:'crib-lab/1',durationMs:240000}},
  {game:'chucky-showdown',id:'chucky-showdown/1',config:{version:'chucky-showdown/1',durationMs:30000}},
+ {game:'357-drop',id:'357-drop/4',config:{version:'357-drop/4'}},
+ {game:'horses-blitz',id:'horses-blitz/3',config:{version:'horses-blitz/3'}},
+ {game:'ship-cap-voyage',id:'ship-cap-voyage/1',config:{version:'ship-cap-voyage/1'}},
 ]);
 vi.mock('@/lib/arcade/client',()=>({arcadeRequest:vi.fn(async({game})=>{
  const {default:a}=await import('../../../dev/lobby-catalog/rules-audit-20261104.json');
@@ -22,7 +25,7 @@ import {RulesContent} from '../rules/RulesContent';
 import {GameRules} from '../GameRules';
 afterEach(cleanup);
 
-it('covers the audited registry and both solo additions exactly',()=>{
+it('covers the audited registry and current solo additions exactly',()=>{
  expect(GAME_CATALOG.map(g=>g.defaultsKey).sort()).toEqual([...audit.defaults,...candidates.map(g=>g.game)].sort());
  expect(ARCADE_GAMES.map(g=>g.id).sort()).toEqual([...new Set(audit.arcade.map(r=>r.game)),...candidates.map(g=>g.game)].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
@@ -39,6 +42,7 @@ it.each(GAME_CATALOG.flatMap(game=>rulesModes(game).map(mode=>({game:game.id,mod
  const ui=render(<RulesContent game={game} mode={mode}/>);
  await waitFor(()=>{expect(screen.queryByRole('status')).toBeNull();expect(screen.queryByRole('alert')).toBeNull();expect(ui.container.textContent!.length).toBeGreaterThan(200);});
  expect(ui.container.textContent).not.toMatch(/Rules (are |could not|are unavailable)/);
+ if(mode==='arcade'){expect(screen.getByRole('heading',{name:'How to play'})).toBeTruthy();expect(screen.getByRole('heading',{name:'What scores'})).toBeTruthy();}
 });
 it('keeps one selectable entry per game across categories and locates Mega under Other',async()=>{
  render(<GameRules open onOpenChange={()=>{}}/>);

@@ -8,13 +8,9 @@ type Props = {config?:Config; solo?:boolean; async?:boolean};
 /** Copy follows the supplied frozen configuration, never selects gameplay settings. */
 export function Run21ScoringReference({config=DEFAULT_CONFIG,solo=false,async=false}:Props){
   return <div className="space-y-2 text-sm" data-run21-scoring-reference>
+    <h3>How to play</h3>
     <p>Place cards into {config.columns} columns. Aim for {config.target} in each without going over.</p>
     <p>Collect Win becomes available at total {qualificationThreshold(config)}+.</p>
-    <dl className="grid grid-cols-3 gap-2" aria-label="Score multipliers">
-      {Object.entries(config.multipliers).map(([total,multiplier])=><div key={total}><dt>{total}</dt><dd>{multiplier.toLocaleString()}×</dd></div>)}
-    </dl>
-    <p>Round score = multiplier × remaining speed bonus.</p>
-    <p>{config.bust==='zero'&&config.expiration==='zero'?'Any bust or timer expiration scores 0.':(config.bust==='zero'?'A bust scores 0.':'A bust scores the current board.')+' '+(config.expiration==='zero'?'Timer expiration scores 0.':'Timer expiration scores the current board.')}</p>
     <p>{config.passes===1?'One Pass':config.passes+' Passes'} per round.</p>
     <p>The {duration(config)/1000}-second speed timer starts {config.clockStart==='intro_end'?'when the round introduction ends':'when you place your first card'}.</p>
     <p>Speed begins at {config.speed.start}. {config.speed.bands?.length
@@ -23,6 +19,13 @@ export function Run21ScoringReference({config=DEFAULT_CONFIG,solo=false,async=fa
     {config.clockStart!=='intro_end'&&<p>{config.firstPlacementSeconds!=null?`Place your first card within ${config.firstPlacementSeconds} seconds. `:''}{solo?'Missing the first-placement deadline ends the run unranked.':'A separate first-placement deadline applies to each new turn. If it expires, real-money sessions pause; fake-money players auto-complete and sit out the next hand.'}</p>}
     {async&&<p>Play {config.rounds} paired rounds. Equal totals continue with paired tiebreak rounds until one player leads. Highest total wins. Each started round keeps its normal clock.</p>}
     {solo&&<p>{config.rounds} rounds contribute to your run score. Abandoned runs are unranked.</p>}
+    <h3>What scores</h3>
+    <dl className="grid grid-cols-3 gap-2" aria-label="Score multipliers">
+      {Object.entries(config.multipliers).map(([total,multiplier])=><div key={total}><dt>{total}</dt><dd>{multiplier.toLocaleString()}×</dd></div>)}
+    </dl>
+    <p>Round score = multiplier × remaining speed bonus.</p>
+    <p>{config.bust==='zero'&&config.expiration==='zero'?'Any bust or timer expiration scores 0.':(config.bust==='zero'?'A bust scores 0.':'A bust scores the current board.')+' '+(config.expiration==='zero'?'Timer expiration scores 0.':'Timer expiration scores the current board.')}</p>
+
   </div>;
 }
 /** Presentation state only: never dispatches an engine command or changes the clock. */

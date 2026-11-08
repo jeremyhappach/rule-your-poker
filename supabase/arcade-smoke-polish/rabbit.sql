@@ -1,0 +1,2 @@
+-- Reveal only cards from an already folded hand; preserve decision/score authority.
+DO $patch$ DECLARE f text:=pg_get_functiondef('private.chucky_showdown_act_v2(jsonb,text,integer,bigint)'::regprocedure);a text:=$old$'phase','fold','since',at_ms,'due',at_ms$old$;b text:=$new$'phase','fold','since',at_ms,'due',at_ms,'community',s->'community'$new$;BEGIN IF position(b IN f)>0 THEN RETURN;END IF;IF position(a IN f)=0 THEN RAISE EXCEPTION 'arcade_polish:fold_owner_drift';END IF;EXECUTE replace(f,a,b);END $patch$;

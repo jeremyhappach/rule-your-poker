@@ -25,6 +25,15 @@ describe('connected reveal and result continuity',()=>{
    const bank={...next,phase:'round_over' as const,hand:1,roundId:old.roundId};
    expect(admit(seek(old,1000,true),bank,2000).map(f=>f.scene.phase)).toEqual(['fold_stay','fold','round_over']);
  });
+ it('holds both committed rabbit cards together for three seconds before the final-fold count',()=>{
+ const old={...original,phase:'fold_stay' as const,community:[card('A'),card('2')]};
+ const fold={...old,phase:'fold' as const,since:2000,due:2000,community:[card('A'),card('2'),card('3'),card('4')]};
+ const next={...old,phase:'round_over' as const,since:2000,reason:'folds' as const,lastFold:fold};
+ const frames=admit(seek(old,1000,true),next,2000);
+ expect(frames.map(f=>f.scene.phase)).toEqual(['fold_stay','fold','round_over']);
+ expect(frames[1].scene.community).toHaveLength(4);expect(frames[2].at-frames[1].at).toBe(3000);
+ expect(admit(frames,next,2050).filter(f=>f.scene.phase==='fold')).toHaveLength(1);
+});
  it('uses the frozen run bonus table and exactly one cue for the confirmed card count',()=>{
    const bonuses=[100,250,500,800,1250,2000,3000];
    const current={...original.config,version:'chucky-showdown/3' as const,winBonuses:bonuses};

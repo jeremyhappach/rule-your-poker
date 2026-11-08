@@ -9,3 +9,5 @@
 .catalog-dialog .catalog-scroll{scroll-padding:1rem}.catalog-dialog .catalog-rules-copy .text-muted-foreground{color:#4c5c66}
 
 .catalog-dialog[role=dialog]{max-height:calc(100% - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+
+.catalog-rules-copy h3{font-weight:800;margin-top:1rem}.catalog-rules-copy table{width:100%;table-layout:fixed;font-size:.88rem;border-collapse:collapse}.catalog-rules-copy th,.catalog-rules-copy td{text-align:left;vertical-align:top;padding:.4rem .35rem;border-bottom:1px solid #9b9b8338}.catalog-rules-copy li{margin:.5rem 0}

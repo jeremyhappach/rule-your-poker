@@ -30,9 +30,10 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
  const v=game.snapshot!,partial=v.ruleset==='357-drop/4',carry=partial||v.ruleset==='357-drop/3',r=v.result,navigate=useNavigate(),runId=v.id;
  const surface=useRef<HTMLDivElement>(null),board=useRef<HTMLDivElement>(null),[abandon,setAbandon]=useState(false),done=useRef(false);
  useDrop357Audio(userId,v,game.liveLanes,game.now,surface);
- const [carryDraft,setCarryDraft]=useState<{roundId:string;cards:number[]}>({roundId:'',cards:[]});
- const choices=carryDraft.roundId===v.roundId?carryDraft.cards:[];
- const toggleCarry=(slot:number)=>setCarryDraft(previous=>{const selected=previous.roundId===v.roundId?previous.cards:[];return {roundId:v.roundId,cards:selected.includes(slot)?selected.filter(c=>c!==slot):selected.length<2?[...selected,slot]:[selected[1],slot]};});
+ const [carryDraft,setCarryDraft]=useState<{roundId:string;lane:number;cards:number[]}>({roundId:'',lane:-1,cards:[]});
+ const carryLane=v.carryChoices?.[0]===null?0:1;
+ const choices=carryDraft.roundId===v.roundId&&carryDraft.lane===carryLane?carryDraft.cards:[];
+ const toggleCarry=(slot:number)=>setCarryDraft(previous=>{const selected=previous.roundId===v.roundId&&previous.lane===carryLane?previous.cards:[];return {roundId:v.roundId,lane:carryLane,cards:carryLane===0?[slot]:selected.includes(slot)?selected.filter(c=>c!==slot):selected.length<2?[...selected,slot]:[selected[1],slot]};});
  const tally=r?Math.max(0,game.now-r.completedAt):0;
  const result=r?{...r,id:r.id??v.roundId+':result',elapsed:tally,scoreBefore:r.scoreBefore??0,displayScore:r.score}:null;
  const presentation=useTriRoundPresentation({scope:'357-drop:'+v.roundId,phase:r?'stage_complete':v.phase,connected:game.ready&&!game.error,paused:false,result,
@@ -75,12 +76,12 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
      <span className="drop357-slots">{Array.from({length:size},(_,slot)=>{const accepted=v.lanes[index][slot];
       const landing=game.placement?.roundId===v.roundId&&game.placement.revision===v.revision&&game.placement.lane===index&&game.placement.slot===slot;
       const card=landing?game.placement!.card:accepted,Inherited=slot<inherited,Slot=choosing||carry&&!Inherited?'button':'span';
-      return <Slot key={slot} className="drop357-slot" data-inherited={Inherited} data-carry-choice={choosing} data-carry-picked={choosing&&index===1&&choices.includes(slot)} data-pending={landing} data-selected={!!scored&&scored.score>0&&scored.selected.includes(slot)} data-muted={!!scored&&!scored.selected.includes(slot)}
-       {...(choosing?{disabled:locked,'aria-label':(index===0?'Carry':'Select carry')+' '+size+' lane card '+(slot+1),'aria-pressed':index===1?choices.includes(slot):undefined,onClick:()=>index===0?game.act('carry',[0,slot],v.revision):toggleCarry(slot)}:carry&&!Inherited?{disabled:locked||accepted!=null,'aria-label':'Place in '+size+' lane slot '+(slot+1),onClick:()=>game.act('place',[index,slot],v.revision)}:{'aria-label':Inherited?'Inherited from '+(index===1?'3':'5')+' lane':undefined})}>
+      return <Slot key={slot} className="drop357-slot" data-inherited={Inherited} data-carry-choice={choosing} data-carry-picked={choosing&&choices.includes(slot)} data-pending={landing} data-selected={!!scored&&scored.score>0&&scored.selected.includes(slot)} data-muted={!!scored&&!scored.selected.includes(slot)}
+       {...(choosing?{disabled:locked,'aria-label':(index===0?'Carry':'Select carry')+' '+size+' lane card '+(slot+1),'aria-pressed':choices.includes(slot),onClick:()=>toggleCarry(slot)}:carry&&!Inherited?{disabled:locked||accepted!=null,'aria-label':'Place in '+size+' lane slot '+(slot+1),onClick:()=>game.act('place',[index,slot],v.revision)}:{'aria-label':Inherited?'Inherited from '+(index===1?'3':'5')+' lane':undefined})}>
        {card==null?<span className="drop357-slot-hint" aria-hidden="true">{Inherited?'↳':'+'}</span>:<Face card={card}/>}</Slot>;
      })}</span>
      <span className="drop357-lane-result" data-filled={!!scored}>{scored&&<><span className="drop357-hand"><b>{dropHandLabel(scored)}</b></span><strong>{scored.score.toLocaleString()}</strong></>}</span>
-     {choosing&&<span className="drop357-carry-controls">{index===0?'Tap 1 card to carry':<><span>Pick 2 · {choices.length}/2</span><button disabled={locked||choices.length!==2} onClick={()=>game.act('carry',[1,...choices],v.revision)}>Confirm</button></>}</span>}
+     {choosing&&<span className="drop357-carry-controls"><span>Pick {index+1} · {choices.length}/{index+1}</span><button disabled={locked||choices.length!==index+1} onClick={()=>game.act('carry',[index,...choices],v.revision)}>Confirm</button></span>}
      {scored?.natural&&<small className="drop357-natty" aria-label="Natural bonus, 20 percent">Natty +20%</small>}
     </Tag>;
    })}

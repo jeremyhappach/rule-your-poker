@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {createAuthoritativeSubscription,retireAcknowledgedCommand} from '@/lib/authoritativeSubscription';
+import {createAuthoritativeSubscription,retireAcknowledgedCommand,scheduleAuthoritativeBoundary} from '@/lib/authoritativeSubscription';
 import type {VoyageTransport} from '@/lib/shipCapVoyage/client';
 import type {VoyageAction,VoyageCommand,VoyageSnapshot} from '@/lib/shipCapVoyage/model';
 export function useShipCapVoyage(id:string,userId:string,transport:VoyageTransport,liveEntry:boolean){
@@ -35,6 +35,8 @@ export function useShipCapVoyage(id:string,userId:string,transport:VoyageTranspo
   const tick=setInterval(()=>{if(!document.hidden)setNow(clock.current.at+performance.now()-clock.current.local);},60);
   return()=>{mounted.current=false;epoch.current++;clearInterval(tick);subscription.dispose();lane.current=null;};
  },[transport,accept,submit]);
+ const due=snapshot?.status==='active'?snapshot.dueAt:null;
+ useEffect(()=>{if(due!=null)return scheduleAuthoritativeBoundary(due-clock.current.at-performance.now()+clock.current.local,()=>lane.current?.refresh());},[due]);
  function act(type:VoyageAction,items:number[]=[]){const v=latest.current;if(!v||v.status!=='active'||!lane.current?.isReady()||busy.current||sessionStorage.getItem(key))return;
   if(type!=='abandon'&&(type==='next_round'?v.phase!=='summary':v.phase!=='playing'))return;
   const command:VoyageCommand={requestId:crypto.randomUUID(),revision:v.revision,roundId:v.roundId,intent:{type,items}};
