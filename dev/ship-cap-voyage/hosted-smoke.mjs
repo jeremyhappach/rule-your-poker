@@ -17,9 +17,12 @@ try{
  const info=page.getByRole('button',{name:'Ship Cap Voyage rules and info',exact:true});await info.waitFor();assert.equal(await info.count(),1);
  await page.locator('a[href="/arcade/ship-cap-voyage"]').scrollIntoViewIfNeeded();
  mkdirSync('qualification.local/ship-cap-voyage/production',{recursive:true});await page.screenshot({path:'qualification.local/ship-cap-voyage/production/lobby-390.png'});
- await info.click();await page.getByRole('dialog').waitFor();await page.screenshot({path:'qualification.local/ship-cap-voyage/production/rules-390.png'});
+ await info.click();const dialog=page.getByRole('dialog');await dialog.getByText('Three rounds. Twelve rolls each.',{exact:false}).waitFor();
+ await dialog.evaluate(el=>Promise.all(el.getAnimations({subtree:true}).filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))));
+ await page.screenshot({path:'qualification.local/ship-cap-voyage/production/rules-390.png'});
  await page.keyboard.press('Escape');await page.locator('a[href="/arcade/ship-cap-voyage"]').click();await page.waitForURL('**/arcade/ship-cap-voyage');
- await page.getByRole('button',{name:'Play',exact:true}).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
+ await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='Play'&&!b.disabled));
+ assert.equal(await page.getByText('Loading scores…',{exact:true}).count(),0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
  await page.screenshot({path:'qualification.local/ship-cap-voyage/production/leaderboard-390.png'});
  writeFileSync('qualification.local/ship-cap-voyage/production/receipt.json',JSON.stringify({sha,manifests,ruleset:leaderboard.ruleset,errors,gameplayWrites:0},null,2));
  console.log('PASS: both production aliases, authenticated leaderboard, mobile lobby, one clickable gold Rules target and Play admission; zero gameplay writes.');

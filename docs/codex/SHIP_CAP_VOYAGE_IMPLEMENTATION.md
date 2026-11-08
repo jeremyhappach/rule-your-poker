@@ -3,8 +3,8 @@
 Implemented on `codex/ship-cap-voyage`, based on `origin/main` at `e4b930712`.
 The separate worktree preserves the original checkout's unfinished Golf work.
 Jeremy approved production publication after the local preview. Migration
-`20261108000024_ship_cap_voyage_arcade_v1.sql` is installed with admission closed
-until matching client publication. Candidate and installed production rollback
+`20261108000024_ship_cap_voyage_arcade_v1.sql` is installed; admission was enabled
+after matching client publication. Candidate and installed production rollback
 proofs pass, including financial isolation. Recovery worker v22 preserves the
 exact deployed v21 code plus one Ship Cap Voyage dispatch line. Its packaged
 entrypoint passes dispatch, authentication, no-action and rejected-replay checks.
@@ -94,6 +94,15 @@ The preview is `http://127.0.0.1:15380/arcade/ship-cap-voyage` and uses a synthe
 local account. The server rolls that account's transaction back when stopped.
 
 ## Publication and owner smoke
+
+Production commit `060ba10e1c128cdee759df096a367cf5c7c047a3` reached READY as
+`dpl_GrVpMabPy4Vm2N1AUVUGfqrx7a9Z`; both holm357.com and ptown-poker.vercel.app
+serve that build. The verified release signal is `42427917773-1` at
+2026-11-08T00:04:51.070Z. Only `ship-cap-voyage/1` was enabled afterward.
+Real authenticated leaderboard access and mobile lobby, one clickable gold
+Rules target, loaded game rules and enabled Play pass with zero browser errors
+and zero gameplay writes. Settled screenshots were inspected. The final verified
+tag may include subsequent evidence/test-only changes; it records the final SHA.
 
 The migration was installed through Supabase's migration API; its server-issued
 version is recorded in the repository. All proof fixtures rolled back. The

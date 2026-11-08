@@ -1,4 +1,4 @@
-# Ship Cap Voyage / 1 — November 7, 2026 — approved release, owner smoke pending
+# Ship Cap Voyage / 1 — November 7, 2026 — published, owner smoke pending
 
 The Arcade-only candidate on `codex/ship-cap-voyage` implements the supplied
 three-round, twelve-roll, three-bank rules with server-owned dice and scoring.
@@ -11,7 +11,8 @@ SQL-backed browser/audio checks, ten viewport states, TypeScript and build pass.
 Jeremy approved publication after reviewing the preview. Migration
 `20261108000024` passed candidate and installed production rollback proofs;
 recovery worker v22 adds only its dispatcher and preserves all existing handlers.
-Admission opens after the matching client and release signal are verified.
+Production `060ba10e1` and its release signal are verified; admission is enabled.
+Authenticated mobile lobby/Rules/leaderboard checks pass without gameplay writes.
 Checkpoint `ship-cap-voyage-v1-2026-11-07` records the candidate; its verified tag
 records publication and activation. Physical iPhone/Android smoke remains pending.
 No multiplayer or financial gameplay changes are included.
