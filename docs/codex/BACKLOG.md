@@ -1,10 +1,12 @@
-## Queued — Arcade leaderboard theming — November 8, 2026
+## Implemented — Arcade leaderboard theming — November 8, 2026 — owner smoke pending
 
 Jeremy explicitly deferred leaderboard theming from the seven-fix smoke follow-up.
 Use Mega Card Golf as the visual template for other Arcade leaderboards in a
 separate pass. Preserve each game's scoring, records, navigation and Rules.
 Provenance: direct request and ptown-smoke-followup.zip/CODEX-HANDOFF.md.
-No theming investigation or implementation is included in the current release.
+Jeremy subsequently approved the separate revision-3 previews for production.
+All 13 shared boards now carry their approved themes; Mega Card Golf is unchanged.
+See [implementation and qualification](ARCADE_LEADERBOARD_THEMES.md).
 
 ## Queued — Existing full-suite fixture failures — November 8, 2026
 

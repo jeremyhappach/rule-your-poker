@@ -47,7 +47,7 @@ for(const game of [...games,'mega-card-golf'])for(const [width,height] of widths
    return {rows,oldHeight,width:rect.width,containerFits:table.parentElement.scrollWidth<=table.parentElement.clientWidth+1,pageFits:document.documentElement.scrollWidth<=innerWidth+1};
   });
   expect(metrics.containerFits,JSON.stringify({game,width,metrics})).toBe(true);expect(metrics.pageFits).toBe(true);
-  for(const row of metrics.rows){expect(row.scoreFits).toBe(true);expect(row.dateFits).toBe(true);expect(row.nameWidth).toBeGreaterThan(10);expect(Math.abs(row.height-metrics.oldHeight)).toBeLessThan(1);expect(row.right).toBe(metrics.rows[0].right);}
+  for(const row of metrics.rows){expect(row.scoreFits).toBe(true);expect(row.dateFits).toBe(true);expect(row.nameWidth).toBeGreaterThan(10);if(game==='mega-card-golf')expect(Math.abs(row.height-metrics.oldHeight)).toBeLessThan(1);else expect(row.height).toBeGreaterThanOrEqual(37);expect(row.right).toBe(metrics.rows[0].right);}
   checks.push({game,width,period,metrics});
   if(['run21','mega-card-golf'].includes(game)&&[320,390,1280].includes(width))await page.screenshot({path:`${out}/${game}-${width}-${period}.png`,fullPage:true});
  }

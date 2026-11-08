@@ -87,6 +87,13 @@ dialog filters `admin_account_balances()` rows locally. See
 
 ## Arcade achievement timestamp display
 
+Themed GameBoard presentation is owned by
+`src/components/arcade/ArcadeLeaderboardArtwork.tsx` and `leaderboardTheme.css`.
+Its optional `AchievementTime.splitLines` presentation wraps dates/times; the
+existing Mega Card Golf and history callers keep their default rendering.
+`dev/arcade-leaderboards/` verifies all 14 catalog games with local API fixtures.
+See [theme assets and qualification](ARCADE_LEADERBOARD_THEMES.md).
+
 `src/components/arcade/AchievementTime.tsx` and `achievementTime.css` render the
 existing `completedAt` instant and intrinsic leaderboard columns in `Arcade.tsx`,
 `MegaLeaderboard.tsx` and archived `CourseClubhouse.tsx` boards.

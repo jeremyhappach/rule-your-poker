@@ -15,7 +15,7 @@ export function ArcadeArtwork({path}:{path:string|null}){
   },[path]);
   return path&&image?.path===path?<img className="arcade-artwork" src={image.url} alt=""/>:null;
 }
-export function ArcadeInfo({game,name,ruleset,children,admin=false,artwork,onArtwork,onOpen,banner=false}:{game:ArcadeGame;name:string;ruleset?:string;children?:ReactNode;admin?:boolean;artwork?:Artwork;onArtwork?:(row:Artwork)=>void;onOpen?:()=>void;banner?:boolean}){
+export function ArcadeInfo({game,name,ruleset,children,admin=false,artwork,onArtwork,onOpen,banner=false,triggerLabel}:{game:ArcadeGame;name:string;ruleset?:string;children?:ReactNode;admin?:boolean;artwork?:Artwork;onArtwork?:(row:Artwork)=>void;onOpen?:()=>void;banner?:boolean;triggerLabel?:string}){
   const [open,setOpen]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false);
   const inputId=useId();
   async function upload(file:File){
@@ -29,8 +29,8 @@ export function ArcadeInfo({game,name,ruleset,children,admin=false,artwork,onArt
     finally{setBusy(false);}
   }
   return <Dialog open={open} onOpenChange={value=>{setOpen(value);if(value)onOpen?.();}}>
-    <DialogTrigger asChild><button type="button" className={'arcade-info-button'+(banner?' arcade-info-button--banner':'')} aria-label={name+' rules and info'}>
-      {banner?<span className="arcade-info-face" aria-hidden="true">i</span>:<Info size={21} aria-hidden="true"/>}
+    <DialogTrigger asChild><button type="button" className={'arcade-info-button'+(banner?' arcade-info-button--banner':'')+(triggerLabel?' arcade-info-button--labeled':'')} aria-label={name+' rules and info'}>
+      {banner?<span className="arcade-info-face" aria-hidden="true">i</span>:<Info size={21} aria-hidden="true"/>}{triggerLabel&&<span>{triggerLabel}</span>}
     </button></DialogTrigger>
     <DialogContent className="arcade-info"><DialogTitle>{name} · Rules &amp; info</DialogTitle>
       <DialogDescription>{game!=='yahtzee'?'How to play and compare your scores.':'Coming Soon'}</DialogDescription>

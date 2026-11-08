@@ -1,3 +1,13 @@
+# Arcade leaderboard themes — November 8, 2026 — owner smoke pending
+
+Approved revision 3 is implemented across all 13 shared Arcade leaderboards;
+Mega Card Golf stays unchanged. Includes raised Horses track/357 bridge, both
+translucent card fans, compact four-card Chucky and readable wrapped score rows.
+98 browser checks cover all 14 games and existing controls; TypeScript and the
+production build pass. 98 focused unit tests pass with the already-queued catalog
+fixture failure reproduced. No migration or scoring changes. See
+[themes, assets and evidence](ARCADE_LEADERBOARD_THEMES.md). Physical iPhone pending.
+
 # Horses Blitz fixed bonus notes — November 8, 2026 — owner smoke pending
 
 The bonus notes now occupy two centered, nonwrapping lines higher in the play

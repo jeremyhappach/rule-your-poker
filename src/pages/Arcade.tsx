@@ -48,6 +48,8 @@ import {useRun21Bell} from '@/hooks/useRun21Bell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import type {ScoreCelebrationReceipt} from '@/lib/run21/scoreCelebration';
 import '@/lib/arcade/arcade.css';
+import {ArcadeLeaderboardArtwork} from '@/components/arcade/ArcadeLeaderboardArtwork';
+import '@/components/arcade/leaderboardTheme.css';
 export default function Arcade(){
  const {user,isReady}=useAuthGuard({pageLabel:'Arcade'}),{game,runId}=useParams();
  if(!isReady||!user)return <main className="arcade-page"><p role="status">Connecting…</p></main>;
@@ -62,7 +64,7 @@ export default function Arcade(){
  return runId?(game==='quintzee'?<SoloQuintzee key={runId} runId={runId} userId={user.id}/>:game==='boxdrop'?<SoloBoxdrop key={runId} runId={runId} userId={user.id}/>:game==='trip-flip'?<SoloTripFlip key={runId} runId={runId} userId={user.id}/>:game==='take-two'?<SoloTakeTwo key={runId} runId={runId} userId={user.id}/>:game==='royal-flash'?<SoloRoyalFlash key={runId} runId={runId} userId={user.id}/>:game==='eleven-up'?<SoloElevenUp key={runId} runId={runId} userId={user.id}/>:game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game+user.id} game={game} userId={user.id}/>;
 }
 export function GameBoard({game,userId}:{userId:string;game:'ship-cap-voyage'|'horses-blitz'|'357-drop'|'crib-lab'|'chucky-showdown'|'run21'|'tri-towers'|'eleven-up'|'royal-flash'|'quintzee'|'boxdrop'|'trip-flip'|'take-two'}){
- const name=findGame(game)?.name??game;
+ const descriptor=findGame(game),name=descriptor?.name??game;
  const [classic,setClassic]=useQuintzeeTheme(userId);
  const navigate=useNavigate(),[search]=useSearchParams(),result=search.get('result');
  const [window,setWindow]=useState<'30'|'all'>('30'),[board,setBoard]=useState<Leaderboard|null>(null),[error,setError]=useState(''),[pending,setPending]=useState(false);
@@ -75,9 +77,13 @@ export function GameBoard({game,userId}:{userId:string;game:'ship-cap-voyage'|'h
   try{createId.current??=crypto.randomUUID();const run=await arcadeRequest<ArcadeSnapshot>({op:'start',game,requestId:createId.current,...(game==='quintzee'?{theme:classic?'classic':'modern'}:{})});if((game==='ship-cap-voyage'||game==='horses-blitz'||game==='357-drop'||game==='chucky-showdown'||game==='crib-lab'||game==='tri-towers'||game==='eleven-up'||game==='royal-flash'||game==='quintzee'||game==='boxdrop'||game==='trip-flip'||game==='take-two')&&!document.hidden)grantTriStart(run.id);navigate('/arcade/'+game+'/run/'+run.id);}
   catch(e){setError(e instanceof Error?e.message:'Unable to start.');}finally{setPending(false);}
  }
- return <main className="arcade-page"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link>
- <header className="arcade-heading arcade-board-heading"><Trophy size={26} aria-hidden="true"/><h1>{name}</h1><GameplaySoundButton/><NotificationBell/>
- <ArcadeInfo game={game} name={name} ruleset={displayRuleset}>
+ return <main className={"arcade-page arcade-board theme-"+game}>
+ <div className="scene-art" aria-hidden="true"><ArcadeLeaderboardArtwork game={game}/></div>
+ <div className="arcade-board-content">
+ <nav className="top-navigation" aria-label="Arcade navigation"><Link className="arcade-back" to="/arcade"><ArrowLeft size={18}/>Arcade Mode</Link><div><GameplaySoundButton/><NotificationBell/></div></nav>
+ <header className="identity"><div className="identity-copy"><span className="eyebrow">{descriptor?.arcadeSection==='originals'?'P-TOWN ORIGINALS':'ARCADE'}</span><h1>{name}</h1><span className="leaderboard-label"><Trophy size={14} aria-hidden="true"/>Leaderboard</span></div></header>
+ <div className="action-line">
+ <ArcadeInfo game={game} name={name} ruleset={displayRuleset} triggerLabel="Rules & info">
   <p>Top 10 verified scores. Players may appear more than once. Equal scores share rank (1, 1, 3), with earlier completions appearing first. Only ten entries are shown. Last 30 Days uses games completed in that period; personal best shows All Time for the selected rules.</p>
   {!!board?.availableRulesets?.length&&(game!=='tri-towers'||board.availableRulesets.length>1)&&<label className="arcade-version">Leaderboard rules <select aria-label="Leaderboard rules" value={displayRuleset} onChange={e=>setRuleset(e.target.value)}>{board.availableRulesets.map(id=><option key={id} value={id}>{id==='357-drop/5'?'357 Drop':id==='357-drop/4'?'357 Drop · Partial carry playtest':id==='357-drop/3'?'357 Drop · Full carry playtest':id==='357-drop/2'?'357 Drop · Original':id}{id===board.currentRuleset?' · Current':' · Legacy'}</option>)}</select></label>}
   <p>Compatible rule versions share scores; other rules stay separate. New games use the current rules.</p>
@@ -85,7 +91,7 @@ export function GameBoard({game,userId}:{userId:string;game:'ship-cap-voyage'|'h
  </ArcadeInfo>
  {board?.activeRun?<Link className="arcade-primary arcade-header-play" to={'/arcade/'+game+'/run/'+board.activeRun}><Play size={16}/>Resume</Link>:
  <button className="arcade-primary arcade-header-play" disabled={pending||!board} onClick={()=>void start()}>{board?.latestResult?<RotateCcw size={16}/>:<Play size={16}/>} {pending?'Starting…':board?.latestResult?'Play Again':'Play'}</button>}
- </header>
+ </div>
  {game==='357-drop'&&board&&<p className="arcade-rules-hint">{displayRuleset==='357-drop/5'?'Partial carry · 500-point ALL FILLED bonus':displayRuleset==='357-drop/4'?'Partial carry playtest · Separate leaderboard':displayRuleset==='357-drop/3'?'Full carry playtest · Separate leaderboard':'Original board leaderboard'}</p>}
  {game==='quintzee'&&<label className="quintzee-theme-choice">Classic Mode<Switch className="quintzee-theme-switch" checked={classic} onCheckedChange={setClassic} disabled={pending||!!board?.activeRun} aria-label="Classic Mode"/></label>}
  {board?.latestResult&&<div className="arcade-result" role="status"><span>{board.latestResult.status==='completed'?'Game Over':'Game Over · Unranked'}</span><strong>{board.latestResult.score.toLocaleString()}</strong>
@@ -95,12 +101,13 @@ export function GameBoard({game,userId}:{userId:string;game:'ship-cap-voyage'|'h
  {board?.currentRuleset&&displayRuleset!==board.currentRuleset&&<p className="arcade-note">Legacy leaderboard</p>}
  <div className="arcade-tabs" role="tablist" aria-label="Leaderboard period">{(['30','all'] as const).map(value=><button key={value} id={'arcade-period-'+value} role="tab" aria-controls="arcade-ranking" tabIndex={window===value?0:-1} aria-selected={window===value} onKeyDown={event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'30':event.key==='End'?'all':value==='30'?'all':'30';setWindow(next);document.getElementById('arcade-period-'+next)?.focus();}}} onClick={()=>setWindow(value)}>{value==='30'?'Last 30 Days':'All Time'}</button>)}</div>
  {error&&<p role="alert">{error}</p>}
- <section id="arcade-ranking" role="tabpanel" aria-labelledby={'arcade-period-'+window} className="arcade-leaderboard"><h2>Top 10 verified scores</h2>
+ <section id="arcade-ranking" role="tabpanel" aria-labelledby={'arcade-period-'+window} className="arcade-leaderboard">
  {!board?<p role="status">Loading scores…</p>:board.rows.length===0?<p>No qualifying games yet. Set the first score.</p>:
- <table className="arcade-score-table"><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Achieved</th><th scope="col">Score</th></tr></thead><tbody>{board.rows.map(({rank:position,...row})=><tr key={row.runId} data-self={row.userId===board.self?.userId}><td>{position}</td><td className="leaderboard-player" title={row.name}>{row.name}</td><td className="leaderboard-achieved"><AchievementTime completedAt={row.completedAt}/></td><td>{row.score.toLocaleString()}</td></tr>)}</tbody></table>}
+ <table className="arcade-score-table"><colgroup><col className="rank-col"/><col/><col className="date-col"/><col className="score-col"/></colgroup><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Achieved</th><th scope="col">Score</th></tr></thead><tbody>{board.rows.map(({rank:position,...row})=><tr key={row.runId} data-self={row.userId===board.self?.userId}><td>{position}</td><td className="leaderboard-player" title={row.name}><span>{row.name}</span></td><td className="leaderboard-achieved"><AchievementTime completedAt={row.completedAt} splitLines/></td><td>{row.score.toLocaleString()}</td></tr>)}</tbody></table>}
  {board?.self&&!board.rows.some(row=>row.runId===board.self?.runId)&&<p className="arcade-your-rank">You · #{board.self.rank.toLocaleString()} · {board.self.score.toLocaleString()}</p>}
  </section>
  {game==='chucky-showdown'&&<ShowdownHistory/>}
+ </div>
  </main>;
 }
 function SoloRun({runId,userId}:{runId:string;userId:string}){
