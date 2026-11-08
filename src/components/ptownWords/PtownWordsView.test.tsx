@@ -153,3 +153,16 @@ it('exchanges selected IDs only, and cancel does not send an action',async()=>{
 
 it('defers overview taps, caps three scales, and never places on a double tap',()=>{const {container}=render(<PtownWordsView {...props}/>),cell=container.querySelector('[data-square="112"]')!,level=()=>container.querySelector('.words-scroll')!.getAttribute('data-zoom');tap(cell);expect(level()).toBe('0');act(()=>vi.advanceTimersByTime(100));tap(cell);act(()=>vi.advanceTimersByTime(350));expect(level()).toBe('0');for(const expected of ['1','2','2']){tap(cell);act(()=>vi.advanceTimersByTime(301));expect(level()).toBe(expected);}for(const expected of ['1','0','0']){tap(cell);act(()=>vi.advanceTimersByTime(100));tap(cell);act(()=>vi.advanceTimersByTime(350));expect(level()).toBe(expected);}expect(container.querySelectorAll('.is-staged')).toHaveLength(0);});
 it('a drag cancels a pending board tap without changing scale',()=>{const {container}=render(<PtownWordsView {...props}/>),cell=container.querySelector('[data-square="112"]')!;tap(cell);fireEvent.scroll(container.querySelector('.words-scroll')!);act(()=>vi.advanceTimersByTime(350));expect(container.querySelector('.words-scroll')!.getAttribute('data-zoom')).toBe('0');});
+
+it.each(['me','other'])('reserves both Last labels and changes only the scorer on landing (%s)',viewerId=>{
+ const move=(turn:number,playerId:string,word:string,points:number)=>({turn,playerId,action:'place' as const,words:[{word,points}],points,count:word.length});
+ const scored={...view,viewerId,turn:4,scores:{me:10,other:8},moves:[move(1,'me','AT',4),move(2,'other','CAT',8),move(3,'me','HIM',6)],movePresentation:{version:1 as const,turn:3,playerId:'me',squares:[112,113,114],startedAt:1000,focusMs:200,flipMs:260,announceAt:1980,noticeMs:1600,readyAt:6000}} as WordsSnapshot;
+ const ui=render(<PtownWordsView {...props} view={scored} now={2100}/>);
+ const label=(id:string)=>ui.container.querySelector('[data-score-player="'+id+'"] .words-last')?.textContent;
+ expect(label('me')).toBe('');expect(label('other')).toBe('Last: CAT (8)');
+ expect(ui.container.querySelector('[data-score-player="me"] strong')?.textContent).toBe('4');
+ ui.rerender(<PtownWordsView {...props} view={scored} now={4000}/>);
+ expect(label('me')).toBe('Last: HIM (6)');expect(label('other')).toBe('Last: CAT (8)');expect(ui.container.querySelector('[data-score-player="me"] strong')?.textContent).toBe('10');
+ ui.rerender(<PtownWordsView {...props} view={{...scored,turn:5,movePresentation:undefined,moves:[...scored.moves,{turn:4,playerId:'other',action:'pass',points:0,words:[],count:0} as WordsSnapshot['moves'][number]]}} now={5000}/>);
+ expect(label('me')).toBe('Last: HIM (6)');expect(label('other')).toBe('Last: CAT (8)');
+});

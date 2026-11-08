@@ -1,3 +1,11 @@
+# Complete P-Town polish — November 8, 2026 — automated qualification
+
+`ptown-polish-complete-2026-11-08` records the candidate; its verified tag records
+publication/activation. Nine hosted candidate and installed rollback proofs, 151
+focused tests, TypeScript, production build and SQL-backed browser flows pass.
+Full-suite baseline failures and physical iPhone acceptance remain explicit in
+[PTOWN_POLISH_COMPLETE.md](PTOWN_POLISH_COMPLETE.md). No owner smoke is claimed.
+
 # 357 Drop partial carry — November 8, 2026 — automated qualification
 
 Checkpoint 357-drop-partial-carry-2026-11-08 records four-version rollback proof,

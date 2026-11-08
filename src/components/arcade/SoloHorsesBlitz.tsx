@@ -17,6 +17,7 @@ import {useQuintzeeRollAudio} from '../quintzee/useQuintzeeRollAudio';
 import {useHorsesBlitzRoll} from './useHorsesBlitzRoll';
 import {useBankOffer} from '@/hooks/useBankOffer';
 import {Dices} from 'lucide-react';
+import {CountdownDots} from '@/components/ui/CountdownDots';
 import '../quintzee/quintzee.css';
 import './horsesBlitz.css';
 
@@ -49,7 +50,7 @@ export function SoloHorsesBlitz({runId,userId,transport:provided}:{runId:string;
  function roll(){if(locked||rollMotion.locked()||!v)return;const items=v.roll===0?[]:held,command=game.act('roll',items);if(command)rollMotion.start(command,v,items);}
  function bank(){if(!locked&&!rollMotion.locked())game.act('bank');}
  return <div className="arcade-run hb-page" ref={surface} data-status={v?.status??'loading'}>
-  <header className="hb-header"><div><small>P-TOWN ORIGINAL</small><h1>HORSES <em>BLITZ</em></h1></div><nav aria-label="Game controls"><ArcadeInfo game="horses-blitz" name="Horses Blitz" ruleset={v?.ruleset??'horses-blitz/2'}/><GameplaySoundButton/><ArcadeAbandonButton disabled={!v||v.status!=='active'||!!motion} onClick={()=>setAbandon(true)}/></nav></header>
+  <header className="hb-header"><div><small>P-TOWN ORIGINAL</small><h1>HORSES <em>BLITZ</em></h1></div><nav aria-label="Game controls"><ArcadeInfo game="horses-blitz" name="Horses Blitz" ruleset={v?.ruleset??'horses-blitz/4'}/><GameplaySoundButton/><ArcadeAbandonButton disabled={!v||v.status!=='active'||!!motion} onClick={()=>setAbandon(true)}/></nav></header>
   {!v?<main className="hb-loading" role="status">{game.error||'Rolling the dice…'}{game.error&&<button onClick={game.reconnect}>Reconnect</button>}</main>:
   <main className="hb-board" data-phase={v.phase} data-canonical-felt-interaction-layer>
    {r?<section className="hb-summary" aria-label={'Round '+v.round+' summary'}>
@@ -57,16 +58,16 @@ export function SoloHorsesBlitz({runId,userId,transport:provided}:{runId:string;
     <dl><div><dt>Base score</dt><dd>{r.base.toLocaleString()}</dd></div><div><dt>Timer bonus</dt><dd>+{r.timerBonus.toLocaleString()}</dd></div><div className="hb-total"><dt>Round total</dt><dd>{r.total.toLocaleString()}</dd></div></dl>
     {v.round<3?<button className="hb-next" disabled={game.pending||!game.ready} onClick={()=>game.act('next_round')}>Next Round</button>:<p className="hb-run-total">TOTAL SCORE <strong>{v.score.toLocaleString()}</strong></p>}
    </section>:<div className="hb-play">
-    <div className="hb-status"><span>Round {v.round}/3</span><span><b className="hb-hand-badge" key={v.handId}>Hand {v.hand}/10</b></span><time aria-label="Time remaining">{Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</time></div>
+    <div className="hb-status"><span>Round {v.round}/3</span><span><b className="hb-hand-badge" key={v.handId}>Hand {v.hand}/10</b></span></div>
     <div className="hb-base"><span>BASE SCORE</span><strong aria-label="Round base score">{v.base.toLocaleString()}</strong></div>
     <section className="hb-hand" aria-label="Current hand" data-hand={v.handId}>
-     <div className="hb-markers" aria-label={'Roll '+v.roll+' of 3'}>{[1,2,3].map(n=><i key={n} data-used={n<=v.roll}/>)}</div>
-     <div className="hb-dice" aria-label="Dice">{dice.map((face,i)=>{const rolling=!!rumble&&!held.includes(i);return <button key={i} className="hb-die" data-rolling={rolling} data-wild={!rolling&&face===1} data-held={held.includes(i)} aria-pressed={held.includes(i)} aria-label={'Die '+(i+1)+': '+(rolling?'rolling':face+(face===1?' wild':''))} disabled={locked} onClick={()=>toggle(i)}>
+     {v.ruleset==='horses-blitz/4'&&<div className="hb-bonus-note"><strong>Early Bank Bonus</strong><span>Roll 1 +30% · Roll 2 +10%</span><span>Natty earns +20%</span></div>}
+     <div className="hb-dice-clock"><div className="hb-dice" aria-label="Dice">{dice.map((face,i)=>{const rolling=!!rumble&&!held.includes(i);return <button key={i} className="hb-die" data-rolling={rolling} data-wild={!rolling&&face===1} data-held={held.includes(i)} aria-pressed={held.includes(i)} aria-label={'Die '+(i+1)+': '+(rolling?'rolling':face+(face===1?' wild':''))} disabled={locked} onClick={()=>toggle(i)}>
       <QuintzeeDie value={face} rolling={rolling}/>
-     </button>;})}</div>
-     <div className="hb-set" role="status">{rumble?'Rolling…':v.phase==='banking'?<><span>{v.set.label}</span><strong className="hb-bank-award">+{v.bank?.points.toLocaleString()}</strong></>:v.set.label}</div>
+     </button>;})}</div><div role="timer" aria-label="Round time remaining" aria-valuetext={`${seconds} seconds remaining`}><CountdownDots remaining={Math.max(0,(v.deadline??game.now)-game.now)} duration={v.durationMs??100000}/></div></div>
+     <div className="hb-set" role="status">{rumble?'Rolling…':v.phase==='banking'?<><span>{v.set.label}</span><strong className="hb-bank-award">+{v.bank?.points.toLocaleString()}</strong></>:<><span>{v.set.label}</span>{v.set.natural&&<small className="hb-natty">Natty +20%</small>}</>}</div>
     </section>
-    <div className="hb-actions" data-canonical-felt-interaction-layer><button className="hb-bank" disabled={locked||v.roll===0||v.set.points===0&&v.roll<3} onClick={bank}><strong>{(offer??0).toLocaleString()}</strong><span>Bank</span></button><button className="hb-roll" disabled={locked||v.roll>=3} onClick={roll}><Dices aria-hidden="true"/> {v.roll===0?'Roll (1)':'Roll Again'}</button></div>
+    <div className="hb-actions" data-canonical-felt-interaction-layer><button className="hb-bank" disabled={locked||v.roll===0||v.set.points===0&&v.roll<3} onClick={bank}><strong>{(offer??0).toLocaleString()}</strong><span>Bank</span></button><button className="hb-roll" disabled={locked||v.roll>=3} onClick={roll}><Dices aria-hidden="true"/> {'Roll ('+Math.min(3,v.roll+1)+')'}</button></div>
    </div>}
   </main>}
   {game.error&&v&&<div className="hb-error" role="alert">{game.error}<button onClick={game.reconnect}>Reconnect</button></div>}

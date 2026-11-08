@@ -95,6 +95,13 @@ export class AudioManager {
   };
 
   /** The existing profiles.play_sounds field is the only persisted preference. */
+  private speakerReadyAt = -Infinity;
+  togglePreference = async (userId: string) => {
+    if (userId !== this.userId || this.enabled === null || this.saving || this.env.now() < this.speakerReadyAt) return;
+    this.speakerReadyAt = this.env.now() + 1000;
+    await this.savePreference(userId, !this.enabled);
+  };
+
   savePreference = async (userId: string, enabled: boolean) => {
     if (userId !== this.userId || this.saving || this.enabled === null || !this.env.savePreference) return;
     const previous = this.enabled;
@@ -167,6 +174,7 @@ export class AudioManager {
     this.stopActive();
     this.clearPending();
     this.userId = userId;
+    this.speakerReadyAt = -Infinity;
     this.enabled = null; // Unknown preferences must never briefly unmute a user.
     this.saving = false;
     this.saveOwner = null;

@@ -10,7 +10,7 @@ export function GameplaySoundButton() {
   const label = enabled === null ? 'Loading sound preference' : enabled ? 'Mute sounds' : 'Unmute sounds';
   return <button type="button" className="delayed-bell shrink-0 self-center" aria-label={label} title={label}
     aria-pressed={enabled === false} disabled={!userId || enabled === null || saving}
-    onClick={() => { if (userId) void platformAudio.savePreference(userId, !enabled).catch(error => toast.error(error.message)); }}>
+    onClick={() => { if (userId) void platformAudio.togglePreference(userId).catch(error => toast.error(error.message)); }}>
     {enabled ? <Volume2 size={19} aria-hidden="true"/> : <VolumeX size={19} aria-hidden="true"/>}
   </button>;
 }

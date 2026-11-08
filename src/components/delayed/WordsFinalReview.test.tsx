@@ -38,10 +38,10 @@ it.each([false,true])('only final turn and crosses → count → adjusted board 
  expect(ui.container.querySelector('[data-square="10"] b')?.textContent).toBe('D');
  expect(ui.container.querySelector('[data-square="113"] b')).toBeNull();
  expect(ui.container.querySelectorAll('[data-word-highlight="true"]')).toHaveLength(3);
- expect(screen.getByText(/UP, PA/)).toBeTruthy();expect(screen.queryByText(/OLD|DOG/)).toBeNull();
+ expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();expect(screen.queryByText(/OLD|DOG/)).toBeNull();
  const score=()=>ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent;
  const emphasis=()=>{expect(ui.container.querySelector(`[data-score-player="${opponent}"]`)?.getAttribute('data-active')).toBe('true');expect(ui.container.querySelector(`[data-score-player="${viewer}"]`)?.getAttribute('data-active')).toBe('false');};
- emphasis();expect(score()).toBe('376');await advance(2450);emphasis();expect(Number(score())).toBeGreaterThan(376);expect(Number(score())).toBeLessThan(384);
+ emphasis();expect(score()).toBe('376');await advance(2450);emphasis();expect(score()).toBe('376');
  await advance(250);expect(score()).toBe('384');await advance(2000);expect(score()).toBe('385');
  expect(ui.container.querySelector(`[data-score-player="${viewer}"] strong`)?.textContent).toBe('245');
  expect(screen.getByText('Opponent wins')).toBeTruthy();
@@ -55,11 +55,11 @@ it('partial acknowledgement failure cannot announce completion; retry is idempot
  failAck='';fireEvent.click(screen.getByRole('button',{name:'Retry'}));await flush();expect(screen.getByText('Game Complete')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_begin')).toHaveLength(1);
 });
 it('reload after partial acknowledgement resumes only the final turn and retains a full final-board hold',async()=>{
- fixture.events[0].seen=true;elapsed=60000;const ui=mount();await flush();expect(screen.getByText(/UP, PA/)).toBeTruthy();expect(ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent).toBe('385');
+ fixture.events[0].seen=true;elapsed=60000;const ui=mount();await flush();expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();expect(ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent).toBe('385');
  await advance(2999);expect(acks()).toEqual([]);await advance(101);expect(acks()).toEqual(['turn-3','turn-5']);
 });
 it('an already-viewed final turn cannot send an older pending word back into playback',async()=>{
- fixture.events[2].seen=true;mount();await flush();expect(screen.getByText(/UP, PA/)).toBeTruthy();await advance(7800);
+ fixture.events[2].seen=true;mount();await flush();expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();await advance(7800);
  expect(acks()).toEqual(['turn-1','turn-3']);expect(screen.getByText('Game Complete')).toBeTruthy();
  expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_begin').map(c=>c[1].p_event)).toEqual(['turn-5']);
 });

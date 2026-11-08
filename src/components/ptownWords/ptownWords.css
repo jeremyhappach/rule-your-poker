@@ -61,3 +61,5 @@
 .words-rack[data-view-only=true] button{opacity:1;filter:none}
 
 .words-turn-announcement{text-align:center;font-weight:800;color:#7be1cc}
+
+.words-scores .words-last{display:block;min-height:1.4em;font-size:.72rem;line-height:1.4;color:#e2d9b4;white-space:normal;overflow-wrap:anywhere}

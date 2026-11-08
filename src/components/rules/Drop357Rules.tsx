@@ -1,5 +1,5 @@
 export default function Drop357Rules({version}:{version?:string}){
- const partial=version==='357-drop/4',carry=version==='357-drop/3';
+ const partial=version==='357-drop/4'||version==='357-drop/5',carry=version==='357-drop/3';
  return <div className="space-y-3">
   <h3>How to play</h3>
   <p>Place the face-up card into an open {partial||carry?'new-card slot':'row'}, or use one of your {carry?'five':'three'} passes per round to skip it. Placements are permanent.</p>
@@ -14,7 +14,7 @@ export default function Drop357Rules({version}:{version?:string}){
    <tr><td>3s</td><td>A pair or three of a kind. Straights and flushes do not score.</td></tr>
    <tr><td>5s / 7s</td><td>Two pair or better: trips, straight, flush, full house, four of a kind, straight flush, royal flush, five of a kind.</td></tr>
   </tbody></table>
-  <p>Higher poker hands earn more base points. Ranks and kickers select the strongest hand. A scoring hand made without wilds earns a <strong>20% natural bonus</strong>; an unused wild outside the best five does not remove it. Score in all three rows for <strong>200 extra points</strong>. Finish early for a time bonus that grows with the time left. Timeout earns no time bonus.</p>
+  <p>Higher poker hands earn more base points. Ranks and kickers select the strongest hand. A scoring hand made without wilds earns a <strong>20% natural bonus</strong>; an unused wild outside the best five does not remove it. {version==='357-drop/5'?'Score in all three rows to earn a 500-point ALL FILLED bonus.':'Score in all three rows to earn a 200-point ALL FILLED bonus.'} Finish early for a time bonus that grows with the time left. Timeout earns no time bonus.</p>
   <h3>Examples</h3>
   <table><thead><tr><th>Compare</th><th>Why</th></tr></thead><tbody>
    <tr><td>J–J–A vs. J–J–K</td><td>In the 3s row, the natural pair with an ace kicker scores 150; the king kicker scores 148.</td></tr>

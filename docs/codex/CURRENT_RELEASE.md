@@ -1,3 +1,13 @@
+# Complete P-Town polish handoff — November 8, 2026 — owner smoke pending
+
+Words Last labels/landing totals, Async clock compatibility/help, shared speaker
+cooldown, bounded account-check Retry, Drop /5 earned 500/final destination, Voyage
+qualification/bank audio/deck art, Horses /4 ranked matrix/three-minute clock and
+Originals art/outline are qualified. Migration `20261108172927` passes candidate
+and installed nine-proof rollback suites. 151 focused tests, TypeScript, production
+build and SQL-backed browser smokes pass; 14 baseline full-suite failures remain.
+No physical iPhone path is verified. See [scope, evidence and phone checklist](PTOWN_POLISH_COMPLETE.md); release/verified tags record publication and activation.
+
 # Arcade smoke polish — November 8, 2026 — owner smoke pending
 
 The fifteen-item handoff adds clear Arcade rules, two-step Drop carry choices,

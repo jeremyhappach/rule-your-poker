@@ -65,3 +65,5 @@
 
 .drop357-page[data-partial="true"] .drop357-board{grid-template-rows:8% 9% 16% repeat(3,20%)}
 @container (min-aspect-ratio:3/2){.drop357-page[data-partial="true"] .drop357-board{grid-template-rows:12% 10% repeat(3,24%)}}
+
+.drop357-tally[data-filled=true]{font-size:clamp(1.4rem,8cqi,3.5rem);background:#10252be8;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center}.drop357-bonus-award{display:block;font-size:1.5em;color:#ffe184;font-variant-numeric:tabular-nums}

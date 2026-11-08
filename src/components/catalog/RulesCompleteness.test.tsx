@@ -63,10 +63,10 @@ it('uses current Golf ending rules and preserves frozen historical help',async()
  ui.rerender(<RulesContent game="six-card-golf" version="six-card-golf/1"/>);
  expect(await screen.findByText('Ptown prolonged-play house rule')).toBeTruthy();
 });
-it('describes Async Words without live turn clocks, banks or bots',async()=>{
+it('describes current Async Words clocks and banks without bots',async()=>{
  render(<RulesContent game="ptown-words" mode="async"/>);
  await screen.findByText(/Each turn has a 36-hour/);
- expect(screen.queryByText(/Two time banks/)).toBeNull();
+ expect(screen.getByText(/Two time banks/)).toBeTruthy();expect(screen.getByText(/separate three-minute clock/)).toBeTruthy();
  expect(screen.queryByText(/Bots are available/)).toBeNull();
 });
 it('shows partial carries from the lobby and preserves explicit legacy Drop help',async()=>{

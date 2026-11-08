@@ -28,7 +28,7 @@ export function ArcadeSwitchboard({userId}:{userId:string}){
   <h2 id={'arcade-section-'+section.id} className="arcade-section-heading">{section.label}</h2>
   <div className="arcade-tiles">{section.games.map(g=>{
    const row=artwork.find(item=>item.game===g.id);
-   return <ArcadeTile key={g.id} game={g.id as ArcadeGame} name={g.name} admin={isAdmin} artwork={row} onArtwork={updated} onOpen={refresh}/>;
+   return <ArcadeTile original={section.id==='originals'} key={g.id} game={g.id as ArcadeGame} name={g.name} admin={isAdmin} artwork={row} onArtwork={updated} onOpen={refresh}/>;
   })}</div></section>)}
   {layout.error&&<p role="alert">{layout.error} <button className="underline" onClick={layout.refresh}>Retry ordering</button></p>}
   {error&&<p role="alert">{error} <button className="underline" onClick={refresh}>Retry artwork</button></p>}</main>;

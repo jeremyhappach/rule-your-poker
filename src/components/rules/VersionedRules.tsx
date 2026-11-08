@@ -8,7 +8,7 @@ import type {Rules} from '@/lib/triTowers/model';
 const renderers=new Map(GAME_CATALOG.filter(game=>game.rules.load).map(game=>[game.id,lazy(game.rules.load!)]));
 export default function VersionedRules({game,version,mode='multiplayer',config}:{game:string;version?:string;mode?:import('@/lib/gameCatalog/types').RulesMode;config?:Config|Rules}) {
  // Multiplayer-only frozen help must not query the unrelated Arcade lifecycle.
- const fixedVersion=game==='ptown-words'&&mode==='async'?'ptown-words/3':findGame(game)?.rules.fixedVersion;
+ const fixedVersion=findGame(game)?.rules.fixedVersion;
  const [loaded,setLoaded]=useState<{version:string;config:Config|Rules}|null>(null),[error,setError]=useState('');
  useEffect(()=>{let alive=true;setLoaded(null);setError('');
  if(config||fixedVersion)return;

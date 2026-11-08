@@ -1,3 +1,12 @@
+# 2026-11-08 — Frozen polish scoring and rounded ties
+
+Drop /5 changes only the earned ALL FILLED award/presentation interval from /4.
+Horses /4 freezes the approved ranked matrix and 180-second clock; /1–/3 remain
+unchanged. Jeremy chose exact matrix values with two Roll 3 rounded pair ties;
+larger meld then higher rank still chooses the scored hand. Existing Async Words
+/3 games keep their admitted 36-hour rules; current invitations use shared /2
+clock/banks. See PTOWN_POLISH_COMPLETE.md.
+
 # 2026-11-08 — Partial carry is a separate frozen 357 ruleset
 
 /4 carries selected printed cards (one then two), with 3/4/5 new slots and three

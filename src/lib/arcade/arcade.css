@@ -51,3 +51,5 @@ body:has(.arcade-page),body:has(.arcade-run){background:#0c171e}
 .arcade-tile--embedded-info .arcade-info-face{visibility:hidden}.arcade-tile--embedded-info .arcade-info-button--banner{right:var(--embedded-info-right);bottom:var(--embedded-info-bottom);width:max(44px,var(--embedded-info-width));height:max(44px,var(--embedded-info-height))}
 
 .arcade-banner-frame{position:absolute;inset:0;margin:auto;height:100%;border-radius:inherit;container-type:inline-size}
+
+.arcade-banner-tile[data-original=true]{outline:1px solid #b99b58;outline-offset:-1px}.arcade-banner-tile[data-original=true]::after{content:'';position:absolute;inset:0;border:1px solid #b99b58;border-radius:inherit;pointer-events:none;z-index:2}

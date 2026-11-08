@@ -1,3 +1,7 @@
+November 8 complete ZIP handoff, precedence reconciliation, rules qualification,
+release procedure and outstanding physical iPhone acceptance:
+[PTOWN_POLISH_COMPLETE.md](PTOWN_POLISH_COMPLETE.md).
+
 357 Drop partial carry /4 and shared Arcade tile height qualification:
 [DROP357_PARTIAL_CARRY.md](DROP357_PARTIAL_CARRY.md).
 

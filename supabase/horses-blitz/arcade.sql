@@ -64,7 +64,7 @@ BEGIN
   PERFORM public.arcade_commit(p_actor,p_run,run.revision,s,CASE WHEN s->>'phase'='summary' THEN NULL WHEN s->>'phase'='banking' AND s->>'hand'='10' THEN (s->>'phaseUntil')::bigint ELSE least((s->>'deadline')::bigint,(s->>'phaseUntil')::bigint) END,command_id,fingerprint,p_token);
   SELECT * INTO STRICT run FROM private.arcade_runs WHERE id=p_run;
  END IF;
- projection:=jsonb_build_object('id',run.id,'revision',run.revision,'status',run.status,'ruleset',run.ruleset,'serverAt',at_ms,
+ projection:=jsonb_build_object('id',run.id,'revision',run.revision,'status',run.status,'ruleset',run.ruleset,'serverAt',at_ms,'durationMs',run.config->'durationMs',
   'roundId',s->'roundId','round',s->'round','handId',s->'handId','hand',s->'hand','score',run.score,'phase',s->'phase',
   'roll',s->'roll','dice',s->'dice','held',s->'held','set',s->'set','base',s->'base','bank',s->'bank','dueAt',run.due_at,
   'startedAt',s->'startedAt','deadline',s->'deadline','phaseUntil',s->'phaseUntil','result',s->'result','completion',(SELECT record FROM private.arcade_results WHERE run_id=run.id));

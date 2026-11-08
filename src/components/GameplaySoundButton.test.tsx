@@ -9,7 +9,7 @@ import {VisualPreferences} from './VisualPreferences';
 const state = vi.hoisted(() => ({manager:null as any}));
 vi.mock('@/lib/audio/platformAudio', () => ({platformAudio:{
   subscribe:(listener:()=>void)=>state.manager.subscribe(listener), getSnapshot:()=>state.manager.getSnapshot(),
-  acquireGameplay:()=>state.manager.acquireGameplay(),savePreference:(id:string,on:boolean)=>state.manager.savePreference(id,on),
+  acquireGameplay:()=>state.manager.acquireGameplay(),togglePreference:(id:string)=>state.manager.togglePreference(id),savePreference:(id:string,on:boolean)=>state.manager.savePreference(id,on),
 }}));
 vi.mock('@/lib/canonicalShell/CinematicPresentation',()=>({usePresentationSurfaceReady:()=>{}}));
 vi.mock('@/lib/canonicalShell/ShellHudChrome',()=>({ShellAnnouncementRail:()=>null}));
@@ -43,4 +43,17 @@ it.each([{ready:false},{sessionEnded:true},{gameplay:false}])('hides fullscreen 
 it('shows one fullscreen control while retaining navigation',()=>{
   render(<FullscreenGameShell title="Game" description="" activeTab="cards" setActiveTab={()=>{}} panel={null}><div>Board</div></FullscreenGameShell>);
   expect(screen.getAllByRole('button',{name:'Mute sounds'})).toHaveLength(1);expect(screen.getByRole('button',{name:'Chat'})).toBeTruthy();
+});
+
+it('ignores taps for one second across two shared placements and remounts',async()=>{
+ let now=100;h.env.now=()=>now;
+ const ui=render(<><GameplaySoundButton/><GameplaySoundButton/></>);
+ await act(async()=>fireEvent.click(screen.getAllByRole('button',{name:'Mute sounds'})[0]));
+ expect(screen.getAllByRole('button',{name:'Unmute sounds'})).toHaveLength(2);
+ now=1099;await act(async()=>fireEvent.click(screen.getAllByRole('button',{name:'Unmute sounds'})[1]));
+ expect(h.env.savePreference).toHaveBeenCalledTimes(1);ui.unmount();
+ render(<GameplaySoundButton/>);await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Unmute sounds'})));
+ expect(h.env.savePreference).toHaveBeenCalledTimes(1);
+ now=1100;await act(async()=>fireEvent.click(screen.getByRole('button',{name:'Unmute sounds'})));
+ expect(screen.getByRole('button',{name:'Mute sounds'})).toBeTruthy();expect(h.env.savePreference).toHaveBeenCalledTimes(2);
 });

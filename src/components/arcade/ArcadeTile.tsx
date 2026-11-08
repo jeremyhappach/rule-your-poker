@@ -3,12 +3,12 @@ import {Link} from 'react-router-dom';
 import {ArcadeArtwork, ArcadeInfo} from './ArcadeInfo';
 import {APPROVED_TILE_ARTWORK, hasNewerTileArtwork} from '@/lib/arcade/tileArtwork';
 
-export function ArcadeTile(props: ComponentProps<typeof ArcadeInfo>) {
+export function ArcadeTile({original=false,...props}: ComponentProps<typeof ArcadeInfo>&{original?:boolean}) {
   const {game, name, artwork} = props;
   const approved = APPROVED_TILE_ARTWORK[game];
   const useApproved = !!approved && !hasNewerTileArtwork(artwork);
   const source = approved ? '/arcade/approved-v1/' + approved.slug : '';
-  return <article className={"arcade-tile arcade-banner-tile"+(useApproved&&approved.embeddedInfo?' arcade-tile--embedded-info':'')}
+  return <article data-original={original||undefined} className={"arcade-tile arcade-banner-tile"+(useApproved&&approved.embeddedInfo?' arcade-tile--embedded-info':'')}
     style={{'--embedded-info-right':approved?.embeddedInfo?.right,'--embedded-info-bottom':approved?.embeddedInfo?.bottom,'--embedded-info-width':approved?.embeddedInfo?.width,'--embedded-info-height':approved?.embeddedInfo?.height,'--arcade-info-bottom':useApproved ? approved.infoBottom : undefined} as CSSProperties}>
     <div className="arcade-banner-frame" style={{width:useApproved&&approved.width&&approved.height?`${Math.min(1,approved.width/approved.height/(1466/564))*100}%`:undefined}}>
     <Link className="arcade-banner-link" to={'/arcade/'+game} aria-label={name+' leaderboard'}>

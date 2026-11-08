@@ -14,10 +14,10 @@ describe('Words polish authority-independent projections',()=>{
   const b=[...board];b[113]={id:1};b[115]={id:2};expect(nextDraftSquare([p(112),p(114)],b)).toBe(116);
   expect(nextDraftSquare([p(13),p(14)],b)).toBeNull();expect(nextDraftSquare([p(209),p(224)],b)).toBeNull();
  });
- it('counts from the previous displayed score into the exact authoritative target without mutation',()=>{
+ it('holds the previous score until the flight lands, then shows the authoritative target',()=>{
   const v={identity:{dealerGameId:'d'},viewerId:'me',turn:2,scores:{me:20},moves:[{turn:1,playerId:'me',action:'place',points:8}],movePresentation:{turn:1,playerId:'me'}} as unknown as WordsSnapshot;
   expect(scoreFrame(v,1000,1000)?.score).toBe(12);expect(scoreFrame(v,2000,1000)?.score).toBe(12);
-  expect(scoreFrame(v,2300,1000)?.score).toBe(16);expect(scoreFrame(v,2600,1000)?.score).toBe(20);
+  expect(scoreFrame(v,2300,1000)?.score).toBe(12);expect(scoreFrame(v,2600,1000)?.score).toBe(20);
   expect(scoreFrame(v,4599,1000)?.active).toBe(true);expect(scoreFrame(v,4600,1000)?.active).toBe(false);expect(v.scores.me).toBe(20);
  });
  it('notification identities do not change just because an outstanding turn was read',()=>{

@@ -8,6 +8,7 @@ BEGIN
  IF version='horses-blitz/1' THEN RETURN private.horses_blitz_rules();END IF;
  IF version='horses-blitz/2' THEN RETURN private.horses_blitz_rules()||'{"version":"horses-blitz/2","manualOpening":true}'::jsonb;END IF;
  IF version='horses-blitz/3' THEN RETURN private.horses_blitz_rules()||'{"version":"horses-blitz/3","manualOpening":true,"manualFinalBank":true}'::jsonb;END IF;
+ IF version='horses-blitz/4' THEN RETURN (private.horses_blitz_rules()-'ladder')||'{"version":"horses-blitz/4","manualOpening":true,"manualFinalBank":true,"durationMs":180000,"matrix":[[25,25,25,25,25],[35,43,52,63,76],[135,165,200,245,300],[380,460,560,680,820],[1000,1210,1460,1760,2120]]}'::jsonb;END IF;
  RAISE EXCEPTION 'horses_blitz:rules';
 END$$;
 
@@ -40,12 +41,12 @@ END $$;
 
 CREATE OR REPLACE FUNCTION private.horses_blitz_round(s jsonb,at_ms bigint) RETURNS jsonb
 LANGUAGE plpgsql SET search_path='' AS $$
-DECLARE r integer:=coalesce((s->>'round')::integer,0)+1;manual boolean:=s#>>'{config,version}' IN ('horses-blitz/2','horses-blitz/3');dice jsonb;
+DECLARE r integer:=coalesce((s->>'round')::integer,0)+1;manual boolean:=coalesce((s#>>'{config,manualOpening}')::boolean,false);dice jsonb;
 BEGIN
  dice:=CASE WHEN manual THEN '[]'::jsonb ELSE private.horses_blitz_roll('[]','{}') END;
  RETURN s||jsonb_build_object('round',r,'roundId',(s->>'runId')||':'||r,'hand',1,'handId',(s->>'runId')||':'||r||':1',
- 'roll',CASE WHEN manual THEN 0 ELSE 1 END,'dice',dice,'held','[]'::jsonb,'set',CASE WHEN manual THEN '{"size":0,"points":0,"label":""}'::jsonb ELSE private.horses_blitz_set(dice,1) END,'base',0,'hands','[]'::jsonb,'phase','playing',
- 'startedAt',at_ms,'deadline',at_ms+100000,'phaseUntil',NULL,'result',NULL,'bank',NULL);
+ 'roll',CASE WHEN manual THEN 0 ELSE 1 END,'dice',dice,'held','[]'::jsonb,'set',CASE WHEN manual THEN '{"size":0,"points":0,"label":""}'::jsonb ELSE private.horses_blitz_set(dice,1,s->'config') END,'base',0,'hands','[]'::jsonb,'phase','playing',
+ 'startedAt',at_ms,'deadline',at_ms+(s#>>'{config,durationMs}')::bigint,'phaseUntil',NULL,'result',NULL,'bank',NULL);
 END $$;
 
 CREATE OR REPLACE FUNCTION private.horses_blitz_finish(s jsonb,at_ms bigint,reason text) RETURNS jsonb
@@ -55,7 +56,7 @@ BEGIN
  IF s->>'phase'='summary' OR s->>'status'<>'active' THEN RETURN s;END IF;
  IF reason='complete' THEN
   IF jsonb_array_length(hands)<>10 THEN RAISE EXCEPTION 'horses_blitz:incomplete';END IF;
-  bonus:=least(100,greatest(0,((s->>'deadline')::bigint-at_ms)/1000))*50;
+  bonus:=least((s#>>'{config,durationMs}')::bigint/1000,greatest(0,((s->>'deadline')::bigint-at_ms)/1000))*50;
  ELSIF reason='timeout' THEN
   FOR i IN jsonb_array_length(hands)+1..10 LOOP hands:=hands||jsonb_build_array(jsonb_build_object('hand',i,'points',0,'forfeit',true));END LOOP;
  ELSE RAISE EXCEPTION 'horses_blitz:finish_reason';END IF;
@@ -77,7 +78,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION private.horses_blitz_advance(s jsonb,at_ms bigint) RETURNS jsonb
 LANGUAGE plpgsql SET search_path='' AS $$
-DECLARE dice jsonb;boundary bigint;hand_i integer;manual boolean:=s#>>'{config,version}' IN ('horses-blitz/2','horses-blitz/3');
+DECLARE dice jsonb;boundary bigint;hand_i integer;manual boolean:=coalesce((s#>>'{config,manualOpening}')::boolean,false);
 BEGIN
  IF s->>'status'<>'active' OR s->>'phase'='summary' THEN RETURN s;END IF;
  -- The tenth committed bank ends scoring immediately; its 450 ms beat is presentation only.
@@ -89,7 +90,7 @@ BEGIN
  IF s->>'phase'='banking' AND at_ms>=(s->>'phaseUntil')::bigint THEN
   boundary:=(s->>'phaseUntil')::bigint;hand_i:=(s->>'hand')::integer+1;dice:=CASE WHEN manual THEN '[]'::jsonb ELSE private.horses_blitz_roll('[]','{}') END;
   s:=s||jsonb_build_object('hand',hand_i,'handId',(s->>'roundId')||':'||hand_i,'roll',CASE WHEN manual THEN 0 ELSE 1 END,'dice',dice,'held','[]'::jsonb,
-   'set',CASE WHEN manual THEN '{"size":0,"points":0,"label":""}'::jsonb ELSE private.horses_blitz_set(dice,1) END,'phase','playing','phaseUntil',NULL,'bank',NULL);
+   'set',CASE WHEN manual THEN '{"size":0,"points":0,"label":""}'::jsonb ELSE private.horses_blitz_set(dice,1,s->'config') END,'phase','playing','phaseUntil',NULL,'bank',NULL);
  END IF;
  RETURN s;
 END $$;
@@ -106,7 +107,7 @@ BEGIN
  IF action='roll' AND (s->>'roll')::integer<3 THEN
   IF s->>'roll'='0' AND cardinality(items)<>0 THEN RAISE EXCEPTION 'horses_blitz:holds';END IF;
   dice:=private.horses_blitz_roll(s->'dice',items);roll_i:=(s->>'roll')::integer+1;
-  s:=s||jsonb_build_object('dice',dice,'held',to_jsonb(items),'roll',roll_i,'set',private.horses_blitz_set(dice,roll_i));
+  s:=s||jsonb_build_object('dice',dice,'held',to_jsonb(items),'roll',roll_i,'set',private.horses_blitz_set(dice,roll_i,s->'config'));
   IF roll_i=3 AND coalesce(s#>>'{config,manualFinalBank}','false')<>'true' THEN s:=private.horses_blitz_bank(s,at_ms);END IF;RETURN s;
  END IF;
  RAISE EXCEPTION 'horses_blitz:illegal_action';
@@ -123,12 +124,12 @@ BEGIN
   IF r->>'id' IS DISTINCT FROM (s->>'runId')||':'||n OR (r->>'round')::integer IS DISTINCT FROM n OR jsonb_array_length(r->'hands') IS DISTINCT FROM 10 THEN RETURN false;END IF;
   FOR h IN SELECT value FROM jsonb_array_elements(r->'hands') LOOP
    hi:=hi+1;
-   IF (h->>'hand')::integer IS DISTINCT FROM hi OR (h->>'points')::integer IS DISTINCT FROM (CASE WHEN (h->>'forfeit')::boolean THEN 0 ELSE (private.horses_blitz_set(h->'dice',(h->>'roll')::integer)->>'points')::integer END) THEN RETURN false;END IF;
+   IF (h->>'hand')::integer IS DISTINCT FROM hi OR (h->>'points')::integer IS DISTINCT FROM (CASE WHEN (h->>'forfeit')::boolean THEN 0 ELSE (private.horses_blitz_set(h->'dice',(h->>'roll')::integer,s->'config')->>'points')::integer END) THEN RETURN false;END IF;
    base_i:=base_i+(h->>'points')::integer;
   END LOOP;
-  IF base_i IS DISTINCT FROM (r->>'base')::integer OR (r->>'timerBonus')::integer NOT BETWEEN 0 AND 5000
-   OR (r->>'timerBonus')::integer IS DISTINCT FROM (CASE WHEN r->>'reason'='timeout' THEN 0 ELSE least(100,greatest(0,((r->>'deadline')::bigint-(r->>'completedAt')::bigint)/1000))*50 END)
-   OR (r->>'deadline')::bigint-(r->>'startedAt')::bigint<>100000
+  IF base_i IS DISTINCT FROM (r->>'base')::integer OR (r->>'timerBonus')::integer NOT BETWEEN 0 AND (s#>>'{config,durationMs}')::bigint/1000*50
+   OR (r->>'timerBonus')::integer IS DISTINCT FROM (CASE WHEN r->>'reason'='timeout' THEN 0 ELSE least((s#>>'{config,durationMs}')::bigint/1000,greatest(0,((r->>'deadline')::bigint-(r->>'completedAt')::bigint)/1000))*50 END)
+   OR (r->>'deadline')::bigint-(r->>'startedAt')::bigint<>(s#>>'{config,durationMs}')::bigint
    OR (r->>'total')::integer IS DISTINCT FROM base_i+(r->>'timerBonus')::integer THEN RETURN false;END IF;
   total:=total+(r->>'total')::integer;
  END LOOP;

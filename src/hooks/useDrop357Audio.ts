@@ -17,7 +17,7 @@ export function useDrop357Audio(userId:string,v:DropSnapshot|null,liveLanes:numb
    if(cue)stops.current.add(platformAudio.follow({userId,id:v.roundId+':reveal:'+v.placements,startedAt:local+140,expiresAt:local+140+cue.durationMs,
     cueAt:()=>({...cue,policy:{priority:20,group:'357-reveal',intervalMs:0}})}));
   }
-  const full=v.result?.reason==='filled';
+  const full=!!v.result&&v.result.allBonus>0;
   if(full){
    ordinaryStops.current.forEach(stop=>stop());ordinaryStops.current.clear();
    const id='357-filled:'+v.roundId,elapsed=now-v.result!.completedAt;

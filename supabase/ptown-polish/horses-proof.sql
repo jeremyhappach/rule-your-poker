@@ -1,0 +1,98 @@
+BEGIN;
+SET LOCAL lock_timeout='500ms';
+SET LOCAL statement_timeout='25s';
+UPDATE private.arcade_rulesets SET enabled=false WHERE game='horses-blitz';
+-- CANDIDATE_DDL
+CREATE FUNCTION pg_temp.hb_check(ok boolean,label text) RETURNS void LANGUAGE plpgsql AS $$BEGIN IF ok IS DISTINCT FROM true THEN RAISE EXCEPTION 'Horses Blitz proof: %',label;END IF;END$$;
+DO $$
+DECLARE actor uuid:=gen_random_uuid();stranger uuid:=gen_random_uuid();request uuid:=gen_random_uuid();run jsonb;run2 jsonb;
+ v jsonb;before_v jsonb;response jsonb;rid uuid;round_i integer;hand_i integer;i integer;terminal_request uuid;final_before jsonb;recovery_token uuid:=gen_random_uuid();
+BEGIN
+ INSERT INTO auth.users(id) VALUES(actor),(stranger);
+ INSERT INTO public.account_access(user_id,enabled,ever_enabled) VALUES(actor,true,true),(stranger,true,true) ON CONFLICT(user_id) DO UPDATE SET enabled=true,ever_enabled=true;
+ INSERT INTO public.profiles(id,username,is_active) VALUES(actor,'HB proof A',true),(stranger,'HB proof B',true) ON CONFLICT(id) DO UPDATE SET is_active=true;
+ UPDATE private.arcade_recovery_state SET last_completed_at=clock_timestamp(),failure=null;
+ BEGIN PERFORM public.arcade_start(actor,request,'horses-blitz');RAISE EXCEPTION 'closed admission accepted';EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%unavailable%' THEN RAISE;END IF;END;
+ UPDATE private.arcade_rulesets SET enabled=true WHERE id='horses-blitz/4';
+ run:=public.arcade_start(actor,request,'horses-blitz');rid:=(run->>'id')::uuid;
+ PERFORM pg_temp.hb_check(public.arcade_start(actor,request,'horses-blitz')->>'id'=run->>'id','duplicate start');
+ PERFORM pg_temp.hb_check(public.arcade_start(actor,gen_random_uuid(),'horses-blitz')->>'id'=run->>'id','one active run');
+ BEGIN PERFORM public.arcade_horses_blitz_step(stranger,rid);RAISE EXCEPTION 'wrong owner';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN PERFORM public.arcade_horses_blitz_step(NULL,rid);RAISE EXCEPTION 'wrong worker';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ PERFORM pg_temp.hb_check(NOT has_function_privilege('authenticated','public.arcade_horses_blitz_step(uuid,uuid,bigint,text,uuid,text,integer[],uuid)','execute'),'service only');
+ v:=public.arcade_horses_blitz_step(actor,rid)->'projection';
+ PERFORM pg_temp.hb_check(NOT v ?| ARRAY['deck','seed','config'],'private randomness');
+ CREATE TEMP TABLE hb_write_baseline ON COMMIT DROP AS SELECT relid,n_tup_ins+n_tup_upd+n_tup_del n FROM pg_stat_xact_user_tables WHERE schemaname IN('public','private') AND relname NOT LIKE 'arcade_%';
+ PERFORM pg_temp.hb_check(v->>'roll'='0' AND v->'dice'='[]'::jsonb,'new run empty');
+ v:=public.arcade_horses_blitz_step(actor,rid,(v->>'revision')::bigint,v->>'roundId',gen_random_uuid(),'roll','{}')->'projection';
+ before_v:=v;request:=gen_random_uuid();
+ response:=public.arcade_horses_blitz_step(actor,rid,(v->>'revision')::bigint,v->>'roundId',request,'roll',ARRAY[0,1,2,3,4]);v:=response->'projection';
+ PERFORM pg_temp.hb_check(response->>'outcome'='committed' AND v->>'roll'='2','roll once');
+ PERFORM pg_temp.hb_check(public.arcade_horses_blitz_step(actor,rid,(before_v->>'revision')::bigint,before_v->>'roundId',request,'roll',ARRAY[0,1,2,3,4])->>'outcome'='duplicate','duplicate request');
+ BEGIN PERFORM public.arcade_horses_blitz_step(actor,rid,(before_v->>'revision')::bigint,before_v->>'roundId',request,'roll','{}');RAISE EXCEPTION 'changed replay';EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%request_conflict%' THEN RAISE;END IF;END;
+ PERFORM pg_temp.hb_check(public.arcade_horses_blitz_step(actor,rid,(before_v->>'revision')::bigint,before_v->>'roundId',gen_random_uuid(),'roll','{}')->>'outcome'='stale','stale revision');
+ FOR round_i IN 1..3 LOOP
+  FOR hand_i IN 1..10 LOOP
+   IF v->>'roll'='0' THEN
+    PERFORM pg_temp.hb_check(v->'dice'='[]'::jsonb AND v->'held'='[]'::jsonb,'each hand empty');
+    v:=public.arcade_horses_blitz_step(actor,rid,(v->>'revision')::bigint,v->>'roundId',gen_random_uuid(),'roll','{}')->'projection';
+   END IF;
+   UPDATE private.arcade_runs SET state=state||jsonb_build_object('dice','[1,4,4,2,6]'::jsonb,'set',private.horses_blitz_set('[1,4,4,2,6]',(state->>'roll')::int,config)) WHERE id=rid;
+   v:=public.arcade_horses_blitz_step(actor,rid)->'projection';before_v:=v;request:=gen_random_uuid();
+   v:=public.arcade_horses_blitz_step(actor,rid,(v->>'revision')::bigint,v->>'roundId',request,'bank','{}')->'projection';
+   PERFORM pg_temp.hb_check(v->>'phase'='banking' AND v->>'hand'=hand_i::text,'bank one hand');
+   PERFORM pg_temp.hb_check(public.arcade_horses_blitz_step(actor,rid,(before_v->>'revision')::bigint,before_v->>'roundId',gen_random_uuid(),'bank','{}')->>'outcome'='stale','burst bank cannot advance');
+   UPDATE private.arcade_runs SET state=jsonb_set(state,'{phaseUntil}','0') WHERE id=rid;
+   IF round_i=3 AND hand_i=10 THEN
+    CREATE FUNCTION pg_temp.hb_fail() RETURNS trigger LANGUAGE plpgsql AS $g$BEGIN RAISE EXCEPTION 'injected HB result failure';END$g$;
+    CREATE TRIGGER hb_atomic BEFORE INSERT ON private.arcade_results FOR EACH ROW EXECUTE FUNCTION pg_temp.hb_fail();
+    BEGIN PERFORM public.arcade_horses_blitz_step(actor,rid);RAISE EXCEPTION 'fault missing';EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%injected HB%' THEN RAISE;END IF;END;
+    PERFORM pg_temp.hb_check(NOT EXISTS(SELECT FROM private.arcade_results WHERE run_id=rid) AND (SELECT state->>'phase' FROM private.arcade_runs WHERE id=rid)='banking','atomic finalization rollback');
+    DROP TRIGGER hb_atomic ON private.arcade_results;terminal_request:=request;final_before:=before_v;
+   END IF;
+   v:=public.arcade_horses_blitz_step(actor,rid)->'projection';
+  END LOOP;
+  PERFORM pg_temp.hb_check(v->>'phase'='summary' AND v->>'round'=round_i::text,'round summary');
+  PERFORM pg_temp.hb_check(jsonb_array_length(v#>'{result,hands}')=10 AND v->>'status'=CASE WHEN round_i=3 THEN 'completed' ELSE 'active' END,'three rounds ten hands');
+  PERFORM pg_temp.hb_check(public.arcade_horses_blitz_step(actor,rid)->'projection'->>'round'=round_i::text,'read retains summary');
+  IF round_i<3 THEN
+   before_v:=v;request:=gen_random_uuid();
+   v:=public.arcade_horses_blitz_step(actor,rid,(v->>'revision')::bigint,v->>'roundId',request,'next_round','{}')->'projection';
+   PERFORM pg_temp.hb_check(v->>'hand'='1' AND v->>'roll'='0' AND v->'dice'='[]'::jsonb AND v->'held'='[]'::jsonb,'next round fresh');
+   PERFORM pg_temp.hb_check(public.arcade_horses_blitz_step(actor,rid,(before_v->>'revision')::bigint,before_v->>'roundId',request,'next_round','{}')->>'outcome'='duplicate','next round replay');
+  END IF;
+ END LOOP;
+ PERFORM pg_temp.hb_check(v->>'status'='completed' AND (SELECT count(*) FROM private.arcade_results WHERE run_id=rid)=1,'one verified result');
+ PERFORM pg_temp.hb_check((SELECT private.horses_blitz_valid(state) AND NOT private.horses_blitz_valid(jsonb_set(state,'{score}','999999')) FROM private.arcade_runs WHERE id=rid),'completion integrity');
+ run2:=public.arcade_start(actor,gen_random_uuid(),'horses-blitz');
+ PERFORM pg_temp.hb_check(run2->>'id'<>run->>'id','successor');
+ PERFORM pg_temp.hb_check(public.arcade_horses_blitz_step(actor,rid,(final_before->>'revision')::bigint,final_before->>'roundId',terminal_request,'bank','{}')->>'outcome'='duplicate','late replay');
+ rid:=(run2->>'id')::uuid;v:=public.arcade_horses_blitz_step(actor,rid)->'projection';
+ v:=public.arcade_horses_blitz_step(actor,rid,(v->>'revision')::bigint,v->>'roundId',gen_random_uuid(),'abandon','{}')->'projection';
+ PERFORM pg_temp.hb_check(v->>'status'='abandoned' AND NOT EXISTS(SELECT FROM private.arcade_results WHERE run_id=rid),'abandon unranked');
+ run2:=public.arcade_start(actor,gen_random_uuid(),'horses-blitz');rid:=(run2->>'id')::uuid;
+ UPDATE private.arcade_recovery_state SET claimed=true,token=recovery_token,expires_at=clock_timestamp()+interval '1 minute' WHERE singleton;
+ v:=public.arcade_horses_blitz_step(actor,rid)->'projection';
+ FOR i IN 1..3 LOOP
+  UPDATE private.arcade_runs SET state=state||'{"deadline":180000,"startedAt":0}'::jsonb,due_at=0 WHERE id=rid;
+  v:=public.arcade_horses_blitz_step(NULL,rid,p_token=>recovery_token)->'projection';
+  PERFORM pg_temp.hb_check(v->>'phase'='summary' AND v->>'score'='0','zero client timeout');
+  PERFORM pg_temp.hb_check(public.arcade_horses_blitz_step(NULL,rid,p_token=>recovery_token)->'projection'->>'round'=i::text,'worker leaves summary');
+  IF i<3 THEN v:=public.arcade_horses_blitz_step(actor,rid,(v->>'revision')::bigint,v->>'roundId',gen_random_uuid(),'next_round','{}')->'projection';END IF;
+ END LOOP;
+ PERFORM pg_temp.hb_check((SELECT count(*) FROM private.arcade_results WHERE run_id=rid)=1,'worker terminal result');
+ run2:=public.arcade_start(stranger,gen_random_uuid(),'horses-blitz');rid:=(run2->>'id')::uuid;
+ v:=public.arcade_horses_blitz_step(stranger,rid)->'projection';
+ FOR i IN 1..3 LOOP
+  UPDATE private.arcade_runs SET state=state||'{"deadline":180000,"startedAt":0}'::jsonb,due_at=0 WHERE id=rid;
+  v:=public.arcade_horses_blitz_step(NULL,rid,p_token=>recovery_token)->'projection';
+  IF i<3 THEN v:=public.arcade_horses_blitz_step(stranger,rid,(v->>'revision')::bigint,v->>'roundId',gen_random_uuid(),'next_round','{}')->'projection';END IF;
+ END LOOP;
+ response:=public.arcade_leaderboard(actor,'horses-blitz','all');
+ PERFORM pg_temp.hb_check(jsonb_array_length(response->'rows')=3 AND jsonb_array_length(public.arcade_leaderboard(actor,'horses-blitz','30')->'rows')=3,'leaderboards');
+ PERFORM pg_temp.hb_check((SELECT count(DISTINCT x->>'rank') FROM jsonb_array_elements(response->'rows')x WHERE x->>'score'='0')=1,'tied scores share rank');
+ PERFORM pg_temp.hb_check(NOT EXISTS(SELECT FROM hb_write_baseline b JOIN pg_stat_xact_user_tables t USING(relid) WHERE t.n_tup_ins+t.n_tup_upd+t.n_tup_del<>b.n),'zero multiplayer and financial writes');
+END$$;
+SELECT 'PASS: Horses Blitz rules, replay, auth, recovery, continuation, terminal and isolation' result;
+SELECT md5(string_agg(pg_get_functiondef(p.oid),chr(10) ORDER BY p.oid::regprocedure::text)) authority_digest FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE (n.nspname='private' AND p.proname LIKE 'horses_blitz_%') OR (n.nspname='public' AND p.proname='arcade_horses_blitz_step');
+ROLLBACK;

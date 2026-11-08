@@ -18,6 +18,7 @@ import {approvedSound} from '@/lib/audio/approvedSounds';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import bridge from '@/assets/peoria-bridge-mobile.jpg';
 import './drop357.css';
+import {usePresentedScoreAudio} from '@/hooks/usePresentedScoreAudio';
 const Face=memo(function Face({card}:{card:number}){return <PlayingCard card={cardFace(card)} frontStyle="arcade-classic" size="sm" style={{width:'100%',height:'100%'}}/>;});
 export function SoloDrop357({runId,userId,transport:provided}:{runId:string;userId:string;transport?:DropTransport}){
  const transport=useMemo(()=>provided??dropTransport(runId),[provided,runId]),live=useRef(hasTriStart(runId));
@@ -27,7 +28,7 @@ export function SoloDrop357({runId,userId,transport:provided}:{runId:string;user
  return <DropBoard game={game} userId={userId} liveEntry={live.current}/>;
 }
 function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;userId:string;liveEntry:boolean}){
- const v=game.snapshot!,partial=v.ruleset==='357-drop/4',carry=partial||v.ruleset==='357-drop/3',r=v.result,navigate=useNavigate(),runId=v.id;
+ const v=game.snapshot!,partial=['357-drop/4','357-drop/5'].includes(v.ruleset),carry=partial||v.ruleset==='357-drop/3',r=v.result,navigate=useNavigate(),runId=v.id;
  const surface=useRef<HTMLDivElement>(null),board=useRef<HTMLDivElement>(null),[abandon,setAbandon]=useState(false),done=useRef(false);
  useDrop357Audio(userId,v,game.liveLanes,game.now,surface);
  const [carryDraft,setCarryDraft]=useState<{roundId:string;lane:number;cards:number[]}>({roundId:'',lane:-1,cards:[]});
@@ -35,7 +36,11 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
  const choices=carryDraft.roundId===v.roundId&&carryDraft.lane===carryLane?carryDraft.cards:[];
  const toggleCarry=(slot:number)=>setCarryDraft(previous=>{const selected=previous.roundId===v.roundId&&previous.lane===carryLane?previous.cards:[];return {roundId:v.roundId,lane:carryLane,cards:carryLane===0?[slot]:selected.includes(slot)?selected.filter(c=>c!==slot):selected.length<2?[...selected,slot]:[selected[1],slot]};});
  const tally=r?Math.max(0,game.now-r.completedAt):0;
- const result=r?{...r,id:r.id??v.roundId+':result',elapsed:tally,scoreBefore:r.scoreBefore??0,displayScore:r.score}:null;
+ const bonusDelay=r&&r.allBonus>0?(v.allFilledMs??0):0;
+ const bonusCount=r&&bonusDelay?{from:0,to:r.allBonus,startedAt:r.completedAt+1000,endsAt:r.completedAt+2000}:null;
+ const bonusValue=bonusCount?Math.round(r!.allBonus*Math.max(0,Math.min(1,(game.now-bonusCount.startedAt)/1000))):0;
+ usePresentedScoreAudio(userId,bonusCount&&!game.bornEnded&&game.liveRevision>=0&&tally>=1000&&tally<2000?'357-all-filled:'+v.roundId:null,bonusCount,game.now);
+ const result=r?{...r,id:r.id??v.roundId+':result',completedAt:r.completedAt+bonusDelay,elapsed:tally-bonusDelay,scoreBefore:r.scoreBefore??0,displayScore:r.score}:null;
  const presentation=useTriRoundPresentation({scope:'357-drop:'+v.roundId,phase:r?'stage_complete':v.phase,connected:game.ready&&!game.error,paused:false,result,
   now:game.now,deadline:v.deadline,userId,active:true,modern:true,liveEntry,recoveryEpoch:game.recoveryEpoch});
  const seconds=v.phase==='intro'?120:r?Math.ceil(r.remainingMs/1000):Math.max(0,Math.ceil((v.deadline-game.now)/1000));
@@ -50,11 +55,11 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
    {...cue,policy:{priority:50,group:'357-action',intervalMs:0}}:undefined});
  },[game.cue,runId,userId]);
  const locked=v.phase!=='playing'||v.status!=='active'||game.pending||!game.ready||game.now>=v.deadline;
- const showFinal=v.status==='completed'&&!!r&&(game.bornEnded||tally>=5000);
+ const showFinal=v.status==='completed'&&!!r&&(game.bornEnded||tally>=5000+bonusDelay);
  if(showFinal){
   const naturalBonus=v.laneResults.reduce((sum,lane)=>sum+(lane?.bonus??0),0);
   const rounds=v.roundScores??(v.ruleset==='357-drop/1'?[{round:1,score:r.score,handPoints:r.base-r.allBonus-naturalBonus,naturalBonus,allBonus:r.allBonus,timeBonus:r.timeBonus}]:[]);
-  return <ArcadeCompletion title="Final Score" score={v.score} record={v.completion} onBackToArcade={()=>navigate('/arcade',{replace:true})}>
+  return <ArcadeCompletion title="Final Score" score={v.score} record={v.completion} backLabel="Back to Leaderboard" onBackToArcade={()=>navigate('/arcade/357-drop?result='+runId,{replace:true})}>
    <dl className="drop357-final-rounds">{rounds.map(round=><div key={round.round} data-round-score={round.round}>
     <dt>Round {round.round}</dt><dd><strong>{round.score.toLocaleString()}</strong></dd>
     <dd className="drop357-final-bonuses"><span>Hands {round.handPoints.toLocaleString()}</span>{round.naturalBonus>0&&<span>Natural +{round.naturalBonus.toLocaleString()}</span>}{round.allBonus>0&&<span>All lanes +{round.allBonus.toLocaleString()}</span>}{round.timeBonus>0&&<span>Time +{round.timeBonus.toLocaleString()}</span>}</dd>
@@ -86,7 +91,7 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
     </Tag>;
    })}
    {v.phase==='intro'&&<div className="drop357-intro"><TriRoundIntro remaining={Math.max(0,v.deadline-game.now)} roundLabel={`ROUND ${v.round??1}`} paused={false}/></div>}
-   {r&&<div className="drop357-tally" data-filled={r.reason==='filled'&&tally>=180&&tally<1200} role="status"><strong>{r.reason==='timeout'?'TIME UP':tally>=180&&tally<1200?'ALL FILLED':'ROUND COMPLETE'}</strong><span className="sr-only">Round award {(r.roundScore??r.score).toLocaleString()}; total {r.score.toLocaleString()}</span></div>}
+   {r&&<div className="drop357-tally" data-filled={r.allBonus>0&&tally>=180&&tally<(bonusDelay||1200)} role="status"><strong>{r.reason==='timeout'?'TIME UP':r.allBonus>0&&tally>=180&&tally<(bonusDelay||1200)?'ALL FILLED':'ROUND COMPLETE'}</strong>{bonusDelay>0&&tally>=180&&tally<bonusDelay&&<b className="drop357-bonus-award">+{bonusValue}</b>}<span className="sr-only">Round award {(r.roundScore??r.score).toLocaleString()}; total {r.score.toLocaleString()}</span></div>}
   </main>
   {game.error&&<div className="drop357-error" role="alert">{game.error}<button onClick={game.reconnect}>Reconnect</button></div>}
   <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon game?</AlertDialogTitle><AlertDialogDescription>Its score will not enter the leaderboard. The clock continues while this dialog is open.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={game.pending} onClick={()=>game.act('abandon')}>Abandon</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

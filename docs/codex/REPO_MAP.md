@@ -1,3 +1,9 @@
+Complete polish ownership: `supabase/horses-blitz/matrix.sql` owns /4 ranked offers;
+`supabase/ptown-polish/` composes frozen Drop /5, qualification and guarded activation.
+AccountAccessGate/accountCheckTimeout own bounded launch verification; AudioManager
+owns speaker cooldown; Words scorePresentation/history owns Last-label data.
+See `PTOWN_POLISH_COMPLETE.md` and `dev/ptown-polish/` for scope and smoke evidence.
+
 Arcade smoke polish: `src/hooks/useBankOffer.ts` presents server quotes for
 Voyage and Horses. Voyage's SQL adapter owns automatic result continuation;
 Horses /3 owns manual final banking. Chucky's committed lastFold receipt exposes

@@ -8,5 +8,10 @@ export function scoreFrame(v:WordsSnapshot,at:number,start:number,limit=Infinity
  const target=v.preAdjustmentScores?.[p.playerId]??v.scores[p.playerId]??0;
  return {id:`${v.identity.dealerGameId}:${v.viewerId}:${p.turn}`,playerId:p.playerId,points:move.points,progress,end,
   phase:at<start?'reveal':progress===0?'hold':progress<1?'flight':'after',
-  score:target-move.points+Math.round(move.points*progress),active:at<end};
+  score:progress<1?target-move.points:target,active:at<end};
+}
+
+export function lastScoredWord(v:WordsSnapshot,playerId:string){
+ const move=[...v.moves].reverse().find(m=>m.playerId===playerId&&m.action==='place'&&m.points>0);
+ return move?`Last: ${move.words.map(w=>w.word).join(', ')} (${move.points})`:'';
 }
