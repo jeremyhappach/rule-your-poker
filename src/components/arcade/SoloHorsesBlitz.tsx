@@ -19,6 +19,7 @@ import {useBankOffer} from '@/hooks/useBankOffer';
 import {Dices} from 'lucide-react';
 import {CountdownDots} from '@/components/ui/CountdownDots';
 import {quintzeeHoldCue} from '@/lib/audio/quintzeeHoldCue';
+import {presentedBlitzHolds,type BlitzHoldSelection} from '@/lib/horsesBlitz/holds';
 import '../quintzee/quintzee.css';
 import './horsesBlitz.css';
 
@@ -26,10 +27,10 @@ export function SoloHorsesBlitz({runId,userId,transport:provided}:{runId:string;
  const transport=useMemo(()=>provided??blitzTransport(runId),[provided,runId]),live=useRef(hasTriStart(runId));
  const game=useHorsesBlitz(runId,userId,transport,live.current),rollMotion=useHorsesBlitzRoll(game.cue,game.error,game.ready),motion=rollMotion.motion;
  const v=motion?(motion.settled?motion.landing:motion.source):game.snapshot,r=v?.result,navigate=useNavigate();
- const [selection,setSelection]=useState<{handId:string;indices:number[]}>({handId:'',indices:[]}),[abandon,setAbandon]=useState(false);
+ const [selection,setSelection]=useState<BlitzHoldSelection>({handId:'',roll:0,indices:[]}),[abandon,setAbandon]=useState(false);
  const surface=useRef<HTMLDivElement>(null),done=useRef(false);
  const offer=useBankOffer({scope:runId+':'+v?.handId,receipt:String(v?.roll),points:v&&v.roll>0?v.set.points:null,bankable:!!v&&(v.set.points>0||v.roll===3),now:game.now,live:game.liveRevision>=0&&!motion,userId,surface});
- const held=motion?.held??(selection.handId===v?.handId?selection.indices:v?.held??[]);
+ const held=motion&&!motion.settled?motion.held:v?presentedBlitzHolds(v,selection):[];
  const locked=!!motion||!v||v.status!=='active'||v.phase!=='playing'||game.pending||!game.ready||v.deadline===null||game.now>=v.deadline;
  const rumble=motion&&!motion.settled?motion:null;
  useQuintzeeRollAudio(rumble,game.ready&&!game.error,surface);
@@ -47,7 +48,7 @@ export function SoloHorsesBlitz({runId,userId,transport:provided}:{runId:string;
   // Manual Roll (1) may overlap the opening bell; keep both at the rolling priority.
   return platformAudio.follow({userId,id:'run21-bell:horses-blitz:'+game.roundCue,startedAt:at,expiresAt:at+2500,cueAt:()=>isSoundSurfaceVisible(surface.current)?{...boxingBellCue,policy:{priority:25,group:'horses-blitz-opening',intervalMs:0}}:undefined});
  },[game.roundCue,userId]);
- function toggle(index:number){if(locked||rollMotion.locked()||!v||v.roll===0)return;const next=!held.includes(index);setSelection({handId:v.handId,indices:next?[...held,index]:held.filter(i=>i!==index)});
+ function toggle(index:number){if(locked||rollMotion.locked()||!v||v.roll===0)return;const next=!held.includes(index);setSelection({handId:v.handId,roll:v.roll,indices:next?[...held,index]:held.filter(i=>i!==index)});
   // Keep this gentle cue audible alongside the first-offer ding.
   platformAudio.present({userId,id:'quintzee-hold:'+v.handId+':'+crypto.randomUUID(),cue:isSoundSurfaceVisible(surface.current)?{...quintzeeHoldCue(next),policy:{priority:55,group:'horses-blitz-hold',intervalMs:0}}:undefined});}
  function roll(){if(locked||rollMotion.locked()||!v)return;const items=v.roll===0?[]:held,command=game.act('roll',items);if(command)rollMotion.start(command,v,items);}

@@ -12,7 +12,7 @@ if(!/^ptown_polish_\d+$/.test(database))throw Error('Disposable database require
 const preview=process.argv.includes('--preview'),port=preview?15380:15381,origin='http://127.0.0.1:'+port;
 const c=await connect(database),actor=randomUUID(),out='qualification.local/ship-cap-voyage/browser';mkdirSync(out,{recursive:true});
 let operation,queue=Promise.resolve(),latest,browser;
-const errors=[],requests=[];
+const errors=[],requests=[],polishStates=[];
 const entry=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body><script>sessionStorage.setItem('lab-proof-user',${JSON.stringify(actor)})</script><div id="root"></div><script type="module" src="/dev/ship-cap-voyage/browser-entry.tsx"></script></body></html>`;
 const fixture=resolve('dev/ship-cap-voyage/browser-client.ts');
 const server=await createServer({configFile:false,cacheDir:'qualification.local/ship-cap-voyage/vite-'+port,plugins:[react(),{name:'voyage-local',configureServer(s){s.middlewares.use(async(req,res,next)=>{
@@ -74,12 +74,27 @@ try{
    assert.ok(quotes[0].settled<quotes[0].previous&&quotes[1].settled>quotes[1].previous&&quotes[2].settled<quotes[2].previous);assert.deepEqual(errors,[]);writeFileSync(out+'/offer-evidence.json',JSON.stringify({passed:true,quotes},null,2));console.log('PASS Voyage rising/falling full offers, mid-count Bank, last three roll states and reduced motion');
   }else{
   let expected=0;
+  const opening=async round=>{
+   assert.equal(await page.locator('.scv-die').count(),5);
+   assert.equal(await page.locator('.scv-die:visible').count(),0);
+   assert.equal(await page.locator('.scv-candidate').innerText(),'Ready when you are');
+   const geometry=await page.evaluate(()=>{
+    const rect=s=>{const r=document.querySelector(s).getBoundingClientRect();return {y:r.y,height:r.height};};
+    return {dice:rect('.scv-dice'),rolls:rect('.scv-rolls-left'),readyColor:getComputedStyle(document.querySelector('.scv-candidate')).color,visibility:getComputedStyle(document.querySelector('.scv-dice')).visibility};
+   });
+   assert.equal(geometry.readyColor,'rgb(255, 255, 255)');assert.equal(geometry.visibility,'hidden');assert.ok(geometry.dice.height>0);
+   const first=polishStates.find(s=>s.state==='opening');
+   if(first)assert.ok(Math.abs(first.geometry.rolls.y-geometry.rolls.y)<.1,'Rolls Left returns to the same anchor each round');
+   polishStates.push({round,state:'opening',geometry});await page.screenshot({path:out+'/opening-round-'+round+'.png'});return geometry;
+  };
   for(let round=1;round<=3;round++){
    if(round>1){await page.waitForFunction(n=>document.querySelector('.scv-status strong')?.textContent==='ROUND '+n+' OF 3',round);await page.waitForFunction(()=>!document.querySelector('.scv-actions button:last-child').disabled);assert.equal(latest.roll,0);assert.deepEqual(latest.dice,[]);}
+   const openingGeometry=await opening(round);
    for(let bank=0;bank<3;bank++){
     const before=requests.filter(x=>x.action==='roll').length;
     await page.locator('.scv-actions button').last().click({clickCount:3});
     await page.waitForFunction(()=>document.querySelectorAll('.scv-die[data-rolling=true]').length>0);
+    if(bank===0){const rolling=await page.locator('.scv-rolls-left').boundingBox();assert.ok(Math.abs(rolling.y-openingGeometry.rolls.y)<.1,'Opening placeholders reserve the rolling area');assert.equal(await page.locator('.scv-die:visible').count(),5);}
     assert.equal(await page.locator('.scv-die[data-locked=true][data-rolling=true]').count(),0);
     if(round===1&&bank===0)await page.screenshot({path:out+'/03-rolling.png'});
     await page.waitForFunction(()=>document.querySelectorAll('.scv-die[data-rolling=true]').length===0);
@@ -91,6 +106,10 @@ try{
     assert.equal(latest.banks.length,bank+1);assert.equal(latest.roll,bank+1);assert.equal(latest.cargo,null);await page.waitForTimeout(350);
    }
    expected+=3300;assert.equal(latest.score,expected);
+   await page.getByRole('heading',{name:'MANIFEST COMPLETE',exact:true}).waitFor();
+   const badge=await page.locator('.scv-complete-badge').evaluate(n=>{const s=getComputedStyle(n),r=n.getBoundingClientRect(),tray=n.closest('.scv-tray').getBoundingClientRect();return {color:s.color,weight:s.fontWeight,background:s.backgroundColor,width:r.width,trayWidth:tray.width};});
+   assert.equal(badge.color,'rgb(255, 255, 255)');assert.equal(badge.weight,'900');assert.equal(badge.background,'rgba(6, 25, 35, 0.8)');assert.ok(badge.width<badge.trayWidth);
+   polishStates.push({round,state:'manifest-complete',badge});await page.screenshot({path:out+'/manifest-complete-'+round+'.png'});
    await page.waitForTimeout(1600);
    if(round===1)await page.screenshot({path:out+'/05-round-countup.png'});
    if(round<3)await page.waitForFunction(()=>document.querySelector('.scv-actions button:last-child')&&!document.querySelector('.scv-actions button:last-child').disabled);
@@ -105,7 +124,7 @@ try{
   for(const [width,height] of [[320,568],[390,844],[412,915],[844,390],[1280,720]]){await page.setViewportSize({width,height});const bounds=await page.locator('.scv-actions').boundingBox();assert.ok(bounds.y+bounds.height<=height+1,JSON.stringify({width,height,bounds}));assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const collisions=await page.evaluate(()=>{const rows=[...document.querySelector('.scv-board').children].filter(e=>!e.classList.contains('scv-intro')).map(e=>e.getBoundingClientRect());return rows.slice(1).some((r,i)=>r.top<rows[i].bottom-1);});assert.equal(collisions,false,'board rows overlap '+width);layouts.push({width,height,playing:true});await page.screenshot({path:out+'/layout-'+width+'.png'});}
   await page.getByRole('button',{name:'Mute sounds',exact:true}).click();const count=await page.evaluate(()=>window.audioEvents.length);await page.getByRole('button',{name:'Roll (1)',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('.scv-die[data-rolling=true]').length===0);assert.equal(await page.evaluate(()=>window.audioEvents.length),count);
   await page.getByRole('button',{name:'Abandon',exact:true}).click();await page.getByRole('alertdialog').getByRole('button',{name:'Abandon',exact:true}).click();await page.getByRole('heading',{name:'Ship Cap Voyage'}).waitFor();
-  assert.deepEqual(errors,[]);writeFileSync(out+'/evidence.json',JSON.stringify({passed:true,score:expected,manualRolls:9,bells:3,cupSounds:9,landings:9,layouts,errors,fixture:'Deterministic dice only; actual SQL rules, RPCs, receipts and leaderboard'},null,2));console.log('PASS three rounds, manual rolls, rapid taps, bells/audio/mute, scoreboard reload, abandon, layouts');
+  assert.deepEqual(errors,[]);writeFileSync(out+'/evidence.json',JSON.stringify({passed:true,score:expected,manualRolls:9,bells:3,cupSounds:9,landings:9,layouts,polishStates,errors,fixture:'Deterministic dice only; actual SQL rules, RPCs, receipts and leaderboard'},null,2));console.log('PASS three rounds, hidden reserved opening dice, anchored Rolls Left, white ready text and completion badge, manual rolls, rapid taps, bells/audio/mute, scoreboard reload, abandon, layouts');
   }
  }
 }catch(e){console.error(JSON.stringify({latest,errors,requests:requests.slice(-5)}));throw e;}finally{await browser?.close();await server.close();await c.query('rollback');await c.end();}

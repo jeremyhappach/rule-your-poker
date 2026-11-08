@@ -10,6 +10,9 @@
 @media(prefers-reduced-motion:no-preference){.scv-die[data-rolling=true]{animation:q-roll .12s linear infinite}}
 
 .scv-page{font-family:system-ui,sans-serif}.scv-result{height:100%;display:flex;flex-direction:column;justify-content:space-between}.scv-qualification span{font-size:clamp(.75rem,3.2cqi,1rem)}
+.scv-dice[data-unrolled=true]{visibility:hidden}
+.scv-candidate[data-ready=true]{color:#fff}
+.scv-result .scv-complete-badge{align-self:center;max-width:100%;padding:.35em .7em;border-radius:.4rem;background:#061923cc;color:#fff;font-weight:900;line-height:1.2;text-shadow:0 1px 2px #0008}
 
 .scv-final{container-type:size;display:grid;grid-template-rows:12% 40% 25%;gap:2%;align-content:center}.scv-final h2{align-self:center;font-size:clamp(.9rem,4cqb,1.6rem)}.scv-final dl{min-height:0;grid-template-rows:repeat(3,1fr);gap:2cqb}.scv-final dl>div{min-height:0;padding:1cqb 4cqi}.scv-final dd{font-size:clamp(1rem,5cqb,2rem)}.scv-grand{padding:1cqb;display:flex;flex-direction:column;justify-content:center}.scv-grand strong{font-size:clamp(1.6rem,8cqb,4rem)}.scv-grand h3{font-size:clamp(.8rem,3cqb,1rem)}.scv-dice{display:flex;justify-content:center;gap:3%}.scv-die{width:min(15cqi,16cqb);flex:none}.scv-tray{padding:3cqb 3cqi}.scv-candidate{font-size:clamp(.75rem,min(3.3cqi,3.5cqb),1.2rem)}
 

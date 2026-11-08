@@ -1,3 +1,20 @@
+# Voyage opening / Horses suggested holds — November 8, 2026
+
+Voyage hides its five opening dice outlines while preserving the dice row's
+space and Rolls Left anchor in every round. Ready when you are is white;
+MANIFEST COMPLETE uses bold white text on a compact dark translucent badge.
+Horses suggests exactly the authoritative Bank meld's dice, including wild 1s,
+after each roll settles. High Card starts unheld. Manual changes survive same-roll
+updates and determine the next reroll mask; Bank still scores all settled dice.
+
+TypeScript, 25 focused tests, production build and both local SQL-backed browser
+smokes pass. Voyage covers all three openings/completions, nine banks and final
+return. Horses proves natural/wild melds, High Card, manual override through
+recovery, exact reroll mask and unchanged Bank payouts. No database, scoring or
+rule-version changes. Physical iPhone acceptance remains pending.
+See [scope and evidence](VOYAGE_HORSES_HOLDS_POLISH.md). Checkpoint:
+`voyage-horses-holds-polish-2026-11-08`; its verified tag records publication.
+
 # 357 Drop riverfront / Chucky portrait correction — November 8, 2026
 
 The supplied riverfront background supports live steel draw-tray and riveted lane
