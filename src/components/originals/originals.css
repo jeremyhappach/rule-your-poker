@@ -9,8 +9,8 @@
 .originals-competition .lab-table {
  grid-template:"score" auto "hands" minmax(0,1fr) "clock" auto "actions" auto / minmax(0,1fr);
 }
-.originals-competition .cs-table {
- grid-template-rows:minmax(0,.88fr) minmax(0,1fr) auto minmax(0,1fr) auto;
+.originals-competition .cs-table.cs-v2 {
+ grid-template-rows:auto minmax(0,.88fr) minmax(0,1fr) max(8rem,24%) minmax(0,1fr) auto;
 }
 
 .cs-competitive-cracks{position:absolute;top:.5rem;right:1rem;z-index:3}

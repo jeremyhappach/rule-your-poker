@@ -1,3 +1,18 @@
+# Chucky gameplay polish — November 8, 2026 — physical iPhone acceptance pending
+
+The supplied backroom table now supports live walnut/brass controls, fixed coral
+life slots below the header, Rules before the speaker, and a two-score footer.
+Fold or Stay shows four decorative Chucky backs. Both decision countdowns fit
+beside their headings; accessible time and separate state-driven level pips remain.
+Player/community rows stay anchored and loss flights start at the actual lost slot.
+Rules, selected-level dealing/reveals, scores and authority are unchanged.
+
+TypeScript, 21 focused tests, production build and local Edge presentation smokes
+pass at four sizes including 320×568. All three life-loss origins and the shared
+competitive grid pass. Physical iPhone and production gameplay remain unverified.
+See [scope and evidence](CHUCKY_GAMEPLAY_POLISH.md). Checkpoint:
+`chucky-gameplay-polish-2026-11-08`; the verified tag records publication.
+
 # Async push tap continuity — November 8, 2026 — physical iPhone acceptance pending
 
 Async notification taps hand the exact match to an existing app without reloading

@@ -35,8 +35,8 @@
 @media(prefers-reduced-motion:reduce){.cs-card,.cs-flip,.cs-riffle i{animation:none}}
 
 .cs-v2 .cs-header{gap:min(1.5cqw,.65rem)}.cs-v2 .cs-header h1{font-size:clamp(15px,5cqw,26px)}
-.cs-cracks{display:flex;max-width:24%;flex-wrap:wrap;justify-content:center;gap:2px}.cs-cracks svg{width:clamp(10px,3.5cqw,18px);height:auto;color:#8e8072;opacity:.35}
-.cs-cracks [data-active=true]{color:#f6aa8d;opacity:1;fill:#673935}.cs-cracks[data-last=true] [data-active=true]{animation:cs-last-crack 2s ease-in-out infinite}
+.cs-cracks{display:flex;justify-content:center;gap:clamp(3px,1cqw,9px);min-width:0}.cs-cracks [data-life-slot]{display:flex;min-width:0}.cs-cracks svg{width:clamp(19px,6cqw,34px);max-width:100%;height:auto;color:#b18a6b;fill:#33251f}
+.cs-cracks [data-active=true]{color:#ff765e;fill:#ff765e}.cs-cracks[data-last=true] [data-active=true]{animation:cs-last-crack 2s ease-in-out infinite}
 @keyframes cs-last-crack{50%{color:#ff6b5c;filter:drop-shadow(0 0 3px #d74a3f);opacity:.75}}
 .cs-v2 .cs-bank dl{grid-template-columns:1fr 1fr}.cs-v2 .cs-choice{min-height:clamp(64px,13cqh,108px)}
 .cs-slot{height:min(96cqh,31cqw,8rem);max-width:22%;aspect-ratio:5/7;border-radius:5px}
@@ -55,7 +55,7 @@
 .cs-availability-level{display:flex;flex:1;min-height:23px;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:3px}
 .cs-availability-level b{font:700 13px/1 Georgia,serif;color:#f0dfbb}
 .cs-availability-level[data-exhausted=true]{background:#3c403e}.cs-availability-level[data-exhausted=true] b{color:#b5b6b4}
-.cs-pips{display:flex;align-items:center;justify-content:center;gap:3px;min-height:5px}.cs-pips i{width:5px;height:5px;border-radius:50%;background:#d3dfa2}
+.cs-pips{display:flex;align-items:center;justify-content:center;gap:3px;min-height:5px}.cs-pips i{width:5px;height:5px;border-radius:50%;background:#6c7770}.cs-pips i[data-available=true]{background:#62e039}
 .cs-v2 .cs-decisions button{min-height:max(44px,6.7cqh)}
 .cs-portrait{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;pointer-events:none;animation:cs-appear .18s ease-out both}
 .cs-portrait::before{content:'';position:absolute;inset:2% 12% 0;background:radial-gradient(ellipse at 50% 58%,#5a30298c,transparent 66%)}
@@ -68,7 +68,7 @@
 .cs-round-bell .run21-boxing-bell{width:auto;height:clamp(32px,44cqh,62px)}
 .cs-round-bell .run21-round-intro-card strong{font-size:clamp(17px,16cqh,23px)}
 .cs-lost-heart{position:absolute;z-index:5;pointer-events:none;filter:drop-shadow(0 0 4px #ff474099) drop-shadow(0 0 9px #eb403766)}
-.cs-lost-heart svg{width:100%;height:100%;fill:#ae3f35;stroke:#ffb09b}
+.cs-lost-heart svg{width:100%;height:100%;fill:#ff765e;stroke:#ff765e}
 .cs-whole-heart,.cs-fragment{position:absolute;inset:0}
 .cs-whole-heart{animation:cs-disappear 1ms steps(1,end) var(--impact-delay) forwards}
 .cs-fragment{opacity:0;animation:cs-shatter .36s linear var(--impact-delay) forwards}
@@ -80,5 +80,55 @@
 @media (prefers-reduced-motion:reduce) {.cs-cards[data-folding] .cs-slot {animation-name:cs-fold-fade}}
 @keyframes cs-fold-fade {to {opacity:0}}
 
-/* All decision phases occupy the same row; actions cannot shift the player hand. */
-.cs-v2{grid-template-rows:auto minmax(0,.88fr) minmax(0,1fr) minmax(0,24%) minmax(0,1fr) auto}.cs-v2 .cs-choice{min-height:0}
+/* One fixed backroom surface; live cards and controls remain in stable grid slots. */
+.cs-table.cs-v2{
+ --cs-brass:#d5ac67;--cs-cream:#fff1d3;
+ --cs-walnut:repeating-linear-gradient(174deg,#ffce7b08 0 1px,#1b090c16 2px 4px,transparent 5px 9px),linear-gradient(110deg,#30150e,#623519 48%,#32180f);
+ grid-template-rows:auto auto minmax(0,.88fr) minmax(0,1fr) max(8rem,24%) minmax(0,1fr) auto;
+ background:#102417 url('/arcade/chucky-table-background.png') center/100% 100% no-repeat;
+ border:0;padding-inline:3.2%;padding-bottom:4%;gap:min(.8cqh,6px);color:var(--cs-cream);
+}
+.cs-v2 .cs-header{align-items:center;border:0;padding:0;gap:1cqw}
+.cs-v2 .arcade-toolbar-main{flex-wrap:nowrap;gap:.7cqw}
+.cs-v2 .cs-header .arcade-toolbar-main h1{white-space:nowrap;font-size:clamp(14px,4.5cqw,26px);color:var(--cs-cream);letter-spacing:-.04em}
+.cs-v2 .cs-header a{display:grid;place-items:center;min-height:40px;width:22px}
+.cs-v2 .cs-header .arcade-info-button,.cs-v2 .cs-header .delayed-bell{display:grid;place-items:center;position:static;width:30px;min-width:30px;height:40px;padding:0;background:transparent;border:0;color:var(--cs-cream)}
+.cs-v2 .cs-header .arcade-info-button{color:#f5d77a}
+.cs-v2 .cs-header .arcade-abandon{align-self:center;padding:.4rem .4rem;font-size:clamp(10px,2.8cqw,14px);border-color:var(--cs-brass);background:#142b1cd9}
+.cs-round-status{display:grid;grid-template-columns:1fr .8fr 1fr;align-items:center;text-align:center;padding:1.3% 0 2%;border-bottom:1px solid var(--cs-brass);font:bold clamp(14px,4.4cqw,25px)/1.2 Georgia,serif;font-variant-numeric:tabular-nums}
+.cs-round-status>span+span,.cs-round-status>.cs-cracks{border-left:1px solid #b58a45}
+.cs-round-status>.cs-cracks{padding-left:5%}
+.cs-v2 .cs-dealer{background:none;border:0}
+.cs-v2 .cs-band{padding-inline:2%;padding-bottom:0}
+.cs-v2 .cs-band h2{color:var(--cs-cream);text-shadow:0 2px 3px #000;font-size:clamp(10px,min(3.2cqw,2.1cqh),16px);letter-spacing:.15em}
+.cs-v2 .cs-dealer h2{color:#ffc1ad}
+.cs-v2 .cs-slot{filter:drop-shadow(0 3px 3px #0009)}
+.cs-v2 .cs-dealer[data-preview-cards] .cs-cards{align-items:flex-end}
+.cs-v2 .cs-dealer[data-preview-cards] .cs-portrait{bottom:25%}
+.cs-v2 .cs-dealer[data-preview-cards] .cs-slot{height:min(48cqh,14cqw);max-width:13.5%;z-index:1}
+.cs-v2 .cs-choice{min-height:0;background:#09211775;border-color:#d5ac6799;padding:min(1cqh,7px) 0}
+.cs-v2 .cs-message{gap:2cqw;padding:0;min-height:clamp(22px,4.4cqh,32px)}
+.cs-v2 .cs-message strong{color:var(--cs-cream);font-size:clamp(17px,min(4.8cqw,3.5cqh),28px);text-shadow:0 2px 3px #000}
+.cs-v2 .cs-message:has(.cs-clock) strong{flex:none;white-space:nowrap}
+.cs-v2 .cs-clock{flex:1;min-width:0}
+.cs-v2 .cs-clock .tri-dots{width:100%;display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:clamp(.5px,.4cqw,2px);padding:3px 0;background:transparent}
+.cs-v2 .cs-clock .tri-dots i{width:100%;max-width:7px;justify-self:center}
+.cs-v2 .cs-availability{border:1px solid var(--cs-brass);border-radius:9px;background:#081e13d9;padding:3px 5px;margin:min(.7cqh,5px) 0;box-shadow:inset 0 0 0 1px #d5ac6740}
+.cs-v2 .cs-availability-label{font-size:clamp(9px,2.7cqw,13px);color:var(--cs-cream);padding-right:6px;margin-right:0;border-right:1px solid #d5ac6770}
+.cs-v2 .cs-availability-level b{font-size:clamp(13px,3.8cqw,20px)}
+.cs-v2 .cs-availability-level[data-exhausted=true]{background:transparent}
+.cs-v2 .cs-pips i{width:clamp(4px,1.5cqw,7px);height:clamp(4px,1.5cqw,7px)}
+.cs-v2 .cs-decisions{grid-template-columns:1fr 1fr;gap:3%;margin-top:min(1cqh,8px)}
+.cs-v2 .cs-decisions button,.cs-v2 .cs-levels button,.cs-v2 .cs-bank{background:var(--cs-walnut);border:1px solid var(--cs-brass);box-shadow:inset 0 0 0 2px #d5ac6733,0 3px 4px #0008;border-radius:9px;color:var(--cs-cream)}
+.cs-v2 .cs-decisions button{min-height:max(44px,7.5cqh);padding:3px 2px}
+.cs-v2 .cs-decisions b{font:bold clamp(22px,min(7cqw,4.8cqh),36px)/1.1 Georgia,serif;text-shadow:0 2px 2px #000}
+.cs-v2 .cs-decisions small{font-size:clamp(9px,2.6cqw,14px);color:var(--cs-cream)}
+.cs-v2 .cs-levels{margin-top:min(1.2cqh,9px)}
+.cs-v2 .cs-levels button{min-height:max(48px,8cqh)}
+.cs-v2 .cs-levels small{color:var(--cs-cream)}
+.cs-v2 .cs-levels [data-selected=true]{background:linear-gradient(#85602c,#3b281a);box-shadow:inset 0 0 0 2px #f6d580,0 0 8px #d5ac6766}
+.cs-v2 .cs-player{border-top:1px solid #d5ac6799}
+.cs-v2 .cs-bank{padding:min(1.4cqh,12px) 2%}
+.cs-v2 .cs-bank dt{color:var(--cs-cream);letter-spacing:.07em}
+.cs-v2 .cs-bank dd{font-size:clamp(24px,5cqh,42px);text-shadow:0 2px 3px #000}
+.cs-v2 button:focus-visible,.cs-v2 a:focus-visible{outline:2px solid #ffe19b;outline-offset:2px}

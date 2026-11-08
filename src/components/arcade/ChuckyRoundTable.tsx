@@ -1,6 +1,6 @@
 import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {Link,useNavigate} from 'react-router-dom';
-import {ArrowLeft,HeartCrack} from 'lucide-react';
+import {ArrowLeft,Heart} from 'lucide-react';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {CountdownDots} from '@/components/ui/CountdownDots';
 import {ArcadeCompletion} from '@/components/run21/ArcadeCompletion';
@@ -93,7 +93,9 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
   const folded=s.phase==='fold'||s.phase==='round_over'&&s.reason==='folds';
   const nPrivate=folded?0:s.phase==='deal'?tally(elapsed,800,4):4;
   const nBoard=s.phase==='deal'?tally(elapsed,1550,4):4;
-  const nChucky=s.phase==='showdown'&&!s.chucky.length?tally(elapsed,180,s.level):s.level;
+  // These four backs are pre-decision decoration, never a dealt/revealed hand.
+  const previewChucky=s.phase==='fold_stay';
+  const nChucky=previewChucky?4:s.phase==='showdown'&&!s.chucky.length?tally(elapsed,180,s.level):s.level;
   const liveBeat=live&&!game.silent;
   const cracking=s.phase==='crack'&&liveBeat;
   const cracks=s.cracks+(cracking&&elapsed<crackLiftMs?1:0);
@@ -102,7 +104,7 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
   const bellRemaining=roundIntro?Math.max(0,Math.min(2500-elapsed,s.due-game.now)):0;
   useRun21Bell(userId,bellRemaining>0?'chucky:'+v.id+':round:'+s.round:null,bellRemaining);
 
-  const showPortrait=s.phase==='board_reveal'||s.phase==='choose';
+  const showPortrait=previewChucky||s.phase==='board_reveal'||s.phase==='choose';
   const portraitHand=useRef<string|null>(null);
   useLayoutEffect(()=>{
     if(showPortrait)portraitHand.current=s.roundId;
@@ -125,29 +127,32 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
     s.phase==='fold_stay'?'Fold or Stay':s.phase==='fold'?'Rabbit hunt':'New hand';
   return <main className="arcade-run cs-scene" data-competitive={competitive||undefined} data-shell-presentation-mode="fullscreen">
     <div ref={root} className="cs-table cs-v2" data-phase={s.phase} data-hand={s.hand} data-round={s.round}>
-      {competitive&&<div className="cs-cracks cs-competitive-cracks" aria-label={cracks+' cracks remaining'}>{Array.from({length:v.config.maxCracks},(_,i)=><HeartCrack key={i} aria-hidden="true" data-active={i<cracks}/>)}</div>}
       {!competitive&&<header className="cs-header arcade-toolbar"><div className="arcade-toolbar-main"><Link to="/arcade/chucky-showdown" aria-label="Back to Chucky Showdown leaderboard"><ArrowLeft size={20}/></Link>
-        <h1>Chucky Showdown</h1><div className="cs-cracks" aria-label={cracks+(cracks===1?' crack remaining':' cracks remaining')} data-last={cracks===1}>
-          {Array.from({length:v.config.maxCracks},(_,i)=><HeartCrack key={i} aria-hidden="true" data-active={i<cracks}/>)}</div>
-        <GameplaySoundButton/><ArcadeInfo game="chucky-showdown" name="Chucky Showdown" ruleset={v.ruleset}>
-          </ArcadeInfo></div>{v.status==='active'&&<EndRun disabled={!game.ready||game.pending} abandon={()=>game.act('abandon')}/>}</header>}
-      <section className="cs-band cs-dealer" aria-label="Chucky cards"><h2>Chucky</h2><div className="cs-cards">
+        <h1>Chucky Showdown</h1><ArcadeInfo game="chucky-showdown" name="Chucky Showdown" ruleset={v.ruleset}/>
+        <GameplaySoundButton/></div>{v.status==='active'&&<EndRun disabled={!game.ready||game.pending} abandon={()=>game.act('abandon')}/>}</header>}
+      <div className="cs-round-status" aria-label="Round, hand and lives">
+        <span>Round <b>{s.round}</b> / 3</span><span>Hand <b>{s.hand}</b></span>
+        <div className="cs-cracks" aria-label={cracks+(cracks===1?' life remaining':' lives remaining')} data-last={cracks===1}>
+          {Array.from({length:v.config.maxCracks},(_,i)=><span key={i} data-life-slot={i}><Heart aria-hidden="true" data-active={i<cracks}/></span>)}
+        </div>
+      </div>
+      <section className="cs-band cs-dealer" data-preview-cards={previewChucky||undefined} aria-label="Chucky cards"><h2>Chucky</h2><div className="cs-cards">
         {(showPortrait||portraitLeaving)&&<div className="cs-portrait" data-leaving={portraitLeaving} aria-hidden="true">
           <img src={portrait} alt="" width="427" height="455"/>
         </div>}
         {bellRemaining>0&&<div className="cs-round-bell"><RoundIntroArtwork label={'ROUND '+s.round} fading={bellRemaining<=200}/></div>}
-        {cards('chucky',s.chucky,nChucky)}
+        {cards('chucky',previewChucky?[]:s.chucky,nChucky)}
       </div></section>
       <section className="cs-band cs-community" aria-label="Community cards"><h2>Community</h2><div className="cs-cards">
         {s.phase==='deal'&&elapsed<800?<Riffle/>:cards('community',s.community,nBoard)}</div></section>
       <section className="cs-choice" aria-label="Decisions and results"><div className="cs-message"><strong role="status" className={announced?'cs-cracked':''}>{title}</strong>
-        {deciding&&<div className="cs-clock"><span>{Math.ceil(remaining/1000)}s</span><CountdownDots remaining={remaining} duration={s.phase==='choose'?v.config.selectMs:v.config.foldMs}/></div>}
+        {deciding&&<div className="cs-clock" role="timer" aria-label={Math.ceil(remaining/1000)+' seconds remaining'}><CountdownDots remaining={remaining} duration={s.phase==='choose'?v.config.selectMs:v.config.foldMs}/></div>}
         {banked&&<TriScorePill root={root} item={{id:userId,score:s.score,active:true}} value={completed}/>}</div>
         {s.phase==='crack'&&announced&&<p className="cs-hand-label">{handAnnouncement(s)}</p>}
         {s.phase==='fold_stay'&&<ChuckyLevelAvailability uses={s.uses}/>}
         {s.phase==='fold_stay'&&<div className="cs-decisions">
-          <button disabled={!canAct} onClick={()=>game.act('fold')}><b>FOLD</b> <small>{s.folds===1?'(Bank Total)':'('+s.folds+' remaining)'}</small></button>
-          <button disabled={!canAct} onClick={()=>game.act('stay')}><b>STAY</b> <small>(Choose Chucky level after reveal)</small></button></div>}
+          <button disabled={!canAct} onClick={()=>game.act('fold')}><b>FOLD</b> <small>{s.folds===1?'Bank Total':s.folds+' remaining'}</small></button>
+          <button disabled={!canAct} onClick={()=>game.act('stay')}><b>STAY</b> <small>Choose level after reveal</small></button></div>}
         {(s.phase==='choose'||s.phase==='showdown')&&<div className="cs-levels">{s.uses.map((uses,i)=><button key={i} disabled={!canAct||uses===0}
           data-done={!uses} data-selected={(game.choice?.level??s.level)===i+1} onClick={()=>game.act('press',i+1)}
           aria-label={'Level '+(i+1)+', '+winBonus(v.config,i+1)+' points, '+uses+' uses remaining'}><b>{i+1}</b><small>{winBonus(v.config,i+1)}</small><small>{uses} left</small></button>)}</div>}
@@ -155,7 +160,6 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
       <section className="cs-band cs-player" aria-label="My cards"><h2>My cards</h2><div className="cs-cards" data-folding={s.phase==='fold'&&live||undefined}>{cards('player',s.player,nPrivate)}</div></section>
       <section className="cs-bank" aria-label="Scoring"><dl><div><dt>Completed rounds</dt><dd>{completed.toLocaleString()}</dd></div>
         <div><dt>At risk</dt><dd>{risk.toLocaleString()}</dd></div></dl>
-        <div className="cs-bank-actions"><span>Round <b>{s.round}</b> / 3 · Hand <b>{s.hand}</b></span><span>{14-s.uses.reduce((a,b)=>a+b,0)} / 14 challenges</span></div>
         {game.error&&<div role="alert">{game.error} <button onClick={game.reconnect}>Reconnect</button></div>}
       </section>
       {cracking&&elapsed>=crackLiftMs&&elapsed<crackEndMs&&<ChuckyCrackLoss key={key}

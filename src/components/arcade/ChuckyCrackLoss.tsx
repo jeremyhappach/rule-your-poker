@@ -1,5 +1,5 @@
 import {useLayoutEffect, useRef, useState, type CSSProperties, type RefObject} from 'react';
-import {HeartCrack} from 'lucide-react';
+import {Heart} from 'lucide-react';
 
 export const crackLiftMs = 2050;
 const flightMs = 650;
@@ -28,7 +28,7 @@ export function ChuckyCrackLoss({table, remaining, elapsed, identity, userId}: P
   useLayoutEffect(() => {
     const host = table.current;
     const heart = flight.current;
-    const slot = host?.querySelectorAll('.cs-cracks svg')[remaining];
+    const slot = host?.querySelector('[data-life-slot="' + remaining + '"] svg');
     const choice = host?.querySelector('.cs-choice');
     const label = choice?.querySelector('.cs-hand-label');
     if (!host || !heart || !slot || !choice || !label) return;
@@ -62,11 +62,11 @@ export function ChuckyCrackLoss({table, remaining, elapsed, identity, userId}: P
 
   return <div ref={flight} className="cs-lost-heart" aria-hidden="true"
     style={{'--impact-delay': (flightMs - ageAtMount) + 'ms'} as CSSProperties}>
-    <HeartCrack className="cs-whole-heart" strokeWidth={1.8}/>
+    <Heart className="cs-whole-heart" strokeWidth={1.8}/>
     {fragments.map(({clip, x, y, angle}, index) => <span key={clip} className="cs-fragment"
 
       style={{clipPath: 'polygon(' + clip + ')', '--scatter': `translate(${x}px,${y}px) rotate(${angle}deg)`} as CSSProperties}>
-      <HeartCrack strokeWidth={1.8}/>
+      <Heart strokeWidth={1.8}/>
     </span>)}
   </div>;
 }
