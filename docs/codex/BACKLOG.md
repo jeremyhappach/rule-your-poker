@@ -1,3 +1,22 @@
+## Queued — Existing full-suite fixture failures — November 8, 2026
+
+Polish verification reproduced 14 failures plus three mock errors on unchanged
+main `02fbb633d`: DealerGameSetup.stakeDefaults (9), ArcadeOrderingPanel (1),
+ArcadeSwitchboard (1), DefaultsAndRules (2), megaCardGolf/Defaults (1). Current
+catalog entries and older RPC/defaults mocks disagree. Expected: full validation
+green without weakening production behavior. No unrelated product changes made.
+Provenance: full build and targeted base-main run in the complete polish task;
+evidence `qualification.local/ptown-polish/baseline-tests.log`.
+
+## Queued — Existing Supabase security advisory triage — November 8, 2026
+
+Post-migration advisor reported `policy_exists_rls_disabled` for untouched
+`public.gameplay_transfer_pending_changes` (policy `three_five_seven_conceal`).
+No finding references the changed Horses/Drop owners. Investigate actual grants
+and intended access separately; no RLS or infrastructure changes made here.
+Provenance: Supabase security advisor during complete polish qualification.
+[Advisor guidance](https://supabase.com/docs/guides/database/database-linter?lint=0007_policy_exists_rls_disabled).
+
 ## Completed — Crib Lab Polish Pass 1 release queue — November 6, 2026
 
 Jeremy accepted local preview 3 at `d6359506c` and authorized production publication after Chucky Showdown polish clears the release lane. Chucky release `b8c893aca` cleared the lane. Both hosted rollback proofs passed and the qualified client proceeded to the guarded publication and activation workflow. See [release qualification](CRIB_LAB_POLISH_1.md). Source: owner preview review in the Crib Lab chat.
