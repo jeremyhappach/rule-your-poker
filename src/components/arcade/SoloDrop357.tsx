@@ -16,7 +16,6 @@ import {useDrop357Audio} from '@/hooks/useDrop357Audio';
 import {isSoundSurfaceVisible} from '@/lib/audio/presentationSound';
 import {approvedSound} from '@/lib/audio/approvedSounds';
 import {platformAudio} from '@/lib/audio/platformAudio';
-import bridge from '@/assets/peoria-bridge-mobile.jpg';
 import './drop357.css';
 import {usePresentedScoreAudio} from '@/hooks/usePresentedScoreAudio';
 const Face=memo(function Face({card}:{card:number}){return <PlayingCard card={cardFace(card)} frontStyle="arcade-classic" size="sm" style={{width:'100%',height:'100%'}}/>;});
@@ -69,9 +68,9 @@ function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;u
  return <div className="arcade-run drop357-page" ref={surface} data-status={v.status} data-phase={v.phase} data-round={v.round??1} data-partial={partial}>
   <header className="drop357-header"><div><small>{partial?'PARTIAL CARRY TEST':carry?'CARRY-FORWARD TEST':'P-TOWN ORIGINAL'}</small><h1>357 DROP</h1></div><nav aria-label="Game controls"><ArcadeInfo game="357-drop" name="357 Drop" ruleset={v.ruleset}/><GameplaySoundButton/><ArcadeAbandonButton disabled={v.status!=='active'} onClick={()=>setAbandon(true)}/></nav></header>
   <main className="drop357-board" ref={board}>
-   <div className="drop357-bridge" style={{backgroundImage:`url(${bridge})`}} aria-hidden="true"/>
    <div className="drop357-score"><span className="drop357-round">ROUND <b>{v.round??1}/{v.rounds??1}</b></span><TriScorePill item={{id:userId,active:true,score:v.score}} root={board} fraction={presentation.fraction} value={r?bonusDelay&&tally<bonusDelay?r.scoreBefore??0:presentation.displayScore??r.score:v.banked??v.score}/><meter min={0} max={120} value={seconds} aria-label="Time remaining" aria-valuetext={`${seconds} seconds remaining`}/></div>
-   <div className="drop357-draw"><div className="drop357-stock"><PlayingCard card={{rank:'2',suit:'♣'}} isHidden size="sm" style={{width:'100%',height:'100%'}}/><span>{v.stockLeft}</span></div><div className="drop357-current" aria-label="Current card">{v.current!==null?game.pending?<span>Placing…</span>:<Face card={v.current}/>:<span>{partial&&v.phase==='playing'?'Choose carry':'DONE'}</span>}</div><button className="drop357-pass" disabled={locked||v.current===null||v.passesLeft===0} onClick={()=>game.act('pass',[],v.revision)}>PASS · {v.passesLeft}</button></div>
+   <div className="drop357-bridge" aria-hidden="true"/>
+   <div className="drop357-draw"><div className="drop357-stock" role="img" aria-label={`${v.stockLeft} cards in stock`}><svg className="drop357-truss" viewBox="0 0 100 60" fill="none" aria-hidden="true"><path d="M8 45h84M12 45 50 13l38 32M22 45V37l14 8V25l14 20V13l14 32V25l14 20V37M50 13v38M44 51h12"/></svg><span>{v.stockLeft}</span></div><div className="drop357-current" aria-label="Current card">{v.current!==null?game.pending?<span>Placing…</span>:<Face card={v.current}/>:<span>{partial&&v.phase==='playing'?'Choose carry':'DONE'}</span>}</div><button className="drop357-pass" disabled={locked||v.current===null||v.passesLeft===0} onClick={()=>game.act('pass',[],v.revision)}>PASS · {v.passesLeft}</button></div>
    {laneSizes.map((size,index)=>{const scored=v.laneResults[index],fresh=!!scored&&game.liveLanes.includes(index)&&game.now-scored.completedAt<800;
     const inherited=partial?index:carry?[0,3,5][index]:0,Tag=carry?'div':'button';
     const choosing=partial&&index<2&&!!scored&&v.carryChoices?.[index]===null;

@@ -22,7 +22,7 @@ import {RoundIntroArtwork} from '@/components/run21/Run21RoundIntro';
 import {useRun21Bell} from '@/hooks/useRun21Bell';
 import '../run21/run21.css';
 
-const portrait = '/arcade/approved-v1/chucky-portrait.webp';
+const portrait = '/arcade/chucky-portrait-four-cards.png';
 
 type Controls=ReturnType<typeof useChuckyShowdown>;
 const tally=(elapsed:number,offset:number,max:number)=>Math.min(max,Math.max(0,1+Math.floor((elapsed-offset)/180)));
@@ -93,9 +93,9 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
   const folded=s.phase==='fold'||s.phase==='round_over'&&s.reason==='folds';
   const nPrivate=folded?0:s.phase==='deal'?tally(elapsed,800,4):4;
   const nBoard=s.phase==='deal'?tally(elapsed,1550,4):4;
-  // These four backs are pre-decision decoration, never a dealt/revealed hand.
-  const previewChucky=s.phase==='fold_stay';
-  const nChucky=previewChucky?4:s.phase==='showdown'&&!s.chucky.length?tally(elapsed,180,s.level):s.level;
+  // The portrait holds its own cards; a table hand starts only after level selection.
+  const awaitingLevel=s.phase==='deal'||deciding||s.phase==='board_reveal';
+  const nChucky=awaitingLevel?0:s.phase==='showdown'&&!s.chucky.length?tally(elapsed,180,s.level):s.level;
   const liveBeat=live&&!game.silent;
   const cracking=s.phase==='crack'&&liveBeat;
   const cracks=s.cracks+(cracking&&elapsed<crackLiftMs?1:0);
@@ -104,7 +104,7 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
   const bellRemaining=roundIntro?Math.max(0,Math.min(2500-elapsed,s.due-game.now)):0;
   useRun21Bell(userId,bellRemaining>0?'chucky:'+v.id+':round:'+s.round:null,bellRemaining);
 
-  const showPortrait=previewChucky||s.phase==='board_reveal'||s.phase==='choose';
+  const showPortrait=s.phase==='fold_stay'||s.phase==='board_reveal'||s.phase==='choose';
   const portraitHand=useRef<string|null>(null);
   useLayoutEffect(()=>{
     if(showPortrait)portraitHand.current=s.roundId;
@@ -136,12 +136,12 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
           {Array.from({length:v.config.maxCracks},(_,i)=><span key={i} data-life-slot={i}><Heart aria-hidden="true" data-active={i<cracks}/></span>)}
         </div>
       </div>
-      <section className="cs-band cs-dealer" data-preview-cards={previewChucky||undefined} aria-label="Chucky cards"><h2>Chucky</h2><div className="cs-cards">
+      <section className="cs-band cs-dealer" aria-label="Chucky cards"><h2>Chucky</h2><div className="cs-cards">
         {(showPortrait||portraitLeaving)&&<div className="cs-portrait" data-leaving={portraitLeaving} aria-hidden="true">
-          <img src={portrait} alt="" width="427" height="455"/>
+          <img src={portrait} alt="" width="1312" height="1199"/>
         </div>}
         {bellRemaining>0&&<div className="cs-round-bell"><RoundIntroArtwork label={'ROUND '+s.round} fading={bellRemaining<=200}/></div>}
-        {cards('chucky',previewChucky?[]:s.chucky,nChucky)}
+        {cards('chucky',s.chucky,nChucky)}
       </div></section>
       <section className="cs-band cs-community" aria-label="Community cards"><h2>Community</h2><div className="cs-cards">
         {s.phase==='deal'&&elapsed<800?<Riffle/>:cards('community',s.community,nBoard)}</div></section>

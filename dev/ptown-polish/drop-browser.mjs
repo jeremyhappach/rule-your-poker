@@ -102,6 +102,9 @@ try{
    await page.setViewportSize({width,height});
    const bounds=await page.locator('.drop357-lane,.drop357-slot,.drop357-current,.drop357-pass').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};}));
    assert.ok(bounds.every(r=>r.x>=-1&&r.y>=-1&&r.x+r.w<=width+1&&r.y+r.h<=height+1&&r.w>0&&r.h>0),JSON.stringify({width,height,bounds}));
+   const slots=await page.locator('.drop357-slot').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect(),lane=n.closest('.drop357-lane').getBoundingClientRect();return {ratio:r.width/r.height,inside:r.left>=lane.left&&r.right<=lane.right&&r.top>=lane.top&&r.bottom<=lane.bottom};}));
+   assert.ok(slots.every(s=>s.inside&&Math.abs(s.ratio-5/7)<.03),'All fifteen slots fit their lane with intact card proportions: '+JSON.stringify({width,height,slots}));
+   assert.equal(await page.locator('.drop357-lane[data-lane="7"] .drop357-slot').count(),7);
    layouts.push({width,height,slots:await page.locator('.drop357-slot').count()});await page.screenshot({path:out+'/board-'+width+'.png'});
   }
   await page.setViewportSize({width:320,height:568});assert.equal(await page.locator('.drop357-score time').count(),0);assert.ok(await page.locator('meter').getAttribute('aria-valuetext'));

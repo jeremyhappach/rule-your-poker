@@ -67,3 +67,25 @@
 @container (min-aspect-ratio:3/2){.drop357-page[data-partial="true"] .drop357-board{grid-template-rows:12% 10% repeat(3,24%)}}
 
 .drop357-tally[data-filled=true]{font-size:clamp(1.4rem,8cqi,3.5rem);background:#10252be8;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center}.drop357-bonus-award{display:block;font-size:1.5em;color:#ffe184;font-variant-numeric:tabular-nums}
+
+/* Riverfront materials surround live cards and controls; artwork contains no UI. */
+.arcade-run.drop357-page{background:#101923 url('/arcade/357-drop-riverfront-background.png') center top/cover no-repeat}
+.drop357-header{background:linear-gradient(100deg,#101720ed,#1b2229d9);border-bottom-color:#ad9270;box-shadow:0 .15rem .35rem #0008;padding:.25rem .35rem .45rem}
+.drop357-bridge{background:none;border-radius:0;opacity:1;pointer-events:none}
+.drop357-board{grid-template-rows:9% 10% 21% repeat(3,18%)}
+.drop357-page[data-partial="true"] .drop357-board{grid-template-rows:9% 8% 16% repeat(3,20%)}
+.drop357-score{border:2px solid #988873;background:linear-gradient(#1c2b37f5,#0c1621f5);box-shadow:inset 0 1px 1px #c9d3d377,0 .2rem .3rem #0008}
+.drop357-draw{position:relative;border:2px solid #8f806c;border-radius:.7rem;background:linear-gradient(115deg,#2c333bf2,#111a22f0 50%,#30373eee);box-shadow:inset 0 1px #cbd1cd88,inset 0 -.3rem #080f17aa,0 .2rem .3rem #0009;padding:1cqb 2cqi}
+.drop357-stock{display:grid;place-items:center;border:2px solid #bda56d;border-radius:.45rem;background:repeating-linear-gradient(35deg,#ffffff04 0 1px,transparent 1px 3px),#0b2038;box-shadow:-2px 0 #16283b,-3px 0 #b59b60,-5px 0 #132039,-6px 0 #887347,inset 0 0 0 2px #091222,inset 0 0 0 3px #a6894d}
+.drop357-truss{width:82%;stroke:#d5b15f;stroke-width:1.3;stroke-linejoin:round;opacity:.8}
+.drop357-stock>span{bottom:-3%;left:-8%;right:-8%;border:1px solid #ae9977;background:linear-gradient(#25313b,#101922);box-shadow:0 2px 2px #0009;font-size:clamp(.8rem,3.6cqi,1.4rem)}
+.drop357-current>span{color:#f7e7c4;font-weight:850;text-align:center;font-size:clamp(.8rem,3.8cqi,1.5rem);line-height:1.1;text-shadow:0 2px #0008}
+.drop357-pass{border-color:#ad9b7f;background:linear-gradient(#303b43,#101a23);box-shadow:inset 0 1px #c7d0ce55,0 2px 3px #0008;color:#f6e8c9}
+.drop357-lane{border:2px solid transparent;border-radius:.75rem;background:linear-gradient(110deg,#0d1e2beb,#09131de8) padding-box,linear-gradient(160deg,#a5afb0,#354047 35%,#8c7355 75%,#15212b) border-box;box-shadow:inset 0 0 0 1px var(--lane),inset 0 0 .5rem #000,0 .15rem .25rem #000b;padding:1% 2%}
+.drop357-lane::before{content:'';position:absolute;inset:3px;border:1px solid color-mix(in srgb,var(--lane),transparent 40%);border-radius:.5rem;pointer-events:none}
+.drop357-lane::after,.drop357-draw::after{content:'';position:absolute;inset:4px;background:radial-gradient(circle at 3px 3px,#c0c3bc 0 1px,#596168 1px 2px,#080e15 2px 3px,transparent 3px) top left,radial-gradient(circle at 3px 3px,#c0c3bc 0 1px,#596168 1px 2px,#080e15 2px 3px,transparent 3px) top right,radial-gradient(circle at 3px 3px,#9a998d 0 1px,#424a51 1px 2px,#080e15 2px 3px,transparent 3px) bottom left,radial-gradient(circle at 3px 3px,#9a998d 0 1px,#424a51 1px 2px,#080e15 2px 3px,transparent 3px) bottom right;background-size:6px 6px;background-repeat:no-repeat;pointer-events:none}
+.drop357-slots{container-type:size}
+.drop357-slot{width:min(100%,calc(100cqh * 5 / 7));height:auto;max-height:100%;min-height:0;aspect-ratio:5/7;align-self:center;justify-self:start;background:#08131dc9}
+.drop357-slot[data-inherited="true"]{border-color:#b8c9d7;background:#1426389c}
+.drop357-lane-result{background:linear-gradient(105deg,#fff3d6,#efdcaf);box-shadow:inset 0 1px #fff9e9;color:#101923}
+@container (min-aspect-ratio:3/2){.drop357-board,.drop357-page[data-partial="true"] .drop357-board{grid-template-rows:10% 12% repeat(3,24%)}.drop357-draw{padding:.5cqb 1cqi}.drop357-lane{padding:.3cqb 1.5%}.drop357-page[data-partial="true"] .drop357-lane{grid-template-rows:clamp(.7rem,4.5cqb,1rem) minmax(0,1fr) auto}.drop357-carry-controls{font-size:clamp(.5rem,2.8cqb,.6875rem)}.drop357-carry-controls button{padding:.12rem .3rem}}

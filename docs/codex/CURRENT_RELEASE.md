@@ -1,3 +1,24 @@
+# 357 Drop riverfront / Chucky portrait correction — November 8, 2026
+
+The supplied riverfront background supports live steel draw-tray and riveted lane
+frames, teal/amber/violet rails and a navy truss deck. Bright cards, cream score
+strips and reversible carry selection remain prominent. All seven slots fit at
+320 pixels; card proportions also survive short landscape containers.
+
+Chucky's four held cards now belong to the supplied transparent portrait. Fold
+or Stay, community reveal and Choose Chucky render zero dealt Chucky cards.
+Selected-level dealing/reveals, community cards, anchors and life loss retain
+their existing owners. This supersedes the separate decorative backs below.
+
+TypeScript, 27 focused tests and production build pass. Local SQL-backed Drop
+smoke covers three rounds, ordinary placement, both carry choices, timeout,
+scoring and final return, with rollback containment. Six layout sizes pass.
+Chucky browser fixtures cover both decisions, mounted 1/4/7-level deal/reveal
+transitions, community reveal, life loss and competitive layout. Physical iPhone
+acceptance remains pending. No rule, scoring, database or financial changes.
+See [scope and evidence](DROP357_CHUCKY_GAMEPLAY_POLISH.md). Checkpoint:
+`drop357-chucky-gameplay-polish-2026-11-08`; its verified tag records publication.
+
 # Chucky gameplay polish — November 8, 2026 — physical iPhone acceptance pending
 
 The supplied backroom table now supports live walnut/brass controls, fixed coral

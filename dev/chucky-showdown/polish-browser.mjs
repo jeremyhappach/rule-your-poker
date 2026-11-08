@@ -27,7 +27,10 @@ try{
  });
  for(const [width,height] of [[320,568],[375,667],[390,844],[667,375]]){
   await page.setViewportSize({width,height});await fixture();await page.waitForTimeout(550);
-  assert.equal(await page.locator('.cs-dealer .cs-slot').count(),4);assert.equal(await page.locator('.cs-dealer .cs-card[aria-label="Face-down card"]').count(),4);
+  assert.equal(await page.locator('.cs-dealer .cs-slot').count(),0);
+  assert.equal(await page.locator('.cs-dealer .cs-card[aria-label="Face-down card"]').count(),0);
+  await page.locator('.cs-portrait img').evaluate(img=>img.decode());
+  assert.match(await page.locator('.cs-portrait img').getAttribute('src'),/chucky-portrait-four-cards\.png$/);
   assert.equal(await page.locator('.cs-community .cs-card[aria-label="Face-down card"]').count(),2);
   assert.equal(await page.locator('.cs-cracks [data-active=true]').count(),3);assert.equal(await page.locator('.cs-pips i[data-available=true]').count(),9);
   assert.equal(await page.locator('.cs-clock').innerText(),'');assert.match(await page.locator('.cs-clock').getAttribute('aria-label'),/seconds remaining/);
@@ -35,12 +38,38 @@ try{
   await page.screenshot({path:`${out}/${width}-fold.png`});
   await page.getByRole('button',{name:/^STAY/}).click();await page.locator('[data-phase=choose]').waitFor();await page.waitForTimeout(550);
   const choose=await measure();assert.equal(choose.dotRows,1);assert.deepEqual(choose.overflow,[]);assert.ok(Math.abs(fold.player.y-choose.player.y)<1);assert.ok(Math.abs(fold.community.y-choose.community.y)<1);
+  assert.equal(await page.locator('.cs-dealer .cs-slot').count(),0);assert.equal(await page.locator('.cs-portrait img').count(),1);
   await page.screenshot({path:`${out}/${width}-choose.png`});
   await page.getByRole('button',{name:'Level 4, 800 points, 2 uses remaining',exact:true}).click();await page.locator('[data-phase=showdown]').waitFor();await page.waitForTimeout(550);
   const showdown=await measure();assert.equal(await page.locator('.cs-dealer .cs-slot').count(),4);assert.deepEqual(showdown.overflow,[]);assert.ok(Math.abs(fold.player.y-showdown.player.y)<1);
   await page.screenshot({path:`${out}/${width}-showdown.png`});evidence.push({width,height,fold,choose,showdown});
  }
  await page.setViewportSize({width:320,height:568});
+ // Keep the table mounted while committed snapshots traverse the real presentation queue.
+ for(const level of [1,4,7]){
+  await fixture();
+  await page.evaluate(()=>window.pushChuckyScene({phase:'choose',since:13270,community:[{rank:'K',suit:'♠'},{rank:'6',suit:'♥'},{rank:'2',suit:'♠'},{rank:'5',suit:'♣'}]},2000));
+  for(const [elapsed,faces] of [[2000,2],[2220,3],[2820,4],[3270,4]]){
+   await page.evaluate(t=>window.setChuckyTime(t),elapsed);
+   assert.equal(await page.locator('.cs-dealer .cs-slot').count(),0);
+   assert.equal(await page.locator('.cs-community .cs-card:not([aria-label="Face-down card"])').count(),faces);
+  }
+  await page.evaluate(level=>window.pushChuckyScene({phase:'showdown',since:14000,level,chucky:[]},4000),level);
+  assert.equal(await page.locator('.cs-dealer .cs-slot').count(),0);
+  for(let n=1;n<=level;n++){
+   await page.evaluate(t=>window.setChuckyTime(t),4000+n*180);
+   assert.equal(await page.locator('.cs-dealer .cs-slot').count(),n);
+   assert.equal(await page.locator('.cs-dealer .cs-card[aria-label="Face-down card"]').count(),n);
+  }
+  const faces=Array.from({length:level},(_,i)=>({rank:['A','K','Q','J','10','9','8'][i],suit:'♣'}));
+  await page.evaluate(({level,faces})=>window.pushChuckyScene({chucky:faces},4000+level*180+540),{level,faces});
+  for(let n=1;n<=level;n++){
+   await page.evaluate(t=>window.setChuckyTime(t),4000+level*180+540+(n-1)*720);
+   assert.equal(await page.locator('.cs-dealer .cs-card:not([aria-label="Face-down card"])').count(),n);
+   assert.equal(await page.locator('.cs-dealer .cs-slot').count(),level);
+  }
+  evidence.push({mountedTransition:true,level,communityFaces:4,chuckyFaces:level});
+ }
  for(const level of [1,7]){
   await fixture({phase:'showdown',level},2000);await page.waitForTimeout(200);
   assert.equal(await page.locator('.cs-dealer .cs-slot').count(),level);

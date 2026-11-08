@@ -23,6 +23,7 @@ function App(){
  Object.assign(window,{
   setChuckyFixture:(patch:Partial<V2Snapshot>,elapsed=2000,competitive=false)=>setState(old=>({v:{...base,...patch},now:base.since+elapsed,epoch:old.epoch+1,competitive})),
   setChuckyTime:(elapsed:number)=>setState(old=>({...old,now:base.since+elapsed})),
+  pushChuckyScene:(patch:Partial<V2Snapshot>,elapsed:number)=>setState(old=>({...old,v:{...old.v,...patch},now:base.since+elapsed})),
  });
  const {v,now,epoch,competitive}=state;
  const game={snapshot:v,now,ready:true,pending:false,recoveryEpoch:0,silent:false,error:'',livePhase:v.phase+':'+v.since,choice:null,bornEnded:false,
