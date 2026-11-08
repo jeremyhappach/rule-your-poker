@@ -64,7 +64,7 @@ export function SoloHorsesBlitz({runId,userId,transport:provided}:{runId:string;
     <div className="hb-status"><span>Round {v.round}/3</span><span><b className="hb-hand-badge" key={v.handId}>Hand {v.hand}/10</b></span></div>
     <div className="hb-base"><span>BASE SCORE</span><strong aria-label="Round base score">{v.base.toLocaleString()}</strong></div>
     <section className="hb-hand" aria-label="Current hand" data-hand={v.handId}>
-     {v.ruleset==='horses-blitz/4'&&<div className="hb-bonus-note"><strong>Early Bank Bonus</strong><span>Roll 1 +30% · Roll 2 +10%</span><span>Natty earns +20%</span></div>}
+     {v.ruleset==='horses-blitz/4'&&<div className="hb-bonus-note"><span><strong>Early Bank Bonus</strong> · Roll 1 +30% · Roll 2 +10%</span><span>Natty earns +20%</span></div>}
      <div className="hb-dice-clock"><div className="hb-dice" aria-label="Dice">{dice.map((face,i)=>{const rolling=!!rumble&&!held.includes(i);return <button key={i} className="hb-die" data-rolling={rolling} data-wild={!rolling&&face===1} data-held={held.includes(i)} aria-pressed={held.includes(i)} aria-label={'Die '+(i+1)+': '+(rolling?'rolling':face+(face===1?' wild':''))} disabled={locked} onClick={()=>toggle(i)}>
       <QuintzeeDie value={face} rolling={rolling}/>
      </button>;})}</div><div role="timer" aria-label="Round time remaining" aria-valuetext={`${seconds} seconds remaining`}><CountdownDots remaining={Math.max(0,(v.deadline??game.now)-game.now)} duration={v.durationMs??100000}/></div></div>

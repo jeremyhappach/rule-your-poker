@@ -1,3 +1,11 @@
+# Horses Blitz fixed bonus notes — November 8, 2026 — owner smoke pending
+
+The bonus notes now occupy two centered, nonwrapping lines higher in the play
+area. Reserved dice and result rows prevent movement through Roll (1), rolling,
+settling and the next hand. Twenty phone-size state/layout checks, TypeScript
+and production build pass. Scoring/banking/audio remain unchanged; no migration.
+[Measurements and evidence](HORSES_BLITZ_BONUS_LAYOUT.md). Physical iPhone pending.
+
 # P-Town seven-fix smoke follow-up — November 8, 2026 — owner smoke pending
 
 Horses /4 and Drop /5 were installed but disabled; the guarded activation now

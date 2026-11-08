@@ -83,6 +83,26 @@ try{
   browser=await chromium.launch({channel:'msedge',headless:true});
   const page=await browser.newPage({viewport:{width:320,height:568},isMobile:true,hasTouch:true});page.setDefaultTimeout(20000);page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',r=>new URL(r.request().url()).hostname==='127.0.0.1'?r.continue():r.abort());
+  if(process.argv.includes('--notes')){
+   const samples=[];
+   const measure=()=>page.evaluate(()=>{
+    const rect=selector=>{const r=document.querySelector(selector).getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,bottom:r.bottom};};
+    const note=document.querySelector('.hb-bonus-note'),lines=[...note.children];
+    return {note:rect('.hb-bonus-note'),dice:rect('.hb-dice'),result:rect('.hb-set'),hand:rect('.hb-hand'),lines:lines.map(n=>({text:n.textContent,height:n.getBoundingClientRect().height,lineHeight:parseFloat(getComputedStyle(n).lineHeight),fits:n.scrollWidth<=n.clientWidth})),align:getComputedStyle(note).textAlign,overflow:document.documentElement.scrollWidth>innerWidth};
+   });
+   for(const [width,height] of [[320,568],[375,667],[390,844],[393,852],[430,932]]){
+    await page.setViewportSize({width,height});await page.goto(origin+'/arcade/horses-blitz');await page.getByRole('button',{name:'Play',exact:true}).click();await page.locator('.hb-roll').waitFor();await page.evaluate(async()=>{await document.fonts.ready;const image=new Image();image.src='/arcade/approved-v1/horses-blitz-trackside.png';await image.decode();});
+    const states=[];
+    const capture=async state=>{const g=await measure();states.push({state,...g});assert.deepEqual(g.lines.map(x=>x.text),['Early Bank Bonus · Roll 1 +30% · Roll 2 +10%','Natty earns +20%']);assert.ok(g.lines.every(x=>x.fits&&Math.abs(x.height-x.lineHeight)<1),JSON.stringify(g));assert.equal(g.align,'center');assert.ok(Math.abs(g.dice.w-g.hand.w)<1,'dice retain full available width');assert.ok(Math.abs(g.note.x+g.note.w/2-g.dice.x-g.dice.w/2)<1);assert.ok(g.dice.y-g.note.bottom>=16,JSON.stringify(g));assert.equal(g.overflow,false);await page.screenshot({path:out+'/notes-'+width+'-'+state+'.png'});};
+    await capture('before-roll');assert.equal(await page.locator('.hb-die').count(),0);
+    await page.locator('.hb-roll').click();await page.getByText('Rolling…',{exact:true}).waitFor();await capture('rolling');
+    await page.waitForFunction(()=>document.querySelector('.hb-set')?.textContent!=='Rolling…'&&!document.querySelector('.hb-bank').disabled);await capture('settled');assert.equal(await page.locator('.hb-die').count(),5);
+    await page.locator('.hb-bank').click();await page.waitForFunction(()=>document.querySelector('.hb-hand')?.getAttribute('data-hand')?.endsWith(':2'));await capture('next-hand');assert.equal(await page.locator('.hb-die').count(),0);
+    const initial=states[0];for(const g of states)for(const part of ['note','dice','result'])for(const coordinate of ['x','y','w','h'])assert.ok(Math.abs(g[part][coordinate]-initial[part][coordinate])<.1,JSON.stringify({width,state:g.state,part,coordinate,initial:initial[part],actual:g[part]}));
+    samples.push({width,height,states});const id=latest.id;await page.getByRole('button',{name:'Abandon',exact:true}).click();await page.getByRole('alertdialog').getByRole('button',{name:'Abandon Game',exact:true}).click();await page.waitForURL(origin+'/arcade/horses-blitz?result='+id);
+   }
+   assert.deepEqual(errors,[]);writeFileSync(out+'/notes-layout.json',JSON.stringify({passed:true,physicalIPhone:false,samples},null,2));console.log('PASS: 5 phone sizes × before Roll (1), animation, settled, next hand; exact two lines, no wrapping/overflow, centered, stable note/dice/result bounds');
+  }else{
   const acceptance=[];
   const rollDefinition=(await c.query("select pg_get_functiondef('private.horses_blitz_roll(jsonb,integer[])'::regprocedure) d")).rows[0].d;
   for(const [faces,label,natural,points] of [[[5,6,6,5,5],'Three 5s',true,382],[[6,2,1,3,4],'Pair of 6s',false,99],[[2,3,4,5,6],'High card',false,33]]){
@@ -93,7 +113,7 @@ try{
    assert.equal(await page.locator('.hb-set>span').innerText(),label);assert.equal(await page.locator('.hb-natty').count(),natural?1:0);
    if(natural)assert.equal(await page.locator('.hb-natty').innerText(),'Natty +20%');
    await page.waitForFunction(n=>document.querySelector('.hb-bank strong')?.textContent===String(n),points);
-   assert.equal(await page.locator('.hb-bonus-note').innerText(),'Early Bank Bonus\nRoll 1 +30% · Roll 2 +10%\nNatty earns +20%');
+   assert.equal(await page.locator('.hb-bonus-note').innerText(),'Early Bank Bonus · Roll 1 +30% · Roll 2 +10%\nNatty earns +20%');
    if(natural){
     const count=()=>page.evaluate(()=>window.audioEvents.filter(id=>id.startsWith('quintzee-hold:')).length);
     const before=await count();await page.locator('.hb-die').first().click();assert.equal(await page.locator('.hb-die').first().getAttribute('aria-pressed'),'true');await page.waitForFunction(n=>window.audioEvents.filter(id=>id.startsWith('quintzee-hold:')).length===n,before+1);
@@ -113,7 +133,7 @@ try{
   console.log(JSON.stringify(acceptance));
   await page.goto(origin+'/arcade/horses-blitz');await page.getByRole('button',{name:'Play',exact:true}).click();
   const roll=async()=>{await page.locator('.hb-roll').click();await page.getByText('Rolling…',{exact:true}).waitFor();await page.waitForFunction(()=>document.querySelector('.hb-set')?.textContent!=='Rolling…');};
-  await page.locator('.hb-roll').waitFor();assert.equal(latest.durationMs,180000);assert.equal(latest.deadline-latest.startedAt,180000);assert.equal(await page.locator('.hb-roll').innerText(),'Roll (1)');await page.getByText('Early Bank Bonus',{exact:true}).waitFor();await page.getByText('Roll 1 +30% · Roll 2 +10%',{exact:true}).waitFor();await page.getByText('Natty earns +20%',{exact:true}).waitFor();await roll();assert.equal(await page.locator('.hb-roll').innerText(),'Roll (2)');
+  await page.locator('.hb-roll').waitFor();assert.equal(latest.durationMs,180000);assert.equal(latest.deadline-latest.startedAt,180000);assert.equal(await page.locator('.hb-roll').innerText(),'Roll (1)');await page.getByText('Early Bank Bonus',{exact:true}).waitFor();await page.getByText('Early Bank Bonus · Roll 1 +30% · Roll 2 +10%',{exact:true}).waitFor();await page.getByText('Natty earns +20%',{exact:true}).waitFor();await roll();assert.equal(await page.locator('.hb-roll').innerText(),'Roll (2)');
   for(const [width,height] of [[320,568],[375,667],[390,844]]){
    await page.setViewportSize({width,height});const bounds=await page.locator('.hb-die').evaluateAll(ns=>ns.map(n=>{const b=n.getBoundingClientRect();const p=[...n.querySelectorAll('i')].map(i=>i.getBoundingClientRect());return {w:b.width,h:b.height,inside:p.every(r=>r.left>=b.left&&r.top>=b.top&&r.right<=b.right&&r.bottom<=b.bottom)};}));
    assert.equal(bounds.length,5);assert.ok(bounds.every(b=>Math.abs(b.w-b.h)<1&&b.inside),JSON.stringify(bounds));const widths=await page.locator('.hb-dice-clock').evaluate(el=>({dice:el.querySelector('.hb-dice').getBoundingClientRect().width,clock:el.querySelector('[role=timer]').getBoundingClientRect().width}));assert.ok(Math.abs(widths.dice-widths.clock)<1);assert.equal(await page.locator('.hb-rolls,time').count(),0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:out+'/square-'+width+'.png'});
@@ -129,5 +149,6 @@ try{
   const rollDef=(await c.query("select pg_get_functiondef('private.horses_blitz_roll(jsonb,integer[])'::regprocedure) d")).rows[0].d;await c.query(rollDef.replace('get_byte(extensions.gen_random_bytes(1),0)','5'));
   await roll();assert.equal(latest.set.points,2798);const presented=Number((await page.locator('.hb-bank strong').textContent()).replaceAll(',',''));assert.ok(presented>=260&&presented<2798);await page.locator('.hb-bank').click();await page.waitForFunction(()=>document.querySelector('.hb-bank-award')?.textContent==='+2,798');assert.equal(latest.bank.points,2798,'tap during count banks newest quote');
   await page.getByRole('button',{name:'Horses Blitz rules and info'}).click();await page.getByRole('heading',{name:'Examples',exact:true}).waitFor();await page.getByText('Roll 1 natural three 4s: 200 × 1.30 × 1.20 = 312.',{exact:true}).waitFor();await page.screenshot({path:out+'/rules.png'});assert.deepEqual(errors,[]);writeFileSync(out+'/smoke-evidence.json',JSON.stringify({passed:true,squareDice:true,fallingOffers:[260,220,200],manualThirdRoll:true,positiveHighCard:true,errors},null,2));console.log('PASS square dice/pip containment, decreasing full offers, third-roll hold, manual positive high-card bank, next-hand progression');
+  }
   }
 }catch(e){console.error(JSON.stringify({latest,errors,audio:browser?await browser.contexts()[0]?.pages()[0]?.evaluate(()=>window.audioEvents):[]}));if(browser)await browser.contexts()[0]?.pages()[0]?.screenshot({path:out+'/failure.png'});throw e;}finally{await browser?.close();await server.close();await c.query('rollback');await c.end();}
