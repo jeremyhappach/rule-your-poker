@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {TEAM,PROJECT,FIRST_THREE,REQUIRED,DOMAINS,validatePlan,validateApproval,evaluate,makeApi,collectSnapshot,runCleanup,batchHash} from './cleanup.mjs';
+import {TEAM,PROJECT,ALLOWLIST,BATCH_IDS,FIRST_THREE,REQUIRED,DOMAINS,validatePlan,validateApproval,evaluate,makeApi,collectSnapshot,runCleanup,batchHash} from './cleanup.mjs';
 import {compareHealth} from './cleanup-health.mjs';
 const plan=JSON.parse(readFileSync(new URL('./cleanup-first-batch.json',import.meta.url),'utf8'));
 const now=1794240523535;
@@ -94,4 +94,47 @@ test('REST uid identities retain production, rollback and candidate eligibility'
 });
 test('conflicting REST id and uid stop collection before deletion',async()=>{
  await assert.rejects(collectSnapshot(restFixture(true)),/Conflicting deployment identity/);
+});
+
+const proposal=JSON.parse(readFileSync(new URL('../../docs/codex/evidence/storage-deletion-proposal-20261109.json',import.meta.url),'utf8'));
+function remainingPlan(group=0){return {...plan,batchId:'ptown-storage-remaining-'+(group+1)+'-of-4-20261109',maxDeletes:6,candidates:proposal.selected.slice(3+group*6,9+group*6)};}
+function remainingHarness(p){
+ const h=harness();let reads=0;
+ h.deps.collect=async()=>{
+  reads++;const s=fixture();s.deployments=s.deployments.filter(d=>!FIRST_THREE.includes(d.id));
+  const candidates=p.candidates.filter(c=>!h.removed.includes(c.id)).map(c=>({...c,projectId:PROJECT,isRollbackCandidate:false,meta:{githubCommitRef:c.branch,githubCommitSha:c.sha}}));
+  s.deployments.push(...candidates);s.details=Object.fromEntries(candidates.map(d=>[d.id,d]));s.deploymentAliases=Object.fromEntries(candidates.map(d=>[d.id,[]]));return s;
+ };
+ h.approval={...approval(),batchId:p.batchId,planSha256:batchHash(p),ids:p.candidates.map(d=>d.id)};
+ return h;
+}
+test('remaining authorization is exactly four disjoint fixed six-ID groups',()=>{
+ const all=[];for(let i=0;i<4;i++){const p=remainingPlan(i);validatePlan(p);all.push(...p.candidates.map(c=>c.id));const bad=structuredClone(p);bad.candidates[0]=proposal.selected[0];assert.throws(()=>validatePlan(bad));}
+ assert.deepEqual(all,ALLOWLIST.slice(3));assert.equal(new Set(all).size,24);
+ assert.throws(()=>validatePlan({...remainingPlan(),batchId:'unapproved'}));
+});
+test('six-ID transport rejects first batch, other groups and every nonauthorized ID',async()=>{
+ const p=remainingPlan(),calls=[];
+ const api=makeApi('offline',async(url)=>{calls.push(url.pathname);return {ok:true,status:200,json:async()=>({uid:p.candidates[0].id,state:'DELETED'})};},p.batchId);
+ await api('DELETE','/v13/deployments/'+p.candidates[0].id);
+ for(const id of [...FIRST_THREE,remainingPlan(1).candidates[0].id,...REQUIRED,'dpl_unknown'])await assert.rejects(api('DELETE','/v13/deployments/'+id));
+ assert.equal(calls.length,1);
+});
+test('authorized six-ID group records GET confirmations and stops at six',async()=>{
+ const p=remainingPlan(),h=remainingHarness(p);h.deps.verifyRemoved=async id=>{assert(h.removed.includes(id));return {status:404};};
+ const r=await runCleanup(p,{execute:true,approval:h.approval,review:review()},h.deps);
+ assert.deepEqual(r.completed,BATCH_IDS[p.batchId]);assert.deepEqual(r.skipped,[]);
+ assert.equal(h.events.filter(e=>e.event==='post-delete-verified').length,6);
+ assert.equal(h.events.filter(e=>e.event==='delete-get-confirmed'&&e.confirmation.status===404).length,6);
+ assert.equal(h.events.at(-1).estimatedPublicBytes,p.candidates.reduce((n,c)=>n+c.estimatedPublicBytes,0));
+});
+test('known dependency is skipped without enlarging or replacing the authorized group',async()=>{
+ const p=remainingPlan(),h=remainingHarness(p),r=review();r.activeDependencyIds=[p.candidates[2].id];
+ const result=await runCleanup(p,{execute:true,approval:h.approval,review:r},h.deps);
+ assert.equal(result.completed.length,5);assert.equal(result.skipped.length,1);assert.equal(result.skipped[0].id,p.candidates[2].id);assert(!h.removed.includes(p.candidates[2].id));
+});
+test('checkpoint drift stops a remaining group before its first deletion',async()=>{
+ const p=remainingPlan(),h=remainingHarness(p),collect=h.deps.collect;let n=0;
+ h.deps.collect=async()=>{const s=await collect();if(++n>1)s.deployments.find(d=>d.id===REQUIRED[2]).meta.githubCommitSha='e'.repeat(40);return s;};
+ await assert.rejects(runCleanup(p,{execute:true,approval:h.approval,review:review()},h.deps),/Preserved deployments changed/);assert.equal(h.removed.length,0);
 });

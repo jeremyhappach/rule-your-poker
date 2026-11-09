@@ -1,0 +1,1271 @@
+{
+  "completedAt": "2026-11-09T20:45:38.722Z",
+  "projectId": "prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds",
+  "teamId": "team_nQciG8fmHnUCogRJ7jaWawHq",
+  "scope": "Exactly the original 27 IDs: first three previously approved plus remaining 24 separately approved; no expansion",
+  "deletedThisRun": 24,
+  "totalDeleted": 27,
+  "skipped": [],
+  "inventoryBeforeAllCleanup": 384,
+  "inventoryAfterAllCleanup": 357,
+  "aliasesUnchanged": 219,
+  "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+  "productionSha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+  "predecessor": "dpl_4n3BvhW4JnnEZzWg5WzUsQC1SSPH",
+  "preserved": [
+    {
+      "id": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+      "state": "READY",
+      "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4"
+    },
+    {
+      "id": "dpl_4n3BvhW4JnnEZzWg5WzUsQC1SSPH",
+      "state": "READY",
+      "sha": "0a0a82cf7ae67f26e3a5ca0648e19461ef29e9bd"
+    },
+    {
+      "id": "dpl_BEoJpuZ5isvwcu77ggyri2rQPEYy",
+      "state": "READY",
+      "sha": "79d113de791616f20ab716a33bbe558db8c91f56"
+    },
+    {
+      "id": "dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo",
+      "state": "READY",
+      "sha": "8415395b545f16a94542cdcb9925237e715fedf0"
+    }
+  ],
+  "estimatedBatch1PublicBytes": 197337216,
+  "estimatedAdditionalPublicBytes": 1585211506,
+  "estimatedTotalPublicBytes": 1782548722,
+  "estimateBasis": "Exact public directory bytes at each commit; compiled output/function storage/account accounting excluded. Not guaranteed billed savings.",
+  "confirmedBilledReductionBytes": null,
+  "storageAccounting": {
+    "available": false,
+    "status": 404,
+    "code": "costs_not_found",
+    "lastUserReportedGB": 10.55
+  },
+  "productionVerification": {
+    "domains": [
+      {
+        "origin": "https://holm357.com",
+        "buildId": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4"
+      },
+      {
+        "origin": "https://ptown-poker.vercel.app",
+        "buildId": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4"
+      }
+    ],
+    "resourceChecks": 164,
+    "functions": 8,
+    "allBatchChecksPassed": true,
+    "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+    "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+    "authenticatedGameplayExercised": false,
+    "limitations": "Public resource checks and unauthenticated method/route/auth boundaries only. No Supabase writes, gameplay, balance mutation or push delivery. Static/direct-origin traffic is not fully visible."
+  },
+  "batches": [
+    {
+      "batch": 1,
+      "deleted": 3,
+      "skipped": [],
+      "estimatedPublicBytes": 197337216,
+      "inventoryAfter": 381,
+      "aliasesAfter": 219,
+      "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+      "resourceChecks": 164,
+      "postDeleteChecks": 3,
+      "runtimeErrorsObserved": false
+    },
+    {
+      "batch": 2,
+      "checkedAt": "2026-11-09T20:38:33.158Z",
+      "deleted": 6,
+      "skipped": [],
+      "estimatedPublicBytes": 394674432,
+      "inventoryBefore": 381,
+      "inventoryAfter": 375,
+      "aliasesAfter": 219,
+      "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+      "resourceChecks": 164,
+      "postDeleteChecks": 6,
+      "allBatchChecksPassed": true,
+      "runtimeChecks": {
+        "checkedAt": "2026-11-09T20:39:07.171Z",
+        "errors": {
+          "content": [
+            {
+              "type": "text",
+              "text": "## Runtime Errors\n\n**Project:** prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds\n\nNo runtime errors found in the selected time range."
+            }
+          ],
+          "structuredContent": null,
+          "isError": false
+        },
+        "logs": {
+          "content": [
+            {
+              "type": "text",
+              "text": "## Runtime Logs\n\n**Project:** prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds\n**Time range:** 2026-11-09T20:08:21.494Z → 2026-11-09T20:38:21.494Z\n\nNo logs found for the specified criteria."
+            }
+          ],
+          "structuredContent": null,
+          "isError": false
+        }
+      }
+    },
+    {
+      "batch": 3,
+      "checkedAt": "2026-11-09T20:41:06.767Z",
+      "deleted": 6,
+      "skipped": [],
+      "estimatedPublicBytes": 394821198,
+      "inventoryBefore": 375,
+      "inventoryAfter": 369,
+      "aliasesAfter": 219,
+      "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+      "resourceChecks": 164,
+      "postDeleteChecks": 6,
+      "allBatchChecksPassed": true,
+      "runtimeChecks": {
+        "checkedAt": "2026-11-09T20:41:35.785Z",
+        "errors": {
+          "content": [
+            {
+              "type": "text",
+              "text": "## Runtime Errors\n\n**Project:** prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds\n\nNo runtime errors found in the selected time range."
+            }
+          ],
+          "structuredContent": null,
+          "isError": false
+        },
+        "logs": {
+          "content": [
+            {
+              "type": "text",
+              "text": "## Runtime Logs\n\n**Project:** prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds\n**Time range:** 2026-11-09T20:10:56.564Z → 2026-11-09T20:40:56.564Z\n\nNo logs found for the specified criteria."
+            }
+          ],
+          "structuredContent": null,
+          "isError": false
+        }
+      }
+    },
+    {
+      "batch": 4,
+      "checkedAt": "2026-11-09T20:43:31.999Z",
+      "deleted": 6,
+      "skipped": [],
+      "estimatedPublicBytes": 397612559,
+      "inventoryBefore": 369,
+      "inventoryAfter": 363,
+      "aliasesAfter": 219,
+      "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+      "resourceChecks": 164,
+      "postDeleteChecks": 6,
+      "allBatchChecksPassed": true,
+      "runtimeChecks": {
+        "checkedAt": "2026-11-09T20:43:43.792Z",
+        "errors": {
+          "content": [
+            {
+              "type": "text",
+              "text": "## Runtime Errors\n\n**Project:** prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds\n\nNo runtime errors found in the selected time range."
+            }
+          ],
+          "structuredContent": null,
+          "isError": false
+        },
+        "logs": {
+          "content": [
+            {
+              "type": "text",
+              "text": "## Runtime Logs\n\n**Project:** prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds\n**Time range:** 2026-11-09T20:13:22.650Z → 2026-11-09T20:43:22.650Z\n\nNo logs found for the specified criteria."
+            }
+          ],
+          "structuredContent": null,
+          "isError": false
+        }
+      }
+    },
+    {
+      "batch": 5,
+      "checkedAt": "2026-11-09T20:45:38.722Z",
+      "deleted": 6,
+      "skipped": [],
+      "estimatedPublicBytes": 398103317,
+      "inventoryBefore": 363,
+      "inventoryAfter": 357,
+      "aliasesAfter": 219,
+      "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+      "resourceChecks": 164,
+      "postDeleteChecks": 6,
+      "allBatchChecksPassed": true,
+      "runtimeChecks": {
+        "checkedAt": "2026-11-09T20:46:24.413Z",
+        "errors": {
+          "content": [
+            {
+              "type": "text",
+              "text": "## Runtime Errors\n\n**Project:** prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds\n\nNo runtime errors found in the selected time range."
+            }
+          ],
+          "structuredContent": null,
+          "isError": false
+        },
+        "logs": {
+          "content": [
+            {
+              "type": "text",
+              "text": "## Runtime Logs\n\n**Project:** prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds\n**Time range:** 2026-11-09T20:15:28.150Z → 2026-11-09T20:45:28.150Z\n\nNo logs found for the specified criteria."
+            }
+          ],
+          "structuredContent": null,
+          "isError": false
+        }
+      }
+    }
+  ],
+  "deployments": [
+    {
+      "batch": 1,
+      "id": "dpl_HygmYvgTtqJwXXWDQ2oQn4JEtKtB",
+      "type": "production",
+      "branch": "main",
+      "commit": "5407fd0fc710dd4790dc51f07760e94c150071c7",
+      "deletedAt": "2026-11-09T19:47:57.457Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "uid": "dpl_HygmYvgTtqJwXXWDQ2oQn4JEtKtB",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "id": "dpl_HygmYvgTtqJwXXWDQ2oQn4JEtKtB",
+        "status": 404
+      },
+      "productionVerified": true
+    },
+    {
+      "batch": 1,
+      "id": "dpl_BDmoAMuKW7H2BHB6PkfG6eXoNTkA",
+      "type": "production",
+      "branch": "main",
+      "commit": "af559022f079f193d928e07dbd12ce86b09ca198",
+      "deletedAt": "2026-11-09T19:48:12.430Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "uid": "dpl_BDmoAMuKW7H2BHB6PkfG6eXoNTkA",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "id": "dpl_BDmoAMuKW7H2BHB6PkfG6eXoNTkA",
+        "status": 404
+      },
+      "productionVerified": true
+    },
+    {
+      "batch": 1,
+      "id": "dpl_CT6Z1qPgTueQ95p9oLxbq9QY5YwJ",
+      "type": "preview",
+      "branch": "codex/async-take-two",
+      "commit": "cb04c67cb9d1d6efd6bd80d70d570b0414edba26",
+      "deletedAt": "2026-11-09T19:48:27.665Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "uid": "dpl_CT6Z1qPgTueQ95p9oLxbq9QY5YwJ",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "id": "dpl_CT6Z1qPgTueQ95p9oLxbq9QY5YwJ",
+        "status": 404
+      },
+      "productionVerified": true
+    },
+    {
+      "batch": 2,
+      "id": "dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd",
+      "type": "production",
+      "branch": "main",
+      "commit": "cb04c67cb9d1d6efd6bd80d70d570b0414edba26",
+      "deletedAt": "2026-11-09T20:36:52.298Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:36:51.958Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:37:05.694Z",
+        "batchId": "ptown-storage-remaining-1-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 380,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd",
+        "status": 404
+      }
+    },
+    {
+      "batch": 2,
+      "id": "dpl_98gVba75crv5FY5JzNaGFsGVjnQN",
+      "type": "production",
+      "branch": "main",
+      "commit": "be61150a98f2be0ed5202e1e9aad464c0b0d5906",
+      "deletedAt": "2026-11-09T20:37:09.093Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_98gVba75crv5FY5JzNaGFsGVjnQN",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:37:08.733Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:37:17.897Z",
+        "batchId": "ptown-storage-remaining-1-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_98gVba75crv5FY5JzNaGFsGVjnQN",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 379,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_98gVba75crv5FY5JzNaGFsGVjnQN",
+        "status": 404
+      }
+    },
+    {
+      "batch": 2,
+      "id": "dpl_8KfgkdVVfWTEmsxdZCtszL8FsTxQ",
+      "type": "production",
+      "branch": "main",
+      "commit": "47939ceffadbbb5423e5ef0ee98e25624f43d39b",
+      "deletedAt": "2026-11-09T20:37:21.585Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_8KfgkdVVfWTEmsxdZCtszL8FsTxQ",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:37:21.175Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:37:30.756Z",
+        "batchId": "ptown-storage-remaining-1-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_8KfgkdVVfWTEmsxdZCtszL8FsTxQ",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 378,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_8KfgkdVVfWTEmsxdZCtszL8FsTxQ",
+        "status": 404
+      }
+    },
+    {
+      "batch": 2,
+      "id": "dpl_Gp2tU3F1K67r2u4ofaJeMdysv55o",
+      "type": "production",
+      "branch": "main",
+      "commit": "76f3c7917a8d2baeb877d722585de99105b5c63c",
+      "deletedAt": "2026-11-09T20:37:34.692Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_Gp2tU3F1K67r2u4ofaJeMdysv55o",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:37:34.235Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:37:45.658Z",
+        "batchId": "ptown-storage-remaining-1-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_Gp2tU3F1K67r2u4ofaJeMdysv55o",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 377,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_Gp2tU3F1K67r2u4ofaJeMdysv55o",
+        "status": 404
+      }
+    },
+    {
+      "batch": 2,
+      "id": "dpl_7xCpvSG7PdNKDcpoFjx2BQbxyQQW",
+      "type": "production",
+      "branch": "main",
+      "commit": "76f3c7917a8d2baeb877d722585de99105b5c63c",
+      "deletedAt": "2026-11-09T20:37:49.124Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_7xCpvSG7PdNKDcpoFjx2BQbxyQQW",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:37:48.720Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:37:58.341Z",
+        "batchId": "ptown-storage-remaining-1-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_7xCpvSG7PdNKDcpoFjx2BQbxyQQW",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 376,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_7xCpvSG7PdNKDcpoFjx2BQbxyQQW",
+        "status": 404
+      }
+    },
+    {
+      "batch": 2,
+      "id": "dpl_4pwNVo5GP2F6Do6eNyovqngqSHiB",
+      "type": "production",
+      "branch": "main",
+      "commit": "84696641119d3aaa2c432f6284cb82343fe067a2",
+      "deletedAt": "2026-11-09T20:38:02.135Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_4pwNVo5GP2F6Do6eNyovqngqSHiB",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:38:01.724Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:38:11.318Z",
+        "batchId": "ptown-storage-remaining-1-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_4pwNVo5GP2F6Do6eNyovqngqSHiB",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 375,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_4pwNVo5GP2F6Do6eNyovqngqSHiB",
+        "status": 404
+      }
+    },
+    {
+      "batch": 3,
+      "id": "dpl_8Vj8YxwypVXZVjTD4MY6NPN1UKWK",
+      "type": "preview",
+      "branch": "codex/async-latency-audit",
+      "commit": "5e096e2759a4bfd106ae5d6db7289e21f5acc068",
+      "deletedAt": "2026-11-09T20:39:27.025Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_8Vj8YxwypVXZVjTD4MY6NPN1UKWK",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:39:25.483Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:39:37.611Z",
+        "batchId": "ptown-storage-remaining-2-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_8Vj8YxwypVXZVjTD4MY6NPN1UKWK",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 374,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_8Vj8YxwypVXZVjTD4MY6NPN1UKWK",
+        "status": 404
+      }
+    },
+    {
+      "batch": 3,
+      "id": "dpl_9unexg79SeLod2ooBk38gm3GhQPy",
+      "type": "production",
+      "branch": "main",
+      "commit": "5e096e2759a4bfd106ae5d6db7289e21f5acc068",
+      "deletedAt": "2026-11-09T20:39:41.755Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_9unexg79SeLod2ooBk38gm3GhQPy",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:39:41.357Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:39:50.808Z",
+        "batchId": "ptown-storage-remaining-2-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_9unexg79SeLod2ooBk38gm3GhQPy",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 373,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_9unexg79SeLod2ooBk38gm3GhQPy",
+        "status": 404
+      }
+    },
+    {
+      "batch": 3,
+      "id": "dpl_C9bfY3FeWbZ6HVEyK4yoyXH1gkXb",
+      "type": "production",
+      "branch": "main",
+      "commit": "8c7d22a45377861810adb22533b438c3d7868c1a",
+      "deletedAt": "2026-11-09T20:39:54.773Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_C9bfY3FeWbZ6HVEyK4yoyXH1gkXb",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:39:54.260Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:40:04.814Z",
+        "batchId": "ptown-storage-remaining-2-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_C9bfY3FeWbZ6HVEyK4yoyXH1gkXb",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 372,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_C9bfY3FeWbZ6HVEyK4yoyXH1gkXb",
+        "status": 404
+      }
+    },
+    {
+      "batch": 3,
+      "id": "dpl_HVfwkjk2KrVFDo6EkzA87XSK1ivA",
+      "type": "production",
+      "branch": "main",
+      "commit": "6f9b15226dd683ffb646fc6e413b266048804ddb",
+      "deletedAt": "2026-11-09T20:40:08.393Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_HVfwkjk2KrVFDo6EkzA87XSK1ivA",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:40:07.981Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:40:18.808Z",
+        "batchId": "ptown-storage-remaining-2-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_HVfwkjk2KrVFDo6EkzA87XSK1ivA",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 371,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_HVfwkjk2KrVFDo6EkzA87XSK1ivA",
+        "status": 404
+      }
+    },
+    {
+      "batch": 3,
+      "id": "dpl_8Lr1KLyuzDtVbsePsGQWw2LGwQRa",
+      "type": "production",
+      "branch": "main",
+      "commit": "670f5a9f52c3fbef3dd545cdbafff5d6a603595a",
+      "deletedAt": "2026-11-09T20:40:23.959Z",
+      "estimatedPublicBytes": 65779072,
+      "response": {
+        "status": 200,
+        "uid": "dpl_8Lr1KLyuzDtVbsePsGQWw2LGwQRa",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:40:23.312Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:40:34.622Z",
+        "batchId": "ptown-storage-remaining-2-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_8Lr1KLyuzDtVbsePsGQWw2LGwQRa",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 370,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_8Lr1KLyuzDtVbsePsGQWw2LGwQRa",
+        "status": 404
+      }
+    },
+    {
+      "batch": 3,
+      "id": "dpl_35HxT5CjWjRdEW1TUxWx5YggQzvA",
+      "type": "production",
+      "branch": "main",
+      "commit": "176c7065979c96b2e8bb07be7da4c30a515628f0",
+      "deletedAt": "2026-11-09T20:40:38.348Z",
+      "estimatedPublicBytes": 65925838,
+      "response": {
+        "status": 200,
+        "uid": "dpl_35HxT5CjWjRdEW1TUxWx5YggQzvA",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:40:37.989Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:40:47.756Z",
+        "batchId": "ptown-storage-remaining-2-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_35HxT5CjWjRdEW1TUxWx5YggQzvA",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 369,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_35HxT5CjWjRdEW1TUxWx5YggQzvA",
+        "status": 404
+      }
+    },
+    {
+      "batch": 4,
+      "id": "dpl_9FWyjDpXderHNqev73rcV1gK7H7L",
+      "type": "production",
+      "branch": "main",
+      "commit": "4a2af74f420e4ffb9ceae359f44e9c844054e143",
+      "deletedAt": "2026-11-09T20:41:54.675Z",
+      "estimatedPublicBytes": 66107240,
+      "response": {
+        "status": 200,
+        "uid": "dpl_9FWyjDpXderHNqev73rcV1gK7H7L",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:41:54.195Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:42:04.697Z",
+        "batchId": "ptown-storage-remaining-3-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_9FWyjDpXderHNqev73rcV1gK7H7L",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 368,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_9FWyjDpXderHNqev73rcV1gK7H7L",
+        "status": 404
+      }
+    },
+    {
+      "batch": 4,
+      "id": "dpl_56dijaBzpYuQcYtSPJFeRygQ1kNT",
+      "type": "production",
+      "branch": "main",
+      "commit": "3b0702053c0d0d07994b965550096329422112ef",
+      "deletedAt": "2026-11-09T20:42:08.933Z",
+      "estimatedPublicBytes": 66107240,
+      "response": {
+        "status": 200,
+        "uid": "dpl_56dijaBzpYuQcYtSPJFeRygQ1kNT",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:42:08.509Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:42:18.792Z",
+        "batchId": "ptown-storage-remaining-3-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_56dijaBzpYuQcYtSPJFeRygQ1kNT",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 367,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_56dijaBzpYuQcYtSPJFeRygQ1kNT",
+        "status": 404
+      }
+    },
+    {
+      "batch": 4,
+      "id": "dpl_9q6n1TwmmxUTsd9w5rq5iRbVTAgC",
+      "type": "production",
+      "branch": "main",
+      "commit": "b8c893acab4f1c653385efd7e5a5f38b1a0eba2f",
+      "deletedAt": "2026-11-09T20:42:23.458Z",
+      "estimatedPublicBytes": 66349394,
+      "response": {
+        "status": 200,
+        "uid": "dpl_9q6n1TwmmxUTsd9w5rq5iRbVTAgC",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:42:23.048Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:42:34.212Z",
+        "batchId": "ptown-storage-remaining-3-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_9q6n1TwmmxUTsd9w5rq5iRbVTAgC",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 366,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_9q6n1TwmmxUTsd9w5rq5iRbVTAgC",
+        "status": 404
+      }
+    },
+    {
+      "batch": 4,
+      "id": "dpl_3c8qCRB5Ab9pqToE5FeaLFT9jKbS",
+      "type": "production",
+      "branch": "main",
+      "commit": "4a72affb6475f43318756a8c5c612eb127d9f6c2",
+      "deletedAt": "2026-11-09T20:42:38.460Z",
+      "estimatedPublicBytes": 66349394,
+      "response": {
+        "status": 200,
+        "uid": "dpl_3c8qCRB5Ab9pqToE5FeaLFT9jKbS",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:42:38.103Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:42:48.058Z",
+        "batchId": "ptown-storage-remaining-3-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_3c8qCRB5Ab9pqToE5FeaLFT9jKbS",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 365,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_3c8qCRB5Ab9pqToE5FeaLFT9jKbS",
+        "status": 404
+      }
+    },
+    {
+      "batch": 4,
+      "id": "dpl_7tdKPHXYJDwe7edXThbFwhbnGzxh",
+      "type": "production",
+      "branch": "main",
+      "commit": "169734bfb3d8caf9765d1af1e113aa95f2547ab1",
+      "deletedAt": "2026-11-09T20:42:51.821Z",
+      "estimatedPublicBytes": 66349625,
+      "response": {
+        "status": 200,
+        "uid": "dpl_7tdKPHXYJDwe7edXThbFwhbnGzxh",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:42:51.409Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:43:00.812Z",
+        "batchId": "ptown-storage-remaining-3-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_7tdKPHXYJDwe7edXThbFwhbnGzxh",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 364,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_7tdKPHXYJDwe7edXThbFwhbnGzxh",
+        "status": 404
+      }
+    },
+    {
+      "batch": 4,
+      "id": "dpl_HTow8nDGUzAzTim4JTiTokYG5a9x",
+      "type": "preview",
+      "branch": "codex/async-push-delivery-first",
+      "commit": "f7038cf74f4870c88ae57bfcfbf04c5e97e5a88c",
+      "deletedAt": "2026-11-09T20:43:04.413Z",
+      "estimatedPublicBytes": 66349666,
+      "response": {
+        "status": 200,
+        "uid": "dpl_HTow8nDGUzAzTim4JTiTokYG5a9x",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:43:04.004Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:43:13.450Z",
+        "batchId": "ptown-storage-remaining-3-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_HTow8nDGUzAzTim4JTiTokYG5a9x",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 363,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_HTow8nDGUzAzTim4JTiTokYG5a9x",
+        "status": 404
+      }
+    },
+    {
+      "batch": 5,
+      "id": "dpl_BVkKyfihgnVkhj3Apj3nu51dYsCF",
+      "type": "production",
+      "branch": "main",
+      "commit": "f7038cf74f4870c88ae57bfcfbf04c5e97e5a88c",
+      "deletedAt": "2026-11-09T20:44:02.781Z",
+      "estimatedPublicBytes": 66349666,
+      "response": {
+        "status": 200,
+        "uid": "dpl_BVkKyfihgnVkhj3Apj3nu51dYsCF",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:44:02.269Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:44:11.776Z",
+        "batchId": "ptown-storage-remaining-4-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_BVkKyfihgnVkhj3Apj3nu51dYsCF",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 362,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_BVkKyfihgnVkhj3Apj3nu51dYsCF",
+        "status": 404
+      }
+    },
+    {
+      "batch": 5,
+      "id": "dpl_6noqqQFZdZ9xaSLTp2SvKHVQGPQ2",
+      "type": "preview",
+      "branch": "codex/async-push-delivery-first",
+      "commit": "a6d6e59c726c87160166436beee5e7d837bc2a80",
+      "deletedAt": "2026-11-09T20:44:15.231Z",
+      "estimatedPublicBytes": 66349666,
+      "response": {
+        "status": 200,
+        "uid": "dpl_6noqqQFZdZ9xaSLTp2SvKHVQGPQ2",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:44:14.866Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:44:24.892Z",
+        "batchId": "ptown-storage-remaining-4-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_6noqqQFZdZ9xaSLTp2SvKHVQGPQ2",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 361,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_6noqqQFZdZ9xaSLTp2SvKHVQGPQ2",
+        "status": 404
+      }
+    },
+    {
+      "batch": 5,
+      "id": "dpl_5B7tDAzAhbG4ynXham7fo3o6GmhG",
+      "type": "production",
+      "branch": "main",
+      "commit": "a6d6e59c726c87160166436beee5e7d837bc2a80",
+      "deletedAt": "2026-11-09T20:44:28.378Z",
+      "estimatedPublicBytes": 66349666,
+      "response": {
+        "status": 200,
+        "uid": "dpl_5B7tDAzAhbG4ynXham7fo3o6GmhG",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:44:27.972Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:44:37.771Z",
+        "batchId": "ptown-storage-remaining-4-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_5B7tDAzAhbG4ynXham7fo3o6GmhG",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 360,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_5B7tDAzAhbG4ynXham7fo3o6GmhG",
+        "status": 404
+      }
+    },
+    {
+      "batch": 5,
+      "id": "dpl_2Anqd2PFeR1w1CUNf9JiDA6p8z1n",
+      "type": "preview",
+      "branch": "codex/async-push-delivery-first",
+      "commit": "8f0635b66754a302b430348a5b165a935c704eac",
+      "deletedAt": "2026-11-09T20:44:42.411Z",
+      "estimatedPublicBytes": 66351415,
+      "response": {
+        "status": 200,
+        "uid": "dpl_2Anqd2PFeR1w1CUNf9JiDA6p8z1n",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:44:42.002Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:44:51.818Z",
+        "batchId": "ptown-storage-remaining-4-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_2Anqd2PFeR1w1CUNf9JiDA6p8z1n",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 359,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_2Anqd2PFeR1w1CUNf9JiDA6p8z1n",
+        "status": 404
+      }
+    },
+    {
+      "batch": 5,
+      "id": "dpl_72J1wxQEz23j5zaHarr9x3wJTcfA",
+      "type": "production",
+      "branch": "main",
+      "commit": "8f0635b66754a302b430348a5b165a935c704eac",
+      "deletedAt": "2026-11-09T20:44:55.725Z",
+      "estimatedPublicBytes": 66351415,
+      "response": {
+        "status": 200,
+        "uid": "dpl_72J1wxQEz23j5zaHarr9x3wJTcfA",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:44:55.301Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:45:05.146Z",
+        "batchId": "ptown-storage-remaining-4-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_72J1wxQEz23j5zaHarr9x3wJTcfA",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 358,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_72J1wxQEz23j5zaHarr9x3wJTcfA",
+        "status": 404
+      }
+    },
+    {
+      "batch": 5,
+      "id": "dpl_7tShrZGrMn4Px3cbkvnHT5GkFHQn",
+      "type": "production",
+      "branch": "main",
+      "commit": "7b2542f37746661c64e5fcf27c9dcfe76b422f9d",
+      "deletedAt": "2026-11-09T20:45:09.959Z",
+      "estimatedPublicBytes": 66351489,
+      "response": {
+        "status": 200,
+        "uid": "dpl_7tShrZGrMn4Px3cbkvnHT5GkFHQn",
+        "state": "DELETED"
+      },
+      "getConfirmation": {
+        "status": 404
+      },
+      "preDeletion": {
+        "snapshotAt": "2026-11-09T20:45:09.473Z",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "holdCount": 228
+      },
+      "postDeletion": {
+        "at": "2026-11-09T20:45:19.988Z",
+        "batchId": "ptown-storage-remaining-4-of-4-20261109",
+        "event": "post-delete-verified",
+        "id": "dpl_7tShrZGrMn4Px3cbkvnHT5GkFHQn",
+        "production": "dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY",
+        "sha": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+        "aliasFingerprint": "10090d6f0957f2bc6043ab66c310fa019e383448970229bcff692078424d10a9",
+        "preservationFingerprint": "c5f4cba1d1405dcb5cfbcc460a9b58fac5edef17618ce55a30ed148cc1b2a606",
+        "inventoryCount": 357,
+        "resourceChecks": 164
+      },
+      "finalBatchGet": {
+        "id": "dpl_7tShrZGrMn4Px3cbkvnHT5GkFHQn",
+        "status": 404
+      }
+    }
+  ],
+  "exceptions": [],
+  "localTooling": "Four fixed six-ID groups; fresh inventory and exclusions before every deletion; per-deletion health checks; post-group error checks; 23 offline safety tests passed. No gameplay code changed or published."
+}

@@ -1,5 +1,15 @@
 # Vercel deployment cleanup proposal — November 9, 2026
 
+## Completed — all original 27 IDs
+
+The owner separately authorized the remaining 24. They were deleted in four
+groups of six, with zero skipped. All 27 original IDs are now confirmed deleted;
+inventory is 357, all 219 aliases are unchanged, and production/preservation
+checks passed. Estimated retired public assets total 1.783 GB; billed storage
+reduction remains unverified. No further deletion is authorized. See the
+[complete execution ledger and checks](VERCEL_STORAGE_CLEANUP_RESULT.md).
+All proposal and pending-approval statements below are historical snapshots.
+
 ## Batch 1 completed — first three only
 
 The owner explicitly authorized the three IDs below. All three were deleted

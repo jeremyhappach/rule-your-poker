@@ -1,14 +1,16 @@
 # Deployment storage — November 9, 2026 — unpublished local candidate
 
-Cleanup Batch 1 completed with explicit owner approval: exactly the three oldest
-authorized candidates were deleted at 19:47–19:48 UTC. Inventory is 381 (was 384),
-all 219 alias mappings are unchanged, and production, predecessor and both named
-gameplay checkpoints remain READY. Production's 164-resource comparison passed
-after each deletion; recent runtime-error queries returned no errors. Estimated
-retired public assets are 197.34 MB; actual account usage is unavailable. All 18
-cleanup safety tests pass after correcting the REST uid/id mapping. No code was
-published and no Supabase or account configuration changed. Remaining deletions
-are not authorized. See [execution evidence](VERCEL_STORAGE_BATCH1_RESULT.md).
+The original 27-ID cleanup is complete under explicit owner approval. Batch 1
+deleted three; the remaining 24 were deleted in four groups of six, with zero
+skipped. Final inventory is 357 (was 384). All 219 alias mappings and preservation
+holds are unchanged; production, predecessor and both named gameplay checkpoints
+remain READY. The 164-resource comparison passed after every deletion and group;
+post-group runtime-error queries returned no errors. Estimated retired public
+assets total 1,782,548,722 bytes (1.783 GB); billed reduction remains unverified
+because the accounting API returns costs_not_found. All 23 cleanup safety tests
+pass. No code was published and no Supabase or account configuration changed.
+Final verification: 20:45:38 UTC. No additional deletions are authorized. See
+[complete receipts and verification](VERCEL_STORAGE_CLEANUP_RESULT.md).
 
 `codex/vercel-storage-remediation` preserves production `97372c3b` and reduces
 static output from 103,498,912 to 82,658,138 bytes: 20,840,774 bytes (20.136%).
@@ -19,10 +21,9 @@ added. Gameplay, audio, push, API routes and Run21 `cle1` remain unchanged.
 Typecheck, separate Vite builds, 26 focused tests and storage qualification pass.
 The full build gate is blocked by 15 tests that also fail on untouched production
 source; these were not changed or waived. Physical iPhone acceptance is pending.
-The original 27-ID proposal estimates 1.783 GB total recovery; only its first
-three IDs have been deleted. No code deployment, push, account-policy change or
-Supabase access was performed. Further cleanup and publication require explicit
-approval. See
+All original 27 proposed IDs have now been deleted. No code deployment, push,
+account-policy change or Supabase access was performed. Further cleanup and
+publication require explicit approval. See
 [remediation and validation](VERCEL_STORAGE_REMEDIATION.md) and
 [exact deletion proposal](VERCEL_STORAGE_DELETION_PROPOSAL.md).
 

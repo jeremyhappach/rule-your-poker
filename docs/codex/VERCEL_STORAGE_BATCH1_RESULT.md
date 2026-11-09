@@ -1,5 +1,9 @@
 # Vercel storage cleanup — Batch 1 executed November 9, 2026
 
+Subsequent update: the remaining 24 were separately authorized and deleted in
+four groups of six. See the [complete 27-ID ledger](VERCEL_STORAGE_CLEANUP_RESULT.md).
+This document preserves the original Batch 1 results and approval boundary.
+
 Exactly the three owner-authorized deployments were deleted. No other deployment
 changed, no code was deployed or pushed, and no Supabase, billing, alias,
 protection or retention setting was changed.

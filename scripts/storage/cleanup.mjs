@@ -9,6 +9,10 @@ export const TEAM='team_nQciG8fmHnUCogRJ7jaWawHq';
 export const PROJECT='prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds';
 export const ALLOWLIST=Object.freeze(["dpl_HygmYvgTtqJwXXWDQ2oQn4JEtKtB","dpl_BDmoAMuKW7H2BHB6PkfG6eXoNTkA","dpl_CT6Z1qPgTueQ95p9oLxbq9QY5YwJ","dpl_F9Hyk5BrKRiV1DsYdhGG9p95zQrd","dpl_98gVba75crv5FY5JzNaGFsGVjnQN","dpl_8KfgkdVVfWTEmsxdZCtszL8FsTxQ","dpl_Gp2tU3F1K67r2u4ofaJeMdysv55o","dpl_7xCpvSG7PdNKDcpoFjx2BQbxyQQW","dpl_4pwNVo5GP2F6Do6eNyovqngqSHiB","dpl_8Vj8YxwypVXZVjTD4MY6NPN1UKWK","dpl_9unexg79SeLod2ooBk38gm3GhQPy","dpl_C9bfY3FeWbZ6HVEyK4yoyXH1gkXb","dpl_HVfwkjk2KrVFDo6EkzA87XSK1ivA","dpl_8Lr1KLyuzDtVbsePsGQWw2LGwQRa","dpl_35HxT5CjWjRdEW1TUxWx5YggQzvA","dpl_9FWyjDpXderHNqev73rcV1gK7H7L","dpl_56dijaBzpYuQcYtSPJFeRygQ1kNT","dpl_9q6n1TwmmxUTsd9w5rq5iRbVTAgC","dpl_3c8qCRB5Ab9pqToE5FeaLFT9jKbS","dpl_7tdKPHXYJDwe7edXThbFwhbnGzxh","dpl_HTow8nDGUzAzTim4JTiTokYG5a9x","dpl_BVkKyfihgnVkhj3Apj3nu51dYsCF","dpl_6noqqQFZdZ9xaSLTp2SvKHVQGPQ2","dpl_5B7tDAzAhbG4ynXham7fo3o6GmhG","dpl_2Anqd2PFeR1w1CUNf9JiDA6p8z1n","dpl_72J1wxQEz23j5zaHarr9x3wJTcfA","dpl_7tShrZGrMn4Px3cbkvnHT5GkFHQn"]);
 export const FIRST_THREE=Object.freeze(ALLOWLIST.slice(0,3));
+export const BATCH_IDS=Object.freeze(Object.fromEntries([
+ ['ptown-storage-first-three-20261109',FIRST_THREE],
+ ...Array.from({length:4},(_,i)=>['ptown-storage-remaining-'+(i+1)+'-of-4-20261109',Object.freeze(ALLOWLIST.slice(3+i*6,9+i*6))])
+]));
 export const REQUIRED=Object.freeze(['dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY','dpl_4n3BvhW4JnnEZzWg5WzUsQC1SSPH','dpl_BEoJpuZ5isvwcu77ggyri2rQPEYy','dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo']);
 export const DOMAINS=Object.freeze(['holm357.com','ptown-poker.vercel.app','ptown-poker-jeremy-8e2b.vercel.app','ptown-poker-git-main-jeremy-8e2b.vercel.app']);
 const idOf=a=>a.deploymentId??a.deployment?.id;
@@ -19,16 +23,16 @@ const state=d=>d.readyState??d.state;
 export const batchHash=plan=>createHash('sha256').update(JSON.stringify(plan)).digest('hex');
 export function validatePlan(plan){
  assert.equal(plan.teamId,TEAM);assert.equal(plan.projectId,PROJECT);
- assert.equal(plan.batchId,'ptown-storage-first-three-20261109');
- assert.equal(plan.maxDeletes,3);
- assert.deepEqual(plan.candidates.map(d=>d.id),FIRST_THREE,'Only the presented first three may be selected');
+ const ids=BATCH_IDS[plan.batchId];assert(ids,'Unknown fixed batch');
+ assert.equal(plan.maxDeletes,ids.length);assert(plan.maxDeletes<=6);
+ assert.deepEqual(plan.candidates.map(d=>d.id),ids,'Only the exact fixed batch may be selected');
  for(const id of REQUIRED)assert(plan.mandatoryPreserve.includes(id),'Required hold removed');
  for(const d of plan.candidates){assert(ALLOWLIST.includes(d.id));assert(!REQUIRED.includes(d.id));assert(/^[a-f0-9]{40}$/.test(d.sha));}
 }
 export function validateApproval(plan,approval,now=Date.now()){
  assert(approval?.authorized===true,'Explicit approval file required; no authorization is bundled');
  assert.equal(approval.batchId,plan.batchId);assert.equal(approval.planSha256,batchHash(plan));
- assert.deepEqual(approval.ids,FIRST_THREE);assert.equal(approval.residualRiskAccepted,true);
+ assert.deepEqual(approval.ids,BATCH_IDS[plan.batchId]);assert.equal(approval.residualRiskAccepted,true);
  assert(typeof approval.authorizationReference==='string'&&approval.authorizationReference.trim().length>0);
  const issued=Date.parse(approval.authorizedAt);assert(Number.isFinite(issued)&&issued<=now&&now-issued<86400000,'Approval must be dated within 24 hours');
 }
@@ -52,6 +56,8 @@ export function evaluate(plan,snapshot,review,completed=[]){
   if(d.isRollbackCandidate===true||d.rollbackCandidate===true)holds.add(d.id);
   if(state(d)==='READY'&&d.target!=='production'&&!latestPreviews.has(branch(d))){latestPreviews.add(branch(d));holds.add(d.id);}
  }
+ for(const id of REQUIRED)assert.equal(state(deployments.find(d=>d.id===id)??{}),'READY','Required checkpoint is not READY: '+id);
+ const preservation=deployments.filter(d=>holds.has(d.id)).map(d=>[d.id,state(d),sha(d)]).sort();
  const decisions=plan.candidates.map(c=>{
   if(completed.includes(c.id))return{id:c.id,eligible:false,alreadyDeleted:true,reasons:['Confirmed successful deletion in this batch audit']};
   const d=deployments.find(d=>d.id===c.id),detail=snapshot.details?.[c.id],direct=snapshot.deploymentAliases?.[c.id],reasons=[];
@@ -68,13 +74,14 @@ export function evaluate(plan,snapshot,review,completed=[]){
   if(holds.has(c.id))reasons.push('Production, alias, rollback, checkpoint, testing or usage hold');
   return{id:c.id,eligible:reasons.length===0,reasons};
  });
- return {currentProduction:current.id,currentSha:sha(current),predecessor:predecessor.id,aliasFingerprint:createHash('sha256').update(JSON.stringify(aliases.map(a=>[a.alias,idOf(a)]).sort())).digest('hex'),holdCount:holds.size,decisions,estimatedPublicBytes:plan.candidates.filter(c=>decisions.some(d=>d.id===c.id&&d.eligible)).reduce((n,c)=>n+c.estimatedPublicBytes,0)};
+ return {currentProduction:current.id,currentSha:sha(current),predecessor:predecessor.id,aliasFingerprint:createHash('sha256').update(JSON.stringify(aliases.map(a=>[a.alias,idOf(a)]).sort())).digest('hex'),preservationFingerprint:createHash('sha256').update(JSON.stringify(preservation)).digest('hex'),holdCount:holds.size,inventoryCount:deployments.length,decisions,estimatedPublicBytes:plan.candidates.filter(c=>decisions.some(d=>d.id===c.id&&d.eligible)).reduce((n,c)=>n+c.estimatedPublicBytes,0)};
 }
-export function makeApi(token,fetchImpl=fetch){
+export function makeApi(token,fetchImpl=fetch,batchId='ptown-storage-first-three-20261109'){
  assert(token,'VERCEL_TOKEN is required for live REST access; never paste it into chat or a command argument');
+ const ids=BATCH_IDS[batchId];assert(ids,'Unknown transport batch');
  return async(method,path,query={})=>{
   assert(['GET','DELETE'].includes(method),'No configuration mutations permitted');
-  if(method==='DELETE')assert(FIRST_THREE.some(id=>path==='/v13/deployments/'+id),'DELETE outside fixed first batch rejected');
+  if(method==='DELETE')assert(ids.some(id=>path==='/v13/deployments/'+id),'DELETE outside fixed batch rejected');
   assert(path.startsWith('/')&&!path.startsWith('//')&&!path.includes('?')&&!path.includes('://'));
   assert(!Object.hasOwn(query,'url'),'Alias/URL deletion is forbidden');
   assert(!Object.hasOwn(query,'teamId')&&!Object.hasOwn(query,'slug'),'Scope override is forbidden');
@@ -82,7 +89,7 @@ export function makeApi(token,fetchImpl=fetch){
   for(const [key,value]of Object.entries(query))if(value!==undefined)url.searchParams.set(key,String(value));
   const r=await fetchImpl(url,{method,headers:{Authorization:'Bearer '+token},redirect:'error',signal:AbortSignal.timeout(20000)});
   if(!r.ok){const e=Error('Vercel '+method+' '+path+' returned '+r.status+'; stopped without retry');e.status=r.status;throw e;}
-  return r.json();
+  const data=await r.json();Object.defineProperty(data,'__httpStatus',{value:r.status});return data;
  };
 }
 export async function collectSnapshot(api,ids=FIRST_THREE){
@@ -125,38 +132,47 @@ export async function runCleanup(plan,options,deps){
   assert(age>=0&&age<3600000,'Traffic/dependency review must be refreshed within one hour');
   for(const id of completed)await deps.verifyRemoved(id);
  }
- const pending=()=>FIRST_THREE.filter(id=>!completed.includes(id));
+ const skipped=[],ids=BATCH_IDS[plan.batchId],allowSkips=ids!==FIRST_THREE;
+ const pending=()=>ids.filter(id=>!completed.includes(id)&&!skipped.some(s=>s.id===id));
  const initial=await deps.collect(pending()),baseline=evaluate(plan,initial,options.review,completed);
- assert(baseline.decisions.every(d=>d.eligible||d.alreadyDeleted),'Initial batch has exclusions: '+JSON.stringify(baseline.decisions));
+ if(options.review?.campaignBaseline){
+  for(const key of ['currentProduction','currentSha','aliasFingerprint','preservationFingerprint'])assert.equal(baseline[key],options.review.campaignBaseline[key],'Campaign baseline changed: '+key);
+ }
+ if(!allowSkips)assert(baseline.decisions.every(d=>d.eligible||d.alreadyDeleted),'Initial batch has exclusions: '+JSON.stringify(baseline.decisions));
  await deps.audit({event:execute?'preflight':'dry-run',...baseline,planSha256:batchHash(plan),snapshotAt:initial.capturedAt});
  if(!execute)return baseline;
  const beforeHealth=await deps.health(baseline.currentSha);
  await deps.audit({event:'health-before',health:beforeHealth});
  for(const id of pending()){
-  const fresh=await deps.collect(pending()),decision=evaluate(plan,fresh,options.review,completed);
+  const fresh=await deps.collect([id]),decision=evaluate(plan,fresh,options.review,completed);
   assert.equal(decision.currentProduction,baseline.currentProduction,'Production advanced during batch');
   assert.equal(decision.aliasFingerprint,baseline.aliasFingerprint,'Alias mappings changed during batch');
-  assert(decision.decisions.find(d=>d.id===id)?.eligible,'Candidate became protected');
-  await deps.audit({event:'delete-intent',id});
+  assert.equal(decision.preservationFingerprint,baseline.preservationFingerprint,'Preserved deployments changed during batch');
+  const candidateDecision=decision.decisions.find(d=>d.id===id);
+  if(!candidateDecision?.eligible&&allowSkips){skipped.push({id,reasons:candidateDecision?.reasons??['Missing eligibility']});await deps.audit({event:'skipped',...skipped.at(-1)});continue;}
+  assert(candidateDecision?.eligible,'Candidate became protected');
+  const candidate=plan.candidates.find(d=>d.id===id);
+  await deps.audit({event:'delete-intent',id,type:candidate.target??(candidate.branch==='main'?'production':'preview'),estimatedPublicBytes:candidate.estimatedPublicBytes,precheck:{snapshotAt:fresh.capturedAt,production:decision.currentProduction,sha:decision.currentSha,aliasFingerprint:decision.aliasFingerprint,preservationFingerprint:decision.preservationFingerprint,holdCount:decision.holdCount}});
   const receipt=await deps.remove(id);
   assert.equal(receipt.uid,id,'Deletion response identity mismatch');assert.equal(receipt.state,'DELETED','Deletion was not confirmed');
-  await deps.audit({event:'delete-confirmed',id,receipt:{uid:receipt.uid,state:receipt.state}});
+  await deps.audit({event:'delete-confirmed',id,type:candidate.target??(candidate.branch==='main'?'production':'preview'),estimatedPublicBytes:candidate.estimatedPublicBytes,receipt:{status:receipt.__httpStatus??null,uid:receipt.uid,state:receipt.state}});
   completed.push(id);
-  await deps.verifyRemoved(id);
-  const after=await deps.collect(pending()),checked=evaluate(plan,after,options.review,completed);
+  await deps.audit({event:'delete-get-confirmed',id,confirmation:await deps.verifyRemoved(id)});
+  const after=await deps.collect([]),checked=evaluate(plan,after,options.review,completed);
   assert.equal(checked.currentProduction,baseline.currentProduction,'Production changed after deletion');
   assert.equal(checked.aliasFingerprint,baseline.aliasFingerprint,'Aliases changed after deletion');
-  compareHealth(beforeHealth,await deps.health(baseline.currentSha));
-  await deps.audit({event:'post-delete-verified',id,production:checked.currentProduction});
+  assert.equal(checked.preservationFingerprint,baseline.preservationFingerprint,'Preserved deployments changed after deletion');
+  const afterHealth=await deps.health(baseline.currentSha);compareHealth(beforeHealth,afterHealth);
+  await deps.audit({event:'post-delete-verified',id,production:checked.currentProduction,sha:checked.currentSha,aliasFingerprint:checked.aliasFingerprint,preservationFingerprint:checked.preservationFingerprint,inventoryCount:checked.inventoryCount,resourceChecks:afterHealth.resources.length});
  }
- await deps.audit({event:'batch-complete',ids:completed,storageRecovery:'pending account verification; never infer more deletion authority from unchanged usage'});
- return {completed};
+ await deps.audit({event:'batch-complete',ids:completed,skipped,estimatedPublicBytes:plan.candidates.filter(c=>completed.includes(c.id)).reduce((n,c)=>n+c.estimatedPublicBytes,0),storageRecovery:'pending account verification; never infer more deletion authority from unchanged usage'});
+ return {completed,skipped};
 }
 async function main(){
- const args=process.argv.slice(2),allowed=new Set(['--execute','--snapshot','--review','--approval','--audit']);
+ const args=process.argv.slice(2),allowed=new Set(['--execute','--snapshot','--review','--approval','--audit','--plan']);
  for(let i=0;i<args.length;i++){assert(allowed.has(args[i]),'Unknown option '+args[i]);if(args[i]!=='--execute'){assert(args[i+1]&&!args[i+1].startsWith('--'),'Missing option value');i++;}}
  const value=key=>{const i=args.indexOf(key);return i<0?undefined:args[i+1];};
- const plan=JSON.parse(readFileSync(new URL('./cleanup-first-batch.json',import.meta.url),'utf8')),execute=args.includes('--execute');
+ const plan=JSON.parse(readFileSync(value('--plan')??new URL('./cleanup-first-batch.json',import.meta.url),'utf8')),execute=args.includes('--execute');validatePlan(plan);
  assert(!(execute&&value('--snapshot')),'Execution may never use a saved snapshot');
  if(execute)assert(value('--review')&&value('--approval'),'Execution requires review and explicit approval files');
  const read=path=>path?JSON.parse(readFileSync(path,'utf8')):undefined;
@@ -170,13 +186,15 @@ async function main(){
  try{
   const past=existsSync(log)?readFileSync(log,'utf8').trim().split('\n').filter(Boolean).map(line=>JSON.parse(line)):[];
   const completed=[...new Set(past.filter(e=>e.event==='delete-confirmed'&&e.batchId===plan.batchId).map(e=>e.id))];
-  for(const id of completed)assert(FIRST_THREE.includes(id),'Invalid audit receipt');
-  const api=snapshot?null:makeApi(process.env.VERCEL_TOKEN);
+  assert(past.every(e=>e.batchId===plan.batchId),'Audit belongs to another fixed batch');
+  assert(!past.some(e=>e.event==='delete-intent'&&!completed.includes(e.id)),'Unconfirmed deletion intent requires read-only reconciliation; never retry automatically');
+  for(const id of completed)assert(BATCH_IDS[plan.batchId].includes(id),'Invalid audit receipt');
+  const api=snapshot?null:makeApi(process.env.VERCEL_TOKEN,fetch,plan.batchId);
   const result=await runCleanup(plan,{execute,approval,review,completed},{
    collect:ids=>snapshot?Promise.resolve(snapshot):collectSnapshot(api,ids),
    health:sha=>probeProduction(sha),
    remove:id=>api('DELETE','/v13/deployments/'+id),
-   verifyRemoved:async id=>{try{const d=await api('GET','/v13/deployments/'+id);assert(d.state==='DELETED'||d.readyState==='DELETED'||d.deletedAt,'Deleted deployment still READY');}catch(e){if(![404,410].includes(e.status))throw e;}},
+   verifyRemoved:async id=>{try{const d=await api('GET','/v13/deployments/'+id);assert(d.state==='DELETED'||d.readyState==='DELETED'||d.deletedAt,'Deleted deployment still READY');return {status:d.__httpStatus,state:'DELETED'};}catch(e){if(![404,410].includes(e.status))throw e;return {status:e.status};}},
    audit
   });
   console.log(JSON.stringify({mode:execute?'EXECUTED':'DRY RUN — no DELETE requests',...result},null,2));
