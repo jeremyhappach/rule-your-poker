@@ -14,6 +14,14 @@ export const signed=(amount:number)=>amount>0?'+'+amount:amount<0?'−'+Math.abs
 export class DelayedRequestError extends Error {constructor(message:string,readonly status:number){super(message);}}
 export async function delayedRequest<T>(body:Record<string,unknown>):Promise<T>{
  const {data}=await supabase.auth.getSession();if(!data.session)throw Error('Sign in to continue.');
- const response=await fetch('/api/delayed',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify(body)});
- const result=await response.json();if(!response.ok||result.error)throw new DelayedRequestError(result.error??'Unable to restore turn.',response.status);return result;
+ const controller=body.game==='run21'?new AbortController():null;
+ const timeout=controller?setTimeout(()=>controller.abort(),10000):undefined;
+ try{
+  const response=await fetch(body.game==='run21'?'/api/delayed-run21':'/api/delayed',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify(body),...(controller?{signal:controller.signal}:{})});
+  const result=await response.json();if(!response.ok||result.error)throw new DelayedRequestError(result.error??'Unable to restore turn.',response.status);return result;
+ }catch(error){
+  // An abort is uncertain: DelayedTurn retains the original command for replay.
+  if(controller?.signal.aborted)throw Error('Connection timed out. Reconnect to confirm your move.');
+  throw error;
+ }finally{clearTimeout(timeout);}
 }

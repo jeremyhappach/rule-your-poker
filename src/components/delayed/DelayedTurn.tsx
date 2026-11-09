@@ -51,7 +51,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const clock=useRef({at:Date.now(),received:performance.now()}),generation=useRef(0),request=useRef<Record<string,unknown>|null>(readPendingTurn(requestKey)),initialSegment=useRef<number|null>(null);
  const initialRound=useRef<number|null>(null);
  const triController=useRef<TriIntentBuffer|null>(null);
- const freshAction=useRef<{id:unknown;before:Snapshot}|null>(null);
+ const freshAction=useRef<{id:unknown;before:Snapshot;startedAt:number}|null>(null);
  const [labCue,setLabCue]=useState<LabCommand|null>(null);
  const [audio,setAudio]=useState({liveEntry:false,epoch:0,events:[] as BoardFeedbackEvent[]});
  const interruptAudio=useCallback(()=>{freshAction.current=null;setLabCue(null);setAudio(p=>({liveEntry:false,epoch:p.epoch+1,events:[]}));},[]);
@@ -89,7 +89,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const refresh=useCallback(async()=>{
   if(triController.current?.sent){await triController.current.recover();return;}
   const epoch=++generation.current,command=request.current;try{
-  const value=await delayedRequest<Snapshot>(command??{op:'state',childId,...(latest.current?.game==='tri-towers'?{game:'tri-towers'}:{})});
+  const value=await delayedRequest<Snapshot>(command??{op:'state',childId,...(latest.current&&['run21','tri-towers'].includes(latest.current.game)?{game:latest.current.game}:{})});
   if(epoch!==generation.current)return;accept(value,command);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');return true;
  }catch(e){if(epoch===generation.current){
   interruptAudio();
@@ -143,7 +143,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
    else if(intent.type==='draw'||intent.type==='take_score')triInput.enqueue({type:intent.type});
    return;
   }
-  request.current={op:'action',game:snapshot.game,childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');return await refresh();}
+  request.current={op:'action',game:snapshot.game,childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot,startedAt:performance.now()};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');return await refresh();}
  // A reconnect into an unavailable/terminal segment belongs at the match home.
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId,{replace:true});},[snapshot,ended,result,matchId,navigate]);
  // Shared presentation completion starts the final readable hold. This only
@@ -222,7 +222,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   scores={view&&<div ref={scoreRoot} className="async-score-pills" aria-label="Game scores">{scores.map(item=><TriScorePill key={item.id} root={scoreRoot} item={item} value={item.id===userId?(reduced&&runResult?runTotal:displayedScore(view,userId,now)):item.score}/>)}</div>}
   actions={view&&<div className="run21-fullscreen-footer"><Run21FullscreenActions view={view} now={now} onIntent={i=>void act(i)} pending={!canAct}/></div>}>
    {error&&<div role="alert" className="arcade-error">{error}<button onClick={()=>void refresh()}>Reconnect</button></div>}
-   {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct} placement={placement} hideScoring={!!medal}/></>:
+   {view?<><Run21SpaceScene/><Run21Felt solo layout="fullscreen" view={view} now={now} onIntent={i=>void act(i)} pending={!canAct} placement={placement} showPendingStatus={!freshAction.current||performance.now()-freshAction.current.startedAt>=1000} hideScoring={!!medal}/></>:
     <div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard input={triInput} view={board} now={now} canAct={canAct} roundKey={childId+':'+initialSegment.current} result={triResult}
      userId={userId} liveEntry={audio.liveEntry} recoveryEpoch={audio.epoch} connected={!error} presentationActive={tab==='cards'} paused={snapshot.held} roundLabel={'ROUND '+displayRound} scores={scores.map(item=>item.active?{...item,score:board.score}:item)}
      takeScore={board.phase==='playing'?<button className="tri-take-score" disabled={!canAct} onClick={()=>void act({type:'take_score'})}>Take Score</button>:null}

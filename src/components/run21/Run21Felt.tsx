@@ -54,6 +54,7 @@ interface Props {
   acceptedEvents?: BoardFeedbackEvent[];
   view: Projection; now: number; onIntent?: (intent: Intent)=>void;
   placement?:PendingRun21Action|null;
+  showPendingStatus?: boolean;
   pending?: boolean; geometry?: Run21Geometry; playerId?: string;
   drawLayer?: HTMLElement | null;
   drawRect?: Rect;
@@ -61,7 +62,7 @@ interface Props {
   solo?: boolean;
 }
 /** Slot contents only. The canonical shell owns the table, seats, HUD and lifecycle. */
-export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,placement=null,geometry,drawLayer,drawRect,hideScoring=false,solo=false,layout='table',playerId=displayedPlayerId(view)}:Props) {
+export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,placement=null,showPendingStatus=true,geometry,drawLayer,drawRect,hideScoring=false,solo=false,layout='table',playerId=displayedPlayerId(view)}:Props) {
   const feedback=useRef(new Exact21Feedback());
   const [pulses,setPulses]=useState<Record<number,number>>({});
   const scope=JSON.stringify([view.identity??view.presentationKey,view.roundId,playerId]);
@@ -97,7 +98,7 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,placem
   // A single centered pair in the same interaction layer, just inside the rim.
   const draw=drawRect || layout === 'fullscreen' ? <div className="run21-draw" data-run21-draw style={layout === 'table' && drawRect ? {left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`} : undefined}>
     {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
-    {slot('currentCard',<><div className="run21-live-card" data-run21-turn-state={turnState}>{tentative?<span className="run21-awaiting-card" role="status">Confirming…</span>:board?.current&&<Run21Card card={board.current}/>}</div><small className="sr-only">{active?'Your turn':watching?'Watching':'Actions unavailable'} · Current card</small></>)}
+    {slot('currentCard',<><div className="run21-live-card" data-run21-turn-state={turnState}>{tentative?(showPendingStatus?<span className="run21-awaiting-card" role="status">Confirming…</span>:<Run21Card card={null}/>):board?.current&&<Run21Card card={board.current}/>}</div><small className="sr-only">{active?'Your turn':watching?'Watching':'Actions unavailable'} · Current card</small></>)}
     {slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{perfectAggregate(view.config)}</small></output>}<Run21ScoringHelp config={view.config} solo={solo}/></>)}
     {board?.current&&!board.result&&view.active_player_id===playerId&&layout==='fullscreen'&&board.passesUsed<view.config.passes&&slot('pass',
       <button type="button" aria-label="Pass" disabled={!active} onClick={()=>{if(active)onIntent?.({type:'pass'});}}>Pass</button>)}

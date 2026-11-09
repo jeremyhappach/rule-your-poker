@@ -102,3 +102,30 @@ it('a state read from a second client cannot produce a placement sound',async()=
  mocks.value=snapshot('run21',true);mount();await flush();acceptCommand({op:'action',intent:{type:'place',column:0}});await refresh();expect(placements()).toHaveLength(0);
  await place();expect(placements()).toHaveLength(1);
 });
+it('places immediately, delays status text, and unlocks from the action response without a read',async()=>{
+ mocks.value=snapshot('run21',true);mount();await flush();let reply!:()=>void;
+ mocks.request.mockImplementationOnce(c=>new Promise(resolve=>{reply=()=>resolve(acceptCommand(c));}));
+ await place();expect(document.querySelector('[data-pending=true]')).not.toBeNull();
+ expect(screen.queryByText('Confirming…')).toBeNull();expect(screen.getByLabelText('Running total 0; qualify at 97')).toBeTruthy();
+ expect(screen.getByRole('button',{name:'Place in column 1, total 0'}).hasAttribute('disabled')).toBe(true);
+ await step(1000);expect(screen.getByText('Confirming…')).toBeTruthy();
+ const calls=mocks.request.mock.calls.length;await act(async()=>reply());await flush();
+ expect(mocks.request).toHaveBeenCalledTimes(calls);expect(screen.queryByText('Confirming…')).toBeNull();
+ expect(document.querySelector('[data-pending=true]')).toBeNull();expect(screen.getByRole('button',{name:'Place in column 1, total 2'}).hasAttribute('disabled')).toBe(false);
+});
+it('reconciles a rejected tentative placement to the confirmed board',async()=>{
+ mocks.value=snapshot('run21',true);mount();await flush();
+ mocks.request.mockRejectedValueOnce(Error('delayed:stale_action'));await place();
+ expect(document.querySelector('[data-pending=true]')).toBeNull();expect(screen.getByRole('button',{name:'Place in column 1, total 0'}).hasAttribute('disabled')).toBe(false);
+ expect(sessionStorage.getItem('ptown:async-turn:request:me:child')).toBeNull();
+});
+it('sends qualified Take Score through the same original-request recovery flow',async()=>{
+ mocks.value=snapshot('run21',true);
+ mocks.value.board.columns=Array.from({length:5},(_,i)=>[{rank:'10',suit:'spades'},{rank:i===4?'7':'J',suit:'hearts'}]);
+ mount();await flush();mocks.request.mockRejectedValueOnce(Error('lost response'));
+ fireEvent.click(screen.getByRole('button',{name:/Take Score/}));await flush();
+ const command=mocks.request.mock.calls.at(-1)![0];expect(command.intent).toEqual({type:'collect'});expect(command.game).toBe('run21');
+ expect(JSON.parse(sessionStorage.getItem('ptown:async-turn:request:me:child')!)).toEqual(command);
+ fireEvent.click(screen.getByRole('button',{name:'Reconnect'}));await flush();
+ expect(mocks.request.mock.calls.at(-1)![0]).toEqual(command);expect(sessionStorage.getItem('ptown:async-turn:request:me:child')).toBeNull();
+});

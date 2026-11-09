@@ -15,6 +15,9 @@
   ],
   "buildCommand": "npm run typecheck && vite build",
   "functions": {
+    "api/delayed-run21.ts": {
+      "regions": ["cle1"]
+    },
     "api/web-push.ts": {
       "maxDuration": 60
     },
