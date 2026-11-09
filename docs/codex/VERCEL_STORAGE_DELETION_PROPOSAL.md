@@ -1,5 +1,96 @@
 # Vercel deployment cleanup proposal — November 9, 2026
 
+## Hotfix: first three only, awaiting authorization
+
+The owner's revised policy accepts missing retention/protection metadata as a
+residual risk. It supersedes the previous zero-candidate classification. This
+does not authorize deletion or permit bypassing a Vercel protection error.
+
+The three oldest entries below are the proposed initial batch:
+
+| Deployment | Created CST | Commit | Why selected | Estimated public bytes |
+|---|---|---|---|---:|
+| `dpl_HygmYvgTtqJwXXWDQ2oQn4JEtKtB` | Nov 4, 17:17 | `5407fd0fc` | Superseded production; no aliases or rollback flag | 65,779,072 |
+| `dpl_BDmoAMuKW7H2BHB6PkfG6eXoNTkA` | Nov 4, 17:43 | `af559022f` | Superseded production; no aliases or rollback flag | 65,779,072 |
+| `dpl_CT6Z1qPgTueQ95p9oLxbq9QY5YwJ` | Nov 4, 19:16 | `cb04c67cb` | Superseded Take 2 preview; newer branch preview and same-commit production retained | 65,779,072 |
+
+Estimated first-batch recovery: **197,337,216 bytes (197.34 MB / 0.197 GB)**.
+At the newly reported 10.55 GB usage, this alone would leave approximately
+10.353 GB if fully credited. All 27's prior 1.783 GB estimate would leave about
+1.233 GB headroom, but this first batch grants no authority for the remaining 24.
+
+The refreshed 384 deployments and 219 aliases remain unchanged. Current
+production and predecessor are still `dpl_BDFK4NK8QiFFJeF6jUiuS1f12rHY` and
+`dpl_4n3BvhW4JnnEZzWg5WzUsQC1SSPH`. Preserve `dpl_BEoJpuZ5isvwcu77ggyri2rQPEYy`
+and `dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo`, all assigned alias targets, latest branch
+previews and known testing/checkpoint holds. The script also discovers and holds
+new production, its predecessor, latest five production builds and any current
+rollback candidates.
+
+Each candidate returned no runtime logs for the available 30-minute window
+(18:01–18:31 UTC). The initial one-hour request exceeded Hobby's retained window;
+it was not treated as a zero-usage result. Aggregate observability schema access
+returned 404. No runtime errors were returned by a subsequent recent project
+error query. This is limited telemetry, not proof of no static/direct-URL traffic.
+
+Current source contains no candidate-hostname or deployment-pinning reference.
+Assets, PWA start/scope, worker registration and push navigation use same-origin
+paths. The worker caches local push bindings/receipts, not an application shell.
+Both public domains serve production SHA `97372c3b`; 164 resource checks passed,
+including all 108 preserved public URLs on the primary origin, current JS/CSS,
+24 startup references on both origins and all eight function rejection paths.
+GET probes are unauthenticated and stop at existing method/route/auth guards;
+they do not create sessions, deliver pushes, or call database operations. Auth
+and Async route shells load; signed-in gameplay/PWA behavior was not exercised.
+
+Residual risk: a dormant browser or PWA installed from an old direct deployment
+origin can lose deferred assets, function access or push-entry navigation after
+deletion. Installed-client inventories and externally persisted links were not
+queried. Four-to-five-day-old candidates reduce recency risk but do not remove
+it. Stop for positive usage/dependency evidence, any explicit Vercel rejection,
+alias/production drift or unexpected health result. No claim of zero risk.
+
+### Prepared automation
+
+`scripts/storage/cleanup.mjs` uses the official Vercel REST API, a fixed original
+27-ID allowlist and a narrower immutable first-three execution bound. It defaults
+to dry-run, refreshes complete inventories and candidate aliases before every
+DELETE, uses durable audit receipts for idempotency, and stops on error without
+retry. It deletes by ID only; no alias URL, project deletion, force, policy,
+environment, billing or database mutation path exists. Full protection metadata
+is not an eligibility requirement. The 16 offline safety tests pass.
+
+```sh
+node scripts/storage/cleanup.mjs --snapshot .storage-audit/cleanup/snapshot.json --review .storage-audit/cleanup/review.json
+node --test scripts/storage/cleanup.test.mjs
+```
+
+The saved snapshot is dry-run only. Live REST dry-run and later execution require
+`VERCEL_TOKEN` supplied privately in the process environment; no token or Vercel
+CLI is currently available. Do not paste credentials into chat, command arguments
+or tracked files. Actual token permissions and live DELETE responses have not
+been tested. No authentication bypass or share link was created.
+
+After explicit owner approval, record that authorization against the exact plan
+hash and IDs using the unapproved example JSON, refresh the traffic/dependency
+review, then run with `--execute --approval <local-file> --review <local-file>`.
+Execution refuses snapshots, stale approval/review, or a changed plan. It probes
+production before and after every deletion and stops permanently after these
+three. Missing/ambiguous deletion responses require reconciliation, not retries.
+
+After the batch, separately review recent request errors, signed-in access when
+an authorized session is available, and account storage. The connector currently
+cannot expose complete traffic or live storage accounting. Vercel uses daily
+maximums, so stale usage alone never authorizes another batch. Recommend the next
+bounded batch only after reviewing actual or pending recovery.
+
+The image optimization, 108 URLs, splash behavior, sounds, push and Run21 region
+are unchanged. Full gate repair, coordinated deployment-frequency controls and
+versioned object-storage evaluation remain separate prevention work; no release
+gate is bypassed and no code is published in this cleanup-preparation pass.
+
+---
+
 **Proposal only. No deployments have been deleted. Explicit approval is required.**
 
 Inventory refreshed 2026-11-09T17:25:23.256Z (11:25:23 CST). Project `ptown-poker`, team `jeremy-8e2b`. All 384 deployment records and 219 aliases were paginated.

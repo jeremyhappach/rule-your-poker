@@ -1,5 +1,13 @@
 # Deployment storage — November 9, 2026 — unpublished local candidate
 
+Cleanup hotfix preparation: the revised risk-based policy selects only the three
+oldest original candidates (estimated 197.34 MB). A fixed-scope REST cleanup
+script, default dry-run, durable receipts and per-delete revalidation/health
+checks are prepared; 16 offline safety tests pass. Public production checks pass.
+Explicit deletion authorization and privately configured REST authentication are
+still required. No deletions, pushes or production changes have occurred.
+See the hotfix section in `VERCEL_STORAGE_DELETION_PROPOSAL.md`.
+
 `codex/vercel-storage-remediation` preserves production `97372c3b` and reduces
 static output from 103,498,912 to 82,658,138 bytes: 20,840,774 bytes (20.136%).
 All 24 iPhone startup resolutions and every existing public URL remain; independent

@@ -1,0 +1,13 @@
+{
+  "authorized": false,
+  "batchId": "ptown-storage-first-three-20261109",
+  "planSha256": "075236d5eb168ee24f9937ca7c339f52d110338917506ef2105caeb18144bb08",
+  "ids": [
+    "dpl_HygmYvgTtqJwXXWDQ2oQn4JEtKtB",
+    "dpl_BDmoAMuKW7H2BHB6PkfG6eXoNTkA",
+    "dpl_CT6Z1qPgTueQ95p9oLxbq9QY5YwJ"
+  ],
+  "residualRiskAccepted": false,
+  "authorizedAt": null,
+  "authorizationReference": "Populate only after explicit owner authorization; never treat this example as approval."
+}
