@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {StrictMode} from 'react';
-import {afterEach,expect,it,vi} from 'vitest';
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,waitFor} from '@testing-library/react';
 import {ElevenUpView} from './ElevenUpView';
 import {useElevenUp,type ElevenCommand,type ElevenTransport} from '@/hooks/useElevenUp';
@@ -9,6 +9,7 @@ import {platformAudio} from '@/lib/audio/platformAudio';
 
 vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:(p:any)=><section><header>{p.title}<span>{p.description}</span></header>{p.scores}<main data-fullscreen-board-slot>{p.children}<div data-canonical-felt-interaction-layer=""/></main></section>}));
 vi.mock('@/components/triTowers/TriTowersPresentation',()=>({useTriRoundPresentation:()=>({admitted:false}),TriRoundIntro:()=>null}));
+beforeEach(()=>vi.stubGlobal('ResizeObserver',class{observe(){}disconnect(){}}));
 afterEach(()=>{cleanup();sessionStorage.clear();vi.restoreAllMocks();});
 const snapshot=():ElevenSnapshot=>({id:'run',revision:1,serverAt:1000,scope:'run:round:actor:1',round:1,canAct:true,paused:false,finished:false,settled:false,solo:true,players:[{id:'user',name:'You',score:0,active:true}],board:{rules:{version:'eleven-up/2',stageMs:180000,introMs:2500,readyMs:30000,holdMs:5000,clearCelebrationMs:3000},phase:'playing',slots:[16,20,32,48],current:44,exposed:[0,1,2,3],passSlot:null,canPass:true,stockRemaining:28,groups:0,score:0,deadline:181000,event:{label:'',points:0}}});
 const props=(v=snapshot(),onIntent=vi.fn())=>({view:v,userId:'user',now:1000,pending:false,error:'',epoch:0,onIntent,onReconnect:vi.fn()});
@@ -134,9 +135,9 @@ it('toggles individual balls, resolves a three-ball eleven once, and removes red
  expect(ui.queryByText('You')).toBeNull();expect(ui.queryByText(/Arcade/)).toBeNull();
 });
 
-it('dings only a new confirmed eleven, with no selection, repeat, recovery or hidden-tab catchup',()=>{
+it('dings only a new confirmed eleven, separately from selection, with no repeat or recovery catchup',()=>{
  const sound=vi.spyOn(platformAudio,'request').mockReturnValue(()=>{}),v=snapshot(),p=props(v),ui=render(<ElevenUpView {...p}/>);
- fireEvent.click(ui.getByRole('button',{name:/^Ball 2,/}));expect(sound).not.toHaveBeenCalled();
+ fireEvent.click(ui.getByRole('button',{name:/^Ball 2,/}));expect(sound).toHaveBeenCalledTimes(1);expect(sound.mock.calls[0][0].id).toMatch(/^eleven-select:/);sound.mockClear();
  const confirmed={...v,revision:2,board:{...v.board,groups:1}};
  ui.rerender(<ElevenUpView {...p} view={confirmed}/>);expect(sound).toHaveBeenCalledTimes(1);
  ui.rerender(<ElevenUpView {...p} view={{...confirmed}}/>);expect(sound).toHaveBeenCalledTimes(1);
@@ -236,7 +237,7 @@ it('keeps Take Score in the band, preserves command dispatch, and retires gamepl
  expect(take.closest('.eleven-score-band')).toBeTruthy();
  expect(take.closest('[data-canonical-felt-interaction-layer]')).toBeTruthy();
  fireEvent.click(take);fireEvent.click(ui.getByRole('button',{name:/^Pass,/}));
- expect(p.onIntent.mock.calls).toEqual([[{type:'take_score'}],[{type:'pass'}]]);
+ expect(p.onIntent.mock.calls).toEqual([[{type:'take_score'}]]); // Same-turn Pass cannot bypass score submission.
  ui.rerender(<ElevenUpView {...p} sessionEnded/>);
  expect(ui.getByLabelText('Scores')).toBeTruthy();expect(ui.queryByRole('progressbar')).toBeNull();
  expect(ui.queryByRole('button',{name:'Take Score'})).toBeNull();expect(ui.container.querySelector('.eleven-playfield')).toBeNull();

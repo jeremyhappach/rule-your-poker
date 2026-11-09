@@ -1,3 +1,16 @@
+# 11 Up polish — November 9, 2026 — isolated local review only
+
+`codex/eleven-up-local-polish` adds scoped pool-table styling, select/deselect
+and confirmed-placement audio, and a centered score-pill count/hold/return
+sequence. Rules, ball geometry, authoritative score math and progression are
+preserved. This branch is not integrated or published; no deployment or push
+is authorized before Jeremy's explicit clearance after the storage check.
+
+TypeScript, 61 focused tests, a local build, four interaction layouts and twelve
+full-rack geometry comparisons pass. Browser/audio evidence uses offline sample
+responses; physical iPhone and authenticated runtime acceptance remain pending.
+See [launch instructions and exact evidence](ELEVEN_UP_LOCAL_POLISH.md).
+
 # Run21 score-button placement — November 9, 2026 — approved layout correction
 
 The shared fullscreen Run21 board places the existing Take Win / Give Up control
