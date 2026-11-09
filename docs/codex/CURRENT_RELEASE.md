@@ -1,3 +1,20 @@
+# Async Run21 latency candidate — November 9, 2026 — comparison pending
+
+Production `8415395b545f16a94542cdcb9925237e715fedf0`, deployment
+`dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo`, routes Async Run21 through the existing
+authenticated handler in `cle1`, near Supabase. All other Async games retain
+their endpoint. Run21 has a ten-second uncertain-response deadline and original-ID
+recovery; tentative placement remains immediate, with Confirming reserved for
+acknowledgments delayed at least one second. No rules, SQL or financial changes.
+
+Typecheck, production build and 88 focused checks pass. Production stage timing
+identified the three serial Auth/load/commit calls as the dominant cost; the
+regional candidate has NOT yet demonstrated a before/after improvement. The
+play-money test match awaits Hap's third round so Hap Gmail can perform the final
+comparison. Temporary timing headers expire at 16:00 UTC and must be removed
+after measurement. Do not mark this hotfix or physical iPhone acceptance complete.
+See [evidence and remaining checks](ASYNC_RUN21_LATENCY_HOTFIX.md).
+
 # Voyage opening / Horses suggested holds — November 8, 2026
 
 Voyage hides its five opening dice outlines while preserving the dice row's

@@ -123,7 +123,7 @@ it('sends qualified Take Score through the same original-request recovery flow',
  mocks.value=snapshot('run21',true);
  mocks.value.board.columns=Array.from({length:5},(_,i)=>[{rank:'10',suit:'spades'},{rank:i===4?'7':'J',suit:'hearts'}]);
  mount();await flush();mocks.request.mockRejectedValueOnce(Error('lost response'));
- fireEvent.click(screen.getByRole('button',{name:/Take Score/}));await flush();
+ fireEvent.click(screen.getByRole('button',{name:/Take Win/}));await flush();
  const command=mocks.request.mock.calls.at(-1)![0];expect(command.intent).toEqual({type:'collect'});expect(command.game).toBe('run21');
  expect(JSON.parse(sessionStorage.getItem('ptown:async-turn:request:me:child')!)).toEqual(command);
  fireEvent.click(screen.getByRole('button',{name:'Reconnect'}));await flush();

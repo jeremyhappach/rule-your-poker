@@ -254,7 +254,7 @@ Saved async round score context: `src/lib/delayed/reviewPresentation.ts` project
 - `src/components/delayed/AsyncInvite.tsx`: capability-driven lineup, money toggle and direct invitation sending.
 - `src/components/delayed/AsyncSessionName.tsx`: presentation-only real-money name marker across async cards, turns and results. `Delayed.tsx` reuses `RealMoneyWarningDialog` for offer-bound acceptance consent.
 - `src/components/delayed/DelayedTurn.tsx`: shared game presentation adapters.
-- `api/delayed.ts`, `server/delayed`: authenticated action boundary and shared-rule orchestration.
+- `api/delayed.ts`, `server/delayed`: authenticated action boundary and shared-rule orchestration. `api/delayed-run21.ts` reexports that handler for the Async Run21 function's separate region; it owns no rules or persistence.
 - `supabase/delayed/combined-*.sql`: admission, deletion, commit, projections and coordinated recovery.
 - `supabase/functions/delayed-recovery`: single-use dispatch worker.
 - `dev/async-combined`: disposable local fixture/proofs and worker bundler.
