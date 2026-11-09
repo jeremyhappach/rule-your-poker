@@ -6,6 +6,45 @@ write or deployment is authorized. Jeremy will separately clear publication
 after the November 10 storage check. Bridge Run and the source checkout are
 untouched.
 
+## Full-board reference follow-up — November 9
+
+Jeremy's emerald billiards mockup is the layout/material reference. Its printed
+balls, score, labels and controls are not used as an image overlay. The shared
+production view continues to project every ball, score, legal action, timer,
+selection and disabled control from its existing state. No rules, transport,
+audio or score-animation implementation changed in this follow-up.
+
+Straight, slim wood rails and four corner pocket mouths remain at the shell
+perimeter. Felt uses a small procedural SVG grain tile and warm light/shadow;
+there is no fixed-screen background or additional board. Covered ball contrast
+is improved without enabling covered balls. The current ball occupies a separate
+wood/brass return cradle beside Pass. Its button geometry is unchanged.
+
+The default local URL now opens the full 22-ball Ready sample with score zero,
+30 draws, the three legally exposed balls, and disabled Take Score. Pass feeds
+the next sample state and enables Take Score. To revisit the original sparse
+scoring/landing fixture, append `?rack=sparse`; `?phase=playing` opens the full
+rack directly in Playing. These remain offline response fixtures, not an
+authenticated backend game.
+
+`node dev/eleven-up-local/full-rack.mjs` passed at 320×568, 390×844 and 430×932.
+All 22 targets are unobstructed at their center and four interior points; no
+ball target overlaps another. Their unchanged diameters are 32.91, 40.61 and
+45.00 pixels respectively. The minimum clearance beyond the outer 5px selection
+ring and decorative perimeter is 10.99px. Only the three legally exposed full
+rack balls are enabled. Real touch events select/deselect an exposed ball;
+disabled Take Score submits nothing. The cradle stays separate from Pass and
+the timer. Full-rack count-up retains all 22 balls, displays its breakdown,
+and returns the same pill to the header.
+
+Updated evidence: `full-rack-320.png`, `full-rack-390.png`, `full-rack-430.png`,
+matching `full-rack-selected-*.png`, `full-rack-scoring-390.png`,
+`full-rack-returned-390.png` and `full-rack.json`, all under the ignored local
+evidence folder. The original browser/audio proof and twelve full-rack baseline
+geometry comparisons also pass, alongside 61 tests, TypeScript and local build.
+Physical iPhone Safari/speaker acceptance is still pending. Publication remains
+held; no hosted preview, push, migration or deployment occurred.
+
 ## Launch
 
 The isolated worktree is:
@@ -28,7 +67,7 @@ shell, Sounds control, and real AudioManager. It feeds explicit sample
 responses; it is not a second game engine and does not connect to a database.
 Sounds preference changes in this review are local to this browser.
 
-Tap a ball repeatedly to select/deselect. Pass places the sample incoming ball
+For the original `?rack=sparse` review, tap a ball repeatedly to select/deselect. Pass places the sample incoming ball
 on the felt after the simulated response. Take Score demonstrates 25,200 →
 31,200, including Elevens +1,000 and Speed +5,000. The fixture then provides
 round two; Take Score again reaches the existing final-results surface and

@@ -10,7 +10,7 @@ const errors=[],external=[],evidence={layouts:[],audio:{},scoring:{}};
 const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
 await context.route('**/*',route=>{const url=route.request().url();if(!url.startsWith('http://127.0.0.1:5198/')){external.push(url);return route.abort();}return route.continue();});
 const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
-const url='http://127.0.0.1:5198/dev/eleven-up-local/index.html';
+const url='http://127.0.0.1:5198/dev/eleven-up-local/index.html?rack=sparse';
 const read=fn=>page.evaluate(fn);
 const box=selector=>page.locator(selector).boundingBox();
 try{

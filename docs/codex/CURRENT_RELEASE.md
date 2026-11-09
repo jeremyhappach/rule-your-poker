@@ -6,6 +6,13 @@ sequence. Rules, ball geometry, authoritative score math and progression are
 preserved. This branch is not integrated or published; no deployment or push
 is authorized before Jeremy's explicit clearance after the storage check.
 
+The full-board reference follow-up adds straight wood rails, perimeter pockets,
+natural felt grain and a separate incoming-ball return cradle. The default
+offline review now shows all 22 balls and state-driven disabled Take Score.
+Three portrait touch/clearance checks retain the original targets, with at
+least 10.99px beyond their outer selection rings and decorative perimeter.
+The full rack remains visible throughout the existing score animation.
+
 TypeScript, 61 focused tests, a local build, four interaction layouts and twelve
 full-rack geometry comparisons pass. Browser/audio evidence uses offline sample
 responses; physical iPhone and authenticated runtime acceptance remain pending.
