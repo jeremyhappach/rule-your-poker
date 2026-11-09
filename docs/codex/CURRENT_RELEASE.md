@@ -1,18 +1,26 @@
-# Async Run21 latency candidate — November 9, 2026 — comparison pending
+# Async Run21 latency correction — November 9, 2026 — extended smoke pending
 
-Production `8415395b545f16a94542cdcb9925237e715fedf0`, deployment
+Gameplay-tested build `8415395b545f16a94542cdcb9925237e715fedf0`, deployment
 `dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo`, routes Async Run21 through the existing
 authenticated handler in `cle1`, near Supabase. All other Async games retain
 their endpoint. Run21 has a ten-second uncertain-response deadline and original-ID
 recovery; tentative placement remains immediate, with Confirming reserved for
 acknowledgments delayed at least one second. No rules, SQL or financial changes.
 
-Typecheck, production build and 88 focused checks pass. Production stage timing
-identified the three serial Auth/load/commit calls as the dominant cost; the
-regional candidate has NOT yet demonstrated a before/after improvement. The
-play-money test match awaits Hap's third round so Hap Gmail can perform the final
-comparison. Temporary timing headers expire at 16:00 UTC and must be removed
-after measurement. Do not mark this hotfix or physical iPhone acceptance complete.
+Typecheck, production build and 88 focused checks pass. In a signed-in 390 × 844
+12-placement production run, alternating endpoints reduced median normal
+tap-to-playable latency from 511 ms to 226 ms (five old / three uninjected new
+samples). The three serial remote calls accounted for the delay; their totals
+fell from 282–378 ms to 96–136 ms. Later new-endpoint responses stayed fast through
+placement 11. Slow acknowledgment, original-ID lost-response retry and ten-second
+timeout recovery passed; database receipts prove one move for each retried ID.
+
+Temporary server timing is removed in the follow-up release. Gameplay authority
+is unchanged. The round clock expired after the fault waits; a second authorized
+play-money invitation, `ad906e4b-fdfe-4f0b-8bdf-6acbcb9865e8`, awaits acceptance for
+a clean extended sequence and ordinary Slow 4G placement measurements. Those
+checks and physical iPhone acceptance remain pending; do not mark full hotfix
+verification complete. Checkpoint: `async-run21-timing-removed-20261109`.
 See [evidence and remaining checks](ASYNC_RUN21_LATENCY_HOTFIX.md).
 
 # Voyage opening / Horses suggested holds — November 8, 2026

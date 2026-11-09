@@ -1,14 +1,17 @@
 # Async Run21 latency hotfix — November 9, 2026
 
-Status: regional candidate published, awaiting production comparison. Do not
-treat the pending-label change as a measured latency improvement.
+Status: regional candidate published; same-turn comparison demonstrates lower
+request latency. A clean longer run under throttling remains pending. The label
+change is separate from the measured regional improvement.
 
 Candidate `8415395b545f16a94542cdcb9925237e715fedf0` is READY on deployment
 `dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo`, serving `holm357.com`. An unauthenticated
 request to the new route returned the expected 401 and an `x-vercel-id` beginning
 `cle1::cle1`, confirming function placement without weakening authentication.
-The signed-in test match is waiting for Hap's third round (segment 5); Hap Gmail's
-segment 6 must remain unstarted until the comparison probe is ready.
+Hap Gmail's final round exercised 12 placements, including slow acknowledgment,
+response loss and timeout. That play-money match completed normally. A second
+authorized play-money invitation, `ad906e4b-fdfe-4f0b-8bdf-6acbcb9865e8`, is reserved
+for a clean longer sequence without injected faults consuming its gameplay clock.
 
 The added qualified-collection test initially used the prompt's name Take Score;
 the existing product label is Take Win. Correcting that test selector passed all
@@ -67,6 +70,39 @@ back while awaiting the next authoritative card; `Confirming…` appears after
 one second. The existing 100-ms presentation clock drives this label only; no
 timer releases gameplay. Other felt callers retain their existing presentation.
 
+## Same-turn regional comparison
+
+[Sanitized per-placement evidence](evidence/async-run21-hotfix-20261109.json).
+The signed-in 390 × 844 turn alternated endpoints while keeping the same build,
+handler, connection and frozen gameplay rules. Headers confirmed `cle1::cle1`
+for the new route and `cle1::iad1` for the old route.
+
+| Uninjected normal placements | Old endpoint | New endpoint |
+|---|---:|---:|
+| Samples | 5 | 3 |
+| Tap → next playable range | 409–543 ms | 194–260 ms |
+| Median | 511 ms | 226 ms |
+
+The median decreased about 56% in this small alternating sample. New-endpoint
+remote-call totals stayed 96–136 ms through placement 11, including the server
+responses whose delivery was deliberately interrupted. Old-endpoint totals on
+ordinary moves were 282–378 ms. The one-second status appeared at 1,042 ms during
+the intentional 1,800-ms acknowledgment hold; normal new-endpoint placements
+did not show it.
+
+The response-loss retry used request `246ea5db-a3d2-495c-a8a2-ea9c1451c47b`, revision
+63, and received revision 64 again. The ten-second timeout retained request
+`b8c0082c-26c7-45ba-b56d-55043693273a`, revision 65, and retry received revision 66
+again. Read-only database inspection confirmed exactly one receipt for each.
+The timeout recovery succeeded under Slow 4G. These recovery timings are not
+ordinary placement latency samples. The final old-endpoint throttled placement
+took 1,307 ms; an ordinary new-endpoint throttled comparison is still required.
+
+The round expired after placement 12 at aggregate 80. Intentional fault waits and
+test-driver gaps consumed the gameplay clock; this was not a stuck pending
+request. The clean follow-up should play continuously to qualification or the
+last legal placement before collecting, so later-card behavior is measured.
+
 ## Validation so far
 
 Typecheck and production bundling passed. 88 focused checks cover the adapter,
@@ -91,7 +127,10 @@ Baseline production tests used the explicitly authorized play-money match
 - A deliberately stale revision returned 409, removed the tentative placement,
   and restored the confirmed board at revision 34 without advancing the card.
 
-Physical iPhone acceptance, regional before/after comparison, and candidate
-browser recovery checks remain pending. Samples are exploratory, not percentiles.
-Temporary server timing must be removed after measurement; its header window
-also expires automatically at 16:00 UTC on November 9.
+Physical iPhone acceptance, the clean extended sequence, ordinary new-endpoint
+Slow 4G placements, and candidate reopen-during-request checks remain pending.
+Samples are exploratory, not percentiles. Temporary server timing is removed in
+the `async-run21-timing-removed-20261109` follow-up; the shared API handler returns
+to its exact pre-investigation contents. The regional route, timeout recovery and
+Async-only status behavior remain. Subsequent clean-run tap/dispatch/response/frame
+measurements need no permanent production instrumentation.
