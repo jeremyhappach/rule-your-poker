@@ -1,4 +1,4 @@
-# Async Run21 latency correction — November 9, 2026 — extended smoke pending
+# Async Run21 latency correction — November 9, 2026 — browser smoke passed
 
 Gameplay-tested build `8415395b545f16a94542cdcb9925237e715fedf0`, deployment
 `dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo`, routes Async Run21 through the existing
@@ -15,12 +15,16 @@ fell from 282–378 ms to 96–136 ms. Later new-endpoint responses stayed fast 
 placement 11. Slow acknowledgment, original-ID lost-response retry and ten-second
 timeout recovery passed; database receipts prove one move for each retried ID.
 
-Temporary server timing is removed in the follow-up release. Gameplay authority
-is unchanged. The round clock expired after the fault waits; a second authorized
-play-money invitation, `ad906e4b-fdfe-4f0b-8bdf-6acbcb9865e8`, awaits acceptance for
-a clean extended sequence and ordinary Slow 4G placement measurements. Those
-checks and physical iPhone acceptance remain pending; do not mark full hotfix
-verification complete. Checkpoint: `async-run21-timing-removed-20261109`.
+Production build `79d113de791616f20ab716a33bbe558db8c91f56`, deployment
+`dpl_BEoJpuZ5isvwcu77ggyri2rQPEYy`, removed temporary server timing. Its clean
+17-placement run passed: first eight Slow 4G 629–676 ms (median 650); later nine
+normal 193–260 ms (median 215), with no increasing later-card delay and no ordinary
+Confirming message. Pass advanced the next card in 293 ms. Reloading while the
+qualified Take Win acknowledgment was held restored the confirmed 2,800-point
+result and passed the turn to Hap; database receipts confirmed one move each.
+Gameplay authority is unchanged. Physical iPhone responsiveness acceptance remains
+with Jeremy. Checkpoint: `async-run21-timing-removed-20261109`; browser-evidence
+checkpoint: `async-run21-browser-verified-20261109`.
 See [evidence and remaining checks](ASYNC_RUN21_LATENCY_HOTFIX.md).
 
 # Voyage opening / Horses suggested holds — November 8, 2026

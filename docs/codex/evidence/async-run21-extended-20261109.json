@@ -1,0 +1,229 @@
+{
+  "build": "79d113de791616f20ab716a33bbe558db8c91f56",
+  "deployment": "dpl_BEoJpuZ5isvwcu77ggyri2rQPEYy",
+  "date": "2026-11-09",
+  "match": "ad906e4b-fdfe-4f0b-8bdf-6acbcb9865e8",
+  "child": "4d49926d-aac7-4de8-aa6d-cd6aa5851783",
+  "round": 1,
+  "device": "Signed-in Chrome, 390x844 mobile emulation; same computer and connection as baseline; not physical iPhone",
+  "method": "UI pointerdown to request dispatch, response headers, and first frame containing the authoritative current card with an enabled column. All /api/delayed-run21 requests; response IDs cle1::cle1; no Server-Timing header. First 8 placements Chrome Slow 4G, next 9 No throttling. No injected faults during the 17-placement sequence. Rounded milliseconds.",
+  "rows": [
+    {
+      "n": 1,
+      "network": "Slow 4G",
+      "feedback": 61.4,
+      "dispatch": 64,
+      "response": 658.3,
+      "playable": 661.2,
+      "revision": 20,
+      "confirmedRevision": 21,
+      "confirmingShown": false
+    },
+    {
+      "n": 2,
+      "network": "Slow 4G",
+      "feedback": 26.5,
+      "dispatch": 29.9,
+      "response": 629.1,
+      "playable": 643.9,
+      "revision": 21,
+      "confirmedRevision": 22,
+      "confirmingShown": false
+    },
+    {
+      "n": 3,
+      "network": "Slow 4G",
+      "feedback": 28.6,
+      "dispatch": 31.6,
+      "response": 645.5,
+      "playable": 660.2,
+      "revision": 22,
+      "confirmedRevision": 23,
+      "confirmingShown": false
+    },
+    {
+      "n": 4,
+      "network": "Slow 4G",
+      "feedback": 26.9,
+      "dispatch": 30.9,
+      "response": 672.5,
+      "playable": 676.1,
+      "revision": 23,
+      "confirmedRevision": 24,
+      "confirmingShown": false
+    },
+    {
+      "n": 5,
+      "network": "Slow 4G",
+      "feedback": 23.3,
+      "dispatch": 27,
+      "response": 648.6,
+      "playable": 656.4,
+      "revision": 24,
+      "confirmedRevision": 25,
+      "confirmingShown": false
+    },
+    {
+      "n": 6,
+      "network": "Slow 4G",
+      "feedback": 20,
+      "dispatch": 24.4,
+      "response": 621.6,
+      "playable": 635.5,
+      "revision": 25,
+      "confirmedRevision": 26,
+      "confirmingShown": false
+    },
+    {
+      "n": 7,
+      "network": "Slow 4G",
+      "feedback": 25.6,
+      "dispatch": 29,
+      "response": 628.1,
+      "playable": 642.3,
+      "revision": 26,
+      "confirmedRevision": 27,
+      "confirmingShown": false
+    },
+    {
+      "n": 8,
+      "network": "Slow 4G",
+      "feedback": 26.3,
+      "dispatch": 29.7,
+      "response": 622.4,
+      "playable": 628.9,
+      "revision": 27,
+      "confirmedRevision": 28,
+      "confirmingShown": false
+    },
+    {
+      "n": 9,
+      "network": "Normal",
+      "feedback": 29.8,
+      "dispatch": 32.8,
+      "response": 218.9,
+      "playable": 228.4,
+      "revision": 28,
+      "confirmedRevision": 29,
+      "confirmingShown": false
+    },
+    {
+      "n": 10,
+      "network": "Normal",
+      "feedback": 26.8,
+      "dispatch": 29.9,
+      "response": 197,
+      "playable": 210,
+      "revision": 29,
+      "confirmedRevision": 30,
+      "confirmingShown": false
+    },
+    {
+      "n": 11,
+      "network": "Normal",
+      "feedback": 25.3,
+      "dispatch": 28.5,
+      "response": 246.5,
+      "playable": 258.6,
+      "revision": 30,
+      "confirmedRevision": 31,
+      "confirmingShown": false
+    },
+    {
+      "n": 12,
+      "network": "Normal",
+      "feedback": 26.1,
+      "dispatch": 30.6,
+      "response": 200.3,
+      "playable": 209.6,
+      "revision": 31,
+      "confirmedRevision": 32,
+      "confirmingShown": false
+    },
+    {
+      "n": 13,
+      "network": "Normal",
+      "feedback": 26,
+      "dispatch": 30.4,
+      "response": 187.2,
+      "playable": 192.5,
+      "revision": 32,
+      "confirmedRevision": 33,
+      "confirmingShown": false
+    },
+    {
+      "n": 14,
+      "network": "Normal",
+      "feedback": 27,
+      "dispatch": 30.9,
+      "response": 227.8,
+      "playable": 246.7,
+      "revision": 33,
+      "confirmedRevision": 34,
+      "confirmingShown": false
+    },
+    {
+      "n": 15,
+      "network": "Normal",
+      "feedback": 26.8,
+      "dispatch": 30.1,
+      "response": 182.7,
+      "playable": 193.6,
+      "revision": 34,
+      "confirmedRevision": 35,
+      "confirmingShown": false
+    },
+    {
+      "n": 16,
+      "network": "Normal",
+      "feedback": 26.8,
+      "dispatch": 31.8,
+      "response": 242.6,
+      "playable": 259.6,
+      "revision": 35,
+      "confirmedRevision": 36,
+      "confirmingShown": false
+    },
+    {
+      "n": 17,
+      "network": "Normal",
+      "feedback": 26,
+      "dispatch": 30.8,
+      "response": 193.3,
+      "playable": 215,
+      "revision": 36,
+      "confirmedRevision": 37,
+      "confirmingShown": false
+    }
+  ],
+  "pass": {
+    "requestId": "f8c73eae-a34e-4f6e-aa2b-7c4b418e3620",
+    "revision": 37,
+    "confirmedRevision": 38,
+    "dispatch": 29.8,
+    "response": 282.8,
+    "playable": 293.2,
+    "receipts": 1
+  },
+  "collectionReopen": {
+    "requestId": "3b8a95e4-2b7e-4811-88d2-6c93b0f5633a",
+    "revision": 38,
+    "confirmedRevision": 39,
+    "dispatch": 18.4,
+    "response": 263.6,
+    "parsed": 264,
+    "acknowledgmentHeld": true,
+    "reloadedWhileButtonDisabled": true,
+    "confirmedScoreAfterReload": 2800,
+    "aggregateAtCollection": 97,
+    "receipts": 1,
+    "actorAfterRecovery": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+    "segmentAfterRecovery": 3,
+    "realMoney": false,
+    "limit": "The original held response ID and its single database receipt were captured. The automatic reload request body was not separately captured."
+  },
+  "limitations": [
+    "Exploratory samples, not percentiles.",
+    "Physical iPhone responsiveness acceptance remains with Jeremy."
+  ]
+}

@@ -1,3 +1,16 @@
+# Async Run21 latency — November 9, 2026 — production browser qualification
+
+`async-run21-browser-verified-20261109` records the browser evidence for gameplay
+build `79d113de791616f20ab716a33bbe558db8c91f56`. Same-turn endpoint comparison
+reduced median normal tap-to-playable latency from 511 to 226 ms. A separate
+17-placement run passed through qualification: eight Slow 4G placements at
+629–676 ms, nine later normal placements at 193–260 ms. Slow acknowledgment,
+lost-response retry, timeout recovery, rejected-action reconciliation, Pass and
+qualified collection/reopen checks preserve authority and receipt uniqueness.
+Typecheck, production build and 88 focused checks pass. Physical iPhone
+responsiveness acceptance remains with Jeremy; no owner smoke is claimed.
+See [latency evidence](ASYNC_RUN21_LATENCY_HOTFIX.md).
+
 # Complete P-Town polish — November 8, 2026 — automated qualification
 
 `ptown-polish-complete-2026-11-08` records the candidate; its verified tag records

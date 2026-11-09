@@ -1,17 +1,20 @@
 # Async Run21 latency hotfix — November 9, 2026
 
-Status: regional candidate published; same-turn comparison demonstrates lower
-request latency. A clean longer run under throttling remains pending. The label
-change is separate from the measured regional improvement.
+Status: published and production browser qualification passed, including a clean
+17-placement sequence and reopening an unresolved qualified collection. Physical
+iPhone responsiveness acceptance remains with Jeremy. The label change is
+separate from the measured regional improvement.
 
-Candidate `8415395b545f16a94542cdcb9925237e715fedf0` is READY on deployment
-`dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo`, serving `holm357.com`. An unauthenticated
+Initial candidate `8415395b545f16a94542cdcb9925237e715fedf0` was verified READY on
+deployment `dpl_HtEQZ3FbutxpeYfZYunrr1DgbzVo` at `holm357.com`. An unauthenticated
 request to the new route returned the expected 401 and an `x-vercel-id` beginning
 `cle1::cle1`, confirming function placement without weakening authentication.
 Hap Gmail's final round exercised 12 placements, including slow acknowledgment,
-response loss and timeout. That play-money match completed normally. A second
-authorized play-money invitation, `ad906e4b-fdfe-4f0b-8bdf-6acbcb9865e8`, is reserved
-for a clean longer sequence without injected faults consuming its gameplay clock.
+response loss and timeout. That play-money match completed normally. Follow-up
+build `79d113de791616f20ab716a33bbe558db8c91f56`, deployment
+`dpl_BEoJpuZ5isvwcu77ggyri2rQPEYy`, removed temporary server timing and passed the
+clean extended run described below. Its production manifest and signed-in browser
+both identified that exact build. Checkpoint: `async-run21-timing-removed-20261109`.
 
 The added qualified-collection test initially used the prompt's name Take Score;
 the existing product label is Take Win. Correcting that test selector passed all
@@ -51,10 +54,10 @@ and database execution; they are not isolated SQL execution measurements.
 Vercel's existing API runs in `iad1`; Supabase project `xvhmbuppghwmwpwrkzao`
 reports `us-east-2`. [Vercel's `cle1`](https://vercel.com/docs/regions) maps to that
 region; [per-function configuration](https://vercel.com/docs/functions/configuring-functions/region)
-keeps this change scoped to the new endpoint. Regional placement is a
-candidate optimization until compared, not a claim that all RPC time is transit.
+keeps this change scoped to the new endpoint. The same-turn comparison below
+verified the regional improvement; it does not isolate SQL execution from transit.
 
-## Scoped candidate
+## Scoped correction
 
 `api/delayed-run21.ts` reexports the existing authenticated handler. Its function
 region is `cle1`. Only requests identified as Run21 use this route; the other
@@ -96,12 +99,47 @@ The response-loss retry used request `246ea5db-a3d2-495c-a8a2-ea9c1451c47b`, rev
 again. Read-only database inspection confirmed exactly one receipt for each.
 The timeout recovery succeeded under Slow 4G. These recovery timings are not
 ordinary placement latency samples. The final old-endpoint throttled placement
-took 1,307 ms; an ordinary new-endpoint throttled comparison is still required.
+took 1,307 ms; ordinary new-endpoint throttled measurements follow below.
 
 The round expired after placement 12 at aggregate 80. Intentional fault waits and
 test-driver gaps consumed the gameplay clock; this was not a stuck pending
-request. The clean follow-up should play continuously to qualification or the
-last legal placement before collecting, so later-card behavior is measured.
+request. The clean follow-up below reached qualification through 17 placements.
+
+## Extended production sequence
+
+[Per-placement evidence](evidence/async-run21-extended-20261109.json), build
+`79d113de7`, same signed-in Chrome at 390 × 844. Authorized play-money match
+`ad906e4b-fdfe-4f0b-8bdf-6acbcb9865e8`, child
+`4d49926d-aac7-4de8-aa6d-cd6aa5851783`, Hap Gmail round 1.
+
+All 17 consecutive placements used `/api/delayed-run21`, with no fault injections
+during the sequence. The first eight used Chrome Slow 4G; throttling was then
+disabled for the last nine. Each action returned the next authoritative card.
+
+| Placements | Tap → dispatch | Tap → response headers | Tap → next playable | Median playable |
+|---|---:|---:|---:|---:|
+| 1–8, Slow 4G | 24–64 ms | 622–673 ms | 629–676 ms | 650 ms |
+| 9–17, normal | 29–33 ms | 183–247 ms | 193–260 ms | 215 ms |
+
+Feedback appeared in 20–61 ms overall (25–30 ms on the later normal placements).
+None of these placements showed Confirming. Later cards showed no increasing
+delay in this sample. The response-to-playable interval remained 3–22 ms.
+The earlier Arcade baseline on this same device/connection was 319–462 ms normal
+and 638 ms Slow 4G; its sample counts were two and one, respectively.
+
+At aggregate 97, Pass advanced revision 37 → 38 and the next card became playable
+in 293 ms. Take Win then returned revision 39 in 264 ms. Its acknowledgment was
+deliberately held, and a full reload occurred while the control remained disabled.
+The reopened flow recovered to match home showing Happach Gmail's 2,800 points
+and Hap's next turn. Read-only database inspection confirmed one Pass receipt
+(`f8c73eae-a34e-4f6e-aa2b-7c4b418e3620`) and one collection receipt
+(`3b8a95e4-2b7e-4811-88d2-6c93b0f5633a`), revisions 38 and 39; child revision 39,
+segment 3, actor Hap, real money false. The reload request body was not separately
+captured; original-ID transport replay is additionally covered by the earlier
+lost-response/timeout tests and focused component/transport tests.
+
+Chrome throttling was restored to No throttling. Reload removed the in-memory
+probe; its temporary session-storage evidence key was removed and verified absent.
 
 ## Validation so far
 
@@ -127,10 +165,9 @@ Baseline production tests used the explicitly authorized play-money match
 - A deliberately stale revision returned 409, removed the tentative placement,
   and restored the confirmed board at revision 34 without advancing the card.
 
-Physical iPhone acceptance, the clean extended sequence, ordinary new-endpoint
-Slow 4G placements, and candidate reopen-during-request checks remain pending.
-Samples are exploratory, not percentiles. Temporary server timing is removed in
+Physical iPhone responsiveness acceptance remains pending. Browser qualification
+is complete; samples are exploratory, not percentiles. Temporary server timing is removed in
 the `async-run21-timing-removed-20261109` follow-up; the shared API handler returns
 to its exact pre-investigation contents. The regional route, timeout recovery and
-Async-only status behavior remain. Subsequent clean-run tap/dispatch/response/frame
-measurements need no permanent production instrumentation.
+Async-only status behavior remain. The extended tap/dispatch/response/frame
+measurements used only a temporary browser probe, which has been removed.
