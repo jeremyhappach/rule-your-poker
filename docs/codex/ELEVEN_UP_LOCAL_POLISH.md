@@ -6,6 +6,25 @@ write or deployment is authorized. Jeremy will separately clear publication
 after the November 10 storage check. Bridge Run and the source checkout are
 untouched.
 
+## Requested overhead lamp — November 9
+
+The shallow dark-brass pendant is native SVG artwork in the existing decorative
+backdrop. Its warm underside sits over the far rail, below the score pill. A
+separate translucent amber ellipse feathers to transparent on the upper felt.
+Both remain behind all live balls and controls, inherit pointer-events:none,
+and contribute no layout dimensions. The lamp keeps its natural aspect ratio;
+its container crops the top of the shade on shorter screens.
+
+The extended full-rack browser proof passes at 320×568, 390×844 and 430×932:
+lamp centered and below the score row; shade and glow bounds clear of the top
+ball's 5px selection-ring envelope; every live ball/control rectangle identical
+with artwork shown or hidden; shade cropping confirmed at 320×568; all 22 balls,
+controls, perimeter rails and pockets still visible. Existing tap, disabled
+Take Score and full-rack score-sequence checks pass. TypeScript, 61 focused tests
+and local build pass. Screenshot: `dev/eleven-up-local/evidence/lamp-390.png`.
+This is the local production-component fixture with offline sample state, not
+physical iPhone or production acceptance. No publication or deployment occurred.
+
 ## Dedicated physical table revision — November 9
 
 Jeremy rejected the previous perimeter-border render as visually missing the

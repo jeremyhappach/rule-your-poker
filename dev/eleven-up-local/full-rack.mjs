@@ -24,13 +24,22 @@ try{
    });
    const current=document.querySelector('.eleven-current'),cradleStyle=getComputedStyle(current,'::before'),cradleHome=rect(current);
    const cradle={x:cradleHome.x+parseFloat(cradleStyle.left),y:cradleHome.y+parseFloat(cradleStyle.top),right:cradleHome.right-parseFloat(cradleStyle.right),bottom:cradleHome.bottom-parseFloat(cradleStyle.bottom)};
-   return {balls,scene,table,rails,pockets,cradle,draw:rect(document.querySelector('.eleven-draw')),pass:rect(document.querySelector('.eleven-pass')),timer:rect(document.querySelector('.eleven-clock')),takeDisabled:document.querySelector('.eleven-take-score').disabled,score:document.querySelector('.eleven-score-pill strong').textContent,decorationCapturesInput:[...document.querySelectorAll('.eleven-table-backdrop,.eleven-table-backdrop *')].some(el=>getComputedStyle(el).pointerEvents!=='none'),overflow:document.documentElement.scrollWidth>innerWidth||document.documentElement.scrollHeight>innerHeight};
+   const lamp=rect(document.querySelector('.eleven-table-lamp')),shade=rect(document.querySelector('.eleven-table-lamp img')),light=rect(document.querySelector('.eleven-table-light')),scoreBox=rect(document.querySelector('.eleven-score-pill'));
+   const measureLive=()=>JSON.stringify([...document.querySelectorAll('.eleven-ball,.eleven-draw,.eleven-pass,.eleven-take-score,.eleven-score-pill,.eleven-clock')].map(rect));
+   const before=measureLive(),art=[document.querySelector('.eleven-table-lamp'),document.querySelector('.eleven-table-light')];art.forEach(el=>el.style.display='none');const withoutArt=measureLive();art.forEach(el=>el.style.removeProperty('display'));
+   return {balls,scene,table,rails,pockets,cradle,lamp,shade,light,scoreBox,liveGeometryUnchanged:before===withoutArt,draw:rect(document.querySelector('.eleven-draw')),pass:rect(document.querySelector('.eleven-pass')),timer:rect(document.querySelector('.eleven-clock')),takeDisabled:document.querySelector('.eleven-take-score').disabled,score:document.querySelector('.eleven-score-pill strong').textContent,decorationCapturesInput:[...document.querySelectorAll('.eleven-table-backdrop,.eleven-table-backdrop *')].some(el=>getComputedStyle(el).pointerEvents!=='none'),overflow:document.documentElement.scrollWidth>innerWidth||document.documentElement.scrollHeight>innerHeight};
   });
   assert.equal(metrics.balls.length,22);assert.ok(metrics.balls.every(b=>b.unobstructed));assert.ok(metrics.balls.every(b=>b.ringClearance>0));
   assert.equal(metrics.balls.filter(b=>b.enabled).length,3,'only the three legally exposed full-rack balls are selectable');
   assert.equal(metrics.takeDisabled,true);assert.equal(metrics.score,'0');assert.equal(metrics.overflow,false);assert.equal(metrics.decorationCapturesInput,false);
   assert.equal(metrics.rails.length,8);assert.equal(metrics.pockets.length,6);
   for(const r of [metrics.table,...metrics.rails,...metrics.pockets])assert.ok(r.x>=0&&r.y>=0&&r.right<=width&&r.bottom<=height,'entire table outline visible');
+  assert.ok(Math.abs(metrics.lamp.x+metrics.lamp.width/2-width/2)<.5,'lamp centered');
+  assert.ok(metrics.lamp.y>metrics.scoreBox.bottom,'lamp below score pill');
+  assert.ok(metrics.lamp.bottom<Math.min(...metrics.balls.map(b=>b.y))-5,'shade clear of top-ball ring');
+  assert.ok(metrics.light.bottom<Math.min(...metrics.balls.map(b=>b.y))-5,'amber pool ends before ball rings');
+  assert.equal(metrics.liveGeometryUnchanged,true,'lamp and light do not move any live element');
+  if(height===568)assert.ok(metrics.shade.height>metrics.lamp.height,'short screen crops the shade instead of shrinking it');
   assert.ok(metrics.cradle.right<metrics.pass.x,'return cradle stays separate from Pass');assert.ok(metrics.cradle.y>metrics.timer.bottom,'return cradle stays below timer');
   assert.ok(metrics.cradle.bottom<metrics.scene.bottom-5,'cradle stays above rail');
   for(const b of metrics.balls)assert.ok(b.width>=32&&b.height>=32,'existing ball target dimensions retained');
@@ -39,6 +48,7 @@ try{
   }
   await page.screenshot({path:resolve(out,`full-rack-${width}.png`)});
   if(width===390)await page.screenshot({path:resolve(out,'table-backdrop-390.png')});
+  if(width===390)await page.screenshot({path:resolve(out,'lamp-390.png')});
   await page.getByRole('button',{name:'Take Score'}).evaluate(el=>el.click());assert.equal(await page.evaluate(()=>window.review.submissions.length),0,'disabled score never submits');
   await page.getByRole('button',{name:'Ball 1, exposed, position 9'}).tap();
   assert.equal(await page.getByRole('button',{name:'Ball 1, exposed, position 9'}).getAttribute('aria-pressed'),'true');

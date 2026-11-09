@@ -21,7 +21,11 @@
 .eleven-table-pocket--middle-left{top:50%;left:0;transform:translateY(-50%)}.eleven-table-pocket--middle-right{top:50%;right:0;transform:translateY(-50%)}
 .eleven-table-sights{position:absolute;left:0;right:0;display:flex;justify-content:space-between;z-index:2;padding:0 calc(var(--table-wood)/2 - 1.5px)}
 .eleven-table-sights i{width:3px;height:8px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#dcc18a;opacity:.85}
-.eleven-table-light{position:absolute;inset:0;z-index:4;background:radial-gradient(ellipse at 50% -10%,#f9c25820,transparent 65%);border-radius:inherit}
+.eleven-table-light{position:absolute;top:var(--table-end);left:13%;width:74%;height:min(11cqh,5.5rem);z-index:4;background:radial-gradient(ellipse at 50% 0,#ffd37642 0,#efb94b20 32%,#d99c3008 58%,transparent 80%)}
+/* Absolute artwork overlaps only the decorative far rail. A short container
+ * clips the shade's top; neither the rack nor HUD gives up any layout space. */
+.eleven-table-lamp{position:absolute;left:50%;top:-.35rem;transform:translateX(-50%);width:min(43cqw,12rem);height:min(4.8cqh,2.25rem);overflow:hidden;z-index:5;filter:drop-shadow(0 3px 3px #0009)}
+.eleven-table-lamp img{position:absolute;bottom:0;left:0;display:block;width:100%;height:auto;max-width:none;user-select:none}
 .eleven-scene .fullscreen-game-toolbar{position:relative;z-index:1}
 .eleven-scene .fullscreen-game-toolbar button{background:linear-gradient(#142b1cee,#071d15ee);border-color:#c6a45c99;box-shadow:inset 0 1px #ffe2a519,0 2px 4px #0006;color:#fff0c7}
 .eleven-root{position:absolute;inset:0;container:eleven/size}

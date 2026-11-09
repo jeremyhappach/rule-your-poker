@@ -12,8 +12,12 @@ the existing playfield: complete walnut side/end rails, green cushions, six
 recessed pockets and overhead light. Rack and control geometry remain unchanged.
 The full outline fits at 320×568, 390×844 and 430×932, with at least 5.05px of
 clearance beyond outer selection rings. All 22 balls remain visible throughout
-scoring; the default offline review shows the full Ready rack. Owner table and
-spacing approval is pending before any further polish.
+scoring; the default offline review shows the full Ready rack. Jeremy's requested
+lamp addition places a shallow dark-brass pendant with an illuminated underside
+at the far rail, beneath the score row. Its localized amber pool ends before the
+top ball's selection ring; short screens crop the shade instead of changing live
+geometry. Portrait checks at 320×568, 390×844 and 430×932 pass. Owner visual
+approval remains pending; all work remains local.
 
 TypeScript, 61 focused tests, a local build, four interaction layouts and twelve
 full-rack geometry comparisons pass. Browser/audio evidence uses offline sample
