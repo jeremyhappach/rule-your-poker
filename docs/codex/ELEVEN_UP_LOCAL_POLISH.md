@@ -6,7 +6,33 @@ write or deployment is authorized. Jeremy will separately clear publication
 after the November 10 storage check. Bridge Run and the source checkout are
 untouched.
 
-## Full-board reference follow-up — November 9
+## Dedicated physical table revision — November 9
+
+Jeremy rejected the previous perimeter-border render as visually missing the
+table and crowding the rack. The border/pocket pseudo-elements are replaced by
+`ElevenTableBackdrop.tsx`, a noninteractive decorative layer inside the existing
+playfield. Its full walnut side/end rails, beveled green cushions, six recessed
+pockets and warm light are visible below the HUD and around the live rack and
+return cradle. The art contributes no layout dimensions and owns no game state.
+Shorter contact shadows separate adjacent balls without altering their art
+diameter, rack coordinates, spacing or hit targets.
+
+The original full-rack geometry is retained; no balls or controls were moved
+to accommodate the art. Browser checks at 320×568, 390×844 and 430×932 prove
+the complete table/rail/pocket bounds stay inside the viewport, every ball's
+center and four interior points resolve to its own button, and the expanded
+selection-ring envelope remains at least 5.05px clear of actual rail, cushion
+and pocket bounds. Disabled Take Score, return cradle, full-rack scoring and
+existing sound guards remain intact. The 390×844 screenshot matches the last
+shared local portrait viewport: `evidence/table-backdrop-390.png` below
+`dev/eleven-up-local/`. Source rendering uses offline sample state, as before.
+
+61 focused tests, TypeScript, production build, the existing browser/audio
+proof and twelve exact baseline-geometry comparisons pass. Physical iPhone
+acceptance and Jeremy's visual table/spacing approval are pending. Stop here
+before another polish pass. All changes remain local; no publication occurred.
+
+## Earlier full-board reference follow-up — superseded backdrop
 
 Jeremy's emerald billiards mockup is the layout/material reference. Its printed
 balls, score, labels and controls are not used as an image overlay. The shared

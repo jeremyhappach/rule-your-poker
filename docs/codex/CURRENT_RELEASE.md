@@ -6,12 +6,14 @@ sequence. Rules, ball geometry, authoritative score math and progression are
 preserved. This branch is not integrated or published; no deployment or push
 is authorized before Jeremy's explicit clearance after the storage check.
 
-The full-board reference follow-up adds straight wood rails, perimeter pockets,
-natural felt grain and a separate incoming-ball return cradle. The default
-offline review now shows all 22 balls and state-driven disabled Take Score.
-Three portrait touch/clearance checks retain the original targets, with at
-least 10.99px beyond their outer selection rings and decorative perimeter.
-The full rack remains visible throughout the existing score animation.
+Jeremy rejected the edge-border candidate because it did not visibly read as
+a physical table. The replacement uses a dedicated decorative backdrop within
+the existing playfield: complete walnut side/end rails, green cushions, six
+recessed pockets and overhead light. Rack and control geometry remain unchanged.
+The full outline fits at 320×568, 390×844 and 430×932, with at least 5.05px of
+clearance beyond outer selection rings. All 22 balls remain visible throughout
+scoring; the default offline review shows the full Ready rack. Owner table and
+spacing approval is pending before any further polish.
 
 TypeScript, 61 focused tests, a local build, four interaction layouts and twelve
 full-rack geometry comparisons pass. Browser/audio evidence uses offline sample

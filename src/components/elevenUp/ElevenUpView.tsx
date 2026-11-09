@@ -17,6 +17,7 @@ import {platformAudio} from '@/lib/audio/platformAudio';
 import {elevenSelectCue,elevenDeselectCue} from '@/lib/elevenUp/ballSounds';
 import {elevenScoreSequence} from '@/lib/elevenUp/scorePresentation';
 import {ElevenScorePill} from './ElevenScorePill';
+import {ElevenTableBackdrop} from './ElevenTableBackdrop';
 import './elevenUp.css';
 const colors=['','#f6c62d','#246bd6','#d63b32','#7433b1','#f18329','#168c63','#9e2745','#262b32','#e6b923','#2b6bc3'];
 function Ball({id}:{id:number}){const value=ballValue(id);return <span className="eleven-ball-art" data-striped={value>8} style={{'--ball-color':colors[value]} as CSSProperties}><span>{value}</span></span>;}
@@ -74,6 +75,7 @@ function ElevenBoard({v,userId,now,pending,error,epoch,onIntent,onReconnect,onFi
    {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.paused&&onResume&&v.players.some(p=>p.id===v.viewerId&&!p.autoplay)&&<button className="eleven-autoplay" disabled={pending||!!error} onClick={()=>void onResume()}>Resume game</button>}
    {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.paused&&!onResume&&v.players.some(p=>p.id===v.viewerId&&!p.autoplay)&&<span className="eleven-autoplay" role="status">Paused · ask host to resume</span>}
    {!sessionEnded&&<div className="eleven-playfield">
+   <ElevenTableBackdrop/>
    {!terminal&&<>
    <div className="eleven-rack" aria-label="Pool balls on felt">
     {b.slots.map((id,slot)=>{if(id===null)return null;const [x,y]=ballPosition(slot),exposed=b.exposed.includes(slot);return <button key={id} className="eleven-ball" style={{left:`${x}%`,top:`${y}%`}} aria-label={`Ball ${ballValue(id)}, ${exposed?'exposed':'covered'}, position ${slot+1}`} aria-pressed={shownSelection.includes(id)} data-exposed={exposed} disabled={!canAct||!exposed} onClick={()=>toggle(id)}><Ball id={id}/></button>;})}

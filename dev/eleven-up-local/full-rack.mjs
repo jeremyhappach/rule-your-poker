@@ -14,19 +14,23 @@ try{
   await page.setViewportSize({width,height});await page.goto(url);await page.locator('.eleven-ball').first().waitFor();
   const metrics=await page.evaluate(()=>{
    const rect=el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
-   const scene=rect(document.querySelector('.eleven-scene')),pockets=16*.64;
+   const scene=rect(document.querySelector('.eleven-scene')),table=rect(document.querySelector('.eleven-table-backdrop'));
+   const rails=[...document.querySelectorAll('.eleven-table-rail,.eleven-table-cushion')].map(rect),pockets=[...document.querySelectorAll('.eleven-table-pocket')].map(rect);
    const balls=[...document.querySelectorAll('.eleven-ball')].map(el=>{
     const r=rect(el),cx=r.x+r.width/2,cy=r.y+r.height/2;
     const unobstructed=[[0,0],[-.3,0],[.3,0],[0,-.3],[0,.3]].every(([x,y])=>document.elementFromPoint(cx+x*r.width,cy+y*r.height)?.closest('button')===el);
-    return {...r,unobstructed,enabled:!el.disabled,ringClearance:Math.min(r.x-scene.x-pockets,r.y-scene.y-pockets,scene.right-pockets-r.right,scene.bottom-pockets-r.bottom)-5};
+    const separation=b=>Math.hypot(Math.max(b.x-r.right,r.x-b.right,0),Math.max(b.y-r.bottom,r.y-b.bottom,0));
+    return {...r,unobstructed,enabled:!el.disabled,ringClearance:Math.min(...[...rails,...pockets].map(separation))-5};
    });
    const current=document.querySelector('.eleven-current'),cradleStyle=getComputedStyle(current,'::before'),cradleHome=rect(current);
    const cradle={x:cradleHome.x+parseFloat(cradleStyle.left),y:cradleHome.y+parseFloat(cradleStyle.top),right:cradleHome.right-parseFloat(cradleStyle.right),bottom:cradleHome.bottom-parseFloat(cradleStyle.bottom)};
-   return {balls,scene,cradle,draw:rect(document.querySelector('.eleven-draw')),pass:rect(document.querySelector('.eleven-pass')),timer:rect(document.querySelector('.eleven-clock')),takeDisabled:document.querySelector('.eleven-take-score').disabled,score:document.querySelector('.eleven-score-pill strong').textContent,decorationCapturesInput:['::before','::after'].some(pseudo=>getComputedStyle(document.querySelector('.eleven-scene'),pseudo).pointerEvents!=='none'),overflow:document.documentElement.scrollWidth>innerWidth||document.documentElement.scrollHeight>innerHeight};
+   return {balls,scene,table,rails,pockets,cradle,draw:rect(document.querySelector('.eleven-draw')),pass:rect(document.querySelector('.eleven-pass')),timer:rect(document.querySelector('.eleven-clock')),takeDisabled:document.querySelector('.eleven-take-score').disabled,score:document.querySelector('.eleven-score-pill strong').textContent,decorationCapturesInput:[...document.querySelectorAll('.eleven-table-backdrop,.eleven-table-backdrop *')].some(el=>getComputedStyle(el).pointerEvents!=='none'),overflow:document.documentElement.scrollWidth>innerWidth||document.documentElement.scrollHeight>innerHeight};
   });
   assert.equal(metrics.balls.length,22);assert.ok(metrics.balls.every(b=>b.unobstructed));assert.ok(metrics.balls.every(b=>b.ringClearance>0));
   assert.equal(metrics.balls.filter(b=>b.enabled).length,3,'only the three legally exposed full-rack balls are selectable');
   assert.equal(metrics.takeDisabled,true);assert.equal(metrics.score,'0');assert.equal(metrics.overflow,false);assert.equal(metrics.decorationCapturesInput,false);
+  assert.equal(metrics.rails.length,8);assert.equal(metrics.pockets.length,6);
+  for(const r of [metrics.table,...metrics.rails,...metrics.pockets])assert.ok(r.x>=0&&r.y>=0&&r.right<=width&&r.bottom<=height,'entire table outline visible');
   assert.ok(metrics.cradle.right<metrics.pass.x,'return cradle stays separate from Pass');assert.ok(metrics.cradle.y>metrics.timer.bottom,'return cradle stays below timer');
   assert.ok(metrics.cradle.bottom<metrics.scene.bottom-5,'cradle stays above rail');
   for(const b of metrics.balls)assert.ok(b.width>=32&&b.height>=32,'existing ball target dimensions retained');
@@ -34,6 +38,7 @@ try{
    const a=metrics.balls[i],b=metrics.balls[j];assert.ok(Math.hypot(a.x+a.width/2-b.x-b.width/2,a.y+a.height/2-b.y-b.height/2)>=a.width/2+b.width/2-.5,'ball targets do not overlap');
   }
   await page.screenshot({path:resolve(out,`full-rack-${width}.png`)});
+  if(width===390)await page.screenshot({path:resolve(out,'table-backdrop-390.png')});
   await page.getByRole('button',{name:'Take Score'}).evaluate(el=>el.click());assert.equal(await page.evaluate(()=>window.review.submissions.length),0,'disabled score never submits');
   await page.getByRole('button',{name:'Ball 1, exposed, position 9'}).tap();
   assert.equal(await page.getByRole('button',{name:'Ball 1, exposed, position 9'}).getAttribute('aria-pressed'),'true');
