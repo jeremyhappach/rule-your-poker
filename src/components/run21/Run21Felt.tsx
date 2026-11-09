@@ -20,6 +20,7 @@ import {Exact21Feedback} from '@/lib/run21/exact21Feedback';
 import {displayedPlayerId} from '@/lib/run21/presentation';
 import {roundIntro} from '@/lib/run21/roundIntro';
 import {Run21RoundIntro} from './Run21RoundIntro';
+import {Run21PlayerPane} from './Run21PlayerPane';
 
 const SUITS: Record<Card['suit'],DisplaySuit>={hearts:'♥',diamonds:'♦',clubs:'♣',spades:'♠'};
 export function Run21Card({card}:{card:Card|null}) {
@@ -95,11 +96,15 @@ export function Run21Felt({view,now,acceptedEvents,onIntent,pending=false,placem
   const runningTotal=board ? aggregate(board,view.config) : 0;
   const watching=playerId!==view.viewerId || view.automaticPlayers?.includes(playerId);
   const turnState=live?'active':watching?'watching':'inactive';
+  const scoringHelp=slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{perfectAggregate(view.config)}</small></output>}<Run21ScoringHelp config={view.config} solo={solo}/></>);
   // A single centered pair in the same interaction layer, just inside the rim.
   const draw=drawRect || layout === 'fullscreen' ? <div className="run21-draw" data-run21-draw style={layout === 'table' && drawRect ? {left:`${drawRect.x*100}%`,top:`${drawRect.y*100}%`,width:`${drawRect.width*100}%`,height:`${drawRect.height*100}%`} : undefined}>
     {slot('deck',<><Run21Card card={null}/><small className="sr-only">Deck</small></>)}
     {slot('currentCard',<><div className="run21-live-card" data-run21-turn-state={turnState}>{tentative?(showPendingStatus?<span className="run21-awaiting-card" role="status">Confirming…</span>:<Run21Card card={null}/>):board?.current&&<Run21Card card={board.current}/>}</div><small className="sr-only">{active?'Your turn':watching?'Watching':'Actions unavailable'} · Current card</small></>)}
-    {slot('help',<>{layout==='fullscreen'&&<output className="run21-running-total" data-qualified={multiplierAt(runningTotal,view.config)>0} aria-label={`Running total ${runningTotal}; qualify at ${qualificationThreshold(view.config)}`}><strong>{runningTotal}</strong><small>/{perfectAggregate(view.config)}</small></output>}<Run21ScoringHelp config={view.config} solo={solo}/></>)}
+    {layout==='fullscreen'?<div className="run21-draw-status">
+      {onIntent&&<Run21PlayerPane view={view} now={now} onIntent={onIntent} pending={pending}/>}
+      {scoringHelp}
+    </div>:scoringHelp}
     {board?.current&&!board.result&&view.active_player_id===playerId&&layout==='fullscreen'&&board.passesUsed<view.config.passes&&slot('pass',
       <button type="button" aria-label="Pass" disabled={!active} onClick={()=>{if(active)onIntent?.({type:'pass'});}}>Pass</button>)}
   </div>:null;

@@ -1,3 +1,26 @@
+# Run21 score-button placement — November 9, 2026 — approved layout correction
+
+The shared fullscreen Run21 board places the existing Take Win / Give Up control
+right of the upcard, below the timer and above the aggregate /105 label. Async,
+Arcade and live fullscreen use the same component. Pass remains on the left;
+table mode, intent handling, qualification, pending/retry guards and server
+authority retain their existing owners.
+
+The existing Run21PlayerPane now mounts once in Run21Felt's right-hand draw
+column; Run21FullscreenActions retains the timer. Native Chrome inspection of
+the offline production-component fixture passed at 390×844, 320×568, 844×390 and
+1440×900: one collection button, right of the upcard, below the timer, above the
+total, 44-pixel button height, no overlap or page overflow. Qualified collection
+returned 50,000 in the fixture and retired the button; Pass advanced the card;
+Give Up returned the existing zero-point result. These are offline presentation
+proofs, not new production gameplay or financial claims.
+
+Typecheck, Vite production build and 52 existing focused tests passed. The
+existing browser proof's former left-side expectation now matches the requested
+right-side layout; browser validation in this session used native Chrome.
+Checkpoint: `run21-score-button-right-20261109`. Owner production smoke remains
+with Jeremy.
+
 # Async Run21 latency correction — November 9, 2026 — browser smoke passed
 
 Gameplay-tested build `8415395b545f16a94542cdcb9925237e715fedf0`, deployment

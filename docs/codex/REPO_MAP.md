@@ -600,7 +600,9 @@ and resolves modes in `src/lib/canonicalShell/presentationMode.ts`; `Game.tsx`
 passes the mode into the stable `PersistentTableShell` and game renderer.
 `FullscreenGameShell.tsx` and its scoped CSS own fullscreen layout slots.
 `Run21FullscreenView.tsx` projects Run21 into those slots; `Run21GameTable.tsx`
-retains commands, shared controls and terminal effects. The offline responsive
+retains commands, shared controls and terminal effects. Fullscreen `Run21Felt.tsx`
+mounts the existing `Run21PlayerPane` collection control above the right-side
+aggregate; `Run21FullscreenActions` retains the timer. The offline responsive
 browser proof is `dev/run21/fullscreen.preview.mjs`.
 
 Aggregate auto-fold pause:

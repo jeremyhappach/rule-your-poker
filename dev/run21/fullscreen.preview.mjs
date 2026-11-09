@@ -29,12 +29,13 @@ try{
     const end=await page.locator('.run21-collect-button').boundingBox();
     const footer=await page.locator('.run21-fullscreen-actions').boundingBox();
     const passButton=await page.getByRole('button',{name:'Pass',exact:true}).boundingBox();
-    assert(end.y+end.height<=passButton.y && end.x+end.width<=card.x+2);
+    assert(end.x>=card.x+card.width-2);
     assert(passButton.y+passButton.height<=bounds.y);
     const speed=await page.locator('.run21-speed').boundingBox();
     assert(speed.width>footer.width*.55);
     assert(await page.getByText('Round 1 · $1',{exact:true}).isVisible());
     const total=await page.locator('.run21-running-total').boundingBox(),helpButton=await page.locator('.run21-help button').boundingBox();
+    assert(end.y>=speed.y+speed.height && end.y+end.height<=total.y);
     assert(total.x+total.width<=helpButton.x,JSON.stringify({width,total,helpButton}));
     assert(parseFloat(await page.locator('.run21-running-total strong').evaluate(el=>getComputedStyle(el).fontSize))>=18);
     assert.equal(await page.locator('[data-run21-turn-state]').getAttribute('data-run21-turn-state'),'active');

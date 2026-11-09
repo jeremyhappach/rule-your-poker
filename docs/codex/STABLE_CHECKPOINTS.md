@@ -1,3 +1,12 @@
+# Run21 score-button placement — November 9, 2026 — layout qualification
+
+`run21-score-button-right-20261109` records the approved shared fullscreen move
+right of the upcard, below the timer and above /105. Native Chrome layout checks
+passed at 390×844, 320×568, 844×390 and 1440×900; qualified collection, Give Up and
+Pass retained their outcomes in the offline production-component fixture.
+Typecheck, production build and 52 existing focused checks passed. Production
+owner smoke remains with Jeremy. See CURRENT_RELEASE.md for scope and evidence.
+
 # Async Run21 latency — November 9, 2026 — production browser qualification
 
 `async-run21-browser-verified-20261109` records the browser evidence for gameplay

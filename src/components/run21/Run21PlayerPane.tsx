@@ -40,7 +40,6 @@ export function Run21Timer({view,now}:{view:Projection;now:number}) {
 
 export function Run21FullscreenActions(props:Parameters<typeof Run21PlayerPane>[0]) {
   return <div className="run21-fullscreen-actions">
-    <Run21PlayerPane {...props}/>
     <Run21Timer view={props.view} now={props.now}/>
   </div>;
 }
