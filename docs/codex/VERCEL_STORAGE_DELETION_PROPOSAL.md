@@ -1,6 +1,18 @@
 # Vercel deployment cleanup proposal — November 9, 2026
 
-## Hotfix: first three only, awaiting authorization
+## Batch 1 completed — first three only
+
+The owner explicitly authorized the three IDs below. All three were deleted
+November 9 at 19:47–19:48 UTC. Inventory changed 384 → 381; all 219 alias mappings
+and current production remain unchanged. Production checks passed after each
+deletion. Estimated retired public assets: 197.34 MB; live account usage is not
+available. The remaining 24 IDs are not authorized. See the
+[exact receipts and final verification](VERCEL_STORAGE_BATCH1_RESULT.md).
+
+The preparation and original proposal below are retained as historical evidence;
+their pending-approval and no-deletion statements describe the pre-execution state.
+
+## Original hotfix preparation: first three only
 
 The owner's revised policy accepts missing retention/protection metadata as a
 residual risk. It supersedes the previous zero-candidate classification. This

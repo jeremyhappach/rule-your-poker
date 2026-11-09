@@ -1,12 +1,14 @@
 # Deployment storage — November 9, 2026 — unpublished local candidate
 
-Cleanup hotfix preparation: the revised risk-based policy selects only the three
-oldest original candidates (estimated 197.34 MB). A fixed-scope REST cleanup
-script, default dry-run, durable receipts and per-delete revalidation/health
-checks are prepared; 16 offline safety tests pass. Public production checks pass.
-Explicit deletion authorization and privately configured REST authentication are
-still required. No deletions, pushes or production changes have occurred.
-See the hotfix section in `VERCEL_STORAGE_DELETION_PROPOSAL.md`.
+Cleanup Batch 1 completed with explicit owner approval: exactly the three oldest
+authorized candidates were deleted at 19:47–19:48 UTC. Inventory is 381 (was 384),
+all 219 alias mappings are unchanged, and production, predecessor and both named
+gameplay checkpoints remain READY. Production's 164-resource comparison passed
+after each deletion; recent runtime-error queries returned no errors. Estimated
+retired public assets are 197.34 MB; actual account usage is unavailable. All 18
+cleanup safety tests pass after correcting the REST uid/id mapping. No code was
+published and no Supabase or account configuration changed. Remaining deletions
+are not authorized. See [execution evidence](VERCEL_STORAGE_BATCH1_RESULT.md).
 
 `codex/vercel-storage-remediation` preserves production `97372c3b` and reduces
 static output from 103,498,912 to 82,658,138 bytes: 20,840,774 bytes (20.136%).
@@ -17,9 +19,10 @@ added. Gameplay, audio, push, API routes and Run21 `cle1` remain unchanged.
 Typecheck, separate Vite builds, 26 focused tests and storage qualification pass.
 The full build gate is blocked by 15 tests that also fail on untouched production
 source; these were not changed or waived. Physical iPhone acceptance is pending.
-The separate 27-ID cleanup proposal estimates 1.783 GB recovery. No deployment,
-deletion, push, account-policy change or Supabase access was performed.
-Both cleanup and publication require explicit approval. See
+The original 27-ID proposal estimates 1.783 GB total recovery; only its first
+three IDs have been deleted. No code deployment, push, account-policy change or
+Supabase access was performed. Further cleanup and publication require explicit
+approval. See
 [remediation and validation](VERCEL_STORAGE_REMEDIATION.md) and
 [exact deletion proposal](VERCEL_STORAGE_DELETION_PROPOSAL.md).
 

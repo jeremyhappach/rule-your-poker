@@ -75,3 +75,23 @@ test('GET authorization errors and repeated pagination cursors stop collection',
  await assert.rejects(collectSnapshot(async(_,path)=>path.includes('/projects/')?fixture().project:path.includes('aliases')?{aliases:[],pagination:{count:0,next:1}}:{deployments:[],pagination:{count:0,next:1}}),/cursor repeated/);
 });
 test('health comparison rejects build or resource drift',()=>{assert.throws(()=>compareHealth({manifests:[1],resources:[]},{manifests:[2],resources:[]}));});
+
+function restFixture(conflict=false){
+ const s=fixture();
+ return async(_,path)=>{
+  if(path==='/v9/projects/'+PROJECT)return s.project;
+  if(path==='/v7/deployments')return {deployments:s.deployments.map(({id,...d})=>({...d,uid:id,...(conflict?{id:'dpl_wrong'}:{})})),pagination:{count:s.deployments.length,next:null}};
+  if(path==='/v4/aliases')return {aliases:s.aliases,pagination:{count:s.aliases.length,next:null}};
+  if(path.endsWith('/aliases'))return {aliases:[]};
+  return s.details[path.split('/').at(-1)];
+ };
+}
+test('REST uid identities retain production, rollback and candidate eligibility',async()=>{
+ const s=await collectSnapshot(restFixture());const decision=evaluate(plan,s,review());
+ assert.equal(decision.currentProduction,REQUIRED[0]);assert.equal(decision.predecessor,REQUIRED[1]);
+ assert(decision.decisions.every(d=>d.eligible));
+ assert.equal(s.deployments.find(d=>d.id===REQUIRED[0]).isRollbackCandidate,true);
+});
+test('conflicting REST id and uid stop collection before deletion',async()=>{
+ await assert.rejects(collectSnapshot(restFixture(true)),/Conflicting deployment identity/);
+});

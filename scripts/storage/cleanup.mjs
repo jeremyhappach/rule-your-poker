@@ -101,6 +101,11 @@ export async function collectSnapshot(api,ids=FIRST_THREE){
   pageAll('/v7/deployments','deployments',{projectId:PROJECT}),
   pageAll('/v4/aliases','aliases',{projectId:PROJECT})
  ]);
+ // REST lists use uid; the connector snapshots use id. Reject conflicting IDs.
+ for(const d of deployments){
+  assert(d.id===undefined||d.uid===undefined||d.id===d.uid,'Conflicting deployment identity');
+  d.id??=d.uid;assert(typeof d.id==='string'&&d.id.startsWith('dpl_'),'Missing deployment identity');
+ }
  const details={},deploymentAliases={};
  for(const id of ids){
   details[id]=await api('GET','/v13/deployments/'+id);
