@@ -270,6 +270,13 @@ Saved async round score context: `src/lib/delayed/reviewPresentation.ts` project
 
 # Repository map
 
+Deployment size: `scripts/build-size-report.mjs` measures static output and enforces
+the package/Vercel build budget. `scripts/storage/png-lossless.mjs` owns offline
+pixel-preserving PNG encoding, reused by `dev/launch-splash/startup-images.mjs`;
+`scripts/storage/optimize-pngs.mjs` is dry-run by default. Candidate preservation,
+browser decoding and tooling tests live in `scripts/storage/`. See
+`VERCEL_STORAGE_REMEDIATION.md` for qualification and separate cleanup approval.
+
 Horses Blitz: `supabase/horses-blitz/` owns the frozen dice/scoring core, Arcade
 step and guarded activation. `useHorsesBlitzRoll` owns the presentation-only roll
 lock and landing latch, reusing Quintzee dice/audio. `SoloHorsesBlitz`, `useHorsesBlitz` and

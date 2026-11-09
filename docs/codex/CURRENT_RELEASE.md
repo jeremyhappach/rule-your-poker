@@ -1,3 +1,20 @@
+# Deployment storage — November 9, 2026 — unpublished local candidate
+
+`codex/vercel-storage-remediation` preserves production `97372c3b` and reduces
+static output from 103,498,912 to 82,658,138 bytes: 20,840,774 bytes (20.136%).
+All 24 iPhone startup resolutions and every existing public URL remain; independent
+browser decoding confirms identical pixels. A reproducible 90 MB build budget is
+added. Gameplay, audio, push, API routes and Run21 `cle1` remain unchanged.
+
+Typecheck, separate Vite builds, 26 focused tests and storage qualification pass.
+The full build gate is blocked by 15 tests that also fail on untouched production
+source; these were not changed or waived. Physical iPhone acceptance is pending.
+The separate 27-ID cleanup proposal estimates 1.783 GB recovery. No deployment,
+deletion, push, account-policy change or Supabase access was performed.
+Both cleanup and publication require explicit approval. See
+[remediation and validation](VERCEL_STORAGE_REMEDIATION.md) and
+[exact deletion proposal](VERCEL_STORAGE_DELETION_PROPOSAL.md).
+
 # Run21 score-button placement — November 9, 2026 — approved layout correction
 
 The shared fullscreen Run21 board places the existing Take Win / Give Up control

@@ -1,0 +1,153 @@
+{
+  "baseCommit": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+  "branch": "codex/vercel-storage-remediation",
+  "typecheck": "passed during npm run build",
+  "viteProductionBuild": "passed separately after baseline test failures stopped npm run build",
+  "sizeBudget": {
+    "bytes": 90000000,
+    "status": "passed"
+  },
+  "storageUnitTests": 6,
+  "assetChecks": {
+    "images": 38,
+    "startup": 24,
+    "publicUrls": 108,
+    "preservedFiles": 80,
+    "browserChangedPixelChannels": 0
+  },
+  "focusedTests": {
+    "total": 26,
+    "passed": 26,
+    "failed": 0
+  },
+  "fullApplicationTests": {
+    "total": 3989,
+    "passed": 3974,
+    "failed": 15,
+    "failedFiles": 6,
+    "unhandledErrors": 3
+  },
+  "untouchedProductionBaseline": {
+    "commit": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+    "total": 31,
+    "passed": 16,
+    "failed": 15,
+    "same15FailuresReproduced": true,
+    "failures": [
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer Golf Run Back submits the saved stake once through fresh setup",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer six-card-golf resolves defaults before admitting edits and ignores late initial defaults",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer race-poker resolves defaults before admitting edits and ignores late initial defaults",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer tri-towers resolves defaults before admitting edits and ignores late initial defaults",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer eleven-up resolves defaults before admitting edits and ignores late initial defaults",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer royal-flash resolves defaults before admitting edits and ignores late initial defaults",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer take-two resolves defaults before admitting edits and ignores late initial defaults",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer trip-flip resolves defaults before admitting edits and ignores late initial defaults",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/components/DealerGameSetup.stakeDefaults.test.tsx",
+        "name": "dealer stake defaults cannot overwrite a financial offer boxdrop resolves defaults before admitting edits and ignores late initial defaults",
+        "reason": "TypeError: Cannot read properties of undefined (reading 'then')"
+      },
+      {
+        "file": "src/lib/cardGames/cardFaceContract.test.ts",
+        "name": "cross-game card face contract requires review of any new direct rank/suit renderer",
+        "reason": "AssertionError: expected [ …(9) ] to deeply equal [ …(8) ]"
+      },
+      {
+        "file": "src/components/admin/ArcadeOrderingPanel.test.tsx",
+        "name": "stages section changes and keyboard-button moves until one explicit save",
+        "reason": "AssertionError: expected [ 'horses-blitz', '357-drop', …(4) ] to deeply equal [ 'horses-blitz', '357-drop', …(3) ]"
+      },
+      {
+        "file": "src/components/catalog/DefaultsAndRules.test.tsx",
+        "name": "defaults persistence and rules versions saves only Chucky decision timing for a solo Defaults edit",
+        "reason": "Error: Unable to find a label with the text of: Fold / Stay timer (seconds)"
+      },
+      {
+        "file": "src/components/catalog/DefaultsAndRules.test.tsx",
+        "name": "defaults persistence and rules versions saves only the Crib Lab duration and rejects fractional seconds",
+        "reason": "Error: Unable to find a label with the text of: Round duration (seconds)"
+      },
+      {
+        "file": "src/components/arcade/ArcadeSwitchboard.test.tsx",
+        "name": "removes the cancelled Yahtzee placeholder while retaining every existing Arcade game and multiplayer Yahtzee",
+        "reason": "AssertionError: expected [ '/arcade/357-drop', …(13) ] to deeply equal [ '/arcade/357-drop', …(12) ]"
+      },
+      {
+        "file": "src/components/megaCardGolf/Defaults.test.tsx",
+        "name": "uses the existing lobby Defaults section and preserves exact revision/settings/archive save contract",
+        "reason": "Error: Unable to find a label with the text of: Stock draws per hole"
+      }
+    ]
+  },
+  "releaseGate": "BLOCKED: full npm run build is not green on the base commit or this branch; no tests bypassed or weakened. Physical iPhone acceptance remains required.",
+  "comparison": {
+    "beforeBytes": 103498912,
+    "afterBytes": 82658138,
+    "savedBytes": 20840774,
+    "savedPercent": 20.136,
+    "byCategory": {
+      "image": {
+        "before": 96406244,
+        "after": 75565470,
+        "saved": 20840774
+      },
+      "audio": {
+        "before": 1636446,
+        "after": 1636446,
+        "saved": 0
+      },
+      "javascript": {
+        "before": 4305478,
+        "after": 4305478,
+        "saved": 0
+      },
+      "css": {
+        "before": 430169,
+        "after": 430169,
+        "saved": 0
+      },
+      "other": {
+        "before": 10722,
+        "after": 10722,
+        "saved": 0
+      },
+      "video": {
+        "before": 709853,
+        "after": 709853,
+        "saved": 0
+      }
+    }
+  }
+}

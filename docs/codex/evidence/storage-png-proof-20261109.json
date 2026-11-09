@@ -1,0 +1,351 @@
+{
+  "mode": "write",
+  "encoding": "lossless PNG; exact RGBA equality; metadata preserved",
+  "files": [
+    {
+      "file": "public/arcade/357-drop-riverfront-background.png",
+      "before": 2361051,
+      "after": 2090019,
+      "saved": 271032,
+      "width": 1024,
+      "height": 1536,
+      "rgbaSha256": "740920c8ddf7e96c224af532f8d8f7c170fc63de3b4bf8905761f4bd63f7aa76"
+    },
+    {
+      "file": "public/arcade/approved-v1/357-drop-final.png",
+      "before": 925553,
+      "after": 912359,
+      "saved": 13194,
+      "width": 1466,
+      "height": 564,
+      "rgbaSha256": "4f4b0fee0b65bb29cde2dc9c77b1882511cb45f8dd9d6d223ecad8cd68c05524"
+    },
+    {
+      "file": "public/arcade/approved-v1/chucky-showdown-clean.png",
+      "before": 2391998,
+      "after": 2391998,
+      "saved": 0,
+      "width": 2024,
+      "height": 777,
+      "rgbaSha256": "7ad734d79ad0b0f931216b9f980e5717f95d28e40adb005ad1adf1aff163bcc9"
+    },
+    {
+      "file": "public/arcade/approved-v1/crib-lab-clean.png",
+      "before": 2195590,
+      "after": 2162460,
+      "saved": 33130,
+      "width": 2024,
+      "height": 777,
+      "rgbaSha256": "29f8dedb8f023f7b444dcaba2003cc284cabc44e88ed201bf95b2e431575e891"
+    },
+    {
+      "file": "public/arcade/approved-v1/horses-blitz-final.png",
+      "before": 981514,
+      "after": 966838,
+      "saved": 14676,
+      "width": 1466,
+      "height": 564,
+      "rgbaSha256": "691067e1f9f093a9152c065cbf490f231d8f5177d4ba91688fd8d0c381983959"
+    },
+    {
+      "file": "public/arcade/approved-v1/horses-blitz-trackside.png",
+      "before": 2298149,
+      "after": 2002190,
+      "saved": 295959,
+      "width": 852,
+      "height": 1846,
+      "rgbaSha256": "01ca5e2626df37c439c06e92b44ca604e75ed434b9cf321c97020870cd6e91ab"
+    },
+    {
+      "file": "public/arcade/approved-v1/horses-blitz.png",
+      "before": 1022494,
+      "after": 1017047,
+      "saved": 5447,
+      "width": 1466,
+      "height": 564,
+      "rgbaSha256": "260c0f3c7a75d9d3c855fe30352a7ca536fc45168189605393216089f2db3f14"
+    },
+    {
+      "file": "public/arcade/approved-v1/ship-cap-voyage-banner.png",
+      "before": 2327066,
+      "after": 1691534,
+      "saved": 635532,
+      "width": 1466,
+      "height": 564,
+      "rgbaSha256": "883a1df27133a2705db9638bb7f4bece2cdc9a884598c3156d7da96766aa91c2"
+    },
+    {
+      "file": "public/arcade/approved-v1/ship-cap-voyage-deck.png",
+      "before": 2903077,
+      "after": 2706350,
+      "saved": 196727,
+      "width": 852,
+      "height": 1846,
+      "rgbaSha256": "5e9ba372f97c374f0cdc6b8ac27c3a2583fc4d962a34353efc6e64696595db1a"
+    },
+    {
+      "file": "public/arcade/approved-v1/ship-cap-voyage-final.png",
+      "before": 1186627,
+      "after": 1186627,
+      "saved": 0,
+      "width": 1466,
+      "height": 564,
+      "rgbaSha256": "fda221a28b9d78b69eace4abc4752fc6f7c32f76a9bdc4ffe9d316ab6be28998"
+    },
+    {
+      "file": "public/arcade/approved-v1/ship-cap-voyage.png",
+      "before": 2840245,
+      "after": 2840245,
+      "saved": 0,
+      "width": 1920,
+      "height": 1080,
+      "rgbaSha256": "863dc95b3f14a4106e20ae97c169926bd99c1d3223d86bdef77fe0e939f1c438"
+    },
+    {
+      "file": "public/arcade/chucky-portrait-four-cards.png",
+      "before": 1911742,
+      "after": 1911742,
+      "saved": 0,
+      "width": 1312,
+      "height": 1199,
+      "rgbaSha256": "4a5c429f8ead2e9cd4300f20531d4454d03cdffcfcb7c719273fab78e27dd16f"
+    },
+    {
+      "file": "public/arcade/chucky-table-background.png",
+      "before": 2354300,
+      "after": 2181645,
+      "saved": 172655,
+      "width": 852,
+      "height": 1846,
+      "rgbaSha256": "9f788fbd1db12bdb1f0db9fd72a9841548cf4c9af1e1ccbd46a8c549ff6fbd8b"
+    },
+    {
+      "file": "public/arcade/leaderboards/chucky-four-cards.png",
+      "before": 2564017,
+      "after": 2538352,
+      "saved": 25665,
+      "width": 1215,
+      "height": 1295,
+      "rgbaSha256": "b8e7bc190b66eeb910a74a1257f2855058656ed8ed3886bd878e3fad959ba1d4"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1125x2436.png",
+      "before": 3166016,
+      "after": 1961499,
+      "saved": 1204517,
+      "width": 1125,
+      "height": 2436,
+      "rgbaSha256": "3a005f98487c0dfb4a925511d30afed0d13568ee51f7b81ea425689d76aa7979"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1136x640.png",
+      "before": 462436,
+      "after": 326306,
+      "saved": 136130,
+      "width": 1136,
+      "height": 640,
+      "rgbaSha256": "89490d98f40b73abdf934e276836175ca60fafbb19c01ff45822aa45b7df89fe"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1170x2532.png",
+      "before": 3376740,
+      "after": 2081374,
+      "saved": 1295366,
+      "width": 1170,
+      "height": 2532,
+      "rgbaSha256": "0661aee46df4a9cefc8fdf65ca8989eb82dca609bcbddad4679be2459e2fc1b9"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1179x2556.png",
+      "before": 3417356,
+      "after": 2105225,
+      "saved": 1312131,
+      "width": 1179,
+      "height": 2556,
+      "rgbaSha256": "da0afbeafaa4ab621dc91d38eb485f261aa87f8693a2a21a47f2a429010825d9"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1206x2622.png",
+      "before": 3544754,
+      "after": 2177441,
+      "saved": 1367313,
+      "width": 1206,
+      "height": 2622,
+      "rgbaSha256": "89dc58799574b542edb8df30f114cc2a270b6b532359fb6e1f87e105ea857b9d"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1242x2208.png",
+      "before": 3699625,
+      "after": 2271737,
+      "saved": 1427888,
+      "width": 1242,
+      "height": 2208,
+      "rgbaSha256": "bcc0772e0744cfb04486d2700a7a3e95ca3be3336727f5f8e6649888afacf62f"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1242x2688.png",
+      "before": 3719079,
+      "after": 2276879,
+      "saved": 1442200,
+      "width": 1242,
+      "height": 2688,
+      "rgbaSha256": "b9250309eff8e9d4b104740acd284a3ae5a8e0571c4505ed046f3ae959412be7"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1284x2778.png",
+      "before": 3920891,
+      "after": 2392396,
+      "saved": 1528495,
+      "width": 1284,
+      "height": 2778,
+      "rgbaSha256": "6abbfa2438c3d9bda89c501d56c57319b56f4f8b513135a9d536f142f8baffbf"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1290x2796.png",
+      "before": 3953608,
+      "after": 2409628,
+      "saved": 1543980,
+      "width": 1290,
+      "height": 2796,
+      "rgbaSha256": "25352329a8daed6e1605273f0d3dc1be80f92f14b1129e3ca7d1519c660c3caa"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1320x2868.png",
+      "before": 4099571,
+      "after": 2490039,
+      "saved": 1609532,
+      "width": 1320,
+      "height": 2868,
+      "rgbaSha256": "03ed6f7a1bba76ba280d33cb77949090e21c914d4c7fab262d00862f66ea71fb"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1334x750.png",
+      "before": 621404,
+      "after": 435496,
+      "saved": 185908,
+      "width": 1334,
+      "height": 750,
+      "rgbaSha256": "0a39abfbb10ad99c8d8a96f487134eccdfb7588de0ebbfb826d3674a6606f894"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1792x828.png",
+      "before": 748867,
+      "after": 519132,
+      "saved": 229735,
+      "width": 1792,
+      "height": 828,
+      "rgbaSha256": "311e92586e68bc95ad73f97a94ffbfccc7c328240cb7bf252d0972f2f665198a"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2208x1242.png",
+      "before": 1488936,
+      "after": 1001088,
+      "saved": 487848,
+      "width": 2208,
+      "height": 1242,
+      "rgbaSha256": "4113ccf773f8ce5ab609ad792846ab296c33ecb6561a48090b44cb7ec25ba4fc"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2436x1125.png",
+      "before": 1266176,
+      "after": 860558,
+      "saved": 405618,
+      "width": 2436,
+      "height": 1125,
+      "rgbaSha256": "18eee6f5a14bd820032c864dfd89bfcd7dae04ba1023bca90b984856ea05a2c7"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2532x1170.png",
+      "before": 1353535,
+      "after": 916705,
+      "saved": 436830,
+      "width": 2532,
+      "height": 1170,
+      "rgbaSha256": "8779497c07904c776fd02d59612fe03c22fc668407c8852eb96a37641cab2da3"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2556x1179.png",
+      "before": 1372019,
+      "after": 928414,
+      "saved": 443605,
+      "width": 2556,
+      "height": 1179,
+      "rgbaSha256": "f9ef9c12cdfedd2eb4962d7334ed691153d41786dbe0a95ecae6535a23173301"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2622x1206.png",
+      "before": 1421904,
+      "after": 963869,
+      "saved": 458035,
+      "width": 2622,
+      "height": 1206,
+      "rgbaSha256": "84f6e9055d96bd71cb77c84b343d9074d190201188adbd464ad3511fe3499968"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2688x1242.png",
+      "before": 1490917,
+      "after": 1010027,
+      "saved": 480890,
+      "width": 2688,
+      "height": 1242,
+      "rgbaSha256": "0ab5dbf133518140d447c3d63a4d0e997062f23bd0e2404116ac0221d7e47b82"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2778x1284.png",
+      "before": 1575521,
+      "after": 1070655,
+      "saved": 504866,
+      "width": 2778,
+      "height": 1284,
+      "rgbaSha256": "60a1107514329ca740939029232d87be613e9971b9ab4b53f5dd7913feca0008"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2796x1290.png",
+      "before": 1588850,
+      "after": 1077383,
+      "saved": 511467,
+      "width": 2796,
+      "height": 1290,
+      "rgbaSha256": "f10be2d9398d76d52bf7154f84e7480118c0ad47fcb8b7c60591e6d8fc6f4f15"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2868x1320.png",
+      "before": 1653906,
+      "after": 1120147,
+      "saved": 533759,
+      "width": 2868,
+      "height": 1320,
+      "rgbaSha256": "b1e8a6a90f9b2f449a93b144e280bffd0fb39183f0d2e065a872361f902744f0"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-640x1136.png",
+      "before": 1218568,
+      "after": 814071,
+      "saved": 404497,
+      "width": 640,
+      "height": 1136,
+      "rgbaSha256": "558a68bf3dd6fadf448582e70cd9327bb069eee14ab8a96d28e7d0ed7ddccf9d"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-750x1334.png",
+      "before": 1598072,
+      "after": 1047600,
+      "saved": 550472,
+      "width": 750,
+      "height": 1334,
+      "rgbaSha256": "8ae80c5359b726a30ad8f32f904aef7c9eae5d7be38a20ea6b598f83d386461d"
+    },
+    {
+      "file": "public/launch-splash/startup/opening-828x1792.png",
+      "before": 1902293,
+      "after": 1226618,
+      "saved": 675675,
+      "width": 828,
+      "height": 1792,
+      "rgbaSha256": "3394f2a7c1166a90e9d5b4cbf98c6a48abaa63765356862ff39ac8fd7ea6683a"
+    }
+  ],
+  "before": 80924467,
+  "after": 60083693,
+  "saved": 20840774
+}

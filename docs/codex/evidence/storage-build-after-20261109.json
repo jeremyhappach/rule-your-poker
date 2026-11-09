@@ -1,0 +1,1118 @@
+{
+  "schemaVersion": 1,
+  "buildId": "97372c3b025d4b5b59b82bcaf617e0fb10f425f4",
+  "measurement": "uncompressed static files; excludes Vercel Function bundles and account billing",
+  "fileCount": 171,
+  "totalBytes": 82658138,
+  "byCategory": {
+    "image": {
+      "files": 117,
+      "bytes": 75565470
+    },
+    "audio": {
+      "files": 25,
+      "bytes": 1636446
+    },
+    "css": {
+      "files": 4,
+      "bytes": 430169
+    },
+    "javascript": {
+      "files": 20,
+      "bytes": 4305478
+    },
+    "other": {
+      "files": 4,
+      "bytes": 10722
+    },
+    "video": {
+      "files": 1,
+      "bytes": 709853
+    }
+  },
+  "byExtension": {
+    ".png": {
+      "files": 60,
+      "bytes": 70881385
+    },
+    ".webp": {
+      "files": 48,
+      "bytes": 3658470
+    },
+    ".wav": {
+      "files": 25,
+      "bytes": 1636446
+    },
+    ".css": {
+      "files": 4,
+      "bytes": 430169
+    },
+    ".js": {
+      "files": 20,
+      "bytes": 4305478
+    },
+    ".jpg": {
+      "files": 5,
+      "bytes": 992735
+    },
+    ".json": {
+      "files": 1,
+      "bytes": 174
+    },
+    ".ico": {
+      "files": 3,
+      "bytes": 29627
+    },
+    ".html": {
+      "files": 1,
+      "bytes": 9700
+    },
+    ".mp4": {
+      "files": 1,
+      "bytes": 709853
+    },
+    ".webmanifest": {
+      "files": 1,
+      "bytes": 674
+    },
+    ".svg": {
+      "files": 1,
+      "bytes": 3253
+    },
+    ".txt": {
+      "files": 1,
+      "bytes": 174
+    }
+  },
+  "byDirectory": {
+    "(root)": {
+      "files": 8,
+      "bytes": 104265
+    },
+    "arcade": {
+      "files": 41,
+      "bytes": 28600450
+    },
+    "assets": {
+      "files": 61,
+      "bytes": 8796715
+    },
+    "game-branding": {
+      "files": 18,
+      "bytes": 768024
+    },
+    "icons": {
+      "files": 13,
+      "bytes": 1860294
+    },
+    "launch-splash": {
+      "files": 27,
+      "bytes": 36407122
+    },
+    "lovable-uploads": {
+      "files": 1,
+      "bytes": 28407
+    },
+    "mega-card-golf": {
+      "files": 2,
+      "bytes": 6092861
+    }
+  },
+  "largest": [
+    {
+      "path": "assets/index-BONNxrHN.js",
+      "bytes": 4051540,
+      "sha256": "25248909d9e436b0da1764e728174135719e634ac19fa77ff701433f27cae01d"
+    },
+    {
+      "path": "mega-card-golf/courses-v1.png",
+      "bytes": 3371918,
+      "sha256": "bdbdebb1b9346ff21144af8cdbf93f74dac211835cb26ff412890fe7831685c1"
+    },
+    {
+      "path": "arcade/approved-v1/ship-cap-voyage.png",
+      "bytes": 2840245,
+      "sha256": "a6e96519b2d0a0f3a0d2b017c7e8cf37d80c21e8d3ed6596886ea037b7ab9886"
+    },
+    {
+      "path": "mega-card-golf/sunny-meadows-v2.png",
+      "bytes": 2720943,
+      "sha256": "701ebcbf7bf09624efcfe8688d08d9f6b64269540b18505e89f4b66d1310f311"
+    },
+    {
+      "path": "arcade/approved-v1/ship-cap-voyage-deck.png",
+      "bytes": 2706350,
+      "sha256": "2040593a9ad7445afa244055f4111dd8c017c7cfd0fbcb8cd9c1d14ba4943021"
+    },
+    {
+      "path": "arcade/leaderboards/chucky-four-cards.png",
+      "bytes": 2538352,
+      "sha256": "61de006889e6b87c8744f825622bb8b2dbadb5b71cf4ade306f4c42a0d5536c5"
+    },
+    {
+      "path": "launch-splash/startup/opening-1320x2868.png",
+      "bytes": 2490039,
+      "sha256": "5abd6011e78e9f5555ba8dbf6b1bd1923c9fd5ff9e05af4e61a817d5dd94270f"
+    },
+    {
+      "path": "launch-splash/startup/opening-1290x2796.png",
+      "bytes": 2409628,
+      "sha256": "e682fe1738b11408cdc383a8a904064bbf8829ef06adc65a937e5db6bcc65d2b"
+    },
+    {
+      "path": "launch-splash/startup/opening-1284x2778.png",
+      "bytes": 2392396,
+      "sha256": "dde2b1396e980840eab3d51e93e1875e08f193e37f8eadc7793e19f3ff632d6b"
+    },
+    {
+      "path": "arcade/approved-v1/chucky-showdown-clean.png",
+      "bytes": 2391998,
+      "sha256": "ca516f17938c9236ea1265629150b2e9e59a16658a2634b3d959af553815c1ac"
+    },
+    {
+      "path": "launch-splash/startup/opening-1242x2688.png",
+      "bytes": 2276879,
+      "sha256": "419e4305d6eca4271d0ebced1320f0091311edef6fdb58659e277518050d040f"
+    },
+    {
+      "path": "launch-splash/startup/opening-1242x2208.png",
+      "bytes": 2271737,
+      "sha256": "fce6a9db8170a51ee70390943f21959fe2ce538299ed1ab36b3843a98fb49cbe"
+    },
+    {
+      "path": "arcade/chucky-table-background.png",
+      "bytes": 2181645,
+      "sha256": "57a512a26ac03023a9765d768855abaf0da685e1956c4721d47940d9bd9d1f7e"
+    },
+    {
+      "path": "launch-splash/startup/opening-1206x2622.png",
+      "bytes": 2177441,
+      "sha256": "26b60e11863cd136a3229bd3e0f9d891d9398a485e51067d707bc897eed9d6dd"
+    },
+    {
+      "path": "arcade/approved-v1/crib-lab-clean.png",
+      "bytes": 2162460,
+      "sha256": "4d508ead98820328f8995b93df5459f320f096db89c0b04f8334078c46911c6d"
+    },
+    {
+      "path": "launch-splash/startup/opening-1179x2556.png",
+      "bytes": 2105225,
+      "sha256": "3db2ff062cba022ba6498da3e8bc5db0046458f67f8e0291790be192f86245c2"
+    },
+    {
+      "path": "arcade/357-drop-riverfront-background.png",
+      "bytes": 2090019,
+      "sha256": "29c1bd5225a1c21b0a6624eca3b12388a82fe325e09c34839c37fd8363e730be"
+    },
+    {
+      "path": "launch-splash/startup/opening-1170x2532.png",
+      "bytes": 2081374,
+      "sha256": "162e34e05cc56bf86315114cbe09d5e2a406cb3b33d45eb93975281f0261effa"
+    },
+    {
+      "path": "arcade/approved-v1/horses-blitz-trackside.png",
+      "bytes": 2002190,
+      "sha256": "b904fefcefd44f925765abbecb818aa5edf9f8c670e472d4a389f193b48f0faf"
+    },
+    {
+      "path": "launch-splash/startup/opening-1125x2436.png",
+      "bytes": 1961499,
+      "sha256": "8bb5754b7008ddfea4578e5c7017e994e0a27426c45b57eea4dd4d98e778c77b"
+    }
+  ],
+  "files": [
+    {
+      "path": "apple-touch-icon.png",
+      "bytes": 72221,
+      "sha256": "014a9e9f74c115e34725ebfe90cf0eb28f60bbde80771940f42cdeb2003aebfd"
+    },
+    {
+      "path": "arcade/357-drop-riverfront-background.png",
+      "bytes": 2090019,
+      "sha256": "29c1bd5225a1c21b0a6624eca3b12388a82fe325e09c34839c37fd8363e730be"
+    },
+    {
+      "path": "arcade/approved-v1/357-drop-480.webp",
+      "bytes": 20456,
+      "sha256": "0877e91242b3bdaa66319ffa1ea8dc5ad95a94b201eaaa1ca6f50a77b1dac65d"
+    },
+    {
+      "path": "arcade/approved-v1/357-drop-960.webp",
+      "bytes": 55816,
+      "sha256": "fa5e2a20bdee03ba1fc6236f5ac7a3f08bf6cf3bb320ce136990a06fb575265f"
+    },
+    {
+      "path": "arcade/approved-v1/357-drop-final.png",
+      "bytes": 912359,
+      "sha256": "72b65931f2167241253a5e391481f42cf50658d1600e8ed8f2ec4ceda718451a"
+    },
+    {
+      "path": "arcade/approved-v1/boxdrop-480.webp",
+      "bytes": 41306,
+      "sha256": "d7aa752858df5cf434cf872c5c03a779e3802565fa240208cec45b3305865e94"
+    },
+    {
+      "path": "arcade/approved-v1/boxdrop-960.webp",
+      "bytes": 116422,
+      "sha256": "55c39055c18b269a681cf4f0d8b74b9b09ea7ce6fb0dc3ff0432f021cce9a6f0"
+    },
+    {
+      "path": "arcade/approved-v1/chucky-portrait.webp",
+      "bytes": 83144,
+      "sha256": "54fce02e4582a56438aab37c9fd545467c900cc0bd9b0f4f1ac154ace1bc1e07"
+    },
+    {
+      "path": "arcade/approved-v1/chucky-showdown-480.webp",
+      "bytes": 43878,
+      "sha256": "f7241c6d9ac2cd0a21628abbfadd8ff195492cd2bbbe87de518bd2e712f2015b"
+    },
+    {
+      "path": "arcade/approved-v1/chucky-showdown-960.webp",
+      "bytes": 137524,
+      "sha256": "2583a92dbbf2d1d5d9ef3c6ab3634142c22982c512846ea9ec684fcaf9a549e0"
+    },
+    {
+      "path": "arcade/approved-v1/chucky-showdown-a-480.webp",
+      "bytes": 38004,
+      "sha256": "8e1e28939725f8e17a1a3e890eab092dbd30c35478d57f3f9b489e52d5051db9"
+    },
+    {
+      "path": "arcade/approved-v1/chucky-showdown-a-960.webp",
+      "bytes": 121006,
+      "sha256": "bb8ea4655256b1b591eb6b0df2f28f33c16a7559f71a36112c13a96d14829d7b"
+    },
+    {
+      "path": "arcade/approved-v1/chucky-showdown-clean.png",
+      "bytes": 2391998,
+      "sha256": "ca516f17938c9236ea1265629150b2e9e59a16658a2634b3d959af553815c1ac"
+    },
+    {
+      "path": "arcade/approved-v1/crib-lab-480.webp",
+      "bytes": 37772,
+      "sha256": "437379791a3fed40bd7a9027e3174a8ae2ca36d51986827858e2f9f8429cd476"
+    },
+    {
+      "path": "arcade/approved-v1/crib-lab-960.webp",
+      "bytes": 108994,
+      "sha256": "898c53ad9e0e29eb4d61acef791c26bb7c7124b37c0de91450c4cfed799dd7b9"
+    },
+    {
+      "path": "arcade/approved-v1/crib-lab-clean.png",
+      "bytes": 2162460,
+      "sha256": "4d508ead98820328f8995b93df5459f320f096db89c0b04f8334078c46911c6d"
+    },
+    {
+      "path": "arcade/approved-v1/eleven-up-480.webp",
+      "bytes": 32694,
+      "sha256": "b77aa656f4193122f7b36ba7ee4a1f8faba8087458416b5496ca748b339e5239"
+    },
+    {
+      "path": "arcade/approved-v1/eleven-up-960.webp",
+      "bytes": 90730,
+      "sha256": "ab8bd3e323385f594d480401800618e635c78e5aeb5a873f1ae7531d5a725c6f"
+    },
+    {
+      "path": "arcade/approved-v1/horses-blitz-final.png",
+      "bytes": 966838,
+      "sha256": "7ee2856fa49de2f016f1d8b5f77c7da2854c2c5fa07b6ed46d32107d56922e2d"
+    },
+    {
+      "path": "arcade/approved-v1/horses-blitz-trackside.png",
+      "bytes": 2002190,
+      "sha256": "b904fefcefd44f925765abbecb818aa5edf9f8c670e472d4a389f193b48f0faf"
+    },
+    {
+      "path": "arcade/approved-v1/horses-blitz.png",
+      "bytes": 1017047,
+      "sha256": "39666619a5cd0f4e9a1d09a77dca7a76c1a9685e974dde7e1353441e53ae6e1e"
+    },
+    {
+      "path": "arcade/approved-v1/mega-card-golf-480.webp",
+      "bytes": 45724,
+      "sha256": "016007058f119f09f715a1662906a8ed3b631990c9e1afa0a8706d425c6eacdb"
+    },
+    {
+      "path": "arcade/approved-v1/mega-card-golf-960.webp",
+      "bytes": 134268,
+      "sha256": "7a6a036f9de4ca24cc8c1efc9261d69c8814d93cc31c361c9a9cf5e40550f32d"
+    },
+    {
+      "path": "arcade/approved-v1/quintzee-480.webp",
+      "bytes": 40562,
+      "sha256": "837be845d595696c08d4515ef6795b7e6b154998c64d92df035912c8bd423a31"
+    },
+    {
+      "path": "arcade/approved-v1/quintzee-960.webp",
+      "bytes": 111110,
+      "sha256": "d804987ae66cd6a266d626e9885457103aa6de3caf498813f42ab86084327e57"
+    },
+    {
+      "path": "arcade/approved-v1/royal-flash-480.webp",
+      "bytes": 44832,
+      "sha256": "d9b7f6e870157dfac0783f31c0924cda2abf5cf422b3cbed840c267f6183cf80"
+    },
+    {
+      "path": "arcade/approved-v1/royal-flash-960.webp",
+      "bytes": 124158,
+      "sha256": "2b3c7e33a289d4274483634d2b4f0c3628bc3d10041fa60057129d94a8e438e6"
+    },
+    {
+      "path": "arcade/approved-v1/run21-480.webp",
+      "bytes": 27552,
+      "sha256": "d6d52fe68a47adabdfe34828a8e7683b7973ab326eacd247c9bd0ea4b011197a"
+    },
+    {
+      "path": "arcade/approved-v1/run21-960.webp",
+      "bytes": 84678,
+      "sha256": "047ee1110306cdc8cd80de945deb3491ae0ac88ea0a774d6c8d0637d090f4ad6"
+    },
+    {
+      "path": "arcade/approved-v1/ship-cap-voyage-banner.png",
+      "bytes": 1691534,
+      "sha256": "1f122d6d034957153ae3f7d923546e25d5c981cab6e21bd02216fed88f82c11e"
+    },
+    {
+      "path": "arcade/approved-v1/ship-cap-voyage-deck.png",
+      "bytes": 2706350,
+      "sha256": "2040593a9ad7445afa244055f4111dd8c017c7cfd0fbcb8cd9c1d14ba4943021"
+    },
+    {
+      "path": "arcade/approved-v1/ship-cap-voyage-final.png",
+      "bytes": 1186627,
+      "sha256": "d14a103ff31efab7028c7e4288819f115609b2b1901c5bf6d981617fa65f18ea"
+    },
+    {
+      "path": "arcade/approved-v1/ship-cap-voyage.png",
+      "bytes": 2840245,
+      "sha256": "a6e96519b2d0a0f3a0d2b017c7e8cf37d80c21e8d3ed6596886ea037b7ab9886"
+    },
+    {
+      "path": "arcade/approved-v1/take-two-480.webp",
+      "bytes": 41422,
+      "sha256": "4c0d92248e5d98948b4889e1571c2b0733cd3f94f32f4aeef9906f6b8b3074bf"
+    },
+    {
+      "path": "arcade/approved-v1/take-two-960.webp",
+      "bytes": 112354,
+      "sha256": "319faf2c5fa2a5d4aaaec1bfc056374da3d4394d0e3cd9febf346ce047ad6ed1"
+    },
+    {
+      "path": "arcade/approved-v1/tri-towers-480.webp",
+      "bytes": 31970,
+      "sha256": "5248ca5ff882b9a1c9577d9ed15d0fb4da6332f12346e162a69b058327865ba3"
+    },
+    {
+      "path": "arcade/approved-v1/tri-towers-960.webp",
+      "bytes": 104120,
+      "sha256": "4bffc83c257636fe16367966ec26a42eb2f66d59946e24efd543bdf5ca3f6844"
+    },
+    {
+      "path": "arcade/approved-v1/trip-flip-480.webp",
+      "bytes": 42722,
+      "sha256": "5fe25810936c4dd05a2f75fa5fb3cd2a16638a0cdcbf864d478c97c08121cd35"
+    },
+    {
+      "path": "arcade/approved-v1/trip-flip-960.webp",
+      "bytes": 127826,
+      "sha256": "45d0d4e2dc493c9e1f73862fcddd51a5ef48b453c06675f96ad14023c88a6cf5"
+    },
+    {
+      "path": "arcade/chucky-portrait-four-cards.png",
+      "bytes": 1911742,
+      "sha256": "32e7db18d61db7bb2e946ba1dcaeb8f10a56bb00ec51bbc089a741bb3a8f81ed"
+    },
+    {
+      "path": "arcade/chucky-table-background.png",
+      "bytes": 2181645,
+      "sha256": "57a512a26ac03023a9765d768855abaf0da685e1956c4721d47940d9bd9d1f7e"
+    },
+    {
+      "path": "arcade/leaderboards/chucky-four-cards.png",
+      "bytes": 2538352,
+      "sha256": "61de006889e6b87c8744f825622bb8b2dbadb5b71cf4ade306f4c42a0d5536c5"
+    },
+    {
+      "path": "assets/all-filled-b-CgpYNLOI.wav",
+      "bytes": 41644,
+      "sha256": "c55f2f8799225db1567a99406c598c5a5df231f788dfa96ee9e9ecc2ce6354b6"
+    },
+    {
+      "path": "assets/Arcade-C2DKM0ON.css",
+      "bytes": 64827,
+      "sha256": "850a15753d8757ec4023b184fc2befdd70895d5f33f8bc4f12def8f310e9d380"
+    },
+    {
+      "path": "assets/Arcade-DawAWz-K.js",
+      "bytes": 106616,
+      "sha256": "6038bbb4c3b27e98d607927aa78d0e2beb76a4822a9811cc5ccaa693d7bca3cb"
+    },
+    {
+      "path": "assets/arcade-os3mFR4u.css",
+      "bytes": 9255,
+      "sha256": "927800f766ee08d74aef939216021a078fc3d6bbc34559f56b49c8c2c48b5e3b"
+    },
+    {
+      "path": "assets/bears-logo-JqytXT5K.png",
+      "bytes": 93370,
+      "sha256": "9c14251bb515e33b431d8ae8d39c3c1bbe3112dcd7786b201f6eae74f2277574"
+    },
+    {
+      "path": "assets/boxing-draw-v1-GkUmg4Kd.jpg",
+      "bytes": 416973,
+      "sha256": "62e48236b990b2080b741004e075ca0b4dc52ffbaa9ff1b9d041871ce8e8a25a"
+    },
+    {
+      "path": "assets/boxing-winner-cash-v1-CqVndo2d.jpg",
+      "bytes": 394805,
+      "sha256": "eb1f34540dba3c773f91d9bf50c6644c56a6f72fffdb7b2b22aca7aec82ef26f"
+    },
+    {
+      "path": "assets/bulls-logo-BAXtQsaT.png",
+      "bytes": 104532,
+      "sha256": "bd8d04e6e84e9a2a71ba53177b94ef317a42c72331d1ae52d80ca8d4d245761c"
+    },
+    {
+      "path": "assets/CanastaRules-CRdYtxO0.js",
+      "bytes": 2797,
+      "sha256": "2a0bddb289761660a26573a72a555bf1925470127a82f6e8880437f6baba28d8"
+    },
+    {
+      "path": "assets/chip-single-Eng91KAd.wav",
+      "bytes": 9546,
+      "sha256": "0353d44f5a3b5eebe227cff6f4a724b063ac939cf2fcc33a5b065047abfe9779"
+    },
+    {
+      "path": "assets/chucky-heartbeat-CcPKAjOr.wav",
+      "bytes": 105644,
+      "sha256": "aa9a6905673498af3b68461575f4387363457a1323e9aef2fb375a0d675a8de0"
+    },
+    {
+      "path": "assets/courts-BE0BWVDH.webp",
+      "bytes": 404158,
+      "sha256": "51dfff8686f398e34743559ce8aa77efcdff78ace707ace78661027c5876e140"
+    },
+    {
+      "path": "assets/creationAccess-O--Ts6tN.js",
+      "bytes": 470,
+      "sha256": "43e6cf8e763325d78138579a4b6aeddd933f05aa5869c69dda4496df8b506d08"
+    },
+    {
+      "path": "assets/cubs-logo-Dd96ue28.png",
+      "bytes": 112839,
+      "sha256": "862b077a5d3d5ae3b122815318036db36f524508950dc52d1d2bc822cbb0e1e2"
+    },
+    {
+      "path": "assets/cup-roll-c-Bs2xcc2f.wav",
+      "bytes": 256044,
+      "sha256": "d9ebfb685c53d1975836f78f3136c19f358f91eb30a9bc6d5817b9d036cdcc9c"
+    },
+    {
+      "path": "assets/deal-paper-DV5S4ZrK.wav",
+      "bytes": 11564,
+      "sha256": "b506a62bcddeaaba3f329e13353b8c12c8e403a60110c6de8f30a24b53358c15"
+    },
+    {
+      "path": "assets/Delayed-C5RyTfIy.js",
+      "bytes": 78147,
+      "sha256": "8c7c061d7060e8fa8f56b3d11de562ea96b137d0078316abd1709f72b6fdfb18"
+    },
+    {
+      "path": "assets/Delayed-Dah8NXIZ.css",
+      "bytes": 7513,
+      "sha256": "d48a292d605295ff259e5deb8bad21ed3692f743d16897126e7c5e3e7320e52b"
+    },
+    {
+      "path": "assets/dice-land-BRXAnaGa.wav",
+      "bytes": 24364,
+      "sha256": "5fbbe3f516280d976733d60a979931578fbbaa38ccb83eedd570dbb5d4f370ff"
+    },
+    {
+      "path": "assets/dice-land-soft-BGBNjpI5.wav",
+      "bytes": 21804,
+      "sha256": "b71355d5f2cb182d9621434f60e9ae125c520ed463c679af8b37c3b530d65bf3"
+    },
+    {
+      "path": "assets/drop-countdown-beeps-DjTZVzke.wav",
+      "bytes": 172844,
+      "sha256": "4a5230f1bbaf2e2a6abcd815b2fcd9d7793e575d08d0461f10db86b9fc35e5a5"
+    },
+    {
+      "path": "assets/Drop357Rules-D8i8awvC.js",
+      "bytes": 4979,
+      "sha256": "56113e97bd5ac9ecbf33ea90f9b5c87259aa30eef770c09eb7a2dcf2ad7c8ddc"
+    },
+    {
+      "path": "assets/farkle-bust-a-oIAyN72R.wav",
+      "bytes": 26924,
+      "sha256": "9366af890479c056907be7df76793db47e79bd93581341ddbfc05dbd8ad96e69"
+    },
+    {
+      "path": "assets/FarkleDefaultsEditor-BKkPYeMH.js",
+      "bytes": 3851,
+      "sha256": "63e649129af1d5df10ba22afb47042a8f84908d008746d4e4595ba17408827bc"
+    },
+    {
+      "path": "assets/five-ones-a-vDJ356KJ.wav",
+      "bytes": 71724,
+      "sha256": "83cb5e1f766b0c51feb0df626a0e964167ee32d2ca988f0cc14df951a55e96b4"
+    },
+    {
+      "path": "assets/flip-soft-TBKKGT1r.wav",
+      "bytes": 9004,
+      "sha256": "a1eb74f0e0dd31d9d57bc0ec4e3bba9e6fa28d89b76c81cf76b3fc8235b5aad3"
+    },
+    {
+      "path": "assets/grass-U5HJOBoF.webp",
+      "bytes": 179222,
+      "sha256": "bb312623758a6b60f430de6b2948868d4e8ad85fd278dbcc447532c675e74664"
+    },
+    {
+      "path": "assets/h1r3ToH2r1-DSr1rWIz.js",
+      "bytes": 1855,
+      "sha256": "98ed17a6660789090382ec6ff81b27aa8858dc217eacc1f2f5aea183c6282044"
+    },
+    {
+      "path": "assets/hawks-logo-Bli_GLQh.png",
+      "bytes": 223129,
+      "sha256": "b244ff8cd81f9488514fda86f1cebcde476fa7048be3e0a6e1f8a41ca99ac443"
+    },
+    {
+      "path": "assets/holm-glass-recorded-BZ_yv91j.wav",
+      "bytes": 51244,
+      "sha256": "6ce7ebe4da94619f43980d3030952f03d88ea81f68933d1043e39e632e0055bd"
+    },
+    {
+      "path": "assets/HorsesBlitzRules-CGpUoNLG.js",
+      "bytes": 4414,
+      "sha256": "82a82d46a2d18233ca9aaf185053cc3c2620c9b34dc1b79299d6ee8b0e02431f"
+    },
+    {
+      "path": "assets/horsesSyncDiagnostics-DgIvHVEc.js",
+      "bytes": 1160,
+      "sha256": "7b5d3c879524436b9fa7a589879ef7febc23653171fe5e2d44556d13af5b3701"
+    },
+    {
+      "path": "assets/index-BONNxrHN.js",
+      "bytes": 4051540,
+      "sha256": "25248909d9e436b0da1764e728174135719e634ac19fa77ff701433f27cae01d"
+    },
+    {
+      "path": "assets/index-Cx-qeOUp.css",
+      "bytes": 348574,
+      "sha256": "42eaaa4e48837571090322a51e9c5d7d1bff38e4c0f8174338f2ab2ad3dc9e38"
+    },
+    {
+      "path": "assets/MegaCardGolfRules-B0p0IplB.js",
+      "bytes": 1976,
+      "sha256": "3bab6cd0b895c46f5eb5635f13b3b93e2123877a0bc25536b6a8d315e8d47ab0"
+    },
+    {
+      "path": "assets/midnight-a-DSzQ-B1q.wav",
+      "bytes": 60844,
+      "sha256": "93cd2dcebd5109650d65e92b94c755f8d8cdb787fb1bc3317bf69c39e15cf19f"
+    },
+    {
+      "path": "assets/my-leg-a-Cb3zmM3w.wav",
+      "bytes": 43564,
+      "sha256": "b34b771f409f5a53911ec3edffb79eac804bceb9717a67ceb4f7ab08bf8a2e34"
+    },
+    {
+      "path": "assets/no-qualify-a-CYh5HgcM.wav",
+      "bytes": 26924,
+      "sha256": "90084ece3f8d72f0d7b3344a4538fc6cf43630eeb51c05c030b5db4711fd5ed8"
+    },
+    {
+      "path": "assets/no-qualify-bg-fSzFdNoI.jpg",
+      "bytes": 63084,
+      "sha256": "06a485b9103b28276a7fbb5e8544102c01a39d8b0084ec9a2d963155cb7d26df"
+    },
+    {
+      "path": "assets/opponent-leg-a-Cq2nJuIe.wav",
+      "bytes": 24364,
+      "sha256": "96b2df2e9ee35e0c26b6f98095e3b1326e549da95b8dc4f3a42560e4db085ecc"
+    },
+    {
+      "path": "assets/peg-wood-CuuvGKYr.wav",
+      "bytes": 7724,
+      "sha256": "dcbd5f3bcdb341c022f3a2aa7bd1bd0232b33d3cfd6be19590068a975b9bfee7"
+    },
+    {
+      "path": "assets/peoria-bridge-mobile-C43NZCDE.jpg",
+      "bytes": 61945,
+      "sha256": "5bc4c562b0ccf452f0f7cd9b8c7f331955ea9eb59f91c6d5e6555f67305bdf16"
+    },
+    {
+      "path": "assets/peoria-skyline-CUExHPIY.jpg",
+      "bytes": 55928,
+      "sha256": "4deb5d162584d42e85c4f24d17e1485788a0691a21930c29fbff576807bb19d2"
+    },
+    {
+      "path": "assets/quintzee-roll-b2-C9E9GQz5.wav",
+      "bytes": 256044,
+      "sha256": "23c5f970a661fb8aa5a17e9f16c2fcfcc6c0d9155cdc32304ae4508c04d7c3c0"
+    },
+    {
+      "path": "assets/r1SnapbackRecorder-Bvvgt0c3.js",
+      "bytes": 5860,
+      "sha256": "622e90f1532ac1e808a239ef232510a352e5d145714d1a07936761b9269344f5"
+    },
+    {
+      "path": "assets/run21-bust-b-DQEmSDIv.wav",
+      "bytes": 90010,
+      "sha256": "211166baae37f8f8b693b9bf2605feacdd9101c1cd31e971721f298d7918a65d"
+    },
+    {
+      "path": "assets/Run21Rules-D2CUR58j.js",
+      "bytes": 159,
+      "sha256": "eaa7ead73e4f7023c2ff4d09ce59522103d7d2962957dbfdb646277b6817877f"
+    },
+    {
+      "path": "assets/score-post-a-CRBftxNd.wav",
+      "bytes": 14124,
+      "sha256": "66e1165de3e7c33703797605f3268b1c1bfe7b3a3c817b088c7528adb1c614b3"
+    },
+    {
+      "path": "assets/ShipCapVoyageRules-DQOyxsAi.js",
+      "bytes": 1685,
+      "sha256": "5c3cc1cb21b547309bbff747ad6b48f6e588af05c3f9f688f3d7796f4746049f"
+    },
+    {
+      "path": "assets/sweep-a-YJZv3lJb.wav",
+      "bytes": 102444,
+      "sha256": "e3473c5675c2fa9387a82b496b069b2d783b85f7ea9c913f08a56b34616400ed"
+    },
+    {
+      "path": "assets/sweep-the-leg-BHE7Zgkb.png",
+      "bytes": 16880,
+      "sha256": "ae342656c5e89a65699b0d08dc3667c7aaa6422a6db5dbe1424d1fecf44e9539"
+    },
+    {
+      "path": "assets/timeoutRules-DzRizdUe.js",
+      "bytes": 1468,
+      "sha256": "39a7c81b68b8c25b01621e798b462fea6c6aea152c898c0b4c1cd9904ae2b6d3"
+    },
+    {
+      "path": "assets/tower-FTpygc-6.webp",
+      "bytes": 306022,
+      "sha256": "265b8e8ada778a803ea32e53e824ecb05ae830da739f85f5521b00df3f6b02b8"
+    },
+    {
+      "path": "assets/TraditionalRules-r3o_gDsK.js",
+      "bytes": 26822,
+      "sha256": "18b4e483bae7521058bcd1c13c46f65082fee922530365545ea22f32879eccb0"
+    },
+    {
+      "path": "assets/tritowers-invalid-b-D6o1aFPR.wav",
+      "bytes": 15922,
+      "sha256": "1735ddb02668d0bd44aab1c79855582f89df04017c0d812d7f0085940c003f01"
+    },
+    {
+      "path": "assets/upper-bonus-b-ClpRirS4.wav",
+      "bytes": 35244,
+      "sha256": "61a097ae1579dc8d667c03c77bd813ce71977cbede973d54fa4aedafca3a719f"
+    },
+    {
+      "path": "assets/VersionedRules-aUD07IvH.js",
+      "bytes": 1389,
+      "sha256": "7f7619d7268be00cea0f4b1c58f086de25d076190eec870e4841b82a602ab453"
+    },
+    {
+      "path": "assets/waitingTableInstrumentation-BvBIeEUL.js",
+      "bytes": 777,
+      "sha256": "d2df5c39c336386729e86ec7d1d30043f11d097d55cdf1b4cc05f54c9237849f"
+    },
+    {
+      "path": "assets/winner-a-DD9ecrp6.wav",
+      "bytes": 80044,
+      "sha256": "09ca04063bfb54576de642ee2a067adf7f4732da25dd3eb8f4d1bf3ccbb9153d"
+    },
+    {
+      "path": "assets/yahtzee-a-CGy8zHZ8.wav",
+      "bytes": 76844,
+      "sha256": "7dc592b613de9f327c8b3b2037b03bd4a0496ad4b03f1b6107b1553eb01e7d94"
+    },
+    {
+      "path": "assets/yahtzeeSyncDiagnostics-C9C8rXNk.js",
+      "bytes": 1248,
+      "sha256": "62f16491e40e464ee3560414879503e7d3aec6e058a2810e5178c3219b19b7a8"
+    },
+    {
+      "path": "build-manifest.json",
+      "bytes": 174,
+      "sha256": "5d07411e3dd704253078672fdea8aaf2f0fc4460a4638ca30788c64eed3d7b68"
+    },
+    {
+      "path": "favicon.ico",
+      "bytes": 9804,
+      "sha256": "535fd730a970354e5b7cbe727c81a0659befd58e03c307a9d397d9b836d1f5df"
+    },
+    {
+      "path": "game-branding/async-v1/boxdrop-logo.webp",
+      "bytes": 49836,
+      "sha256": "9874b68efbab9b03c75bf44216d5a7621ccb226cc3017bcf8f6d1723ffd58280"
+    },
+    {
+      "path": "game-branding/async-v1/boxdrop-motif.webp",
+      "bytes": 11814,
+      "sha256": "8e67e11ec7675236f890ddee2ef8d65539ecf43932e6a5b34a6c08ea429a3101"
+    },
+    {
+      "path": "game-branding/async-v1/eleven-up-logo.webp",
+      "bytes": 66862,
+      "sha256": "46436f1fca1cf8861302b6f3ad7ff2f0c1e1401d8a142d9c8951b63bb062f114"
+    },
+    {
+      "path": "game-branding/async-v1/eleven-up-motif.webp",
+      "bytes": 4266,
+      "sha256": "4b73e1f9e7eda95c847252d15e7fd5c16afb29f5038532cd180bd0403e955306"
+    },
+    {
+      "path": "game-branding/async-v1/mega-card-golf-logo.webp",
+      "bytes": 89692,
+      "sha256": "2dc3272459637b4910e8b35fb5e4a59d8ab2bbbc6f8f7c1a4d725767a80d3ca1"
+    },
+    {
+      "path": "game-branding/async-v1/mega-card-golf-motif.webp",
+      "bytes": 4814,
+      "sha256": "03c0b4dbb6942756d52d8edf01ba10881e99de5bfdeb2715d16eefd682fc02a6"
+    },
+    {
+      "path": "game-branding/async-v1/quintzee-logo.webp",
+      "bytes": 54354,
+      "sha256": "a8ae4b6d2b2449e6d9b37eadd184abf57bd48a833dc1c289f7f76eb8a7aa227b"
+    },
+    {
+      "path": "game-branding/async-v1/quintzee-motif.webp",
+      "bytes": 13908,
+      "sha256": "b545d42fa8f746c6c1a481296d82dc57341e0164fabc9c34cfb262cf2af8819e"
+    },
+    {
+      "path": "game-branding/async-v1/royal-flash-logo.webp",
+      "bytes": 92076,
+      "sha256": "b503d9766d6b97624385a2c49d731624822cee45551f452566e4cf85a1e00c17"
+    },
+    {
+      "path": "game-branding/async-v1/royal-flash-motif.webp",
+      "bytes": 9778,
+      "sha256": "75de67d26a3f433965fa3c19c90f6d1864bd83fc3abd78e8365bfb871191b755"
+    },
+    {
+      "path": "game-branding/async-v1/run21-logo.webp",
+      "bytes": 45210,
+      "sha256": "1b2991224be0dcb1d48f88a0168b35452cd9567749a4d7be71943e2a7356b63e"
+    },
+    {
+      "path": "game-branding/async-v1/run21-motif.webp",
+      "bytes": 12314,
+      "sha256": "8c39e8912927308e541e6ad2b9dad8ab9a222660b3d5638bb553b1c792975b27"
+    },
+    {
+      "path": "game-branding/async-v1/take-two-logo.webp",
+      "bytes": 71828,
+      "sha256": "619729903792402f62e53f2aaf3dfa90b4ff48f01affc259f00538376830ee35"
+    },
+    {
+      "path": "game-branding/async-v1/take-two-motif.webp",
+      "bytes": 8076,
+      "sha256": "f2009ee588fec25b84fb7e577c0507ba278532fb22891a72332f5863313931cc"
+    },
+    {
+      "path": "game-branding/async-v1/tri-towers-logo.webp",
+      "bytes": 52796,
+      "sha256": "3776307e18563e1ef8df6719a52c963fa016eaa8019127aa97d52b6ceb5450af"
+    },
+    {
+      "path": "game-branding/async-v1/tri-towers-motif.webp",
+      "bytes": 12130,
+      "sha256": "74a59718cd356098e63ceec63c6b455f91590ba077571cc4617bff6f1996fa6b"
+    },
+    {
+      "path": "game-branding/async-v1/trip-flip-logo.webp",
+      "bytes": 100466,
+      "sha256": "050f6af215f5b09c4659186ceef2a0ba454443963ac57bc1dc00d459dca23735"
+    },
+    {
+      "path": "game-branding/async-v1/trip-flip-motif.webp",
+      "bytes": 67804,
+      "sha256": "184c66093d0cd04c333b233afa2f745c8127cc4a5e6c4f4f292a06efd74ce78e"
+    },
+    {
+      "path": "icons/ptown-poker-v1-16.png",
+      "bytes": 856,
+      "sha256": "f8e443237f6816e48499e209785ba52ab7050f0e65a28b271365dfba97de87b5"
+    },
+    {
+      "path": "icons/ptown-poker-v1-180.png",
+      "bytes": 74044,
+      "sha256": "3bb44d38888727d76678c1d85b909ce427ede96d3aee7505abba6a1b4dcf33c9"
+    },
+    {
+      "path": "icons/ptown-poker-v1-192.png",
+      "bytes": 83574,
+      "sha256": "41e7a5fa351ff9b533bab9a2b5362beefff699f74ac8f4c21f0be90e1b55d225"
+    },
+    {
+      "path": "icons/ptown-poker-v1-32.png",
+      "bytes": 2905,
+      "sha256": "11a5f91b659b3bd40929320c5cc5f48ef96fe8f14c3b876561f0fa97df01b4c5"
+    },
+    {
+      "path": "icons/ptown-poker-v1-512.png",
+      "bytes": 538636,
+      "sha256": "cd8282af3e39da02705ae166735f0dd19807c2b49d5865d7dfd2fb6bb338afad"
+    },
+    {
+      "path": "icons/ptown-poker-v1.ico",
+      "bytes": 10019,
+      "sha256": "4e015ac4bce0ec01c90f4448875e1142b798a48646060ef3ba3be290e639f557"
+    },
+    {
+      "path": "icons/ptown-poker-v2-16.png",
+      "bytes": 861,
+      "sha256": "06543672fecfb2c91ff25f697cac79e31793ed67b23229490f63f361c4d6c052"
+    },
+    {
+      "path": "icons/ptown-poker-v2-180.png",
+      "bytes": 72221,
+      "sha256": "014a9e9f74c115e34725ebfe90cf0eb28f60bbde80771940f42cdeb2003aebfd"
+    },
+    {
+      "path": "icons/ptown-poker-v2-192.png",
+      "bytes": 81618,
+      "sha256": "f580439739adb3b3767522e773f9b56b7a0e6622826ba376e797e81a625a2c16"
+    },
+    {
+      "path": "icons/ptown-poker-v2-32.png",
+      "bytes": 2884,
+      "sha256": "dd36e2de08332df2c42db68da1174aff2fa078160bb17b5c29e34398378e50dc"
+    },
+    {
+      "path": "icons/ptown-poker-v2-512.png",
+      "bytes": 491436,
+      "sha256": "a23615ed7c5e016017414ec11b8b9d0d7414a8016fe94b7c4b4d3f2489dad347"
+    },
+    {
+      "path": "icons/ptown-poker-v2-maskable-512.png",
+      "bytes": 491436,
+      "sha256": "a23615ed7c5e016017414ec11b8b9d0d7414a8016fe94b7c4b4d3f2489dad347"
+    },
+    {
+      "path": "icons/ptown-poker-v2.ico",
+      "bytes": 9804,
+      "sha256": "535fd730a970354e5b7cbe727c81a0659befd58e03c307a9d397d9b836d1f5df"
+    },
+    {
+      "path": "index.html",
+      "bytes": 9700,
+      "sha256": "3f3832d1eeda8c814c0af02011b4bd786a85a5b5cacea58bc564969022665521"
+    },
+    {
+      "path": "launch-splash/approved-v1-opening.png",
+      "bytes": 1065245,
+      "sha256": "90c6d48fc7f1e8163fa6df9f2e6357ccec06c1411424203bd6d3162dbd741808"
+    },
+    {
+      "path": "launch-splash/approved-v1.mp4",
+      "bytes": 709853,
+      "sha256": "6301834f808981dce6ffa6f4fc1812d0632cadec8d51fd202bcefcbd8026ecd8"
+    },
+    {
+      "path": "launch-splash/approved-v1.png",
+      "bytes": 1147737,
+      "sha256": "e44cf6a6eddf603b20caec8067b7c3094b1b9b63ea54cfabee57b653f64d10a2"
+    },
+    {
+      "path": "launch-splash/startup/opening-1125x2436.png",
+      "bytes": 1961499,
+      "sha256": "8bb5754b7008ddfea4578e5c7017e994e0a27426c45b57eea4dd4d98e778c77b"
+    },
+    {
+      "path": "launch-splash/startup/opening-1136x640.png",
+      "bytes": 326306,
+      "sha256": "c90cb88df42329165f998790dcc443a7a1a083281833affe74f8f3be52933325"
+    },
+    {
+      "path": "launch-splash/startup/opening-1170x2532.png",
+      "bytes": 2081374,
+      "sha256": "162e34e05cc56bf86315114cbe09d5e2a406cb3b33d45eb93975281f0261effa"
+    },
+    {
+      "path": "launch-splash/startup/opening-1179x2556.png",
+      "bytes": 2105225,
+      "sha256": "3db2ff062cba022ba6498da3e8bc5db0046458f67f8e0291790be192f86245c2"
+    },
+    {
+      "path": "launch-splash/startup/opening-1206x2622.png",
+      "bytes": 2177441,
+      "sha256": "26b60e11863cd136a3229bd3e0f9d891d9398a485e51067d707bc897eed9d6dd"
+    },
+    {
+      "path": "launch-splash/startup/opening-1242x2208.png",
+      "bytes": 2271737,
+      "sha256": "fce6a9db8170a51ee70390943f21959fe2ce538299ed1ab36b3843a98fb49cbe"
+    },
+    {
+      "path": "launch-splash/startup/opening-1242x2688.png",
+      "bytes": 2276879,
+      "sha256": "419e4305d6eca4271d0ebced1320f0091311edef6fdb58659e277518050d040f"
+    },
+    {
+      "path": "launch-splash/startup/opening-1284x2778.png",
+      "bytes": 2392396,
+      "sha256": "dde2b1396e980840eab3d51e93e1875e08f193e37f8eadc7793e19f3ff632d6b"
+    },
+    {
+      "path": "launch-splash/startup/opening-1290x2796.png",
+      "bytes": 2409628,
+      "sha256": "e682fe1738b11408cdc383a8a904064bbf8829ef06adc65a937e5db6bcc65d2b"
+    },
+    {
+      "path": "launch-splash/startup/opening-1320x2868.png",
+      "bytes": 2490039,
+      "sha256": "5abd6011e78e9f5555ba8dbf6b1bd1923c9fd5ff9e05af4e61a817d5dd94270f"
+    },
+    {
+      "path": "launch-splash/startup/opening-1334x750.png",
+      "bytes": 435496,
+      "sha256": "640bf7ff993d2265f3817e46e4062d6115fa5a6c623c1d5db636d87fc0e4c93e"
+    },
+    {
+      "path": "launch-splash/startup/opening-1792x828.png",
+      "bytes": 519132,
+      "sha256": "b4d305f530937c47aa66a350a600f93369787abc7108bc9dcd4b74c8237c2022"
+    },
+    {
+      "path": "launch-splash/startup/opening-2208x1242.png",
+      "bytes": 1001088,
+      "sha256": "bbd23f1fa767f0568e9eaec95c7d259ccdefe03bb4ffd45ca813a7b134894e0d"
+    },
+    {
+      "path": "launch-splash/startup/opening-2436x1125.png",
+      "bytes": 860558,
+      "sha256": "656244a44b16a1c1a4a1bde42e9ec34d8659ba2ca2199dc1e9cd9b33672aa973"
+    },
+    {
+      "path": "launch-splash/startup/opening-2532x1170.png",
+      "bytes": 916705,
+      "sha256": "fd0362b0dab3774e36eb69ddf64c630d19fa99ee75fe6fe3068d7b5ba43420d0"
+    },
+    {
+      "path": "launch-splash/startup/opening-2556x1179.png",
+      "bytes": 928414,
+      "sha256": "754180695fecb9773b60d0761845f3f98f1b587ed81bc804fe33f5cf4ac949f4"
+    },
+    {
+      "path": "launch-splash/startup/opening-2622x1206.png",
+      "bytes": 963869,
+      "sha256": "fbd03a13b500d0ef7101425b5e5405a498150ada4260c26d2f8ccb6cad7c0c08"
+    },
+    {
+      "path": "launch-splash/startup/opening-2688x1242.png",
+      "bytes": 1010027,
+      "sha256": "e24c150bc6cfcd34f89a6e374ce5ae000398f33e770fd4ad00f4a1cfd17a8587"
+    },
+    {
+      "path": "launch-splash/startup/opening-2778x1284.png",
+      "bytes": 1070655,
+      "sha256": "4c4c030be92380a129c4af768a755e08e8a2cc6c93506db187d8f3648b153218"
+    },
+    {
+      "path": "launch-splash/startup/opening-2796x1290.png",
+      "bytes": 1077383,
+      "sha256": "36ba894f4d19c213129a10569e99f189350202579a2c82fc405b4432254e4284"
+    },
+    {
+      "path": "launch-splash/startup/opening-2868x1320.png",
+      "bytes": 1120147,
+      "sha256": "0fc08f9419e658de8043b2c2254ce2f564a3f97071bf14484ad3f1320a27cea6"
+    },
+    {
+      "path": "launch-splash/startup/opening-640x1136.png",
+      "bytes": 814071,
+      "sha256": "6afb890b6beb7dcf6ad80395d820acc1fa9657a7dd998572732ff61df9648d09"
+    },
+    {
+      "path": "launch-splash/startup/opening-750x1334.png",
+      "bytes": 1047600,
+      "sha256": "5b3850f1e02a466d94574389687ed784b4a448b7cc09b2cf23e5370bf6e64650"
+    },
+    {
+      "path": "launch-splash/startup/opening-828x1792.png",
+      "bytes": 1226618,
+      "sha256": "d8a1bb0355aea7c2c119d238ff852f2fae7a6f9aad69af8c85d13a46a32a2e4c"
+    },
+    {
+      "path": "lovable-uploads/7ca746e0-8bcb-4dcd-9d87-407f9457deb8.png",
+      "bytes": 28407,
+      "sha256": "9592099c286195c1b642948644962b7300c45db854ecb06894b6ad5374d7d3fd"
+    },
+    {
+      "path": "manifest.webmanifest",
+      "bytes": 674,
+      "sha256": "1f8d0f296e6b963d8488bcbd4e866f5e4f85e677b28de8805db44763ce5fd7db"
+    },
+    {
+      "path": "mega-card-golf/courses-v1.png",
+      "bytes": 3371918,
+      "sha256": "bdbdebb1b9346ff21144af8cdbf93f74dac211835cb26ff412890fe7831685c1"
+    },
+    {
+      "path": "mega-card-golf/sunny-meadows-v2.png",
+      "bytes": 2720943,
+      "sha256": "701ebcbf7bf09624efcfe8688d08d9f6b64269540b18505e89f4b66d1310f311"
+    },
+    {
+      "path": "placeholder.svg",
+      "bytes": 3253,
+      "sha256": "64badf7aabda0b9630b87020ffb6095cb858ccbcf66b355c2aa08b1063954d3b"
+    },
+    {
+      "path": "ptown-push-sw.js",
+      "bytes": 8265,
+      "sha256": "78ff2a74e4067bb3e10dff4da5c6a59c25161e68d5eabaf10ea0a94c93adc723"
+    },
+    {
+      "path": "robots.txt",
+      "bytes": 174,
+      "sha256": "52710c261d851bc1ad35604017862f2a8444e7a0f02cd7b8b49e3ba92e6d4cea"
+    }
+  ],
+  "comparison": {
+    "beforeBytes": 103498912,
+    "afterBytes": 82658138,
+    "savedBytes": 20840774,
+    "savedPercent": 20.136,
+    "byCategory": {
+      "image": {
+        "before": 96406244,
+        "after": 75565470,
+        "saved": 20840774
+      },
+      "audio": {
+        "before": 1636446,
+        "after": 1636446,
+        "saved": 0
+      },
+      "javascript": {
+        "before": 4305478,
+        "after": 4305478,
+        "saved": 0
+      },
+      "css": {
+        "before": 430169,
+        "after": 430169,
+        "saved": 0
+      },
+      "other": {
+        "before": 10722,
+        "after": 10722,
+        "saved": 0
+      },
+      "video": {
+        "before": 709853,
+        "after": 709853,
+        "saved": 0
+      }
+    }
+  }
+}

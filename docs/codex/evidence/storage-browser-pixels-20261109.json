@@ -1,0 +1,273 @@
+{
+  "browser": "installed Edge / Chromium",
+  "network": "all requests blocked; data URLs only",
+  "physicalIPhoneVerified": false,
+  "results": [
+    {
+      "file": "public/arcade/357-drop-riverfront-background.png",
+      "dimensionsEqual": true,
+      "width": 1024,
+      "height": 1536,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/357-drop-final.png",
+      "dimensionsEqual": true,
+      "width": 1466,
+      "height": 564,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/chucky-showdown-clean.png",
+      "dimensionsEqual": true,
+      "width": 2024,
+      "height": 777,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/crib-lab-clean.png",
+      "dimensionsEqual": true,
+      "width": 2024,
+      "height": 777,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/horses-blitz-final.png",
+      "dimensionsEqual": true,
+      "width": 1466,
+      "height": 564,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/horses-blitz-trackside.png",
+      "dimensionsEqual": true,
+      "width": 852,
+      "height": 1846,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/horses-blitz.png",
+      "dimensionsEqual": true,
+      "width": 1466,
+      "height": 564,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/ship-cap-voyage-banner.png",
+      "dimensionsEqual": true,
+      "width": 1466,
+      "height": 564,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/ship-cap-voyage-deck.png",
+      "dimensionsEqual": true,
+      "width": 852,
+      "height": 1846,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/ship-cap-voyage-final.png",
+      "dimensionsEqual": true,
+      "width": 1466,
+      "height": 564,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/approved-v1/ship-cap-voyage.png",
+      "dimensionsEqual": true,
+      "width": 1920,
+      "height": 1080,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/chucky-portrait-four-cards.png",
+      "dimensionsEqual": true,
+      "width": 1312,
+      "height": 1199,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/chucky-table-background.png",
+      "dimensionsEqual": true,
+      "width": 852,
+      "height": 1846,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/arcade/leaderboards/chucky-four-cards.png",
+      "dimensionsEqual": true,
+      "width": 1215,
+      "height": 1295,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1125x2436.png",
+      "dimensionsEqual": true,
+      "width": 1125,
+      "height": 2436,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1136x640.png",
+      "dimensionsEqual": true,
+      "width": 1136,
+      "height": 640,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1170x2532.png",
+      "dimensionsEqual": true,
+      "width": 1170,
+      "height": 2532,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1179x2556.png",
+      "dimensionsEqual": true,
+      "width": 1179,
+      "height": 2556,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1206x2622.png",
+      "dimensionsEqual": true,
+      "width": 1206,
+      "height": 2622,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1242x2208.png",
+      "dimensionsEqual": true,
+      "width": 1242,
+      "height": 2208,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1242x2688.png",
+      "dimensionsEqual": true,
+      "width": 1242,
+      "height": 2688,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1284x2778.png",
+      "dimensionsEqual": true,
+      "width": 1284,
+      "height": 2778,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1290x2796.png",
+      "dimensionsEqual": true,
+      "width": 1290,
+      "height": 2796,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1320x2868.png",
+      "dimensionsEqual": true,
+      "width": 1320,
+      "height": 2868,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1334x750.png",
+      "dimensionsEqual": true,
+      "width": 1334,
+      "height": 750,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-1792x828.png",
+      "dimensionsEqual": true,
+      "width": 1792,
+      "height": 828,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2208x1242.png",
+      "dimensionsEqual": true,
+      "width": 2208,
+      "height": 1242,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2436x1125.png",
+      "dimensionsEqual": true,
+      "width": 2436,
+      "height": 1125,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2532x1170.png",
+      "dimensionsEqual": true,
+      "width": 2532,
+      "height": 1170,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2556x1179.png",
+      "dimensionsEqual": true,
+      "width": 2556,
+      "height": 1179,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2622x1206.png",
+      "dimensionsEqual": true,
+      "width": 2622,
+      "height": 1206,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2688x1242.png",
+      "dimensionsEqual": true,
+      "width": 2688,
+      "height": 1242,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2778x1284.png",
+      "dimensionsEqual": true,
+      "width": 2778,
+      "height": 1284,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2796x1290.png",
+      "dimensionsEqual": true,
+      "width": 2796,
+      "height": 1290,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-2868x1320.png",
+      "dimensionsEqual": true,
+      "width": 2868,
+      "height": 1320,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-640x1136.png",
+      "dimensionsEqual": true,
+      "width": 640,
+      "height": 1136,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-750x1334.png",
+      "dimensionsEqual": true,
+      "width": 750,
+      "height": 1334,
+      "changedChannels": 0
+    },
+    {
+      "file": "public/launch-splash/startup/opening-828x1792.png",
+      "dimensionsEqual": true,
+      "width": 828,
+      "height": 1792,
+      "changedChannels": 0
+    }
+  ]
+}
