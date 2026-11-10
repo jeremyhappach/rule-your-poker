@@ -1,3 +1,15 @@
+# Storage prevention — November 10, 2026 — hosted production checkpoint
+
+`storage-production-verified-20261110` records production commit
+`098937474c1434c64f74d060eaf80c8a4a43a5ff`, deployment
+`dpl_AMv1ag39r46CpWSugyxbTx7nsaFy`. Full production-push qualification passes
+locally, in GitHub and in Vercel; both production domains serve the exact commit.
+Hosted output is 89,475,220 bytes; all assets, startup references, function boundaries
+and signed-out/signed-in fixture startup routes pass. The previous READY production
+deployment remains rollback-eligible. This is automated hosted acceptance;
+physical iPhone launch and existing push delivery remain pending without reinstall.
+See [release receipt and rollback procedure](STORAGE_CONTROLLED_RELEASE.md).
+
 # Coordinated Run21 / Horses / Drop — November 9, 2026 — qualification checkpoint
 
 Run21 recovery `e4fed5f6` is preserved in the coordinated scoring release. Real

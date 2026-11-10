@@ -1,3 +1,28 @@
+# Storage optimization — November 10, 2026 — production verified
+
+Production is `098937474c1434c64f74d060eaf80c8a4a43a5ff`, Vercel READY deployment
+`dpl_AMv1ag39r46CpWSugyxbTx7nsaFy`. Both holm357.com and ptown-poker.vercel.app
+serve that exact commit. Local, GitHub and Vercel qualification pass with push
+enabled: typecheck, 4,018 application tests, 241 harness tests and 46 tooling tests;
+zero failed tests or unhandled errors. GitHub run 42894100126 verified production
+and successfully published the normal release signal.
+
+The deployed static output is 89,475,220 bytes / 179 files, independently fetched
+and matched to Vercel's size report, below the 90,000,000-byte gate. All 114 public
+URLs, 24 startup images, 25 sounds, icon/manifest identity and unchanged push worker
+pass; eight function boundaries and both rewrite aliases pass. Async Run21 remains
+in cle1. All 13 hosted signed-out and 10 hosted signed-in fixture scenarios pass,
+including complete three-second startup, account access, async/push entry and
+recovery. Signed-in backend responses were intercepted; no real sessions or
+financial data were created. No error/fatal logs were returned for this deployment.
+
+Previous production `64362de16e6b5cdac5ab1d76af009132a8605f27`, deployment
+`dpl_8UkGyaDgE61TrfV43gb27bYRYU6o`, remains READY and explicitly rollback-eligible.
+All 17 environment-variable records are unchanged. No rollback, extra preview,
+deletion, billing change or Supabase schema/gameplay/financial mutation occurred.
+Existing-iPhone-PWA smoke and actual push delivery remain Jeremy's acceptance;
+do not uninstall or reinstall it. See [release receipt](STORAGE_CONTROLLED_RELEASE.md).
+
 # Production push test fixtures — November 10, 2026 — authorized final qualification
 
 Jeremy authorized the focused browser-fixture correction and completion of the

@@ -1,5 +1,64 @@
 # Controlled storage release — November 10, 2026
 
+## Successful production receipt
+
+- Production commit: `098937474c1434c64f74d060eaf80c8a4a43a5ff`.
+- READY deployment: `dpl_AMv1ag39r46CpWSugyxbTx7nsaFy`.
+- Verified domains: https://holm357.com and https://ptown-poker.vercel.app both
+  serve that commit. The existing protection on the Vercel domain was preserved;
+  its manifest was checked through the authorized protected-fetch tool.
+- Release workflow: https://github.com/jeremyhappach/rule-your-poker/actions/runs/42894100126
+  succeeded at qualification, exact live-commit verification and release signaling.
+- Full gates: typecheck; 4,018 app tests / 548 files; 241 harness tests / 12 files;
+  46 tooling tests; production build and size budget. All pass locally and on
+  Vercel; GitHub's independent qualification also passes. No unhandled errors.
+- Local production-configured build: 89,477,854 bytes. Actual hosted static build:
+  **89,475,220 bytes / 179 files**, independently downloaded and equal to Vercel's
+  report. Headroom under the 90,000,000-byte budget: 524,780 bytes.
+- Preservation: 42 pixel-identical PNGs; 114 public URLs; 24 startup resolutions;
+  25 sounds; all manifest/icon declarations; byte-identical production push worker.
+- Local compiled checks: 28 signed-in startup, 13 signed-out startup and eight
+  native worker-entry scenarios pass. Hosted checks: all 13 signed-out and 10
+  signed-in fixture scenarios pass. Complete three-second animation, stable login,
+  async/push entry, resume/recovery and media fallbacks pass without stuck overlays.
+- Eight function probes and Run21/Canasta rewrite aliases retain expected 4xx
+  authorization/method boundaries. Async Run21 is still served from `cle1`.
+- Vercel error/fatal runtime query for this deployment returned no logs. Browser
+  smoke found no release-blocking error. Actual authenticated gameplay and APNs
+  delivery were not exercised: signed-in fixtures intercepted backend activity.
+- All 17 environment-variable records remain unchanged. Production PWA identity,
+  domains, subscriptions and push configuration are preserved. No Supabase schema,
+  gameplay or financial mutation, deletion, preview or billing change occurred.
+- Rollback target refreshed immediately before push and after publication:
+  `dpl_8UkGyaDgE61TrfV43gb27bYRYU6o` / `64362de16e6b5cdac5ab1d76af009132a8605f27`,
+  retained READY with `isRollbackCandidate: true`. No rollback was needed.
+- Checkpoint tags: `storage-push-qualified-20261110` and
+  `storage-production-verified-20261110`, both at the production commit.
+
+The fixture correction changes no application/gameplay source. The standard
+qualification runner now enables the production push path before tests on every
+platform and propagates failures. Build-budget, documentation-only build skipping,
+and exact-production-commit release signaling remain active.
+
+Raw local receipts are retained under `.storage-audit/production-release/`:
+`local-build.json`, `hosted/assets-and-functions.json`, `after-boundaries.json`,
+`signed-out/results.json` and `signed-in-fixture/results.json`. Build log:
+`.storage-audit/production-push-build.log`. These post-publication notes are saved
+locally without another main push or deployment.
+
+### Remaining physical acceptance — existing installed production PWA
+
+1. Open the existing PWA and accept its normal update prompt if shown; fully close
+   it, then cold launch. Watch the complete three-second animation and smooth
+   transition to login/lobby, without a blank or stuck screen.
+2. Log in if needed and confirm the lobby appears without an account-access stall.
+3. Enter and return from a familiar game using normal play; confirm artwork/sound.
+4. Open an existing async match, then background and resume; confirm its route/state.
+5. When a normal push notification arrives, tap it and confirm the intended destination.
+
+Do not uninstall/reinstall or reset notifications. Physical iPhone animation,
+real authenticated gameplay and actual push delivery remain pending owner acceptance.
+
 Jeremy explicitly authorized one production publication after qualification,
 with the owner's Vercel dashboard Instant Rollback as the manual fallback. This
 supersedes the earlier preview-only hold and API-access prerequisite. No test
