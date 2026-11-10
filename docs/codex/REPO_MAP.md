@@ -1675,11 +1675,11 @@ and `latency.mjs` qualify both board presentations and delayed-response behavior
 - `src/components/rules/ShipCapVoyageRules.tsx`: versioned help.
 - `dev/ship-cap-voyage/`: isolated local SQL/browser preview, race tests and review evidence.
 
-## River City Run candidate (not yet released)
+## River City Run / The Boat
 
 `src/lib/riverCityRun` owns the frozen road/table core and server-authoritative
 replay; `server/riverCityRun` adapts it to private Arcade receipts/results.
 `src/components/riverCityRun` owns course selection, The Boat board and the
-embedded approved presentation. `supabase/river-city-run/candidate.sql` is a
-closed-admission candidate, not an applied migration. Qualification and remaining
-release gates: `dev/river-city-run/README.md`.
+embedded approved presentation. Installed migration:
+`supabase/migrations/20261110023341_river_city_run_the_boat.sql`.
+Qualification and publication receipt: `docs/codex/RIVER_CITY_RUN_RELEASE.md`.

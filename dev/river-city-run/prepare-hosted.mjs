@@ -7,7 +7,7 @@ run=applyIntent(recoverRun(run,1188000),{type:'bank'},1188100);
 const state="'"+JSON.stringify(run).replaceAll("'","''")+"'::jsonb";
 const candidate=fs.readFileSync(new URL('../../supabase/river-city-run/candidate.sql',import.meta.url),'utf8');
 const proof=`
-DECLARE actor uuid;other uuid;r jsonb;s jsonb;answer jsonb;successor jsonb;request uuid:=gen_random_uuid();command uuid:=gen_random_uuid();failed boolean;win_id uuid;before_count bigint;guard record;
+DECLARE actor uuid;other uuid;r jsonb;s jsonb;answer jsonb;successor jsonb;request uuid:=gen_random_uuid();command uuid:=gen_random_uuid();failed boolean;win_id uuid;foreign_id uuid:=gen_random_uuid();before_count bigint;guard record;
 BEGIN
  SELECT p.id INTO actor FROM public.profiles p JOIN public.account_access a ON a.user_id=p.id WHERE p.is_active AND a.enabled ORDER BY p.id LIMIT 1;
  SELECT p.id INTO other FROM public.profiles p JOIN public.account_access a ON a.user_id=p.id WHERE p.is_active AND a.enabled AND p.id<>actor ORDER BY p.id LIMIT 1;
@@ -31,9 +31,10 @@ BEGIN
  PERFORM public.arcade_river_commit(actor,(successor->>'id')::uuid,0,s||jsonb_build_object('id',successor->>'id','status','abandoned','score',0));
  r:=public.arcade_river_start(other,gen_random_uuid(),'the-boat');
  PERFORM public.arcade_river_commit(other,(r->>'id')::uuid,0,s||jsonb_build_object('id',r->>'id','owner',other));
- FOREACH guard IN ARRAY ARRAY[]::record[] LOOP END LOOP;
+ INSERT INTO private.arcade_runs(id,user_id,game,ruleset,config,status,score,revision,state,ended_at) SELECT foreign_id,user_id,game,ruleset,jsonb_set(config,'{id}','"future-course"'),status,99999999,revision,jsonb_set(state,'{config,id}','"future-course"'),ended_at FROM private.arcade_runs WHERE id=win_id;
+ INSERT INTO private.arcade_results(run_id,user_id,game,ruleset,score,revision,completed_at,final_state,record) SELECT foreign_id,user_id,game,ruleset,99999999,revision,completed_at,jsonb_set(final_state,'{config,id}','"future-course"'),record FROM private.arcade_results WHERE run_id=win_id;
  answer:=public.arcade_river_board(actor,'the-boat','30');IF jsonb_array_length(answer->'rows')<>2 OR answer#>>'{rows,0,rank}'<>'1' OR answer#>>'{rows,1,rank}'<>'1' OR answer#>>'{rows,0,completedAt}' IS NULL THEN RAISE EXCEPTION 'river:30_board';END IF;
- answer:=public.arcade_river_board(actor,'the-boat','all');IF jsonb_array_length(answer->'rows')<>2 THEN RAISE EXCEPTION 'river:all_board';END IF;
+ answer:=public.arcade_river_board(actor,'the-boat','all');IF jsonb_array_length(answer->'rows')<>2 OR (answer->>'personalBest')::numeric<>16672 THEN RAISE EXCEPTION 'river:all_board';END IF;
  failed:=false;BEGIN PERFORM public.arcade_river_board(actor,'future-course','all');EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%invalid_course%' THEN RAISE;END IF;failed:=true;END;IF NOT failed THEN RAISE EXCEPTION 'river:course';END IF;
  failed:=false;BEGIN UPDATE private.arcade_results SET score=0 WHERE run_id=win_id;EXCEPTION WHEN OTHERS THEN IF SQLERRM NOT LIKE '%immutable_result%' THEN RAISE;END IF;failed:=true;END;IF NOT failed THEN RAISE EXCEPTION 'river:immutable';END IF;
 END;`;

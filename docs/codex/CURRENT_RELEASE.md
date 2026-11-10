@@ -1,12 +1,16 @@
-# River City Run — November 9, 2026 — integration candidate, not published
+# River City Run — November 9, 2026 — qualified, approved production release
 
 Jeremy authorized integration and publication after release checks. Work is isolated
 on `codex/river-city-run-release` from `e915e16a5`; other queued work is excluded.
 The Boat uses stable course ID `the-boat`, private Arcade authority and independent
 course rankings. Supplied tiles and a title-free waterfront leaderboard are wired.
-Candidate SQL remains outside migrations with admission disabled. Production has
-not changed. See [qualification checkpoint](../../dev/river-city-run/README.md)
-for evidence and remaining gates. Existing publication authorization persists.
+Migration `20261110023341_river_city_run_the_boat` passed candidate and installed
+hosted proofs with admission closed. Recovery worker v23 is healthy. Full-course,
+table, results, API/Auth, independent connection race, zero-client recovery and
+second-course isolation checks pass. Publication uses one main push/build, then
+guarded admission and authenticated portrait entry-point smoke. The annotated
+`river-city-run-production-20261109` tag records the publication receipt.
+See [release evidence and device checks](RIVER_CITY_RUN_RELEASE.md).
 
 # 11 Up billiards polish — November 9, 2026 — approved production release
 

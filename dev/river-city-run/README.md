@@ -1,9 +1,9 @@
 # River City Run integration qualification
 
-Candidate branch: `codex/river-city-run-release`, based on `e915e16a5`.
-Production is unchanged. `supabase/river-city-run/candidate.sql` is deliberately
-outside migrations and keeps admission disabled. Do not activate from this file
-without completing the remaining release checks.
+Release branch: `codex/river-city-run-release`, based on `e915e16a5`.
+The original candidate is retained for rollback-contained proofs. Installed
+migration: `20261110023341_river_city_run_the_boat`; recovery worker v23.
+See `docs/codex/RIVER_CITY_RUN_RELEASE.md` and its production tag for publication.
 
 ## Ownership
 
@@ -54,16 +54,17 @@ Preview samples, casino shortcut and unlimited-hit practice are absent.
   through a first-tap return to The Boat. The final presentation-only guard was
   browser-tested after the production build noted above.
 
-## Remaining release gate
+## Completed continuation checks
 
-Verify real shared recovery dispatch with zero clients and course
-isolation against a second synthetic course. Confirm production adapter/API
-packaging and authenticated end-to-end flow. Only then apply the guarded migration,
-repeat its installed proof, update/verify the recovery worker, activate admission,
-commit/tag, integrate and publish once through the approved main push helper.
-Production entry-point smoke and physical iPhone acceptance remain pending.
-The repository execution-budget circuit breaker requires this local checkpoint.
-No migration, worker deployment, activation, Git push or hosted build occurred.
+`release-proof.mjs` proves actual shared recovery with no client, disconnected
+all-in loss at zero, second-course exclusion and unranked Abandon. `api-proof.mjs`
+uses the actual API handler, real Auth and a rollback-only local database.
+`worker-preservation.mjs` compares the new bundle minus River against the deployed
+v22 baseline captured in ignored `prior-worker.local.mjs`; it excludes unrelated
+game behavior changes. Candidate and installed hosted proofs passed, with the
+second synthetic course included. Worker v23 is healthy. Production entry-point
+smoke is `node dev/river-city-run/production-smoke.mjs <release-sha>` and writes no
+gameplay state. Physical iPhone acceptance remains a device check.
 
 ## Local reproduction
 

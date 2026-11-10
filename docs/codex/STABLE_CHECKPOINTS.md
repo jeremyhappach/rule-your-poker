@@ -1000,3 +1000,11 @@ typecheck pass. Await Jeremy's production smoke for runtime acceptance.
 
 This checkpoint does not claim complete Gin coverage or supersede the queued
 Gin server-authority migration.
+
+## River City Run / The Boat — November 9, 2026
+
+Both full portrait-browser routes, Bank & Leave, blackjack exit, crash and
+Abandon passed. Authoritative recovery, course isolation, concurrency and hosted
+rollback proofs passed. Release tag `river-city-run-production-20261109` records
+exact deployment identity and the subsequent production entry-point smoke.
+See `RIVER_CITY_RUN_RELEASE.md`. Physical iPhone production acceptance remains.

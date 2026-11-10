@@ -3270,3 +3270,12 @@ and five passes. Pin admission and isolate leaderboard groups. Carry printed car
 and resolve zero-score stages once in order. Exact persisted command receipts can
 release the next confirmed card before the prior HTTP reply; presentation never
 reveals an unknown card or advances authority. See DROP357_CARRY_PLAYTEST.md.
+
+## River City Run authority — November 9, 2026
+
+The approved standalone course/table core is frozen as `river-city-run/1` and
+replayed server-side from ordered timed intents. The embedded renderer owns only
+presentation/optimistic movement; shoe contents and final scores remain private.
+Use existing Arcade runs/receipts/results/recovery, with `the-boat` as the stable
+course key in writes and both rankings. Store hundredths of an arcade point to
+preserve blackjack 3:2 payouts. No multiplayer or financial owner is mounted.
