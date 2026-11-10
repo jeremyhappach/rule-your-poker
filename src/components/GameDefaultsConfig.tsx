@@ -196,6 +196,12 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       (soloTimers.includes(selectedGameType) ? d.game_type===selectedGameType : !soloTimers.includes(d.game_type)));
     for (const defaultConfig of rowsToSave) {
       const gameType = defaultConfig.game_type;
+      // Originals share these defaults with multiplayer; their timing-only
+      // branches below must not bypass validation of the visible stake field.
+      const ante = Number(defaultConfig.ante_amount);
+      if (!Number.isFinite(ante) || ante < 1) {
+        validationErrors.push(`${gameType}: Ante must be at least $1`);
+      }
       if(gameType==='chucky-showdown'){
         const seconds=Number(defaultConfig.decision_timer_seconds);
         if(!Number.isInteger(seconds)||seconds<5||seconds>60)validationErrors.push('Chucky Showdown needs a whole number from 5 to 60 seconds.');
@@ -218,12 +224,6 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         try { canastaConfig({canasta_mode:defaultConfig.canasta_mode??'beginner',decision_timer_seconds:timer}); } catch { validationErrors.push('Canasta: choose Beginner/Expert and a whole-number Expert timer from 30–300 seconds'); }
       } else if (isNaN(timer) || timer < 5 || timer > 60) {
         validationErrors.push(`${gameType}: Decision timer must be 5-60 seconds`);
-      }
-
-      // Ante: minimum 1, no max
-      const ante = Number(defaultConfig.ante_amount);
-      if (isNaN(ante) || ante < 1) {
-        validationErrors.push(`${gameType}: Ante must be at least $1`);
       }
 
       // Pot max: minimum 1, no max
@@ -370,12 +370,12 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     try {
       for (const defaultConfig of normalizedDefaults) {
         if(defaultConfig.game_type==='chucky-showdown'){
-          const {error}=await supabase.from('game_defaults').update({decision_timer_seconds:defaultConfig.decision_timer_seconds,chucky_selection_seconds:Number(defaultConfig.chucky_selection_seconds??30),chucky_max_folds:Number(defaultConfig.chucky_max_folds??3),chucky_max_cracks:Number(defaultConfig.chucky_max_cracks??3)}).eq('game_type','chucky-showdown');
+          const {error}=await supabase.from('game_defaults').update({ante_amount:defaultConfig.ante_amount,decision_timer_seconds:defaultConfig.decision_timer_seconds,chucky_selection_seconds:Number(defaultConfig.chucky_selection_seconds??30),chucky_max_folds:Number(defaultConfig.chucky_max_folds??3),chucky_max_cracks:Number(defaultConfig.chucky_max_cracks??3)}).eq('game_type','chucky-showdown');
           if(error)throw error;
           continue;
         }
         if(defaultConfig.game_type==='crib-lab'){
-          const {error}=await supabase.from('game_defaults').update({crib_lab_round_seconds:Number(defaultConfig.crib_lab_round_seconds)}).eq('game_type','crib-lab');
+          const {error}=await supabase.from('game_defaults').update({ante_amount:defaultConfig.ante_amount,crib_lab_round_seconds:Number(defaultConfig.crib_lab_round_seconds)}).eq('game_type','crib-lab');
           if(error)throw error;
           continue;
         }

@@ -1,5 +1,5 @@
 export default function Drop357Rules({version}:{version?:string}){
- const partial=version==='357-drop/4'||version==='357-drop/5',carry=version==='357-drop/3';
+ const v6=version==='357-drop/6',partial=v6||version==='357-drop/4'||version==='357-drop/5',carry=version==='357-drop/3';
  return <div className="space-y-3">
   <h3>How to play</h3>
   <p>Place the face-up card into an open {partial||carry?'new-card slot':'row'}, or use one of your {carry?'five':'three'} passes per round to skip it. Placements are permanent.</p>
@@ -14,11 +14,12 @@ export default function Drop357Rules({version}:{version?:string}){
    <tr><td>3s</td><td>A pair or three of a kind. Straights and flushes do not score.</td></tr>
    <tr><td>5s / 7s</td><td>Two pair or better: trips, straight, flush, full house, four of a kind, straight flush, royal flush, five of a kind.</td></tr>
   </tbody></table>
-  <p>Higher poker hands earn more base points. Ranks and kickers select the strongest hand. A scoring hand made without wilds earns a <strong>20% natural bonus</strong>; an unused wild outside the best five does not remove it. {version==='357-drop/5'?'Score in all three rows to earn a 500-point ALL FILLED bonus.':'Score in all three rows to earn a 200-point ALL FILLED bonus.'} Finish early for a time bonus that grows with the time left. Timeout earns no time bonus.</p>
+  <p>Higher poker hands earn more base points. Ranks and kickers select the strongest hand. A scoring hand made without wilds earns a <strong>20% natural bonus</strong>; an unused wild outside the best five does not remove it. {v6||version==='357-drop/5'?'Score in all three rows to earn a 500-point ALL FILLED bonus.':'Score in all three rows to earn a 200-point ALL FILLED bonus.'} Finish early for a time bonus that grows with the time left. Timeout earns no time bonus.</p>
+  {v6&&<><h3>3s-row base points</h3><table><thead><tr><th>Rank</th><th>Pair</th><th>Trips</th></tr></thead><tbody>{[['2',80,800],['4',100,880],['5',120,970],['6',145,1070],['7',175,1170],['8',210,1290],['9',250,1420],['10',300,1560],['J',360,1720],['Q',430,1880],['K',510,2050],['A',620,2240]].map(row=><tr key={row[0]}>{row.map((x,i)=><td key={i}>{x}</td>)}</tr>)}</tbody></table><p>A pair adds twice the kicker rank to its base. Aces use rank 15. Apply the 20% natural bonus once and round to the nearest point. Every trips hand scores above every pair.</p><p>Natural pair of 7s with an ace: 246. Natural pair of aces with a 7: 761. Natural trip 7s: 1,404; kings: 2,460; aces: 2,688. Wild-assisted trip aces: 2,240.</p></>}
   <h3>Examples</h3>
   <table><thead><tr><th>Compare</th><th>Why</th></tr></thead><tbody>
-   <tr><td>J–J–A vs. J–J–K</td><td>In the 3s row, the natural pair with an ace kicker scores 150; the king kicker scores 148.</td></tr>
-   <tr><td>J–J–3 vs. J–J–A</td><td>The wild 3 makes three jacks: 480 beats the natural pair’s 150.</td></tr>
+   <tr><td>J–J–A vs. J–J–K</td><td>In the 3s row, the natural pair with an ace kicker scores {v6?468:150}; the king kicker scores {v6?463:148}.</td></tr>
+   <tr><td>J–J–3 vs. J–J–A</td><td>The wild 3 makes three jacks: {v6?'1,720':480} beats the natural pair’s {v6?468:150}.</td></tr>
    <tr><td>8–8–8–4–4 vs. A–A–A–K–K</td><td>Aces full wins: compare the trip rank first.</td></tr>
    <tr><td>A–A–A–K–K vs. A–A–A–8–8</td><td>Same trips: the pair of kings beats the pair of eights.</td></tr>
    <tr><td>A–A–A–K–K vs. A–A–5–K–K</td><td>In the 5s row, both make aces full of kings. The natural hand earns 2,224; the wild-assisted hand earns 1,853.</td></tr>

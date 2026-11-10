@@ -4,7 +4,7 @@ import {join,extname} from 'node:path';
 import {createHash} from 'node:crypto';
 import {decodePng,rgba} from './png-lossless.mjs';
 
-const proof=JSON.parse(readFileSync('docs/codex/evidence/storage-png-proof-20261109.json','utf8'));
+const proof=JSON.parse(readFileSync('docs/codex/evidence/storage-png-proof-20261110.json','utf8'));
 for(const file of proof.files){
   const image=decodePng(readFileSync(file.file));assert.equal(image.width,file.width);assert.equal(image.height,file.height);
   assert.equal(createHash('sha256').update(rgba(image)).digest('hex'),file.rgbaSha256,`Decoded pixels changed: ${file.file}`);
@@ -29,7 +29,7 @@ for(const match of tiles.matchAll(/:\s*\{([^{}]*slug\s*:[^{}]*)\}/g)){
   dynamicReferences++;
 }
 assert(dynamicReferences>=14,'Artwork registry scan did not cover the current catalog');
-const baseline=JSON.parse(readFileSync('docs/codex/evidence/storage-preserve-20261109.json','utf8'));
+const baseline=JSON.parse(readFileSync('docs/codex/evidence/storage-preserve-20261110.json','utf8'));
 for(const [file,digest]of Object.entries(baseline.files))assert.equal(createHash('sha256').update(readFileSync(file)).digest('hex'),digest,`Preserved file changed: ${file}`);
 for(const url of baseline.publicUrls)check(url);
 const config=JSON.parse(readFileSync('vercel.json','utf8'));

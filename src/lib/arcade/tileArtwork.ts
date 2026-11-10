@@ -1,5 +1,6 @@
 /** Approved 2026-11-01 handoff. Catalog still owns eligibility, names and order. */
 export const APPROVED_TILE_ARTWORK: Readonly<Record<string, {slug:string; infoBottom?:string;source?:string;width?:number;height?:number;embeddedInfo?:{right:string;bottom:string;width:string;height:string}}>> = {
+  'river-city-run': {source:'/river-city-run/river-city-run.png',slug:'river-city-run',width:1466,height:564},
   'ship-cap-voyage': {source:'/arcade/approved-v1/ship-cap-voyage-final.png',slug:'ship-cap-voyage',width:1466,height:564},
   'horses-blitz': {source:"/arcade/approved-v1/horses-blitz-final.png",slug:"horses-blitz"},
   '357-drop': {slug:'357-drop',source:'/arcade/approved-v1/357-drop-final.png'},

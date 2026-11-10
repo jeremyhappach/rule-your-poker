@@ -1,26 +1,83 @@
-.fullscreen-game.run21-space-theme{background:radial-gradient(ellipse at 80% 0%,#20294166,transparent 65%),#070e20;color:#edf5ff}
-.run21-space-theme .fullscreen-game-board{isolation:isolate}
-.run21-space-scene{position:absolute;inset:0;overflow:hidden;z-index:-1;pointer-events:none}
-.run21-stars{position:absolute;inset:0;width:100%;height:100%}
-.run21-ringed-planet{position:absolute;width:clamp(8rem,38cqw,17rem);left:-5%;top:-3%;opacity:.5}
-.run21-distant-planet{position:absolute;width:clamp(8rem,33cqw,15rem);left:-16%;bottom:0;opacity:.42}
-.run21-space-theme .fullscreen-game-toolbar button{background:#101c34cc;border-color:#8ca7ce44}
-.run21-space-theme .run21-fullscreen-board .run21-column{background:linear-gradient(#1b2d49f2,#101d34eb);border-color:#80a4c980;border-radius:.75rem;box-shadow:0 .2rem .8rem #0003,inset 0 1px #dceeff15;isolation:isolate}
-/* Extra quiet stars fill the unused lower wells; cards and totals stay above them. */
-.run21-space-theme .run21-column::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:radial-gradient(circle at 22% 18%,#c4dafa9c 0 1px,transparent 1.4px),radial-gradient(circle at 72% 64%,#b2c9f07a 0 .8px,transparent 1.3px),radial-gradient(circle at 42% 85%,#dce8ff70 0 .6px,transparent 1px);background-size:4.7rem 7.1rem,6.3rem 5.3rem,3.9rem 8.7rem;mask-image:linear-gradient(transparent 8%,#000 40%)}
-.run21-space-theme .run21-column:nth-child(even)::before{background-position:1.3rem 2.3rem,.5rem 1.7rem,1rem 3.1rem}
-.run21-space-theme .run21-column:has(.run21-column-total[data-complete=true]){border-color:#e4c477a8;background:linear-gradient(#343a46f2,#182437eb)}
-.run21-space-theme .run21-fullscreen-board .run21-column-total{color:#f3f7ff;font-weight:800;top:2%;font-size:clamp(1rem,min(5cqw,8cqh),2.2rem)}
-.run21-space-theme .run21-fullscreen-board .run21-column-stack{top:max(14%,2rem)}
-.run21-space-theme .run21-column-total[data-complete=true]{color:#ffe0a3}
-.run21-space-theme .run21-pass button,.run21-space-theme .run21-help button,.run21-space-theme .run21-player-actions button{background:#15243e;border-color:#89aece66}
-.run21-space-theme .run21-player-actions .run21-collect-button[data-eligible]{background:#edc56e;color:#152027}
-.run21-space-theme .run21-scoreboard>[role=row]{background:#15243ee6;border-color:#7b9fc54d}
-.run21-space-theme .run21-scoreboard>[data-active=true]{background:linear-gradient(120deg,#343a46,#182b45);border-color:#dfba637a}
-.run21-space-theme .run21-round-intro-card{background:linear-gradient(150deg,#223454f5,#101c33f5)}
-.run21-space-theme .run21-fullscreen-board .run21-live-card[data-run21-turn-state=active]{filter:drop-shadow(0 0 .35rem #8ad9ed77);animation:none}
-.run21-felt-content .run21-column:enabled:active{background:#33506d;border-color:#b4e6ff;box-shadow:inset 0 0 0 2px #b4e6ff66}
-.run21-stacked-card[data-pending=true]{filter:drop-shadow(0 0 2px #f2cf83)}
-.run21-stacked-card[data-pending=true]::after{content:'';position:absolute;inset:0;border:2px dashed #d6a33c;border-radius:.35rem;pointer-events:none}
-.run21-awaiting-card{display:grid;place-items:center;height:100%;font-size:clamp(.65rem,2.2cqw,.9rem);color:#e7cb91}
-@media(prefers-reduced-motion:reduce){.run21-felt-content .run21-stacked-card{animation:none}}
+/* Midnight High Limit paint only. Layout, clocks, input and state retain their owners. */
+.run21-space-theme,.arcade-board.theme-run21,.run21-felt-content {
+  --run21-midnight:#06131e;
+  --run21-navy:#091b2b;
+  --run21-raised:#102b35;
+  --run21-teal:#51b8b5;
+  --run21-gold:#dcae58;
+  --run21-gold-bright:#ffe5a0;
+  --run21-ivory:#fff7e4;
+  --run21-muted:#c4ced2;
+  --run21-metal:linear-gradient(120deg,#fff0b7 0%,#b98330 16%,#6e491c 34%,#e5be72 51%,#fff1bb 60%,#916323 78%,#edca81);
+  --run21-suits:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='76' viewBox='0 0 56 76'%3E%3Cg fill='%2385c6c1' fill-opacity='.08'%3E%3Cpath d='M14 10C10 16 6 18 6 22c0 5 6 6 8 2-1 5-2 6-3 7h6c-1-1-2-2-3-7 2 4 8 3 8-2 0-4-4-6-8-12z'/%3E%3Cpath d='m42 46 6 9-6 9-6-9z'/%3E%3C/g%3E%3C/svg%3E");
+}
+.fullscreen-game.run21-space-theme {
+  background:linear-gradient(#06131e25,#06131e10 40%,#06131e15),url('/run21-midnight/gameplay.jpg') center top/cover no-repeat,var(--run21-midnight);
+  color:var(--run21-ivory);
+}
+.run21-space-theme .fullscreen-game-board { isolation:isolate; }
+.run21-space-theme [data-canonical-shell-announcement-rail] { --baby-blue:192 52% 18%; }
+.run21-space-theme [data-canonical-shell-announcement-rail] p { color:var(--run21-ivory);text-shadow:0 1px 2px #000; }
+/* A zero-level decoration is contained behind the existing positive-level interaction layer.
+   The full-shell artwork reaches the toolbar; the scene never waits for image loading. */
+.run21-space-scene { position:absolute;inset:0;overflow:hidden;z-index:0;pointer-events:none; }
+.run21-space-theme .fullscreen-game-board>.run21-space-scene {
+  background:radial-gradient(ellipse at 50% 100%,#c99a3020,transparent 50%);
+}
+.run21-space-theme .fullscreen-game-heading,
+.run21-space-theme .arcade-run-score { text-shadow:0 2px 4px #000,0 0 12px #000; }
+.run21-space-theme .fullscreen-game-toolbar button,
+.run21-space-theme .run21-pass button,
+.run21-space-theme .run21-help button,
+.run21-space-theme .run21-player-actions button {
+  background:linear-gradient(165deg,#235a5d,#0a202a 45%,#040d17 75%,#10353b) padding-box,var(--run21-metal) border-box;
+  color:var(--run21-ivory);
+  border-color:transparent;
+  box-shadow:inset 0 0 0 1px #fff0b733,inset 0 2px 3px #b1fff03b,inset 0 -3px 4px #000a,0 3px 7px #000a,0 0 7px #d2a45020;
+  text-shadow:0 1px 2px #000;
+}
+.run21-space-theme .run21-player-actions .run21-collect-button[data-eligible] {
+  background:linear-gradient(165deg,#fff1be,#f0cd79 15%,#dba849 48%,#b87c27 52%,#e7b64e 85%,#ffe7a0) padding-box,var(--run21-metal) border-box;
+  color:#07151b;
+  text-shadow:0 1px #fff3bc88;
+  border-color:transparent;
+  box-shadow:inset 0 0 0 1px #fff0be,inset 0 3px 4px #fff9c57a,inset 0 -3px 4px #7b4b1c99,0 4px 9px #0009,0 0 8px #e0ae4538;
+}
+.run21-space-theme button:focus-visible { outline-color:var(--run21-gold-bright); }
+.run21-space-theme .run21-fullscreen-board .run21-column {
+  background:var(--run21-suits) left top/56px 76px repeat padding-box,linear-gradient(130deg,#123d43ee,#061c2cf0 46%,#0a2936e8 82%,#1a3b3de8) padding-box,var(--run21-metal) border-box;
+  border-color:transparent;
+  border-radius:.75rem;
+  box-shadow:inset 0 0 0 1px #090e16,inset 2px 2px 8px #000c,inset -2px -2px 5px #0009,0 3px 8px #000b,0 0 4px #e4b75e55;
+  isolation:isolate;
+}
+/* Static surface reflections; no extra motion, composited blur or interaction targets. */
+.run21-space-theme .run21-column::before {
+  content:'';position:absolute;inset:2px;z-index:0;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(145deg,#7ad5ca16,transparent 25%,transparent 65%,#4c9c9f14),radial-gradient(ellipse at 50% 100%,#ffe1a12e,transparent 22%);
+  box-shadow:inset 0 1px #a5ede550,inset 0 -1px #fff0b877;
+}
+.run21-space-theme .run21-column-total,
+.run21-space-theme .run21-column-stack { z-index:1; }
+.run21-space-theme .run21-column:has(.run21-column-total[data-complete=true]) {
+  background:var(--run21-suits) repeat padding-box,linear-gradient(#35483cf5,#142d2ff5) padding-box,var(--run21-metal) border-box;
+  box-shadow:inset 0 0 0 1px #fcdf9b66,inset 0 0 18px #ce9b352d,0 0 7px #e5b75666,0 3px 8px #000b;
+}
+.run21-space-theme .run21-fullscreen-board .run21-column-total {
+  color:var(--run21-ivory);font-weight:800;top:2%;font-size:clamp(1rem,min(5cqw,8cqh),2.2rem);
+  text-shadow:0 2px 3px #000,0 0 9px #e3b65a35;
+}
+.run21-space-theme .run21-fullscreen-board .run21-column-stack { top:max(14%,2rem); }
+.run21-space-theme .run21-column-total[data-complete=true] { color:var(--run21-gold-bright); }
+.run21-space-theme .run21-scoreboard>[role=row] { background:linear-gradient(#13303ee8,#06131ef2);border-color:#c3a26870;box-shadow:inset 0 1px #fce5aa20,0 2px 5px #0006; }
+.run21-space-theme .run21-scoreboard>[data-active=true] { background:linear-gradient(120deg,#35422ce8,#0b2a35f5);border-color:#e8c579b0; }
+.run21-space-theme .arcade-run-score strong { color:var(--run21-gold-bright);text-shadow:0 1px #fff6c9,0 2px 3px #533818,0 0 12px #d1a04855; }
+.run21-space-theme .arcade-run-score>span { color:var(--run21-muted); }
+.run21-space-theme .run21-round-intro-card { background:linear-gradient(150deg,#102f38f5,#07121ff5); }
+.run21-space-theme .run21-timer { background:#031119;outline-color:#b4c8ba80;box-shadow:0 0 0 1px #e3b65a44,inset 0 2px 3px #000; }
+.run21-space-theme .run21-fullscreen-board .run21-live-card[data-run21-turn-state=active] { filter:drop-shadow(0 0 .3rem #a6e3cb88) drop-shadow(0 3px 3px #0009);animation:none; }
+.run21-felt-content .run21-column:enabled:active { background:#21484a;border-color:#ffe0a0;box-shadow:inset 0 0 0 2px #b4e6df66; }
+.run21-stacked-card[data-pending=true] { filter:drop-shadow(0 0 2px #f2cf83); }
+.run21-stacked-card[data-pending=true]::after { content:'';position:absolute;inset:0;border:2px dashed #d6a33c;border-radius:.35rem;pointer-events:none; }
+.run21-awaiting-card { display:grid;place-items:center;height:100%;font-size:clamp(.65rem,2.2cqw,.9rem);color:#e7cb91; }
+@media(prefers-reduced-motion:reduce) { .run21-felt-content .run21-stacked-card { animation:none; } }

@@ -10,12 +10,15 @@ afterEach(cleanup);
 it('stages section changes and keyboard-button moves until one explicit save',async()=>{
  render(<ArcadeOrderingPanel/>);
  const select=await screen.findByLabelText('Run21 section');
+ // The async load can expose the draft before its disabled fieldset clears.
+ // Interact only when a keyboard user can, then wait for the post-move effect.
+ await waitFor(()=>expect(select.closest('fieldset')?.disabled).toBe(false));
  fireEvent.change(select,{target:{value:'originals'}});
- expect(document.activeElement).toBe(screen.getByLabelText('Run21 section'));
+ await waitFor(()=>expect(document.activeElement).toBe(screen.getByLabelText('Run21 section')));
  fireEvent.click(screen.getByRole('button',{name:'Move Run21 up'}));
  expect(mocks.save).not.toHaveBeenCalled();
  const games=within(screen.getByRole('list',{name:'P-Town Originals'})).getAllByRole('listitem');
- expect(games.map(row=>row.getAttribute('data-arcade-order-game'))).toEqual(['horses-blitz','357-drop','crib-lab','run21','chucky-showdown']);
+ expect(games.map(row=>row.getAttribute('data-arcade-order-game'))).toEqual(['horses-blitz','357-drop','crib-lab','chucky-showdown','river-city-run','run21','ship-cap-voyage']);
  fireEvent.click(screen.getByRole('button',{name:'Save Arcade order'}));
  await screen.findByText('Arcade order saved.');
  expect(mocks.save).toHaveBeenCalledTimes(1);

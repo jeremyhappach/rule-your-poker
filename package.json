@@ -21,6 +21,9 @@
     "test:human-chaos-contract": "npm run test:harness:unit && playwright test -c playwright.human-chaos.config.ts support/continuousObserver.browser.spec.ts",
     "build": "npm run validate && vite build && npm run report:build-size",
     "report:build-size": "node scripts/build-size-report.mjs dist --max-bytes 90000000",
+    "report:storage": "node scripts/storage/monitor.mjs",
+    "preview:preflight": "node scripts/deployment/preview-preflight.mjs",
+    "test:release-tooling": "node --test scripts/deployment/change-policy.test.mjs scripts/storage/report.test.mjs scripts/storage/cleanup.test.mjs scripts/storage/monitor.test.mjs",
     "test:storage": "node --test scripts/storage/report.test.mjs && node scripts/storage/verify-assets.mjs",
     "optimize:png": "node scripts/storage/optimize-pngs.mjs",
     "build:dev": "vite build --mode development",
@@ -29,7 +32,7 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "test:harness:unit": "vitest run e2e/fullSeam/manifest.test.ts e2e/targetGauntlet/manifest.test.ts e2e/humanChaos/manifest.test.ts e2e/humanChaos/target.test.ts e2e/humanChaos/support/continuousObserver.test.ts e2e/humanChaos/support/mutationProgress.test.ts e2e/humanChaos/support/scenarioObserver.test.ts e2e/humanChaos/support/transitionPresentation.test.ts e2e/humanChaos/support/threeFiveSevenPresentationDriver.test.ts e2e/humanChaos/support/decisionCapture.test.ts e2e/humanChaos/support/diceRollCapture.test.ts e2e/liveness/support/crossCountryNetwork.test.ts",
     "test:unit": "vitest run src && npm run test:harness:unit",
-    "validate": "npm run typecheck && npm run test:unit"
+    "validate": "npm run typecheck && npm run test:unit && npm run test:release-tooling"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",

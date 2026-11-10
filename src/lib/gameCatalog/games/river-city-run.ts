@@ -1,0 +1,2 @@
+import type {GameDescriptor} from '../types';
+export default {id:'river-city-run',defaultsKey:'river-city-run',name:'River City Run',category:'other',order:30,family:'megatouch',modes:['arcade'],arcadeSection:'originals',players:{min:1,max:1,selection:'solo'},bots:'unsupported',moneyModes:[],availability:'river-city-run',development:'integrated',ownerSmoke:'pending',rules:{kind:'versioned',key:'river-city-run',fixedVersion:'river-city-run/1',load:()=>import('@/components/rules/RiverCityRunRules')},defaultsEditor:'stake'} satisfies GameDescriptor;

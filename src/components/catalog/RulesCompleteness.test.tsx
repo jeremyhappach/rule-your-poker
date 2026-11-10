@@ -7,6 +7,7 @@ import {ASYNC_RULES_GAMES,rulesModes} from '@/lib/gameCatalog/rulesModes';
 import audit from '../../../dev/lobby-catalog/rules-audit-20261104.json';
 // Preserve the historical audit and enumerate additions separately.
 const candidates=vi.hoisted(()=>[
+ {game:'river-city-run',id:'river-city-run/1',config:{version:'river-city-run/1'}},
  {game:'crib-lab',id:'crib-lab/1',config:{version:'crib-lab/1',durationMs:240000}},
  {game:'chucky-showdown',id:'chucky-showdown/1',config:{version:'chucky-showdown/1',durationMs:30000}},
  {game:'357-drop',id:'357-drop/4',config:{version:'357-drop/4'}},

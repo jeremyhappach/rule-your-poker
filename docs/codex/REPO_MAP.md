@@ -275,7 +275,13 @@ the package/Vercel build budget. `scripts/storage/png-lossless.mjs` owns offline
 pixel-preserving PNG encoding, reused by `dev/launch-splash/startup-images.mjs`;
 `scripts/storage/optimize-pngs.mjs` is dry-run by default. Candidate preservation,
 browser decoding and tooling tests live in `scripts/storage/`. See
-`VERCEL_STORAGE_REMEDIATION.md` for qualification and separate cleanup approval.
+`VERCEL_STORAGE_REMEDIATION.md` for the original qualification/cleanup history.
+`scripts/deployment/` owns the shared documentation-only build policy, live release
+signal decision and read-only preview reuse preflight. `scripts/storage/monitor.mjs`
+owns read-only retained-asset estimates and conservative cleanup review holds;
+`cleanup.mjs` retains its original fixed-batch deletion boundaries. Current local
+qualification, trigger allowlist, thresholds, object-storage evaluation and device
+checklist: `VERCEL_STORAGE_PREVENTION.md`.
 
 Horses Blitz: `supabase/horses-blitz/` owns the frozen dice/scoring core, Arcade
 step and guarded activation. `useHorsesBlitzRoll` owns the presentation-only roll
@@ -1681,3 +1687,12 @@ and `latency.mjs` qualify both board presentations and delayed-response behavior
 - `src/components/arcade/SoloShipCapVoyage.tsx`, `shipCapVoyage.css`: shared dice/audio/tally integration and persistent scoreboard.
 - `src/components/rules/ShipCapVoyageRules.tsx`: versioned help.
 - `dev/ship-cap-voyage/`: isolated local SQL/browser preview, race tests and review evidence.
+
+## River City Run / The Boat
+
+`src/lib/riverCityRun` owns the frozen road/table core and server-authoritative
+replay; `server/riverCityRun` adapts it to private Arcade receipts/results.
+`src/components/riverCityRun` owns course selection, The Boat board and the
+embedded approved presentation. Installed migration:
+`supabase/migrations/20261110023341_river_city_run_the_boat.sql`.
+Qualification and publication receipt: `docs/codex/RIVER_CITY_RUN_RELEASE.md`.

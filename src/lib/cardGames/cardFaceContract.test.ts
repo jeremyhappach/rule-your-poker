@@ -32,10 +32,14 @@ describe('cross-game card face contract', () => {
     expect([...owners].sort()).toEqual([
       'components/HolmLonePlayerFan.tsx',
       'components/PlayingCard.tsx',
+      // Reviewed fixed decorative 3/5/7 and 6/7/7/8 fans; no live/private cards.
+      'components/arcade/ArcadeLeaderboardArtwork.tsx',
       'components/hand-history/MiniPlayingCard.tsx',
       // Reviewed numeric leaderboard positions; neither surface renders card faces.
       'components/megaCardGolf/CourseClubhouse.tsx',
       'components/megaCardGolf/MegaLeaderboard.tsx',
+      // Reviewed numeric leaderboard position, not a card face.
+      'components/riverCityRun/RiverCityRunPage.tsx',
       'lib/canonicalShell/cardTransport/CardTransportRuntime.tsx',
       // Developer-only evaluators create/parse valid cards locally.
       'pages/HandEvalDebug.tsx',

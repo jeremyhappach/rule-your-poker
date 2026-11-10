@@ -24,7 +24,9 @@ vi.mock('@/lib/dealerGameSetupAuthority',()=>({configureDealerGame:state.configu
 vi.mock('sonner',()=>({toast:{error:vi.fn()}}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{
  from:(table:string)=>{let key='';const result=()=>table==='game_defaults'?(state.pending.get(key)?.promise??Promise.resolve({data:{ante_amount:5},error:null})):Promise.resolve({data:{status:'game_selection',config_complete:false,config_deadline:new Date(Date.now()+600000).toISOString()},error:null});const q:any={select:()=>q,eq:(column:string,value:string)=>{if(column==='game_type')key=value;return q;},single:result,maybeSingle:result,then:(yes:any,no:any)=>result().then(yes,no)};return q;},
- channel:()=>{const c:any={on:()=>c,subscribe:()=>c};return c;},removeChannel:()=>{},rpc:vi.fn()
+ channel:()=>{const c:any={on:()=>c,subscribe:()=>c};return c;},removeChannel:()=>{},
+ // Keep the real async hook mounted. Unrelated RPCs must not silently succeed.
+ rpc:vi.fn(async(name:string)=>{if(name==='mega_competition_catalog')return {data:null,error:null};if(name==='originals_capabilities')return {data:{},error:null};throw new Error('Unexpected RPC: '+name);})
 }}));
 import {DealerGameSetup} from './DealerGameSetup';
 function defer(key:string){let resolve!:(value:unknown)=>void;const promise=new Promise(r=>{resolve=r;});state.pending.set(key,{promise,resolve});return resolve;}

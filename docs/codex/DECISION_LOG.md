@@ -3270,3 +3270,26 @@ and five passes. Pin admission and isolate leaderboard groups. Carry printed car
 and resolve zero-score stages once in order. Exact persisted command receipts can
 release the next confirmed card before the prior HTTP reply; presentation never
 reveals an unknown card or advances authority. See DROP357_CARRY_PLAYTEST.md.
+
+## River City Run authority — November 9, 2026
+
+The approved standalone course/table core is frozen as `river-city-run/1` and
+replayed server-side from ordered timed intents. The embedded renderer owns only
+presentation/optimistic movement; shoe contents and final scores remain private.
+Use existing Arcade runs/receipts/results/recovery, with `the-boat` as the stable
+course key in writes and both rankings. Store hundredths of an arcade point to
+preserve blackjack 3:2 payouts. No multiplayer or financial owner is mounted.
+
+## Deployment output prevention — November 10, 2026
+
+The locally approved storage candidate keeps a 90 MB static budget and makes the
+full application/harness/tooling gate part of Vercel's build command. Only explicit
+documentation and non-executable evidence paths may skip output builds, using a
+complete ancestor comparison against live production or Vercel's last successful
+branch preview. Unknown paths/history/environments build. Release signaling never
+announces an unbuilt commit. Required previews and rollback holds remain intact;
+same-SHA cross-environment builds are not automatically treated as interchangeable.
+Monitoring is GET-only; missing alias targets block cleanup recommendations.
+No age-only deletion policy or scheduled destructive action is introduced.
+See `VERCEL_STORAGE_PREVENTION.md`; this decision is local until publication is
+explicitly approved and physical iPhone acceptance is recorded.

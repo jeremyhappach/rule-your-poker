@@ -1,4 +1,4 @@
-name: Publish release signal
+name: Qualify and publish release signal
 
 on:
   push:
@@ -7,32 +7,35 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: production-release-signal
+  cancel-in-progress: true
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
-      - name: Wait for the production alias to serve this commit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Qualify this commit (also required for documentation-only pushes)
+        run: npm run validate
+      - name: Verify production or record an intentional documentation-only skip
+        id: release
         env:
           EXPECTED_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          for attempt in {1..120}; do
-            manifest="$(curl --fail --silent --show-error --header 'Cache-Control: no-cache' https://holm357.com/build-manifest.json || true)"
-            if [ -n "$manifest" ]; then
-              build_sha="$(node -e 'try { process.stdout.write(JSON.parse(process.argv[1]).buildId || "") } catch {}' "$manifest")"
-              if [ "$build_sha" = "$EXPECTED_SHA" ]; then
-                echo "Production alias is serving $build_sha"
-                exit 0
-              fi
-            fi
-            echo "Production alias has not reached $EXPECTED_SHA yet (attempt $attempt/120)."
-            sleep 5
-          done
-          echo "Production alias never served the expected SHA. No release signal was published."
-          exit 1
+        run: node scripts/deployment/release-decision.mjs
 
       - name: Publish the verified release signal
+        if: steps.release.outputs.publish == 'true'
         env:
           EXPECTED_SHA: ${{ github.sha }}
           RELEASE_PUBLICATION_TOKEN: ${{ secrets.RELEASE_PUBLICATION_TOKEN }}

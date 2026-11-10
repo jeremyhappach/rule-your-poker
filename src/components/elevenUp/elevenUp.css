@@ -1,9 +1,47 @@
-.eleven-scene{background:radial-gradient(ellipse at top,#17654f,#083d30);color:#fff8db}
+.eleven-scene{position:relative;isolation:isolate;background:radial-gradient(ellipse at 50% 0,#4c3a1d66,transparent 45%),linear-gradient(#0d1d16,#070e0b);color:#fff1c6}
+/* A complete physical frame behind the existing board, below the HUD. Its
+ * dimensions never participate in rack or control layout. */
+.eleven-table-backdrop{--table-wood:clamp(.5rem,2.6cqw,.8rem);--table-end:clamp(.65rem,2cqh,.9rem);--table-cushion:clamp(.25rem,1.4cqw,.4rem);position:absolute;inset:0 -.4rem .15rem;z-index:-1;pointer-events:none;border-radius:.55rem;background:#25160e;box-shadow:0 0 0 1px #9c733a88,0 3px 6px #000b}
+.eleven-table-backdrop *{pointer-events:none}
+.eleven-table-bed{position:absolute;inset:var(--table-end) var(--table-wood);background:radial-gradient(ellipse at 50% 12%,#c4bc4520,transparent 65%),url('./felt-grain.svg'),radial-gradient(ellipse at 50% 40%,#0d5a3f,#053e2b 76%,#03281e);box-shadow:inset 0 0 1.5rem #0009}
+.eleven-table-rail{position:absolute;background:linear-gradient(90deg,#0d070555,#e0a46333 35%,#a46d3833 70%,#120a0666),url('./walnut-grain.svg');box-shadow:inset 1px 0 #d9a15c66,inset -1px 0 #1e0f08;z-index:1}
+.eleven-table-rail--left{inset:0 auto 0 0;width:var(--table-wood);border-radius:.55rem 0 0 .55rem}
+.eleven-table-rail--right{inset:0 0 0 auto;width:var(--table-wood);border-radius:0 .55rem .55rem 0}
+.eleven-table-rail--top,.eleven-table-rail--bottom{left:0;right:0;height:var(--table-end);background:linear-gradient(#b57a3d55,#26120966),url('./walnut-grain.svg');background-size:auto,256px 24px;box-shadow:inset 0 1px #e1b06d99,inset 0 -1px #211006}
+.eleven-table-rail--top{top:0;border-radius:.55rem .55rem 0 0}
+.eleven-table-rail--bottom{bottom:0;border-radius:0 0 .55rem .55rem}
+.eleven-table-cushion{position:absolute;background:linear-gradient(90deg,#0a2517,#39704a 25%,#185632 55%,#092c1c);box-shadow:1px 0 2px #0008}
+.eleven-table-cushion--left{top:var(--table-end);bottom:var(--table-end);left:var(--table-wood);width:var(--table-cushion)}
+.eleven-table-cushion--right{top:var(--table-end);bottom:var(--table-end);right:var(--table-wood);width:var(--table-cushion);transform:rotate(180deg)}
+.eleven-table-cushion--top,.eleven-table-cushion--bottom{left:var(--table-wood);right:var(--table-wood);height:var(--table-cushion);background:linear-gradient(#234f31,#3b6b43 25%,#103c25 75%,#08271a);box-shadow:0 2px 3px #0008}
+.eleven-table-cushion--top{top:var(--table-end)}.eleven-table-cushion--bottom{bottom:var(--table-end);transform:rotate(180deg)}
+.eleven-table-pocket{position:absolute;width:calc(var(--table-wood) + var(--table-cushion));height:calc(var(--table-wood) + var(--table-cushion));z-index:3;border:1px solid #947748;border-radius:50%;background:radial-gradient(ellipse at 55% 80%,#161b12,#020503 65%);box-shadow:inset 0 3px 4px #000,0 0 0 2px #1c1b10,0 2px 3px #0009}
+.eleven-table-pocket--top-left{top:1px;left:1px}.eleven-table-pocket--top-right{top:1px;right:1px}
+.eleven-table-pocket--bottom-left{bottom:1px;left:1px}.eleven-table-pocket--bottom-right{bottom:1px;right:1px}
+.eleven-table-pocket--middle-left{top:50%;left:0;transform:translateY(-50%)}.eleven-table-pocket--middle-right{top:50%;right:0;transform:translateY(-50%)}
+.eleven-table-sights{position:absolute;left:0;right:0;display:flex;justify-content:space-between;z-index:2;padding:0 calc(var(--table-wood)/2 - 1.5px)}
+.eleven-table-sights i{width:3px;height:8px;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:#dcc18a;opacity:.85}
+.eleven-table-light{position:absolute;top:var(--table-end);left:13%;width:74%;height:min(11cqh,5.5rem);z-index:4;background:radial-gradient(ellipse at 50% 0,#ffd37642 0,#efb94b20 32%,#d99c3008 58%,transparent 80%)}
+/* Absolute artwork overlaps only the decorative far rail. A short container
+ * clips the shade's top; neither the rack nor HUD gives up any layout space. */
+.eleven-table-lamp{position:absolute;left:50%;top:-.35rem;transform:translateX(-50%);width:min(43cqw,12rem);height:min(4.8cqh,2.25rem);overflow:hidden;z-index:5;filter:drop-shadow(0 3px 3px #0009)}
+.eleven-table-lamp img{position:absolute;bottom:0;left:0;display:block;width:100%;height:auto;max-width:none;user-select:none}
+.eleven-scene .fullscreen-game-toolbar{position:relative;z-index:1}
+.eleven-scene .fullscreen-game-toolbar button{background:linear-gradient(#142b1cee,#071d15ee);border-color:#c6a45c99;box-shadow:inset 0 1px #ffe2a519,0 2px 4px #0006;color:#fff0c7}
 .eleven-root{position:absolute;inset:0;container:eleven/size}
 .eleven-score-band{position:absolute;inset:0 0 auto;height:3.5rem;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr);gap:.25rem;align-items:center}
 .eleven-scores{display:flex;gap:.25rem;justify-content:center;align-items:center;pointer-events:none;min-width:0;grid-column:2}
 .eleven-scores[data-overflow=true]{overflow-x:auto;justify-content:flex-start;pointer-events:auto;scrollbar-width:thin;overscroll-behavior-x:contain}
 .eleven-scores[data-overflow=true] .eleven-score-pill{flex-shrink:0}
+.eleven-score-home{min-width:0;position:relative}
+.eleven-scores[data-overflow=true] .eleven-score-home{flex-shrink:0}
+.eleven-scores[data-presenting=true]{overflow:visible}
+.eleven-score-band:has(.eleven-scores[data-presenting=true]){z-index:6}
+.eleven-scores[data-stacked=true] .eleven-score-home{width:100%;max-width:12rem}
+.eleven-score-pill[data-centered=true]{position:relative;z-index:6;border-color:#ffe099;background:linear-gradient(#294b31,#112f24);box-shadow:0 .35rem 1.2rem #0007,0 0 1.4rem #edc56022}
+.eleven-score-bonuses{position:absolute;top:calc(100% + .55rem);left:50%;transform:translateX(-50%);width:max-content;display:grid;gap:.15rem;padding:.3rem .55rem;border-radius:.45rem;background:#082e23c9;color:#eee4bf;text-shadow:0 1px 2px #000;font-size:clamp(.7rem,3cqw,.85rem);line-height:1.4;font-weight:400}
+.eleven-score-bonuses>span{display:flex;justify-content:space-between;gap:.8rem}.eleven-score-bonuses b{font-variant-numeric:tabular-nums;color:#fff4c9}
+.eleven-clear{position:absolute;top:42%;left:50%;transform:translateX(-50%);width:max-content;max-width:95%;text-align:center;color:#ffe29a;text-shadow:0 2px 6px #000;font-weight:800;font-size:clamp(.9rem,4cqw,1.4rem)}
 .eleven-round{justify-self:start;min-width:0;font-size:clamp(.8rem,3.3cqw,1rem);line-height:1.2;font-weight:650;color:#fff4cf}
 .eleven-scene>.fullscreen-game-actions:empty{display:none}
 .eleven-score-pill{min-width:0;display:flex;flex-direction:column;align-items:center;padding:.3rem .7rem;border:1px solid #b3cfad55;border-radius:.7rem;background:#082e23cc}
@@ -22,21 +60,26 @@
 .eleven-result .eleven-winner-name{font-size:clamp(1.2rem,5cqw,2.2rem)}
 .eleven-achievements{max-height:60%;overflow:auto;pointer-events:auto}
 .eleven-plane{position:absolute;inset:0;container:eleven-plane/size;pointer-events:none}
-.eleven-playfield{position:absolute;inset:3.75rem 0 0;container:eleven-playfield/size;--eleven-field-bottom:calc(52.6% + min(5.5cqw,6cqh))}
+.eleven-playfield{position:absolute;inset:3.75rem 0 0;isolation:isolate;container:eleven-playfield/size;--eleven-field-bottom:calc(52.6% + min(5.5cqw,6cqh))}
 .eleven-plane[data-two-player=true] .eleven-score-band{height:4.75rem}
 /* Exact pre-polish rack and diameter rules from 28d90e7c2; no row remapping. */
 .eleven-rack{position:absolute;inset:15% 1% 38%;border-radius:50%;background:radial-gradient(ellipse,#23805c55,transparent 70%)}
 .eleven-ball{position:absolute;width:min(11cqw,12cqh);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;pointer-events:auto;touch-action:manipulation}
-.eleven-ball-art{position:relative;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 30% 20%,#ffffffaa,transparent 35%),radial-gradient(circle at 40% 35%,var(--ball-color) 35%,#000a 100%);box-shadow:0 .15em .23em #0008,inset -.08em -.12em .2em #0007}
+.eleven-ball-art{position:relative;display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 30% 20%,#ffffffaa,transparent 35%),radial-gradient(circle at 40% 35%,var(--ball-color) 35%,#000a 100%);box-shadow:0 .15em .16em #0009,0 .22em .28em #0004,inset -.08em -.12em .2em #0007}
 .eleven-ball-art[data-striped=true]{background:radial-gradient(circle at 30% 20%,#ffffffbb,transparent 35%),linear-gradient(#f5f1df 18%,var(--ball-color) 23%,var(--ball-color) 77%,#d4d2c2 82%)}
 .eleven-ball-art>span{display:grid;place-items:center;background:#fff9e8;color:#162019;font:bold min(5cqw,5cqh)/1 Georgia,serif;width:53%;height:53%;border-radius:50%;box-shadow:inset 0 0 .1em #0005}
-.eleven-ball[data-exposed=false]{filter:brightness(.72)}
-.eleven-ball[aria-pressed=true],.eleven-draw[aria-pressed=true]{outline:3px solid #fff5a7;outline-offset:3px;filter:brightness(1.15)}
+.eleven-ball[data-exposed=false]{filter:brightness(.88)}
+.eleven-ball[aria-pressed=true],.eleven-draw[aria-pressed=true]{outline:3px solid #fff3a0;outline-offset:2px;filter:brightness(1.15);box-shadow:0 0 0 5px #9d702999,0 0 1rem #ffe79999}
+.eleven-ball[aria-pressed=true]::after,.eleven-draw[aria-pressed=true]::after{content:'✓';position:absolute;right:-9%;top:-12%;width:40%;height:40%;display:grid;place-items:center;border:1px solid #fff5b3;border-radius:50%;background:#f4d77c;color:#173725;font:800 .7rem/1 sans-serif;box-shadow:0 1px 3px #0008;pointer-events:none}
 .eleven-ball:focus-visible,.eleven-controls button:focus-visible,.eleven-take-score:focus-visible{outline:3px solid #fff;outline-offset:3px}
 .eleven-controls{position:absolute;inset:auto 2% 0;height:16%;min-height:2.75rem;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:clamp(.75rem,4cqw,2rem);pointer-events:none}
 .eleven-controls button,.eleven-take-score,.eleven-finish,.eleven-error button{pointer-events:auto;touch-action:manipulation;border:1px solid #f2e1a266;background:#113b2c;border-radius:.6rem;padding:.5rem .7rem;font-weight:700;min-height:2.75rem}
 .eleven-controls button:disabled,.eleven-take-score:disabled{opacity:.45}.eleven-controls .eleven-draw{padding:0;border:0;background:none;opacity:1;width:max(2.75rem,min(15cqw,15cqh));height:max(2.75rem,min(15cqw,15cqh));border-radius:50%}
-.eleven-current{grid-column:2;display:grid;place-items:center}
+.eleven-current{grid-column:2;position:relative;isolation:isolate;display:grid;place-items:center}
+.eleven-current::before{content:"";position:absolute;inset:-.5rem -.6rem -.4rem;z-index:-1;pointer-events:none;border:clamp(2px,.8cqw,4px) solid #b47a34;border-radius:44% 44% 14% 14%;background:radial-gradient(ellipse at 50% 40%,#3d2711,#140f09 75%);box-shadow:0 0 0 1px #f9d98caa,0 0 0 3px #75421e,inset 0 0 0 1px #eecb7966,inset 0 4px 8px #000d,0 4px 8px #0007}
+.eleven-draw{position:relative}
+.eleven-controls .eleven-pass,.eleven-take-score{background:linear-gradient(#19301e,#081e15);border-color:#d4b36eaa;box-shadow:inset 0 1px #fff0bf22,0 3px 5px #0006;color:#fff1c3}
+.eleven-take-score:disabled{opacity:1;color:#e0d7ba88;border-color:#ad975b55;background:linear-gradient(#163423aa,#0a251baa);box-shadow:inset 0 1px #fff0bf0c}
 .eleven-autoplay{position:absolute;left:2%;bottom:0;width:28%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.25rem;min-height:2.75rem;font-size:clamp(.65rem,2.7cqw,.85rem);pointer-events:auto;cursor:pointer;z-index:5}
 .eleven-autoplay input{width:1rem;height:1rem;accent-color:#f6d766}
 .eleven-autoplay-icon{display:inline-block;width:1em;height:1em;vertical-align:middle;color:#f6d766}
@@ -53,4 +96,5 @@
 .eleven-finish{position:absolute;bottom:7%;left:50%;transform:translateX(-50%);z-index:5}.eleven-pending{position:absolute;bottom:0;left:0;font-size:.65rem}.eleven-error{position:absolute;inset:14% 5% auto;z-index:6;background:#5f211c;padding:.5rem;pointer-events:auto;font-size:.8rem}
 .eleven-rules{display:grid;gap:1rem;line-height:1.5}
 @container eleven-playfield (min-aspect-ratio: 3/2){.eleven-clock{bottom:calc(max(19%,2.75rem) + .3rem);left:25%;width:32%}.eleven-controls{height:19%}.eleven-controls .eleven-draw{width:max(2.75rem,15cqh);height:max(2.75rem,15cqh)}}
+@container eleven-playfield (min-aspect-ratio: 3/2){.eleven-current::before{inset:-.1rem -.4rem}}
 @media(prefers-reduced-motion:reduce){.eleven-result{box-shadow:none}.eleven-score-pill[data-winner=true]{animation:none}}

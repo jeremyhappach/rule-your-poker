@@ -1,3 +1,24 @@
+# Coordinated Run21 / Horses / Drop — November 9, 2026 — qualification checkpoint
+
+Run21 recovery `e4fed5f6` is preserved in the coordinated scoring release. Real
+390×844 browser checks pass for Horses v5 holds/banking/reset and Drop v6
+placements/carries/tally/continuation. Ten candidate and installed hosted rollback
+proofs pass for migration `20261110054915`; both new scoring versions remain closed
+until compatible publication. The `coordinated-run21-horses5-drop6-20261109-verified`
+tag is created only after production verification and activation, and records the
+final SHA/URL. See [qualification and release evidence](COORDINATED_RUN21_HORSES_DROP_RELEASE.md).
+
+# 11 Up billiards polish — November 9, 2026 — approved local review
+
+`eleven-up-billiards-polish-20261109` records the approved table, lamp, ball cues
+and score-pill presentation. All 61 focused tests, application TypeScript and
+the production build pass. Existing portrait proofs preserve all 22 ball
+positions and targets at 320×568, 390×844 and 430×932; the approved local
+recording demonstrates actual select/deselect/landing audio and count/bonus/return.
+This is offline component qualification, not physical iPhone or authenticated
+production acceptance. The verified tag records publication; Jeremy's production
+smoke remains pending. See [scope and evidence](ELEVEN_UP_LOCAL_POLISH.md).
+
 # Run21 score-button placement — November 9, 2026 — layout qualification
 
 `run21-score-button-right-20261109` records the approved shared fullscreen move
@@ -989,3 +1010,11 @@ typecheck pass. Await Jeremy's production smoke for runtime acceptance.
 
 This checkpoint does not claim complete Gin coverage or supersede the queued
 Gin server-authority migration.
+
+## River City Run / The Boat — November 9, 2026
+
+Both full portrait-browser routes, Bank & Leave, blackjack exit, crash and
+Abandon passed. Authoritative recovery, course isolation, concurrency and hosted
+rollback proofs passed. Release tag `river-city-run-production-20261109` records
+exact deployment identity and the subsequent production entry-point smoke.
+See `RIVER_CITY_RUN_RELEASE.md`. Physical iPhone production acceptance remains.

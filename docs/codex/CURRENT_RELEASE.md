@@ -1,3 +1,33 @@
+# Deployment storage prevention — November 10, 2026 — locally qualified, publication held
+
+The storage remediation branch incorporates production `64362de16` under explicit
+owner approval. Final static output is **89,475,968 bytes** under the unchanged
+90 MB gate, saving **21,029,712 bytes / 19.030%** against equivalent content with
+original PNG encodings. The earlier optimization remains intact; all 42 inspected
+PNGs are pixel-identical, all 24 startup dimensions and all 114 current public URLs
+(including the original 108) are retained. Audio, eight API endpoints, Run21 `cle1`,
+push, PWA references and auth ownership are preserved.
+
+The original fifteen failures are resolved without waivers. The repaired tests
+also exposed Chucky/Crib Lab stake defaults being displayed but discarded; their
+existing defaults handlers now validate and persist that value. 4,008 application
+tests, 241 harness tests, final 44 tooling tests, typecheck/build/budget, 142 static
+HTTP checks, 28 compiled launch scenarios and eight push-entry scenarios pass.
+Five consecutive ordering reruns pass. Physical iPhone acceptance is pending.
+
+Prepared safeguards skip only verified documentation/evidence-only ranges, keep
+GitHub release signals aligned with live build identity and run the full Vercel
+release gate. Read-only storage reporting preserves all holds and blocks cleanup
+recommendations on unresolved alias targets. Current inventory lists 223 deployments
+and 219 aliases; 142 alias targets are absent from the list, with one sampled 404.
+Required production/rollback checkpoints remain READY. The owner's 8.77 GB usage
+reading is recorded separately from estimates. No additional deletion, deployment,
+push, Supabase mutation or account-policy change occurred. No new automated cleanup.
+
+**Hold production for owner iPhone validation and explicit publication approval.**
+See [complete results, workflow policy, maintenance and device checklist](VERCEL_STORAGE_PREVENTION.md).
+Local-only checkpoint: `vercel-storage-local-qualified-20261110`.
+
 # Deployment storage — November 9, 2026 — unpublished local candidate
 
 The original 27-ID cleanup is complete under explicit owner approval. Batch 1
@@ -26,6 +56,82 @@ account-policy change or Supabase access was performed. Further cleanup and
 publication require explicit approval. See
 [remediation and validation](VERCEL_STORAGE_REMEDIATION.md) and
 [exact deletion proposal](VERCEL_STORAGE_DELETION_PROPOSAL.md).
+# Coordinated Run21 / Horses v5 / Drop v6 — November 9, 2026 — qualified
+
+Jeremy approved coordinated publication, superseding the Run21 screenshot hold.
+The complete Run21 recovery is preserved. Horses v5 passes exhaustive strong-hand
+EV qualification; Drop v6 passes all 22,100 hands and 600,000 policy rounds.
+Migration `20261110054915` is installed with new admission closed; ten hosted
+candidate/installed rollback proofs pass. Typecheck, scoped lint, build and
+relevant tests pass; 13 full-suite failures and three mock errors reproduce on
+unchanged main. [Release record, safeguards and evidence](COORDINATED_RUN21_HORSES_DROP_RELEASE.md).
+The `coordinated-run21-horses5-drop6-20261109-verified` tag records the final
+production identity and smoke only after publication and guarded activation pass.
+
+# Run21 visual recovery — November 9, 2026 — original review checkpoint
+
+Jeremy rejected the first production treatment. Replacement casino artwork and
+scoped dimensional styling are prepared on `codex/run21-midnight-visual-recovery`.
+Actual phone-width screenshots cover Arcade empty/placed, Multiplayer, Async and
+the leaderboard. Gameplay geometry matches the baseline exactly. Typecheck,
+build and 530 tests pass. The later coordinated release request superseded this
+checkpoint's screenshot approval hold.
+See [candidate evidence and limits](RUN21_MIDNIGHT_HIGH_LIMIT.md).
+
+# Run21 Midnight High Limit — November 9, 2026 — original visual release
+
+Shared Midnight styling covers Arcade, Multiplayer and Async Run21, plus the
+existing leaderboard with tied-rank-aware gold/silver/bronze medals. Original
+layout, controls, rule/scoring/state owners and Arcade tile art are preserved.
+TypeScript, production build, 530 focused tests and responsive browser component
+checks pass. No migration. See [scope, evidence and smoke limits](RUN21_MIDNIGHT_HIGH_LIMIT.md).
+
+# River City Run — November 9, 2026 — qualified, approved production release
+
+Jeremy authorized integration and publication after release checks. Work is isolated
+on `codex/river-city-run-release` from `e915e16a5`; other queued work is excluded.
+The Boat uses stable course ID `the-boat`, private Arcade authority and independent
+course rankings. Supplied tiles and a title-free waterfront leaderboard are wired.
+Migration `20261110023341_river_city_run_the_boat` passed candidate and installed
+hosted proofs with admission closed. Recovery worker v23 is healthy. Full-course,
+table, results, API/Auth, independent connection race, zero-client recovery and
+second-course isolation checks pass. Publication uses one main push/build, then
+guarded admission and authenticated portrait entry-point smoke. The annotated
+`river-city-run-production-20261109` tag records the publication receipt.
+See [release evidence and device checks](RIVER_CITY_RUN_RELEASE.md).
+
+# 11 Up billiards polish — November 9, 2026 — approved production release
+
+`codex/eleven-up-local-polish` adds scoped pool-table styling, select/deselect
+and confirmed-placement audio, and a centered score-pill count/hold/return
+sequence. Rules, ball geometry, authoritative score math and progression are
+preserved. After reviewing the local audio/video demonstration, Jeremy explicitly
+approved moving this work to production. That approval supersedes the earlier
+local-only/storage-check publication hold. Release uses conflict-free fast-forward
+integration into main and the existing push helper; no migration is required.
+
+Jeremy rejected the edge-border candidate because it did not visibly read as
+a physical table. The replacement uses a dedicated decorative backdrop within
+the existing playfield: complete walnut side/end rails, green cushions, six
+recessed pockets and overhead light. Rack and control geometry remain unchanged.
+The full outline fits at 320×568, 390×844 and 430×932, with at least 5.05px of
+clearance beyond outer selection rings. All 22 balls remain visible throughout
+scoring; the default offline review shows the full Ready rack. Jeremy's requested
+lamp addition places a shallow dark-brass pendant with an illuminated underside
+at the far rail, beneath the score row. Its localized amber pool ends before the
+top ball's selection ring; short screens crop the shade instead of changing live
+geometry. Portrait checks at 320×568, 390×844 and 430×932 pass. Jeremy approved
+this presentation for publication; physical iPhone production smoke remains pending.
+
+TypeScript, 61 focused tests, a local build, four interaction layouts and twelve
+full-rack geometry comparisons pass. Browser/audio evidence uses offline sample
+responses. The 390×844 local recording captures actual select, deselect and
+landing audio, then 25,200 → 31,200 with Elevens +1,000 and Speed +5,000 before
+the pill returns to its header. The full table and lamp remain visible. Saved
+video/audio decoding checks pass. Physical iPhone and authenticated runtime
+acceptance remain pending. Checkpoint: `eleven-up-billiards-polish-20261109`;
+the verified tag records the exact production deployment receipt.
+See [launch instructions and exact evidence](ELEVEN_UP_LOCAL_POLISH.md).
 
 # Run21 score-button placement — November 9, 2026 — approved layout correction
 

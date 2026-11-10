@@ -1,3 +1,6 @@
+River City Run / The Boat integration, authority qualification and publication:
+[RIVER_CITY_RUN_RELEASE.md](RIVER_CITY_RUN_RELEASE.md).
+
 November 8 seven-fix follow-up, exact Horses bank evidence, collation-stable
 activation guard and automatic final return: [PTOWN_SMOKE_FOLLOWUP.md](PTOWN_SMOKE_FOLLOWUP.md).
 

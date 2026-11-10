@@ -12,6 +12,12 @@ import {useElevenGroupAudio} from '@/hooks/useElevenGroupAudio';
 import {winnerAchievementLabels} from '@/lib/arcade/scoreAchievements';
 import {Bot} from 'lucide-react';
 import {useElevenBotSelection} from '@/hooks/useElevenBotSelection';
+import {useElevenLandingAudio} from '@/hooks/useElevenLandingAudio';
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {elevenSelectCue,elevenDeselectCue} from '@/lib/elevenUp/ballSounds';
+import {elevenScoreSequence} from '@/lib/elevenUp/scorePresentation';
+import {ElevenScorePill} from './ElevenScorePill';
+import {ElevenTableBackdrop} from './ElevenTableBackdrop';
 import './elevenUp.css';
 const colors=['','#f6c62d','#246bd6','#d63b32','#7433b1','#f18329','#168c63','#9e2745','#262b32','#e6b923','#2b6bc3'];
 function Ball({id}:{id:number}){const value=ballValue(id);return <span className="eleven-ball-art" data-striped={value>8} style={{'--ball-color':colors[value]} as CSSProperties}><span>{value}</span></span>;}
@@ -23,8 +29,9 @@ export function ElevenUpView({view:v,userId,now,pending,error,epoch,liveEntry=fa
  useLayoutEffect(()=>{if(v.players.length>2&&scoreGroup.current)scoreGroup.current.scrollLeft=0;},[activePlayerId,v.players.length]);
  const b=v.board,at=v.paused?(v.pausedAt??v.serverAt):now,r=b.result,hold=b.rules.holdMs+(r?.reason==='cleared'?b.rules.clearCelebrationMs:0);
  const result=r?{...r,id:r.id??v.scope,elapsed:Math.max(0,at-(b.deadline-hold))}:null;
- const motion=useTriRoundPresentation({scope:'eleven:'+v.scope,phase:b.phase,connected:!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards',modern:true,liveEntry,recoveryEpoch:epoch,celebrationMs:b.rules.clearCelebrationMs});
- const scores=<div ref={scoreGroup} className="eleven-scores" data-multiplayer={!v.solo} data-overflow={v.players.length>2} data-stacked={v.players.length===2} aria-label="Scores" tabIndex={v.players.length>2?0:undefined}>{scorePlayers.map(p=><div className="eleven-score-pill" key={p.id} data-active={p.active} data-winner={!v.solo&&!!v.terminal?.winnerIds.includes(p.id)&&(terminalPresenting||now<v.terminal.deadline)}>{!v.solo&&<span title={p.name}>{p.autoplay&&p.id!==v.viewerId&&!sessionEnded&&!v.settled&&<Bot className="eleven-autoplay-icon" role="img" aria-label={`${p.name}: Auto-play`}/>}{p.name}</span>}<strong>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</div>)}</div>;
+ const motion=useTriRoundPresentation({scope:'eleven:'+v.scope,phase:b.phase,connected:!error,paused:v.paused,result,now:at,deadline:b.deadline,userId,active:tab==='cards',modern:true,liveEntry,recoveryEpoch:epoch,celebrationMs:b.rules.clearCelebrationMs,resultSequence:elevenScoreSequence(b.rules.clearCelebrationMs)});
+ const showingBonuses=!!result&&!sessionEnded&&(motion.fraction>0||motion.reduced&&b.phase==='stage_complete');
+ const scores=<div ref={scoreGroup} className="eleven-scores" data-presenting={showingBonuses} data-multiplayer={!v.solo} data-overflow={v.players.length>2} data-stacked={v.players.length===2} aria-label="Scores" tabIndex={v.players.length>2?0:undefined}>{scorePlayers.map(p=><ElevenScorePill key={p.id} active={p.active} winner={!v.solo&&!!v.terminal?.winnerIds.includes(p.id)&&(terminalPresenting||now<v.terminal.deadline)} fraction={p.active&&!sessionEnded?(motion.fraction??0):0} bonuses={p.active&&showingBonuses&&result?<><span>Elevens <b>+{result.groupBonus.toLocaleString()}</b></span>{result.clearBonus>0&&<span>Clear / Stock <b>+{(result.clearBonus+result.stockBonus).toLocaleString()}</b></span>}<span>Speed <b>+{result.timeBonus.toLocaleString()}</b></span></>:undefined}>{!v.solo&&<span title={p.name}>{p.autoplay&&p.id!==v.viewerId&&!sessionEnded&&!v.settled&&<Bot className="eleven-autoplay-icon" role="img" aria-label={`${p.name}: Auto-play`}/>}{p.name}</span>}<strong aria-label={`Score ${p.active?(motion.displayScore??p.score):p.score}`}>{(p.active?(motion.displayScore??p.score):p.score).toLocaleString()}</strong>{p.chips!==undefined&&(balance?balance(p):<small>{p.chips} chips</small>)}</ElevenScorePill>)}</div>;
  return <FullscreenGameShell className="eleven-scene" title="11 Up" description={v.board.phase==='complete'?'Final scores':''}
   activeTab={tab} setActiveTab={setTab} sessionEnded={sessionEnded} endControl={v.solo&&onAbandon&&<ArcadeAbandonButton disabled={pending} onClick={onAbandon}/>}
  navigation={v.solo?<nav aria-label="11 Up information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>:undefined}
@@ -43,10 +50,13 @@ function ElevenBoard({v,userId,now,pending,error,epoch,onIntent,onReconnect,onFi
  const shownSelection=botSelection?.selection??selection;
  const sum=shownSelection.reduce((n,id)=>n+ballValue(id),0);
  useElevenGroupAudio(v,userId,epoch,active&&!error&&!v.paused&&!sessionEnded&&!document.hidden,botSelection&&sum===11?botSelection.group:null);
+ useElevenLandingAudio(v,userId,epoch,active&&!error&&!v.paused&&!sessionEnded&&!document.hidden);
+ const send=(intent:ElevenIntent)=>{if(!canAct||submitted.current)return;submitted.current=true;onIntent(intent);};
  const toggle=(id:number)=>{
   if(!canAct||submitted.current)return;
-  const next=selected.current.includes(id)?selected.current.filter(x=>x!==id):[...selected.current,id];
+  const deselect=selected.current.includes(id),next=deselect?selected.current.filter(x=>x!==id):[...selected.current,id];
   selected.current=next;setSelection(next);
+  platformAudio.request({userId,id:`eleven-${deselect?'deselect':'select'}:${v.scope}:${crypto.randomUUID()}`,expiresAt:performance.now()+350,cue:deselect?elevenDeselectCue:elevenSelectCue});
   // Submit from the tap, never a render/effect. The transport persists one
   // immutable request before I/O; this latch also closes the pre-render tap gap.
   if(next.length>=2&&next.reduce((n,item)=>n+ballValue(item),0)===11){submitted.current=true;onIntent({type:'group',items:[...next]});}
@@ -59,12 +69,13 @@ function ElevenBoard({v,userId,now,pending,error,epoch,onIntent,onReconnect,onFi
    <div className="eleven-score-band">
     <span className="eleven-round">{!terminal&&!sessionEnded&&(v.round===3?'Round 3 / 3 · Bonus':`Round ${v.round} / 2`)}</span>
     {scores}
-    {!terminal&&!sessionEnded&&b.phase!=='stage_complete'&&<button className="eleven-take-score" disabled={!canAct||b.phase!=='playing'} onClick={()=>onIntent({type:'take_score'})}>Take Score</button>}
+    {!terminal&&!sessionEnded&&b.phase!=='stage_complete'&&<button className="eleven-take-score" disabled={!canAct||b.phase!=='playing'} onClick={()=>send({type:'take_score'})}>Take Score</button>}
    </div>
    {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.players.some(p=>p.id===v.viewerId&&p.autoplay)&&<label className="eleven-autoplay"><input type="checkbox" checked disabled={pending||!!error} onChange={()=>onIntent({type:'reclaim'})}/>Auto-play</label>}
    {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.paused&&onResume&&v.players.some(p=>p.id===v.viewerId&&!p.autoplay)&&<button className="eleven-autoplay" disabled={pending||!!error} onClick={()=>void onResume()}>Resume game</button>}
    {!v.solo&&!sessionEnded&&!v.finished&&!v.settled&&v.paused&&!onResume&&v.players.some(p=>p.id===v.viewerId&&!p.autoplay)&&<span className="eleven-autoplay" role="status">Paused · ask host to resume</span>}
    {!sessionEnded&&<div className="eleven-playfield">
+   <ElevenTableBackdrop/>
    {!terminal&&<>
    <div className="eleven-rack" aria-label="Pool balls on felt">
     {b.slots.map((id,slot)=>{if(id===null)return null;const [x,y]=ballPosition(slot),exposed=b.exposed.includes(slot);return <button key={id} className="eleven-ball" style={{left:`${x}%`,top:`${y}%`}} aria-label={`Ball ${ballValue(id)}, ${exposed?'exposed':'covered'}, position ${slot+1}`} aria-pressed={shownSelection.includes(id)} data-exposed={exposed} disabled={!canAct||!exposed} onClick={()=>toggle(id)}><Ball id={id}/></button>;})}
@@ -75,15 +86,15 @@ function ElevenBoard({v,userId,now,pending,error,epoch,onIntent,onReconnect,onFi
     {b.phase==='playing'&&<div className="eleven-clock" role="progressbar" aria-label="Round time remaining" aria-valuemin={0} aria-valuemax={b.rules.stageMs/1000} aria-valuenow={Math.min(remaining,b.rules.stageMs)/1000} aria-valuetext={`${v.paused?'Paused · ':''}${Math.ceil(remaining/1000)} seconds remaining`}><CountdownDots remaining={remaining} duration={b.rules.stageMs}/>{v.paused&&<small>Paused</small>}</div>}
     <div className="eleven-controls">
      <div className="eleven-current">{b.current!==null?<button className="eleven-draw" aria-label={`Draw ball ${ballValue(b.current)}`} aria-pressed={shownSelection.includes(b.current)} disabled={!canAct} onClick={()=>toggle(b.current!)}><Ball id={b.current}/></button>:<span>Empty</span>}</div>
-     <button className="eleven-pass" disabled={!canAct||!b.canPass} aria-label={`Pass, ${b.stockRemaining} draws remaining`} onClick={()=>onIntent({type:'pass'})}><span className="eleven-stock-count" aria-hidden="true">{b.stockRemaining}</span>Pass</button>
+     <button className="eleven-pass" disabled={!canAct||!b.canPass} aria-label={`Pass, ${b.stockRemaining} draws remaining`} onClick={()=>send({type:'pass'})}><span className="eleven-stock-count" aria-hidden="true">{b.stockRemaining}</span>Pass</button>
     </div>
    </>}
    </>}
    {b.phase==='intro'&&<div className="eleven-intro"><TriRoundIntro remaining={remaining} roundLabel={v.round===3?'BONUS ROUND':`ROUND ${v.round}`} turnLabel={v.solo?'':v.canAct?'YOUR TURN':`${v.players.find(p=>p.active)?.name??'Player'}’S TURN`} paused={v.paused}/></div>}
-   {result&&!botSelection&&<div className="eleven-result" role="status" data-celebrating={motion.admitted&&result.reason==='cleared'&&motion.elapsed<3000}>
-    <span>{result.reason==='cleared'?'✦ ALL BALLS CLEARED ✦':b.event.label}</span><strong>{(motion.displayScore??result.score).toLocaleString()}</strong>
-    {(!motion.admitted||result.reason!=='cleared'||motion.elapsed>=3000)&&<p>Elevens +{result.groupBonus.toLocaleString()}<br/>{result.clearBonus>0&&<>Clear +{result.clearBonus.toLocaleString()} · Stock +{result.stockBonus.toLocaleString()}<br/></>}Speed +{result.timeBonus.toLocaleString()}</p>}
-   </div>}
+   {result&&!botSelection&&b.phase==='stage_complete'&&<>
+    <span className="sr-only" role="status">{b.event.label}. Score {result.score.toLocaleString()}. Elevens +{result.groupBonus.toLocaleString()}. Speed +{result.timeBonus.toLocaleString()}.</span>
+    {result.reason==='cleared'&&motion.admitted&&motion.elapsed<b.rules.clearCelebrationMs&&<div className="eleven-clear">✦ ALL BALLS CLEARED ✦</div>}
+   </>}
    {terminal&&<div className="eleven-result" role="status"><span>{v.solo?'Game complete':'Game Over'}</span>
     {!v.solo&&v.terminal?<><strong className="eleven-winner-name">{v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>p.name).join(' & ')} {v.terminal.winnerIds.length===1?'wins':'tie'} with {v.terminal.score.toLocaleString()}</strong>
     <div className="eleven-achievements">{v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>winnerAchievementLabels(p.name,v.terminal?.achievements[p.id]).map(label=><p key={label}>{label}</p>))}</div></>:<strong>{Math.max(...v.players.map(p=>p.score)).toLocaleString()}</strong>}

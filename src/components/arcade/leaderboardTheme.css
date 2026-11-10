@@ -867,3 +867,73 @@
 .arcade-board details.arcade-leaderboard summary { cursor: pointer; }
 .arcade-board details.arcade-leaderboard li { padding-block: 6px; overflow-wrap: anywhere; }
 .arcade-board .arcade-board-content > [role=alert] { padding: 8px 10px; margin-bottom: 10px; border-radius: 8px; background: #551d24; color: #fff3ef; }
+/* Run21 Midnight High Limit: paint on the existing authoritative ranking rows. */
+.arcade-board.theme-run21 {
+  --accent:var(--run21-gold-bright);--ink:var(--run21-ivory);--secondary:#d0d7da;
+  --panel:#091d2be8;--line:#a78d5f88;
+  background:var(--run21-midnight);
+}
+.arcade-board.theme-run21 .run21-space-scene {
+  background:url('/run21-midnight/leaderboard.jpg') center/100% 100% no-repeat;
+  opacity:1;
+}
+/* Reserve only decorative space after the data; existing rows, filters and scroll stay intact. */
+.arcade-board.theme-run21 .arcade-board-content::after { content:'';display:block;height:clamp(100px,30cqi,160px);pointer-events:none; }
+.arcade-board.theme-run21 .identity h1 {
+  color:var(--run21-gold-bright);letter-spacing:-.025em;font-style:italic;
+  background:linear-gradient(#fff6d4 20%,#f8d780 50%,#b17d2b 54%,#ffe5a0 85%);
+  background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 2px 1px #000) drop-shadow(0 0 8px #e9bd5a35);
+}
+.arcade-board.theme-run21 .leaderboard-label { color:#f5e5c5;text-shadow:0 2px 3px #000; }
+.arcade-board.theme-run21 .arcade-summary,
+.arcade-board.theme-run21 .arcade-leaderboard {
+  background:linear-gradient(145deg,#14303ee8,#06121eea);
+  border-color:#d5b77399;
+  box-shadow:inset 0 1px #ffe8b044,inset 0 -2px 4px #0008,0 6px 16px #0008,0 0 8px #e8ba5920;
+}
+.arcade-board.theme-run21 .arcade-tabs button,
+.arcade-board.theme-run21 .top-navigation button {
+  background:linear-gradient(160deg,#17414add,#061421ee);
+  border:1px solid #cfb16a80;
+  box-shadow:inset 0 1px #b5dad02e,0 2px 5px #0009;
+}
+.arcade-board.theme-run21 .arcade-tabs [aria-selected=true],
+.arcade-board.theme-run21 .action-line .arcade-primary {
+  background:linear-gradient(165deg,#fff0b9,#ebc86e 40%,#c48d2f 54%,#f2d282);
+  color:#08151f;border-color:#ffde8a;
+  box-shadow:inset 0 1px #fff5cf,inset 0 -2px #8d5c26,0 3px 7px #0009;
+}
+.arcade-board.theme-run21 .arcade-score-table { border-collapse:separate;border-spacing:0 4px; }
+.arcade-board.theme-run21 .arcade-score-table tbody tr {
+  color:var(--run21-ivory);
+  background:linear-gradient(110deg,#15303cf2,#05131fee 70%,#12303bea);
+  --row-light:#8accc92b;
+}
+.arcade-board.theme-run21 .arcade-score-table tbody td {
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  box-shadow:inset 0 1px var(--row-light),inset 0 -2px #0004;
+  text-shadow:0 1px 2px #000b;
+}
+.arcade-board.theme-run21 .arcade-score-table tbody td:first-child { border-left:1px solid var(--line);border-radius:8px 0 0 8px; }
+.arcade-board.theme-run21 .arcade-score-table tbody td:last-child { border-right:1px solid var(--line);border-radius:0 8px 8px 0;color:var(--run21-gold-bright); }
+.arcade-board.theme-run21 .arcade-score-table tr[data-rank="1"] {
+  --line:#f8d379;--row-light:#fff0b888;--medal-light:#fff2bd;--medal-dark:#bf8120;
+  background:linear-gradient(110deg,#8d621c,#392810 45%,#71511f 90%,#c08b32);
+}
+.arcade-board.theme-run21 .arcade-score-table tr[data-rank="2"] {
+  --line:#c1d7e5;--row-light:#ecf6ff88;--medal-light:#f6fcff;--medal-dark:#8399b1;
+  background:linear-gradient(110deg,#526675,#1e2c38 45%,#3b4d5c 90%,#8296a5);
+}
+.arcade-board.theme-run21 .arcade-score-table tr[data-rank="3"] {
+  --line:#e5ab70;--row-light:#ffe2bb88;--medal-light:#ffe1b7;--medal-dark:#b56830;
+  background:linear-gradient(110deg,#88552c,#352319 45%,#654020 90%,#ae7540);
+}
+.arcade-board.theme-run21 .run21-rank { display:inline-grid;place-items:center;width:23px;height:23px;font-weight:800; }
+.arcade-board.theme-run21 :is([data-rank="1"],[data-rank="2"],[data-rank="3"]) .run21-rank {
+  border-radius:50%;color:#07121f;
+  background:linear-gradient(155deg,var(--medal-light) 10%,var(--medal-dark) 48%,var(--medal-light) 80%);
+  box-shadow:inset 0 0 0 1px var(--medal-light),inset 0 0 0 3px #26303e55,0 0 0 1px #07121f,0 0 0 2px var(--medal-dark),0 2px 5px #000c;
+  text-shadow:0 1px #fff6b766;
+}
+.arcade-board.theme-run21 .arcade-score-table [data-self=true] .leaderboard-player { box-shadow:inset 2px 0 #f2d17e,inset 0 1px var(--row-light),inset 0 -2px #0004; }

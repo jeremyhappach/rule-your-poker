@@ -5,7 +5,7 @@ import {optimizePng} from './png-lossless.mjs';
 
 const apply=process.argv.includes('--write');
 const walk=dir=>readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(join(dir,e.name)):[join(dir,e.name)]);
-const files=['public/launch-splash/startup','public/arcade'].flatMap(walk).filter(f=>f.endsWith('.png')).sort();
+const files=['public/launch-splash/startup','public/arcade','public/river-city-run'].flatMap(walk).filter(f=>f.endsWith('.png')).sort();
 const report={mode:apply?'write':'dry-run',encoding:'lossless PNG; exact RGBA equality; metadata preserved',files:[]};
 for(const file of files){
   const original=readFileSync(file),optimized=optimizePng(original);

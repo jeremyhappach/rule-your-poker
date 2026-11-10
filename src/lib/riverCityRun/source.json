@@ -1,0 +1,11 @@
+{
+  "previewSha256": "75c0bed10b09b6fd5ec3ac921c2927c37c95945a92de168377396ecd0f1ec736",
+  "courseId": "the-boat",
+  "ruleset": "river-city-run/1",
+  "imported": "2026-11-09",
+  "removals": [
+    "practice hit bypass",
+    "sample points",
+    "client random shoe"
+  ]
+}
