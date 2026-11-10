@@ -33,6 +33,29 @@ const tree = (ready = true, path = '/', userId = 'user') => <MemoryRouter initia
 const flush = async (ms = 0) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); };
 const splash = () => document.querySelector('[data-launch-splash]');
 
+it('plays the same approved splash over login after an eligible signed-out home entry', async () => {
+  render(<MemoryRouter initialEntries={['/auth']}><FreshLaunchSplash userId={null} destination="auth" ready /><button>Login</button></MemoryRouter>);
+  await flush();
+  expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');
+  expect(document.querySelector('button')?.textContent).toBe('Login');
+  const video=document.querySelector('video')!;
+  expect(video.currentTime).toBe(0);expect(video.playsInline).toBe(true);
+  fireEvent.ended(video);await flush(200);expect(splash()).toBeNull();
+  expect(document.querySelector('button')?.textContent).toBe('Login');
+});
+
+it.each(['/auth?reset=true','/auth#recovery','/delayed/match'])('does not cover an auth recovery or deep-link destination: %s', async path => {
+  render(<MemoryRouter initialEntries={[path]}><FreshLaunchSplash userId={null} destination="auth" ready /></MemoryRouter>);
+  await flush();expect(splash()).toBeNull();expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+});
+
+it('does not animate an ordinary direct login or replay on a login remount', async () => {
+  const login=<MemoryRouter initialEntries={['/auth']}><FreshLaunchSplash userId={null} destination="auth" ready /></MemoryRouter>;
+  launchSplash.eligible=false;const direct=render(login);await flush();expect(splash()).toBeNull();direct.unmount();
+  launchSplash.eligible=true;const home=render(login);await flush();expect(splash()).not.toBeNull();home.unmount();
+  render(login);await flush();expect(splash()).toBeNull();
+});
+
 it('shows after a slow boot, keeps lobby mounted, starts at frame zero and fades on ended', async () => {
   render(tree()); await flush();
   expect(splash()?.getAttribute('data-launch-splash')).toBe('showing');

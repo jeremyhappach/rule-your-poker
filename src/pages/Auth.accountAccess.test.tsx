@@ -7,8 +7,8 @@ vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:async(
 vi.mock('@/lib/accountAccess',()=>({sendVerification:mocks.send}));
 vi.mock('@/hooks/use-toast',()=>({useToast:()=>({toast:mocks.toast})}));
 import Auth from './Auth';
-beforeEach(()=>{vi.clearAllMocks();mocks.signup.mockResolvedValue({data:{user:{id:'new-user'},session:{access_token:'signup-token'}},error:null});mocks.send.mockResolvedValue(undefined);});
-afterEach(cleanup);
+beforeEach(()=>{vi.clearAllMocks();vi.stubGlobal('matchMedia',()=>({matches:false,addEventListener(){},removeEventListener(){}}));mocks.signup.mockResolvedValue({data:{user:{id:'new-user'},session:{access_token:'signup-token'}},error:null});mocks.send.mockResolvedValue(undefined);});
+afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 it.each([false,true])('requests independent verification after signup; visible failure=%s',async failed=>{
  if(failed)mocks.send.mockRejectedValue(Error('dispatch failed'));
  render(<MemoryRouter><Auth/></MemoryRouter>);

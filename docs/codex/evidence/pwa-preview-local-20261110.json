@@ -1,0 +1,220 @@
+{
+  "date": "2026-11-10T18:34:27.303Z",
+  "parentCommit": "f7362b90c8c60578cdbd84905d7c491be92bebe0",
+  "scope": "Signed-out Home Screen splash handoff; preview only",
+  "physicalStatus": "Failed preview; icon subsequently passed after proper Safari installation; corrected animation awaiting iPhone retest",
+  "typecheck": "passed",
+  "appTests": {
+    "files": 548,
+    "passed": 4018
+  },
+  "harnessTests": {
+    "files": 12,
+    "passed": 241
+  },
+  "releaseToolingTests": 44,
+  "focusedTests": 75,
+  "compiledApp": {
+    "authenticatedLaunch": 28,
+    "nativePushEntry": 8,
+    "signedOutLaunch": 13,
+    "backend": "Synthetic only; no production writes"
+  },
+  "signedOutHome": {
+    "phases": [
+      {
+        "phase": "none",
+        "at": 21.299999952316284,
+        "login": false
+      },
+      {
+        "phase": "preparing",
+        "at": 494.0999999642372,
+        "login": true
+      },
+      {
+        "phase": "showing",
+        "at": 667.5,
+        "login": true
+      },
+      {
+        "phase": "fading",
+        "at": 3676.599999964237,
+        "login": true
+      },
+      {
+        "phase": "none",
+        "at": 3877.7999999523163,
+        "login": true
+      }
+    ],
+    "media": [
+      {
+        "event": "loadedmetadata",
+        "time": 0,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 532.3999999761581
+      },
+      {
+        "event": "playing",
+        "time": 0.0013,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 666.8999999761581
+      },
+      {
+        "event": "timeupdate",
+        "time": 0.1345,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 800.2999999523163
+      },
+      {
+        "event": "timeupdate",
+        "time": 0.3942,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 1059.8999999761581
+      },
+      {
+        "event": "timeupdate",
+        "time": 0.6605,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 1326.199999988079
+      },
+      {
+        "event": "timeupdate",
+        "time": 0.9275,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 1593.0999999642372
+      },
+      {
+        "event": "timeupdate",
+        "time": 1.1942,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 1859.8999999761581
+      },
+      {
+        "event": "timeupdate",
+        "time": 1.4592,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 2124.899999976158
+      },
+      {
+        "event": "timeupdate",
+        "time": 1.7269,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 2392.599999964237
+      },
+      {
+        "event": "timeupdate",
+        "time": 1.9936,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 2659.199999988079
+      },
+      {
+        "event": "timeupdate",
+        "time": 2.2543,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 2920
+      },
+      {
+        "event": "timeupdate",
+        "time": 2.5189,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 3184.699999988079
+      },
+      {
+        "event": "timeupdate",
+        "time": 2.7897,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 3455.399999976158
+      },
+      {
+        "event": "timeupdate",
+        "time": 3,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 3673.599999964237
+      },
+      {
+        "event": "ended",
+        "time": 3,
+        "duration": 3,
+        "width": 720,
+        "height": 1280,
+        "at": 3674
+      },
+      {
+        "event": "timeupdate",
+        "time": 0,
+        "duration": null,
+        "width": 0,
+        "height": 0,
+        "at": 3678.099999964237
+      }
+    ],
+    "handoffs": [
+      {
+        "phase": "preparing",
+        "imageReady": true,
+        "login": true,
+        "at": 493.69999998807907
+      },
+      {
+        "phase": "showing",
+        "imageReady": true,
+        "login": true,
+        "at": 667.3999999761581
+      },
+      {
+        "phase": "fading",
+        "imageReady": true,
+        "login": true,
+        "at": 3876.899999976158
+      }
+    ]
+  },
+  "build": {
+    "bytes": 89476188,
+    "files": 179,
+    "budgetBytes": 90000000,
+    "identity": "Local pre-commit build; hosted manifest must be checked against final commit"
+  },
+  "preserved": {
+    "startupImages": 24,
+    "publicAssets": 114,
+    "manifest": true,
+    "touchIcon": true,
+    "pngs": true,
+    "worker": true,
+    "api": true,
+    "productionAliases": true,
+    "vercelProtection": true
+  },
+  "production": "HELD"
+}

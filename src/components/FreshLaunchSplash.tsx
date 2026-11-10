@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getActiveRecoveryLease } from '@/lib/sessionRecoveryLease';
-import { isSplashLobbyEntry, launchSplash, SPLASH_FADE_MS, SPLASH_MAX_VISIBLE_MS,
+import { isSplashAuthEntry, isSplashLobbyEntry, launchSplash, SPLASH_FADE_MS, SPLASH_MAX_VISIBLE_MS,
   SPLASH_PLAYBACK_WATCHDOG_MS, SPLASH_POSTER, SPLASH_OPENING_FRAME, SPLASH_VIDEO } from '@/lib/launchSplash';
 import './FreshLaunchSplash.css';
 
-/** An optional sibling of the authenticated live lobby, never an initialization gate. */
-export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: boolean }) {
-  const routeIsLobby = isSplashLobbyEntry(useLocation());
+/** Presentation only, beside the lobby or the signed-out destination of a home launch. */
+export function FreshLaunchSplash({ userId, ready, destination = 'lobby' }: {
+  userId: string | null; ready: boolean; destination?: 'lobby' | 'auth';
+}) {
+  const location = useLocation();
+  const routeIsDestination = destination === 'auth' ? isSplashAuthEntry(location) : isSplashLobbyEntry(location);
   const [phase, setPhase] = useState<'pending' | 'preparing' | 'showing' | 'fading' | 'done'>('pending');
   const [still, setStill] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [mediaDone, setMediaDone] = useState(false);
@@ -24,8 +27,8 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
   const fade = useCallback(() => setPhase(p => p === 'showing' ? 'fading' : p), []);
 
   useLayoutEffect(() => {
-    if (!routeIsLobby || owner.current !== userId) cancel();
-  }, [routeIsLobby, userId, cancel]);
+    if (!routeIsDestination || owner.current !== userId) cancel();
+  }, [routeIsDestination, userId, cancel]);
 
   useEffect(() => {
     if (cancelled.current || (!claimed.current && !launchSplash.claim())) { cancel(); return; }
@@ -143,7 +146,7 @@ export function FreshLaunchSplash({ userId, ready }: { userId: string; ready: bo
     return () => clearTimeout(timer);
   }, [phase, cancel]);
 
-  if (!routeIsLobby || owner.current !== userId || !['preparing','showing','fading'].includes(phase)) return null;
+  if (!routeIsDestination || owner.current !== userId || !['preparing','showing','fading'].includes(phase)) return null;
   return <div className="fresh-launch-splash" data-launch-splash={phase} data-frame-ready={frameReady&&!still} aria-hidden="true"
     style={{ opacity: phase === 'fading' ? 0 : 1 }}>
     <img src={still ? SPLASH_POSTER : SPLASH_OPENING_FRAME} alt="" className="fresh-launch-splash-art" />

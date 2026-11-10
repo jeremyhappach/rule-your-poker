@@ -1,3 +1,17 @@
+# iPhone preview failure — November 10, 2026 — corrected candidate, production held
+
+Preview `f7362b90c` is not physically qualified. Jeremy resolved its icon issue
+by installing from Safari, then confirmed the remaining startup artwork cut
+directly to login before animation. The animation was owned only by authenticated
+Index; signed-out routing released the startup cover without mounting it in Auth.
+The correction reuses the same splash on eligible signed-out Home Screen entry
+and preserves the decoded-frame handoff. Existing authentication and PWA assets,
+all 24 native startup resolutions, push and production settings are unchanged.
+Vercel's protected share-link boundary remains; no protection exception is made.
+See [root cause, correction and precise iPhone retest](PWA_PREVIEW_CORRECTION.md).
+**Production remains held until the corrected installed experience passes owner
+smoke and Jeremy explicitly approves publication.**
+
 # Deployment storage prevention — November 10, 2026 — locally qualified, publication held
 
 The storage remediation branch incorporates production `64362de16` under explicit

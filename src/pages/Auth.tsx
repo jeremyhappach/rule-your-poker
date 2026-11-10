@@ -18,6 +18,7 @@ import {
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { exportAuthEjectionTrace, readAuthEjectionEvents } from "@/lib/authEjectionLedger";
+import { FreshLaunchSplash } from '@/components/FreshLaunchSplash';
 
 
 const Auth = () => {
@@ -314,6 +315,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      <FreshLaunchSplash userId={null} destination="auth" ready />
       {/* Background Images */}
       <img 
         src={peoriaSkyline} 

@@ -9,6 +9,7 @@ import {cancelOnboardingEntry,onboardingAuthEvent} from '@/lib/mobileOnboarding'
 import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {accountCheckTimeout} from '@/lib/accountCheckTimeout';
 import {currentSession,usePushMatchNavigation} from '@/hooks/usePushMatchNavigation';
+import {isSplashAuthEntry,isSplashLobbyEntry,launchSplash} from '@/lib/launchSplash';
 
 export function AccountAccessGate({children}:{children:ReactNode}) {
  const location=useLocation(),navigate=useNavigate();
@@ -77,9 +78,13 @@ export function AccountAccessGate({children}:{children:ReactNode}) {
  },[access,load]);
  const publicAuth=location.pathname==='/auth'||location.pathname==='/verify-email';
  useEffect(()=>{
+  // Let the same cold-launch presentation hand its decoded opening frame to
+  // Auth after Index redirects a signed-out Home Screen entry. No auth is delayed.
+  if((identity===null||identity===undefined)&&launchSplash.eligible&&!error
+   &&(isSplashLobbyEntry(location)||isSplashAuthEntry(location)))return;
   if(publicAuth||identity===null||error||access&&!access.enabled||location.pathname!=='/')
    window.dispatchEvent(new Event('ptown:launch-cover-ready'));
- },[publicAuth,identity,error,access,location.pathname]);
+ },[publicAuth,identity,error,access,location.pathname,location.search,location.hash]);
  if(publicAuth||identity===null)return <>{children}</>;
  if(identity===undefined||!access||session&&!currentSession(session)||pending&&error)return <main className="min-h-screen grid place-items-center bg-background text-foreground p-6"><div role={error?'alert':'status'} className="space-y-4 text-center"><p>{error||'Checking account access…'}</p>{error&&<><Button onClick={()=>{setError('');if(identity&&currentSession(session))void load(identity);else restoreSession();}}>Retry</Button><Button variant="outline" onClick={()=>{clearPending();navigate('/',{replace:true});}}>Back to Lobby</Button></>}<Button variant="ghost" onClick={()=>void supabase.auth.signOut({scope:'local'})}>Sign out</Button></div></main>;
  const verification=<div className="space-y-3"><p className="break-all text-sm">{access.email}</p><p role={access.emailDelivery==='failed'?'alert':'status'} className="text-sm">{message||emailDeliveryMessage(access.emailDelivery)}</p><Button disabled={sending} onClick={async()=>{const id=access.userId;setSending(true);setMessage('');try{await sendVerification(id);if(identityRef.current===id)setMessage('Verification email requested. Check your inbox and spam folder.');}catch(e){if(identityRef.current===id)setMessage(e instanceof Error?e.message:'Could not send email.');}finally{if(identityRef.current===id){setSending(false);void load(id);}}}}>Resend verification email</Button></div>;

@@ -6,11 +6,22 @@ const fake=vi.hoisted(()=>({rpc:vi.fn(),session:vi.fn(),auth:undefined as any,re
 vi.mock('@/lib/accountAccess',()=>({accountRpc:fake.rpc,sendVerification:vi.fn().mockResolvedValue(undefined),emailDeliveryMessage:(status:string)=>status==='failed'?'Email failed. Resend verification email.':'Check your inbox.'}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:fake.session,signOut:fake.signOut,onAuthStateChange:(fn:any)=>{fake.auth=fn;return {data:{subscription:{unsubscribe:vi.fn()}}};}},channel:()=>({on:(_a:any,_b:any,fn:any)=>{fake.realtime=fn;return {subscribe:fake.subscribe};}}),removeChannel:vi.fn()}}));
 import {AccountAccessGate} from './AccountAccessGate';
+import {launchSplash} from '@/lib/launchSplash';
 const enabled={userId:'owner',enabled:true,status:'enabled',revision:1,email:'owner@example.invalid',verified:false,admin:false};
 const session=()=>({user:{id:'owner'},expires_at:Math.floor(Date.now()/1000)+3600});
-beforeEach(()=>{vi.resetAllMocks();fake.session.mockResolvedValue({data:{session:session()}});fake.rpc.mockResolvedValue(enabled);});
+beforeEach(()=>{vi.resetAllMocks();launchSplash.eligible=false;launchSplash.consumed=false;fake.session.mockResolvedValue({data:{session:session()}});fake.rpc.mockResolvedValue(enabled);});
 afterEach(cleanup);
 const mount=()=>render(<MemoryRouter><AccountAccessGate><div>Playable content</div></AccountAccessGate></MemoryRouter>);
+it.each([['/',true],['/auth',true],['/auth',false],['/auth?reset=true',true],['/delayed/match',true]] as const)('retains the native handoff only for an eligible signed-out home destination: %s %s',async(path,eligible)=>{
+ launchSplash.eligible=eligible;fake.session.mockResolvedValue({data:{session:null}});
+ const release=vi.fn();window.addEventListener('ptown:launch-cover-ready',release);
+ try{
+  render(<MemoryRouter initialEntries={[path]}><AccountAccessGate><div>Login destination</div></AccountAccessGate></MemoryRouter>);
+  await waitFor(()=>expect(fake.session).toHaveBeenCalled());await act(async()=>{});
+  expect(screen.getByText('Login destination')).toBeTruthy();expect(fake.rpc).not.toHaveBeenCalled();
+  if(eligible&&(path==='/'||path==='/auth'))expect(release).not.toHaveBeenCalled();else expect(release).toHaveBeenCalled();
+ }finally{window.removeEventListener('ptown:launch-cover-ready',release);}
+});
 it('shows pending approval and withholds gameplay while authenticated',async()=>{
  fake.rpc.mockResolvedValue({...enabled,enabled:false,status:'pending'});mount();
  expect(await screen.findByText('Account Pending Admin Approval')).toBeTruthy();expect(screen.queryByText('Playable content')).toBeNull();

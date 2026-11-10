@@ -22,6 +22,10 @@ export function isSplashLobbyEntry(e: Pick<LaunchEvidence, 'pathname' | 'search'
   return e.pathname === '/' && (e.search === '' || e.search === '?launch=home') && !e.hash;
 }
 
+export function isSplashAuthEntry(e: Pick<LaunchEvidence, 'pathname' | 'search' | 'hash'>): boolean {
+  return e.pathname === '/auth' && !e.search && !e.hash;
+}
+
 export function eligibleLaunch(e: LaunchEvidence): boolean {
   return e.standalone && isSplashLobbyEntry(e) && e.navigationType === 'navigate'
     && !e.discarded && e.visible;
