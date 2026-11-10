@@ -1,4 +1,16 @@
-# iPhone preview failure — November 10, 2026 — corrected candidate, production held
+# Controlled storage production release — November 10, 2026 — authorized, qualifying
+
+Jeremy authorized one controlled production release and accepted the documented
+owner-dashboard Instant Rollback fallback. Latest fetched main and live production
+remain `64362de16`; the remediation candidate already includes that complete
+Run21/Horses v5/Drop v6 release. Retained production deployment
+`dpl_8UkGyaDgE61TrfV43gb27bYRYU6o` is READY and rollback-eligible.
+The full final-source gate and immediate hosted checks must pass. No additional
+preview, deletion, Supabase schema/gameplay/financial change or billing change.
+See [scope, qualification and exact rollback procedure](STORAGE_CONTROLLED_RELEASE.md).
+This authorization supersedes the historical production holds below.
+
+# iPhone preview failure — November 10, 2026 — corrected candidate, historical hold
 
 Preview `f7362b90c` is not physically qualified. Jeremy resolved its icon issue
 by installing from Safari, then confirmed the remaining startup artwork cut
