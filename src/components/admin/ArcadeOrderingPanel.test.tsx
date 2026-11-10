@@ -15,7 +15,7 @@ it('stages section changes and keyboard-button moves until one explicit save',as
  fireEvent.click(screen.getByRole('button',{name:'Move Run21 up'}));
  expect(mocks.save).not.toHaveBeenCalled();
  const games=within(screen.getByRole('list',{name:'P-Town Originals'})).getAllByRole('listitem');
- expect(games.map(row=>row.getAttribute('data-arcade-order-game'))).toEqual(['horses-blitz','357-drop','crib-lab','run21','chucky-showdown']);
+ expect(games.map(row=>row.getAttribute('data-arcade-order-game'))).toEqual(['horses-blitz','357-drop','crib-lab','chucky-showdown','river-city-run','run21','ship-cap-voyage']);
  fireEvent.click(screen.getByRole('button',{name:'Save Arcade order'}));
  await screen.findByText('Arcade order saved.');
  expect(mocks.save).toHaveBeenCalledTimes(1);

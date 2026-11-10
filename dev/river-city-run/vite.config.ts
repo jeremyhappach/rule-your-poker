@@ -1,0 +1,20 @@
+import {defineConfig} from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import path from 'node:path';
+import fs from 'node:fs';
+import {randomUUID} from 'node:crypto';
+import {createRequire} from 'node:module';
+const pg=createRequire(import.meta.url)('C:/Users/jerem/source/repos/rule-your-poker/qualification.local/tri-towers/tools/node_modules/pg/lib/index.js');
+import {riverOperation,synchronizeRiver} from '../../server/riverCityRun/service.mjs';
+const root=path.resolve(__dirname,'../..');
+export default defineConfig({root,envDir:__dirname,cacheDir:path.join(__dirname,'cache.local'),plugins:[react(),{name:'river-loopback-db',async configureServer(server){
+ const context=JSON.parse(fs.readFileSync(path.join(__dirname,'database.local.json'),'utf8'));
+ if(!/^river_city_run_\d+$/.test(context.database))throw Error('Disposable River database only');
+ const db=new pg.Client({host:'127.0.0.1',port:55439,user:'tri_test',database:context.database});await db.connect();
+ const actorPath=path.join(__dirname,'browser-actor.local.json');const actor=fs.existsSync(actorPath)?JSON.parse(fs.readFileSync(actorPath,'utf8')).actor:randomUUID();fs.writeFileSync(actorPath,JSON.stringify({actor}));await db.query('insert into auth.users(id) values($1) on conflict(id) do nothing',[actor]);await db.query('insert into public.account_access(user_id,enabled,ever_enabled) values($1,true,true) on conflict(user_id) do update set enabled=true,ever_enabled=true',[actor]);await db.query('update public.profiles set is_active=true,username=$2 where id=$1',[actor,'River local '+actor.slice(0,8)]);await db.query("update private.arcade_rulesets set enabled=true where id='river-city-run/1'");
+ const rpc=async(name:string,args:Record<string,unknown>)=>(await db.query('select public.'+name+'('+Object.keys(args).map((k,i)=>k+'=>$'+(i+1)).join(',')+') value',Object.values(args))).rows[0].value;
+ let recovering=false;const timer=setInterval(async()=>{if(recovering)return;recovering=true;try{await db.query('update private.arcade_recovery_state set failure=null,last_completed_at=clock_timestamp()');const rows=(await db.query("select to_jsonb(r)||jsonb_build_object('server_at',floor(extract(epoch from clock_timestamp())*1000)) value from private.arcade_runs r where game='river-city-run' and status='active' and user_id=$1 and due_at<=extract(epoch from clock_timestamp())*1000",[actor])).rows;for(const row of rows)await synchronizeRiver(rpc,row.value,actor);}catch(e){console.error('Local recovery:',String(e));}finally{recovering=false;}},1000);
+ server.httpServer?.once('close',()=>{clearInterval(timer);void db.end();});
+ await db.query('update private.arcade_recovery_state set failure=null,last_completed_at=clock_timestamp()');
+ server.middlewares.use('/__river',async(req,res)=>{res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');if(req.headers.host!=='127.0.0.1:4319'||req.headers.origin&&req.headers.origin!=='http://127.0.0.1:4319'){res.statusCode=403;res.end('{}');return;}try{if(req.method!=='POST')throw Error('POST only');let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>4096)throw Error('Size');}res.end(JSON.stringify(await riverOperation(rpc,actor,JSON.parse(raw))));}catch(e){res.statusCode=409;res.end(JSON.stringify({error:String(e)}));}});
+}}],resolve:{alias:[{find:'@/integrations/supabase/client',replacement:path.join(root,'dev/arcade-lobby/mockSupabase.ts')},{find:'@',replacement:path.join(root,'src')}]},server:{host:'127.0.0.1',port:4319,strictPort:true,open:false,watch:null,hmr:false}});

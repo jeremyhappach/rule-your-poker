@@ -1674,3 +1674,12 @@ and `latency.mjs` qualify both board presentations and delayed-response behavior
 - `src/components/arcade/SoloShipCapVoyage.tsx`, `shipCapVoyage.css`: shared dice/audio/tally integration and persistent scoreboard.
 - `src/components/rules/ShipCapVoyageRules.tsx`: versioned help.
 - `dev/ship-cap-voyage/`: isolated local SQL/browser preview, race tests and review evidence.
+
+## River City Run candidate (not yet released)
+
+`src/lib/riverCityRun` owns the frozen road/table core and server-authoritative
+replay; `server/riverCityRun` adapts it to private Arcade receipts/results.
+`src/components/riverCityRun` owns course selection, The Boat board and the
+embedded approved presentation. `supabase/river-city-run/candidate.sql` is a
+closed-admission candidate, not an applied migration. Qualification and remaining
+release gates: `dev/river-city-run/README.md`.

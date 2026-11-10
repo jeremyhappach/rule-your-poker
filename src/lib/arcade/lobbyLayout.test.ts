@@ -8,12 +8,12 @@ const seed:ArcadeLayout = {
 };
 describe('Arcade layout',()=>{
   it('seeds existing designations and preserves current relative order within each section',()=>{
-    expect(ARCADE_GAMES.filter(g=>g.arcadeSection==='originals').map(g=>g.id)).toEqual([...seed.originals,'ship-cap-voyage']);
+    expect(ARCADE_GAMES.filter(g=>g.arcadeSection==='originals').map(g=>g.id)).toEqual([...seed.originals,'ship-cap-voyage','river-city-run']);
     expect(ARCADE_GAMES.filter(g=>g.arcadeSection!=='originals').map(g=>g.id)).toEqual(seed.other);
     const migration=readFileSync('supabase/migrations/20261107220812_arcade_lobby_ordering.sql','utf8');
     const stored=JSON.parse(migration.match(/'({"originals":[\s\S]*?})'/)![1]);
     expect(stored).toEqual(seed);
-    expect(completeLayout(seed,ARCADE_GAMES)).toEqual({...seed,originals:[...seed.originals,'ship-cap-voyage']});
+    expect(completeLayout(seed,ARCADE_GAMES)).toEqual({...seed,originals:[...seed.originals,'river-city-run','ship-cap-voyage']});
   });
   it('does not expose hidden, removed or multiplayer-only placements',()=>{
     const layout={originals:['yahtzee','hidden','crib-lab'],other:['run21']};

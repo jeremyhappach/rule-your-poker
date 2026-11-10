@@ -1,3 +1,13 @@
+# River City Run — November 9, 2026 — integration candidate, not published
+
+Jeremy authorized integration and publication after release checks. Work is isolated
+on `codex/river-city-run-release` from `e915e16a5`; other queued work is excluded.
+The Boat uses stable course ID `the-boat`, private Arcade authority and independent
+course rankings. Supplied tiles and a title-free waterfront leaderboard are wired.
+Candidate SQL remains outside migrations with admission disabled. Production has
+not changed. See [qualification checkpoint](../../dev/river-city-run/README.md)
+for evidence and remaining gates. Existing publication authorization persists.
+
 # 11 Up billiards polish — November 9, 2026 — approved production release
 
 `codex/eleven-up-local-polish` adds scoped pool-table styling, select/deselect

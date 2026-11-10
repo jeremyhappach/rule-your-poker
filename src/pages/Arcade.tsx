@@ -1,3 +1,4 @@
+import {RiverCityRunPage} from '@/components/riverCityRun/RiverCityRunPage';
 import {SoloShipCapVoyage} from '@/components/arcade/SoloShipCapVoyage';
 import {SoloHorsesBlitz} from '@/components/arcade/SoloHorsesBlitz';
 import {SoloDrop357} from '@/components/arcade/SoloDrop357';
@@ -59,6 +60,7 @@ export default function Arcade(){
  if(game==='horses-blitz')return runId?<SoloHorsesBlitz key={user.id+runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
  if(game==='357-drop')return runId?<SoloDrop357 key={user.id+runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
  if(game==='crib-lab')return runId?<SoloCribLab key={runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
+ if(game==='river-city-run')return <RiverCityRunPage userId={user.id}/>;
  if(game==='mega-card-golf')return <MegaArcadePage userId={user.id}/>;
  if(game!=='run21'&&game!=='tri-towers'&&game!=='eleven-up'&&game!=='royal-flash'&&game!=='quintzee'&&game!=='boxdrop'&&game!=='trip-flip'&&game!=='take-two')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
  return runId?(game==='quintzee'?<SoloQuintzee key={runId} runId={runId} userId={user.id}/>:game==='boxdrop'?<SoloBoxdrop key={runId} runId={runId} userId={user.id}/>:game==='trip-flip'?<SoloTripFlip key={runId} runId={runId} userId={user.id}/>:game==='take-two'?<SoloTakeTwo key={runId} runId={runId} userId={user.id}/>:game==='royal-flash'?<SoloRoyalFlash key={runId} runId={runId} userId={user.id}/>:game==='eleven-up'?<SoloElevenUp key={runId} runId={runId} userId={user.id}/>:game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game+user.id} game={game} userId={user.id}/>;

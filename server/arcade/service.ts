@@ -1,4 +1,5 @@
 import {createSoloRun,advanceSolo,applySolo,nextDue,soloProjection} from '../../src/lib/arcade/run21.js';
+import {riverOperation,synchronizeRiver} from '../riverCityRun/service.mjs';
 import {megaOperation,synchronizeMega,type MegaRecord} from '../megaCardGolf/service.js';
 import {isUuid} from '../../src/lib/run21/model.js';
 import type {ArcadeIntent,RunRecord} from '../../src/lib/arcade/model.js';
@@ -87,6 +88,7 @@ export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,toke
  if(input.game==='357-drop')return (await rpc('arcade_drop357_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='crib-lab')return (await rpc('arcade_crib_lab_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='chucky-showdown')return (await rpc('arcade_chucky_showdown_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
+ if(input.game==='river-city-run')return await synchronizeRiver(rpc,input,actor,token) as unknown as RunRecord;
  if(input.game==='mega-card-golf')return await synchronizeMega(rpc,input as unknown as MegaRecord,actor,token) as unknown as RunRecord;
  if(input.game==='quintzee')return (await rpc('arcade_quintzee_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
  if(input.game==='boxdrop')return (await rpc('arcade_boxdrop_step',{p_actor:actor,p_run:input.id,p_token:token})).record;
@@ -108,6 +110,7 @@ export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,toke
  throw Error('arcade:concurrent_action');
 }
 export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<string>,body:Record<string,any>){
+ if(body.game==='river-city-run')return riverOperation(rpc,userId,body);
  if(body.game==='mega-card-golf')return megaOperation(rpc,userId,body);
  if(body.game==='chucky-showdown'&&body.op==='start'&&body.presentationVersion!==3)throw Error('arcade:refresh_required');
  if(body.game==='chucky-showdown'&&body.op==='history'){
@@ -181,6 +184,7 @@ export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<
   if(result.outcome==='stale')throw Error('arcade:stale_action');
   return result.projection;
  }
+ if(row.game==='river-city-run')return riverOperation(rpc,userId,{...body,game:'river-city-run'});
  if(row.game==='mega-card-golf')return megaOperation(rpc,userId,{...body,game:'mega-card-golf'});
  const receipt=row.receipt;
  row=await synchronize(rpc,row,userId);
