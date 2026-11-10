@@ -1,10 +1,12 @@
-# 11 Up polish — November 9, 2026 — isolated local review only
+# 11 Up billiards polish — November 9, 2026 — approved production release
 
 `codex/eleven-up-local-polish` adds scoped pool-table styling, select/deselect
 and confirmed-placement audio, and a centered score-pill count/hold/return
 sequence. Rules, ball geometry, authoritative score math and progression are
-preserved. This branch is not integrated or published; no deployment or push
-is authorized before Jeremy's explicit clearance after the storage check.
+preserved. After reviewing the local audio/video demonstration, Jeremy explicitly
+approved moving this work to production. That approval supersedes the earlier
+local-only/storage-check publication hold. Release uses conflict-free fast-forward
+integration into main and the existing push helper; no migration is required.
 
 Jeremy rejected the edge-border candidate because it did not visibly read as
 a physical table. The replacement uses a dedicated decorative backdrop within
@@ -16,12 +18,17 @@ scoring; the default offline review shows the full Ready rack. Jeremy's requeste
 lamp addition places a shallow dark-brass pendant with an illuminated underside
 at the far rail, beneath the score row. Its localized amber pool ends before the
 top ball's selection ring; short screens crop the shade instead of changing live
-geometry. Portrait checks at 320×568, 390×844 and 430×932 pass. Owner visual
-approval remains pending; all work remains local.
+geometry. Portrait checks at 320×568, 390×844 and 430×932 pass. Jeremy approved
+this presentation for publication; physical iPhone production smoke remains pending.
 
 TypeScript, 61 focused tests, a local build, four interaction layouts and twelve
 full-rack geometry comparisons pass. Browser/audio evidence uses offline sample
-responses; physical iPhone and authenticated runtime acceptance remain pending.
+responses. The 390×844 local recording captures actual select, deselect and
+landing audio, then 25,200 → 31,200 with Elevens +1,000 and Speed +5,000 before
+the pill returns to its header. The full table and lamp remain visible. Saved
+video/audio decoding checks pass. Physical iPhone and authenticated runtime
+acceptance remain pending. Checkpoint: `eleven-up-billiards-polish-20261109`;
+the verified tag records the exact production deployment receipt.
 See [launch instructions and exact evidence](ELEVEN_UP_LOCAL_POLISH.md).
 
 # Run21 score-button placement — November 9, 2026 — approved layout correction

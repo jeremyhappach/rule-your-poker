@@ -1,3 +1,14 @@
+# 11 Up billiards polish — November 9, 2026 — approved local review
+
+`eleven-up-billiards-polish-20261109` records the approved table, lamp, ball cues
+and score-pill presentation. All 61 focused tests, application TypeScript and
+the production build pass. Existing portrait proofs preserve all 22 ball
+positions and targets at 320×568, 390×844 and 430×932; the approved local
+recording demonstrates actual select/deselect/landing audio and count/bonus/return.
+This is offline component qualification, not physical iPhone or authenticated
+production acceptance. The verified tag records publication; Jeremy's production
+smoke remains pending. See [scope and evidence](ELEVEN_UP_LOCAL_POLISH.md).
+
 # Run21 score-button placement — November 9, 2026 — layout qualification
 
 `run21-score-button-right-20261109` records the approved shared fullscreen move

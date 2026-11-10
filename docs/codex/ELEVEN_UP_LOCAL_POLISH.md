@@ -1,10 +1,33 @@
-# 11 Up local polish — November 9, 2026
+# 11 Up billiards polish — November 9, 2026
 
-Local review only. Branch `codex/eleven-up-local-polish`, based on main
-`97372c3b0`. No push, main integration, hosted preview, migration, production
-write or deployment is authorized. Jeremy will separately clear publication
-after the November 10 storage check. Bridge Run and the source checkout are
-untouched.
+Branch `codex/eleven-up-local-polish`, based on main `97372c3b0`. Jeremy reviewed
+the local audio/video demonstration and explicitly approved moving it to
+production. This supersedes the earlier local-only hold tied to the storage
+check. The existing main push workflow is authorized for this presentation-only
+release; no migrations, rule changes, financial changes or unrelated production
+data mutations are included. Bridge Run and the source checkout remain untouched.
+
+## Production release approval and recording
+
+The 390×844 local recording runs for about nine seconds: one select cue, one
+deselect cue and one confirmed-placement cue, followed by a centered count from
+25,200 to 31,200 with Elevens +1,000 and Speed +5,000, then return to the header.
+It captures the running production components and real AudioManager against the
+existing offline response fixture. Both media tracks were decoded from the saved
+WebM; all three distinct cues have nonzero audio, with a heavier landing peak.
+The full table and lamp remain visible. This is not an authenticated production
+gameplay or physical-device speaker claim.
+
+Ignored local evidence: `dev/eleven-up-local/evidence/eleven-up-local-sound-and-score.webm`,
+`local-recording.json`, and `recording-playback-check.json`. The release repeats
+application TypeScript, all 61 focused tests and the production build successfully.
+The build log is `dev/eleven-up-local/evidence/production-release-build.log`.
+Checkpoint `eleven-up-billiards-polish-20261109` identifies the release commit;
+`eleven-up-billiards-polish-verified-20261109` records the verified deployment
+receipt. Jeremy owns the final production iPhone smoke.
+
+The sections below retain the implementation's local-review history; the
+production approval above supersedes their earlier publication holds.
 
 ## Requested overhead lamp — November 9
 
