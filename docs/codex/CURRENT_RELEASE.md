@@ -1,4 +1,13 @@
-# Run21 Midnight High Limit — November 9, 2026 — approved visual release
+# Run21 visual recovery — November 9, 2026 — local review, publication held
+
+Jeremy rejected the first production treatment. Replacement casino artwork and
+scoped dimensional styling are prepared on `codex/run21-midnight-visual-recovery`.
+Actual phone-width screenshots cover Arcade empty/placed, Multiplayer, Async and
+the leaderboard. Gameplay geometry matches the baseline exactly. Typecheck,
+build and 530 tests pass. **Do not deploy until Jeremy approves the screenshots.**
+See [candidate evidence and limits](RUN21_MIDNIGHT_HIGH_LIMIT.md).
+
+# Run21 Midnight High Limit — November 9, 2026 — original visual release
 
 Shared Midnight styling covers Arcade, Multiplayer and Async Run21, plus the
 existing leaderboard with tied-rank-aware gold/silver/bronze medals. Original
