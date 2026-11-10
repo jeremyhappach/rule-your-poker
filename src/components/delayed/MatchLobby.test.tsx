@@ -12,9 +12,11 @@ vi.mock('@/components/delayed/PlayingNow',()=>({PlayingNow:()=>null}));
 vi.mock('@/lib/delayed/client',async original=>({...await original<typeof import('@/lib/delayed/client')>(),delayedRpc:mock.rpc}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:()=>{const c={on:()=>c,subscribe:()=>c};return c;},removeChannel:vi.fn()}}));
 import Delayed from '@/pages/Delayed';
+import {installBrowserMedia} from '@/test/browserMedia';
 const mount=()=>render(<MemoryRouter initialEntries={['/delayed/match']}><Routes><Route path='/delayed/:matchId' element={<Delayed/>}/></Routes></MemoryRouter>);
 const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve();});
 beforeEach(()=>{
+ installBrowserMedia();localStorage.clear();sessionStorage.clear();
  Object.defineProperty(document,'hidden',{configurable:true,value:false});
  mock.user='me';mock.rpc.mockReset();
  const child=(id:string,ordinal:number,patch:Partial<ChildSummary>)=>({id,ordinal,game:'run21',stake:99,actor:'other',terminal:false,expiresAt:new Date(Date.now()+100000).toISOString(),scores:{me:50,other:40},...patch});
@@ -27,7 +29,7 @@ beforeEach(()=>{
  ]};
  mock.rpc.mockImplementation(async(name)=>name==='delayed_home'?mock.home:name==='notification_preferences'?{}:false);
 });
-afterEach(cleanup);
+afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();vi.unstubAllGlobals();});
 it('sorts presentation by actionability with stable ordinals and leaves canonical lineup intact',()=>{
  const h=mock.home as Home,original=h.lineup.map(c=>c.id);
  expect(orderedLobbyGames(h,'me',Date.now()).map(c=>c.id)).toEqual(['own','unreviewed','opponent','reviewed-win','reviewed-tie']);

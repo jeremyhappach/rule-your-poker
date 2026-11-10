@@ -1,3 +1,20 @@
+# Production push test fixtures — November 10, 2026 — authorized final qualification
+
+Jeremy authorized the focused browser-fixture correction and completion of the
+controlled release after the failed, unpublished attempt below. Three async
+suites now supply deterministic MediaQueryList fixtures and reset browser state;
+auth-session tests use jsdom's real Storage, reset the push controller per case,
+and retain their real installed Auth SDK with isolated transport. All 20 tests
+in those suites pass with push enabled and no unhandled errors. No application,
+gameplay, push-delivery, asset or production environment code changed.
+
+`npm run validate` now forces production-enabled push in its child qualification
+processes on every platform, preserving typecheck, full app/harness tests and
+release-tooling checks. Gate tests prove environment inheritance and failure
+propagation. The production bundle still uses its existing deployment environment.
+Full exact-commit qualification and live verification remain required before
+claiming release success. The retained READY rollback target is unchanged.
+
 # Controlled storage release — November 10, 2026 — Vercel gate failed, production unchanged
 
 One authorized push advanced origin/main to `33b56d4dd69dea941b533d0537229acf2b681dbc`.

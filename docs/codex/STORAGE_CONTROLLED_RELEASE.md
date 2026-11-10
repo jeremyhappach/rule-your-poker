@@ -74,6 +74,23 @@ The release receipt records the exact commit, deployment, test results, hosted
 bytes, function boundaries, environment preservation and rollback availability.
 Physical iPhone acceptance remains a separate owner smoke on the existing PWA.
 
+## Authorized fixture correction after the unpublished attempt
+
+Jeremy explicitly reauthorized completion once the production-enabled gate passes.
+Only the four affected test suites, one shared media fixture, the qualification
+runner and its regression tests change. jsdom supplies actual browser Storage;
+per-case cleanup resets storage, globals and the dynamic push controller. No
+assertion is removed, no test is skipped, and production push remains enabled.
+The standard `validate` entry point now supplies `VITE_ASYNC_PUSH_ENABLED=true`
+to all qualification stages, including the full application and harness suites.
+It preserves other environment values and stops immediately on a failed stage.
+The focused 20-test reproduction, typecheck and 10 policy/gate tests pass.
+
+One complete production-configured local build will qualify the final commit,
+followed by the established main push, independent Vercel/GitHub gates and hosted
+read-only verification. Refresh main/live identities immediately before that push.
+The rollback procedure and original production deployment above remain the fallback.
+
 ## Attempt result: stopped before production publication
 
 Candidate `33b56d4dd69dea941b533d0537229acf2b681dbc` was tagged

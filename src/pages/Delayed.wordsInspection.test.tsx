@@ -2,6 +2,7 @@
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
+import {installBrowserMedia} from '@/test/browserMedia';
 import type {WordsSnapshot} from '@/lib/ptownWords/model';
 const mock=vi.hoisted(()=>({rpc:vi.fn(),words:vi.fn(),play:vi.fn(),intent:vi.fn(),channel:vi.fn(),home:{} as any,snapshot:{} as WordsSnapshot}));
 vi.mock('@/hooks/useAuthGuard',()=>({useAuthGuard:()=>({user:{id:'me'},isReady:true})}));
@@ -15,6 +16,7 @@ vi.mock('@/components/delayed/PlayingNow',()=>({PlayingNow:()=>null}));
 vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:({children,actions,scores,panel,navigation}:any)=><div>{navigation}{scores}{children}{actions}{panel}</div>}));
 import Delayed from './Delayed';
 beforeEach(()=>{
+ installBrowserMedia();
  sessionStorage.clear();localStorage.clear();vi.clearAllMocks();
  vi.stubGlobal('ResizeObserver',class{observe(){}disconnect(){}});
  mock.channel.mockImplementation(()=>{const c={on:()=>c,subscribe:()=>c};return c;});
@@ -27,7 +29,7 @@ beforeEach(()=>{
  mock.intent.mockResolvedValue(true);
  mock.play.mockImplementation(()=>({snapshot:mock.snapshot,now:mock.snapshot.serverAt,pending:false,connected:true,error:'',errorVersion:0,act:mock.intent,reconnect:vi.fn()}));
 });
-afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
+afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();vi.useRealTimers();vi.unstubAllGlobals();});
 function mount(path='/delayed/match'){return render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/delayed/:matchId" element={<Delayed/>}/><Route path="/delayed/:matchId/play/:childId" element={<Delayed/>}/></Routes></MemoryRouter>);}
 it('opens the committed board and own rack without gameplay, pending-command replay or subscriptions; returning refreshes ownership',async()=>{
  const request='ptown:async-words:request:me:words';sessionStorage.setItem(request,JSON.stringify({requestId:'old',revision:1,intent:{type:'pass'}}));

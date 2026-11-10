@@ -5,6 +5,21 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {compareCommits,isDocumentation,productionSha,buildDecision} from './change-policy.mjs';
 import {releaseDecision} from './release-decision.mjs';
+import {qualify} from './validate.mjs';
+
+test('every qualification stage inherits production push and preserves other configuration',()=>{
+  const calls=[],env={npm_execpath:'npm-cli.js',VITE_ASYNC_PUSH_ENABLED:'false',OTHER:'preserved'};
+  assert.equal(qualify(env,(exe,args,options)=>{calls.push(args.at(-1));assert.equal(exe,process.execPath);assert.equal(options.env.VITE_ASYNC_PUSH_ENABLED,'true');assert.equal(options.env.OTHER,'preserved');return {status:0};}),0);
+  assert.deepEqual(calls,['typecheck','test:unit','test:release-tooling']);
+  assert.equal(env.VITE_ASYNC_PUSH_ENABLED,'false');
+});
+test('qualification stops at the first failing or terminated stage',()=>{
+  for(const status of [1,7,null]){
+    const calls=[];
+    assert.equal(qualify({npm_execpath:'npm-cli.js'},(_exe,args)=>{calls.push(args.at(-1));return {status:args.at(-1)==='test:unit'?status:0};}),status??1);
+    assert.deepEqual(calls,['typecheck','test:unit']);
+  }
+});
 
 mkdirSync('.storage-audit',{recursive:true});
 const cwd=mkdtempSync('.storage-audit/policy-test-');

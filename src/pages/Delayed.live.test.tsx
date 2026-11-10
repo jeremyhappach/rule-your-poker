@@ -2,6 +2,7 @@
 import {act,cleanup,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {MemoryRouter,Routes,Route,useLocation} from 'react-router-dom';
+import {installBrowserMedia} from '@/test/browserMedia';
 const transport=vi.hoisted(()=>({rpc:vi.fn(),changed:()=>{},status:(_:string)=>{}}));
 vi.mock('@/hooks/useAuthGuard',()=>({useAuthGuard:()=>({user:{id:'me'},isReady:true})}));
 vi.mock('@/components/delayed/NotificationBell',()=>({NotificationBell:()=>null}));
@@ -12,7 +13,8 @@ import Delayed from './Delayed';
 const home=(revision=1,actor='other',terminal=false)=>({id:'match',status:terminal?'settled':'active',revision,realMoney:false,organizer:'me',opponent:'other',players:[{id:'me',name:'Alex'},{id:'other',name:'Blair'}],acceptedAt:new Date().toISOString(),held:false,completed:terminal?1:0,net:0,exposure:5,serverAt:Date.now(),lineup:[{id:'child',ordinal:1,game:'run21',stake:5,actor,revision,terminal,expiresAt:new Date(Date.now()+3600000).toISOString(),scores:{me:0,other:null},result:null}]});
 function Path(){return <output>{useLocation().pathname}</output>;}
 function mount(){return render(<MemoryRouter initialEntries={['/delayed/match']}><Path/><Routes><Route path='/delayed/:matchId' element={<Delayed/>}/></Routes></MemoryRouter>);}
-beforeEach(()=>{transport.rpc.mockReset();transport.rpc.mockResolvedValue(home());});afterEach(cleanup);
+beforeEach(()=>{installBrowserMedia();localStorage.clear();sessionStorage.clear();transport.changed=()=>{};transport.status=()=>{};transport.rpc.mockReset();transport.rpc.mockResolvedValue(home());});
+afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();vi.unstubAllGlobals();});
 it('waits for a server projection, then changes cards without navigation or revealing a pending score',async()=>{
  mount();await screen.findByText('Opponent’s turn');expect(screen.queryByText('Take Turn')).toBeNull();
  transport.rpc.mockResolvedValue(home(2,'me'));await act(async()=>transport.changed());expect(await screen.findByText('Take Turn')).toBeTruthy();expect(screen.getByText('/delayed/match')).toBeTruthy();expect(document.querySelector('[data-pending="true"]')?.textContent).toBe('—');

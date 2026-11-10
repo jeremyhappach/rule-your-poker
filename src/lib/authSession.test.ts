@@ -1,9 +1,22 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GoTrueClient, AuthApiError, AuthSessionMissingError } from '@supabase/auth-js';
 import { isConfirmedSessionInvalidation, signOutLocal } from './authSession';
 
+// The installed Auth SDK is exercised below with isolated storage and fetch.
+// Device cleanup must never reach the application's shared backend client.
+vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
+
 const clients: GoTrueClient[] = [];
-afterEach(() => { clients.splice(0).forEach(client => client.stopAutoRefresh()); });
+beforeEach(() => {
+  localStorage.clear();sessionStorage.clear();
+  vi.resetModules(); // Reset the dynamically imported push controller's account/queue.
+  vi.stubEnv('VITE_ASYNC_PUSH_ENABLED', 'true');
+});
+afterEach(() => {
+  clients.splice(0).forEach(client => client.stopAutoRefresh());
+  localStorage.clear();sessionStorage.clear();vi.unstubAllEnvs();
+});
 
 async function fixture() {
   const key = 'auth-cleanup-proof';
