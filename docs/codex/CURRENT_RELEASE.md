@@ -1,3 +1,11 @@
+# Run21 Midnight High Limit — November 9, 2026 — approved visual release
+
+Shared Midnight styling covers Arcade, Multiplayer and Async Run21, plus the
+existing leaderboard with tied-rank-aware gold/silver/bronze medals. Original
+layout, controls, rule/scoring/state owners and Arcade tile art are preserved.
+TypeScript, production build, 530 focused tests and responsive browser component
+checks pass. No migration. See [scope, evidence and smoke limits](RUN21_MIDNIGHT_HIGH_LIMIT.md).
+
 # River City Run — November 9, 2026 — qualified, approved production release
 
 Jeremy authorized integration and publication after release checks. Work is isolated
