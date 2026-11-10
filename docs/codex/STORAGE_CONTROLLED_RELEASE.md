@@ -73,3 +73,44 @@ No manual database operation is part of this release.
 The release receipt records the exact commit, deployment, test results, hosted
 bytes, function boundaries, environment preservation and rollback availability.
 Physical iPhone acceptance remains a separate owner smoke on the existing PWA.
+
+## Attempt result: stopped before production publication
+
+Candidate `33b56d4dd69dea941b533d0537229acf2b681dbc` was tagged
+`storage-controlled-production-20261110`, fast-forwarded into the clean main
+checkout and pushed once through the unmodified helper. No preview was created.
+Vercel attempt `dpl_8V1rGEK39RVNYD4UfSojzQ5aRx3F` ended ERROR in its mandatory
+application test step, so no new production artifact was published.
+
+Local exact-commit qualification passed typecheck, 4,018 app tests/548 files,
+241 harness tests, 44 release-tooling tests, Vite build, the 89,476,188-byte/179-file
+budget check, 42 pixel-exact PNG proofs, 142 built-asset HTTP checks, 28 signed-in
+startup scenarios, 13 signed-out scenarios and eight native worker entry scenarios.
+GitHub run 42887974750 also passed qualification, then correctly failed its live
+commit verification and skipped release signaling because the candidate never went live.
+
+Vercel's production configuration has `VITE_ASYNC_PUSH_ENABLED=true`; local and
+GitHub qualification did not exercise this enabled configuration. The enabled
+PushPreferences path calls the real browser device adapter. Three jsdom suites
+lack matchMedia, and the Node auth-session suite lacks localStorage when push
+cleanup runs. Hosted result: 544 test files passed/4 failed, 4,002 tests passed/16
+failed, six unhandled errors. Failing files:
+
+- src/lib/authSession.test.ts
+- src/pages/Delayed.live.test.tsx
+- src/pages/Delayed.wordsInspection.test.tsx
+- src/components/delayed/MatchLobby.test.tsx
+
+This is a production-feature test-environment coverage gap. Do not disable the
+production feature, skip these tests, or waive errors. Complete their browser
+fixtures and run qualification with push enabled before reviewing another release.
+No product correction or second production push was attempted after this failure.
+
+Both production aliases and manifests were rechecked: they remain on the recorded
+previous commit/deployment. All eight function responses and PWA metadata match
+the pre-release baseline; async Run21 still reports cle1. A transient ECONNRESET
+during the first read-only probe was retried once; the complete second pass succeeded.
+The current production deployment is still READY and rollback-eligible. Its recent
+30-minute error/fatal runtime-log query returned no records. No rollback was executed
+because no production regression was deployed. Device testing of the new release
+is not applicable until it is published. Preserve the existing installed PWA.

@@ -1,4 +1,25 @@
-# Controlled storage production release — November 10, 2026 — authorized, qualifying
+# Controlled storage release — November 10, 2026 — Vercel gate failed, production unchanged
+
+One authorized push advanced origin/main to `33b56d4dd69dea941b533d0537229acf2b681dbc`.
+Vercel production attempt `dpl_8V1rGEK39RVNYD4UfSojzQ5aRx3F` failed qualification
+before publication: 4,002/4,018 tests passed, 16 failed across four files, with six
+unhandled errors. Production's enabled push flag exposes missing `matchMedia`
+in three async jsdom suites and missing `localStorage` in the Node auth-session
+suite. Local/GitHub gates had passed without that production-only feature flag.
+No gate was bypassed, no release signal was sent and no second attempt was made.
+
+Both domains still serve `64362de16e6b5cdac5ab1d76af009132a8605f27`, deployment
+`dpl_8UkGyaDgE61TrfV43gb27bYRYU6o`, retained READY and rollback-eligible. All eight
+read-only function probes match the pre-release baseline, including async Run21
+in `cle1`; PWA metadata is unchanged and the recent runtime error query is empty.
+No rollback was necessary because the candidate never became production.
+The 89,476,188-byte candidate is locally built, not a deployed production-size claim.
+Next correction: make the test browser fixtures complete and qualify with push
+enabled before reviewing any further production attempt. Do not disable push,
+skip tests, weaken gates or repeat the deployment under this stopped attempt.
+See [release receipt and rollback procedure](STORAGE_CONTROLLED_RELEASE.md).
+
+# Controlled storage production release — November 10, 2026 — original authorization
 
 Jeremy authorized one controlled production release and accepted the documented
 owner-dashboard Instant Rollback fallback. Latest fetched main and live production
