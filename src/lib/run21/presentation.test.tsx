@@ -31,7 +31,7 @@ describe('Run21 player presentation',()=>{
     expect(html.match(/<button[^>]+class="run21-column"[^>]+disabled=""/g)).toHaveLength(5);
     expect(html).toContain('data-playing-card-face');
     expect(pane(m)).not.toContain('is playing');expect(pane(m)).not.toContain('<button');
-    expect(renderToStaticMarkup(<Run21Timer view={project(m,self)} now={1000}/>)).toContain('Speed 250');
+    expect(renderToStaticMarkup(<Run21Timer view={project(m,self)} now={1000}/>)).toContain('data-run21-speed="250"');
   });
   it('renders five empty columns with only totals visible and accessible action indexes',()=>{
     const html=render();
@@ -112,7 +112,7 @@ describe('Run21 player presentation',()=>{
     for(const [at,remaining] of [[0,250000],[125000,125000],[250000,0]]){
       const html=renderToStaticMarkup(<Run21Timer view={view} now={at}/>);
       expect(html).toContain('role="progressbar"');expect(html).toContain(`data-run21-time-remaining="${remaining}"`);
-      expect(html).toContain('Speed');
+      expect(html.replace(/<[^>]*>/g,'')).toBe('');
     }
     expect(JSON.stringify(m)).toBe(before);
   });
@@ -124,7 +124,7 @@ describe('Run21 player presentation',()=>{
     expect(html.match(/<button[^>]+class="run21-column"[^>]+disabled=""/g)).toHaveLength(5);
     expect(html).toContain('data-playing-card-face');
     expect(pane(m)).not.toContain('is playing');expect(pane(m)).not.toContain('<button');
-    expect(renderToStaticMarkup(<Run21Timer view={watching} now={255000}/>)).toContain('Speed 250');
+    expect(renderToStaticMarkup(<Run21Timer view={watching} now={255000}/>)).toContain('data-run21-speed="250"');
   });
 });
 

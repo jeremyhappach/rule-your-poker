@@ -14,6 +14,7 @@ export interface Attempt {
  board:Board|Record<string,any>; evidence?:DeckEvidence;
 }
 export interface State {
+ optionalBonus?:import('../../src/lib/optionalBonus.js').OptionalBonus;
  version:'delayed/1'; game:Game; child:string; players:[string,string];
  round:number; turn:number; totals:Record<string,number>; attempts:Attempt[];
  board:Board|Record<string,any>|null; deck:DeckEvidence|null;
@@ -27,7 +28,7 @@ export interface Child {
  reviewed?:string[];
  outcome?:{winner:string|null;reason:string;organizer_delta:number;opponent_delta:number}|null;
 }
-export type Intent={type:'start'|'tick'|'collect'|'pass'|'draw'|'take_score'}|
+export type Intent={type:'start'|'tick'|'collect'|'pass'|'draw'|'take_score'|'bonus_play'|'bonus_skip'}|
  {type:'select'|'lock'|'replace'|'swap'|'stand';items:number[]}|{type:'fold'|'stay'|'press';level?:number}|
  {type:'discard'|'stand-pat'}|{type:'replace';index:number}|{type:'open';indices:number[]}|
  {type:'place';column:number}|{type:'remove';index:number}|{type:'place'|'recycle'|'roll'|'score'|'score_zero'|'pair';items:number[]};
@@ -158,7 +159,8 @@ export async function project(row:Child,viewer:string,rpc:Rpc,prepared?:{visible
    board:prepared?prepared.ownBoards[index]:s.game==='mega-card-golf'?projectPlayerHole(a.board as MegaRun,Number(row.server_at)):s.game==='run21'?a.board:await sqlBoard({...s,board:a.board},'visible',row.config,row.server_at,rpc)}))),
   winner:row.terminal?row.outcome?.winner??null:null,
   result:row.terminal&&row.outcome?{reason:row.outcome.reason,winner:row.outcome.winner,
-   delta:viewer===row.organizer?row.outcome.organizer_delta:row.outcome.opponent_delta}:null};
+   delta:viewer===row.organizer?row.outcome.organizer_delta:row.outcome.opponent_delta}:null,
+  ...(s.optionalBonus&&(s.optionalBonus.actor===viewer||row.terminal)?{optionalBonus:s.optionalBonus}:{})};
 }
 
 async function sqlBoard(s:State,operation:string,config:Child['config'],at:number,rpc:Rpc,intent?:Intent){

@@ -63,7 +63,7 @@ export function useTriTowers(dealerGameId:string){
   },[dealerGameId,view?.identity.roundId,view?.phase,view?.deadline,view?.paused]);
   const act=async(intent:Intent)=>{
     if(!connected||error||document.hidden||!navigator.onLine||latest.current?.paused||clock.current.server+performance.now()-clock.current.local>=(latest.current?.deadline??0))return;
-    if(intentView(latest.current)){buffer.enqueue(intent);return;}
+    if(intentView(latest.current)&&intent.type!=='bonus_play'&&intent.type!=='bonus_skip'){buffer.enqueue(intent);return;}
     const current=latest.current;if(!current?.canAct||inFlight.current)return;
     const id=dealerGameId,requestEpoch=epoch.current,command:Command={dealerGameId:id,requestId:crypto.randomUUID(),revision:current.revision,intent};
     inFlight.current=true;setPending(true);

@@ -1,3 +1,5 @@
+import {QuintzeeRulesIcon} from '@/components/quintzee/QuintzeeRulesIcon';
+import {OptionalBonusDialog} from '@/components/OptionalBonusDialog';
 import {AsyncSessionName} from './AsyncSessionName';
 import type {LabCommand} from '@/lib/cribLab/model';
 import {OriginalsBoard} from '@/components/originals/OriginalsBoard';
@@ -138,7 +140,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   const timer=setTimeout(()=>void refresh(),Math.max(0,due-clock.current.at));return()=>clearTimeout(timer);
  },[due,snapshot?.revision,refresh]);
  async function act(intent:Record<string,unknown>){if(!snapshot||pending||request.current)return;
-  if(snapshot.game==='tri-towers'&&intent.type!=='start'){
+  if(snapshot.game==='tri-towers'&&!['start','bonus_play','bonus_skip'].includes(String(intent.type))){
    if(intent.type==='remove')triInput.enqueue({type:'remove',index:Number(intent.index)});
    else if(intent.type==='draw'||intent.type==='take_score')triInput.enqueue({type:intent.type});
    return;
@@ -150,7 +152,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  // finishes local presentation; authority already handed off the turn.
  useEffect(()=>{if(resultUntil!==null&&now>=resultUntil)navigate('/delayed/'+matchId+(snapshot?.terminal?'?review='+childId+'&finished=1':''),{replace:true});},[resultUntil,now,matchId,childId,snapshot?.terminal,navigate]);
  useEffect(()=>{
-  if(!autoStart||!snapshot||snapshot.game==='quintzee'||snapshot.board||ended||pending||request.current||error||snapshot.held||snapshot.actor!==userId||now>=Date.parse(snapshot.expiresAt))return;
+  if(!autoStart||!snapshot||snapshot.optionalBonus?.choice==='pending'||snapshot.game==='quintzee'||snapshot.board||ended||pending||request.current||error||snapshot.held||snapshot.actor!==userId||now>=Date.parse(snapshot.expiresAt))return;
   if(document.hidden||!navigator.onLine)return;
   void act({type:'start'});
  },[autoStart,snapshot,ended,pending,error,now,userId]);
@@ -181,6 +183,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
   playerId:userId,roundId:view.roundId,requestId:String(request.current?.requestId),revision:(freshAction.current.before.board as typeof board).revision,intent:{type:'place' as const,column:submitted.column}
  } : null;
  const home=<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={realMoney}>{participants.map(p=>p.name).join(' vs. ')||'Match home'}</AsyncSessionName></Link>;
+ if(snapshot?.optionalBonus?.choice==='pending'&&snapshot.optionalBonus.actor===userId&&!ended)return <AsyncTurnStage matchId={matchId} title="Bonus round"><OptionalBonusDialog decision={snapshot.optionalBonus} actor={userId} disabled={pending||snapshot.held||now>=Date.parse(snapshot.expiresAt)} error={error} onReconnect={()=>void refresh()} onChoice={choice=>void act({type:choice==='play'?'bonus_play':'bonus_skip'})}/></AsyncTurnStage>;
  if(!snapshot||!board)return <AsyncTurnStage matchId={matchId} title="Your turn!">
   {autoStart&&!ended&&!error&&!snapshot?.held&&(!snapshot||now<Date.parse(snapshot.expiresAt))?null:<>
   {error&&<p role="alert">{error} <button onClick={()=>void refresh()}>Retry safely</button></p>}
@@ -201,7 +204,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  }
  if(snapshot.game==='quintzee'){
   const players=Object.keys(snapshot.totals),value:QuintzeeSnapshot={id:childId,revision:snapshot.revision,scope:childId+':'+initialSegment.current,serverAt:snapshot.serverAt,theme:'modern',pausedAt:snapshot.held?snapshot.serverAt:null,status:snapshot.terminal?'completed':'active',outcome:'active',playerNames:Object.fromEntries(scores.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:snapshot.totals,round:displayRound!,turnIndex:players.indexOf(ended?userId:snapshot.actor),qualified:[],results:[],finished:snapshot.terminal,board}};
-  return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><QuintzeeView onResultTimelineEnd={resultTimelineEnd} awaitingStart={awaitingStart} navigation={<nav><button onClick={()=>setTab('lobby')}>Rules</button><Link to={'/delayed/'+matchId}>History</Link></nav>} snapshot={value} actor={userId} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} onIntent={i=>void act({...i})} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
+  return <div className="arcade-run async-turn quintzee-async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · 36-hour turns</span></div><QuintzeeView onResultTimelineEnd={resultTimelineEnd} awaitingStart={awaitingStart} navigation={<nav><button onClick={()=>setTab('lobby')}><QuintzeeRulesIcon/></button><Link to={'/delayed/'+matchId}>History</Link></nav>} snapshot={value} actor={userId} userId={userId} now={now} pending={pending||(!ended&&!canAct)} error={error} onIntent={i=>void act({...i})} onReconnect={()=>void refresh()} activeTab={tab} setActiveTab={setTab}/></div>;
  }
  if(snapshot.game==='mega-card-golf')return <div className="arcade-run async-turn" data-shell-presentation-mode="fullscreen"><div className="delayed-turn-nav">{home}<span>{realMoney?'Real money':'Play money'} · Hole {displayRound}</span></div>
   {error&&<p role="alert">{error}<button onClick={()=>void refresh()}>Reconnect</button></p>}

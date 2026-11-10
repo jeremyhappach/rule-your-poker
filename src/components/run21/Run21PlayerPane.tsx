@@ -23,19 +23,19 @@ export function Run21PlayerPane({view,now,onIntent,pending=false,withPass=false}
 
 /** Presentation of the existing deadline, with no local clock or progression owner. */
 export function Run21Timer({view,now}:{view:Projection;now:number}) {
-  if(roundIntro(view,now))return <span className="run21-timer-caption">Round starting</span>;
+  if(roundIntro(view,now))return null;
   const board=view.boards[displayedPlayerId(view)];
-  if(!board)return <span className="run21-timer-caption">Watching Run21</span>;
+  if(!board)return null;
   if(view.revealed)return null;
   const at=view.pausedAt??now;
   if(board.startedAt===null&&board.firstPlacementDeadline!=null&&!view.automaticPlayers?.includes(board.playerId)) {
-    const seconds=Math.max(0,Math.ceil((board.firstPlacementDeadline-at)/1000));
-    return <span className="run21-timer-caption" role="timer" aria-label="First placement time remaining">{view.pausedAt!=null?'Paused · ':''}{board.playerId===view.viewerId?'Place your first card':'Watching · First placement'} · {seconds}s</span>;
+    const remaining=Math.max(0,board.firstPlacementDeadline-at);
+    return <div className="run21-speed"><RoundTimeBar remaining={remaining} full={view.config.firstPlacementSeconds===undefined?duration(view.config):view.config.firstPlacementSeconds*1000}/></div>;
   }
   const full=duration(view.config);
   const remaining=board.startedAt===null?full:Math.max(0,Math.min(full,board.deadline!-(board.result?.at??at)));
   const speed=speedAt(board,view.config,board.result?.at??at);
-  return <div className="run21-speed"><span data-run21-speed={speed}>Speed {speed}</span><RoundTimeBar remaining={remaining} full={full} waiting={board.startedAt===null} speed={speed}/></div>;
+  return <div className="run21-speed" data-run21-speed={speed}><RoundTimeBar remaining={remaining} full={full} waiting={board.startedAt===null} speed={speed}/></div>;
 }
 
 export function Run21FullscreenActions(props:Parameters<typeof Run21PlayerPane>[0]) {

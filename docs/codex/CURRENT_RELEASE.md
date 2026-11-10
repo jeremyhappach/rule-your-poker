@@ -1,3 +1,18 @@
+# Consolidated polish — November 10, 2026 — qualified for one controlled release
+
+Jeremy approved Quintzee's staggered selectors/layout, real-money live/Async bonus
+Play/Skip, and Run21's meter-only timer together. The final production-push gate
+passes: typecheck, 4,027 app tests, 241 harness tests, 46 tooling tests and build.
+Local output is 89,482,481 bytes, below 90 MB. All storage/PWA/function safeguards
+remain preserved. Hosted rollback-contained financial qualification passes all
+16 live and 12 Async cases after the guarded migration; no fixture data remains.
+Local concurrency, recovery, projection and mobile-geometry checks also pass.
+
+Publication is pending the single main push and hosted verification. Current
+production/rollback target remains `098937474c1434c64f74d060eaf80c8a4a43a5ff`,
+READY deployment `dpl_AMv1ag39r46CpWSugyxbTx7nsaFy`. The owner confirmed initial
+storage/splash device smoke. See [scope, proof and rollback](CONSOLIDATED_POLISH_RELEASE.md).
+
 # Storage optimization — November 10, 2026 — production verified
 
 Production is `098937474c1434c64f74d060eaf80c8a4a43a5ff`, Vercel READY deployment

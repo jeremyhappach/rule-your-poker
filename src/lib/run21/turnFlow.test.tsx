@@ -29,7 +29,8 @@ describe('Run21 live sequential turn flow',()=>{
   const html=renderToStaticMarkup(<Run21Felt view={view} now={100000} drawRect={{x:.4,y:.7,width:.2,height:.2}} onIntent={()=>{}}/>);
   expect(html).toContain('data-playing-card-face');expect(html.match(/<button[^>]+class="run21-column"[^>]+disabled=""/g)).toHaveLength(5);
   const timer=renderToStaticMarkup(<Run21Timer view={view} now={100000}/>);
-  expect(timer).toContain('Speed 250');expect(timer).toContain('data-run21-time-remaining="250000"');
+  expect(timer).toContain('data-run21-speed="250"');expect(timer).toContain('data-run21-time-remaining="250000"');
+  expect(timer.replace(/<[^>]*>/g,'')).toBe('');
   expect(renderToStaticMarkup(<Run21PlayerPane view={view} now={100000} onIntent={()=>{}}/>)).not.toContain('<button');
   expect(JSON.stringify(view)).not.toMatch(/"secret"|"salt"|"cards":\[/);
  });

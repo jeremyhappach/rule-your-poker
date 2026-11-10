@@ -40,7 +40,7 @@ export function useBoxdrop(id:string,userId:string,transport:BoxdropTransport){
   return scheduleAuthoritativeBoundary(deadline-at,()=>recoveryRef.current?.refresh());
  },[snapshot?.scope,snapshot?.board.deadline,snapshot?.board.phase,snapshot?.paused,snapshot?.finished,resolve]);
  const act=async(intent:BoxdropIntent)=>{
-  const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;if(!v||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||intent.type!=='abandon'&&!boxdropPlayWindow(v.board,at,!v.solo).playable)return;
+  const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;if(!v||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||intent.type!=='abandon'&&intent.type!=='bonus_play'&&intent.type!=='bonus_skip'&&!boxdropPlayWindow(v.board,at,!v.solo).playable)return;
   const command:BoxdropCommand={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
   sessionStorage.setItem(key,JSON.stringify(command));await resolve();
  };

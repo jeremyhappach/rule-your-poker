@@ -40,7 +40,7 @@ export function useRoyalFlash(id:string,userId:string,transport:RoyalTransport){
   return scheduleAuthoritativeBoundary(deadline-at,()=>recoveryRef.current?.refresh());
  },[snapshot?.scope,snapshot?.board.deadline,snapshot?.board.phase,snapshot?.paused,snapshot?.finished,resolve]);
  const act=async(intent:RoyalIntent)=>{
-  const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;if(!v||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||intent.type!=='abandon'&&!royalPlayWindow(v.board,at,!v.solo).playable)return;
+  const v=latest.current,at=clock.current.server+performance.now()-clock.current.local;if(!v||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!v.canAct||v.paused||document.hidden||!navigator.onLine||intent.type!=='abandon'&&intent.type!=='bonus_play'&&intent.type!=='bonus_skip'&&!royalPlayWindow(v.board,at,!v.solo).playable)return;
   const command:RoyalCommand={requestId:crypto.randomUUID(),revision:v.revision,scope:v.scope,intent};
   sessionStorage.setItem(key,JSON.stringify(command));await resolve();
  };

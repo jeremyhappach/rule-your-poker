@@ -3,7 +3,7 @@ export const TRI_TOWERS = {id:'tri-towers',label:'TriTowers',presentationMode:'f
 export const RULES = {version:'ptown-tritowers/1',stages:2,bonusThreshold:80000,maxBonusStages:1,
   runStep:1000,peakBonuses:[5000,10000,15000],stageMs:120000,readyMs:30000,holdMs:5000,timePerSecond:100,wrap:true} as const;
 export interface Player {id:string;userId:string;name:string;seat:number;isBot?:boolean}
-export type Intent = {type:'start'|'draw'|'continue'|'give_up'|'take_score'} | {type:'remove';index:number};
+export type Intent = import('../optionalBonus').BonusIntent | {type:'start'|'draw'|'continue'|'give_up'|'take_score'} | {type:'remove';index:number};
 export interface Command {dealerGameId:string;requestId:string;revision:number;intent:Intent}
 export interface Rules {clearCelebrationMs?:number;roundIntroMs?:number;version:string;stages:number;bonusThreshold:number;maxBonusStages:number;runStep?:number;streakAwards?:readonly number[];drawPenalty?:number;peakBonuses:readonly number[];stageMs:number;readyMs:number;holdMs:number;timePerSecond:number;stockPerCard?:number;wrap:boolean}
 export const isV2=(rules:Rules)=>['tri-towers/2','tri-towers/3','tri-towers/4','tri-towers/5'].includes(rules.version);
@@ -11,6 +11,7 @@ export const nextRemovalAward=(rules:Rules,run:number)=>rules.streakAwards?.[Mat
 export interface StageResult {playerId:string;stage:number;score:number;reason:string;stockBonus?:number;
   id?:string;scoreBefore?:number;stageScore?:number;timeBonus?:number;completedAt?:number;finishTurn?:boolean}
 export interface State {
+  optionalBonus?:import('../optionalBonus').OptionalBonus;
   identity:{sessionId:string;dealerGameId:string;roundId:string};
   players:Player[];rules:Rules;turnIndex:number;stage:number;
   phase:'intro'|'ready'|'playing'|'stage_complete'|'complete';deck:number[];removed:number[];

@@ -1,3 +1,6 @@
+Consolidated Quintzee/optional-bonus/Run21 release, financial proof and rollback:
+[CONSOLIDATED_POLISH_RELEASE.md](CONSOLIDATED_POLISH_RELEASE.md).
+
 River City Run / The Boat integration, authority qualification and publication:
 [RIVER_CITY_RUN_RELEASE.md](RIVER_CITY_RUN_RELEASE.md).
 

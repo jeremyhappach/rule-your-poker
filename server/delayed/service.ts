@@ -17,13 +17,20 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
  if(!['state','action'].includes(body.op)||!isUuid(body.childId??''))throw Error('delayed:invalid_request');
  if(body.op==='action'&&(!isUuid(body.requestId??'')||!Number.isSafeInteger(body.revision)||!Number.isSafeInteger(body.segment)))throw Error('delayed:invalid_command');
  const intent=body.intent as Intent;
- if(body.op==='action'&&(!intent||!['start','place','pass','collect','remove','draw','take_score','recycle','roll','score','score_zero','pair','open','replace','discard','stand-pat','select','lock','swap','stand','fold','stay','press'].includes(intent.type)||
+ if(body.op==='action'&&(!intent||!['start','place','pass','collect','remove','draw','take_score','recycle','roll','score','score_zero','pair','open','replace','discard','stand-pat','select','lock','swap','stand','fold','stay','press','bonus_play','bonus_skip'].includes(intent.type)||
   intent.type==='place'&&(!('items'in intent)&&(!Number.isInteger(intent.column)||intent.column<0||intent.column>4))||
   intent.type==='remove'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>27)))throw Error('delayed:invalid_action');
  // A routing hint grants no authority: SQL checks the stored game, owner, frozen
  // revision/segment, deadlines and receipt before calling the existing commit.
+ if(body.op==='action'&&(intent.type==='bonus_play'||intent.type==='bonus_skip')){
+  const row=await rpc('delayed_bonus_choice',{p_child:body.childId,p_actor:userId,p_request:body.requestId,p_revision:body.revision,p_segment:body.segment,p_choice:intent.type==='bonus_play'?'play':'skip'});
+  // Return the same projection owner as ordinary TriTowers refreshes, including
+  // review disclosure and equal-revision serialization.
+  if(row.game_type==='tri-towers')return rpc('delayed_tri_bonus_step',{p_child:body.childId,p_actor:userId});
+  return project(row,userId,rpc);
+ }
  if(body.game==='tri-towers'){
-  const value=await rpc('delayed_tri_step',{p_child:body.childId,p_actor:userId,...(body.op==='action'?{p_request:body.requestId,p_revision:body.revision,p_segment:body.segment,p_intent:intent}:{})});
+  const value=await rpc('delayed_tri_bonus_step',{p_child:body.childId,p_actor:userId,...(body.op==='action'?{p_request:body.requestId,p_revision:body.revision,p_segment:body.segment,p_intent:intent}:{})});
   // Returning the stale result allows a due tick to commit before rejection.
   if(value.error)throw Error(value.error);
   return value as Awaited<ReturnType<typeof project>>;
@@ -70,6 +77,9 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
   }
   row={...result.record,reviewed:row.reviewed};
  }
+ // Initial reads without a routing hint must use the same projection owner as
+ // later hinted refreshes; equal revisions cannot gain a different key shape.
+ if(row.game_type==='tri-towers')return rpc('delayed_tri_bonus_step',{p_child:body.childId,p_actor:userId});
  return project(row,userId,rpc);
 }
 function canonical(value:any):any{

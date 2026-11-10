@@ -1,4 +1,5 @@
-export type RoyalIntent={type:'place';index:number}|{type:'abandon'};
+import type {BonusIntent,OptionalBonus} from '@/lib/optionalBonus';
+export type RoyalIntent=BonusIntent|{type:'place';index:number}|{type:'abandon'};
 export interface RoyalResult {presentationMs?:number;presentationVersion?:number;lines?:{kind:string;points:number}[];slots?:(number|null)[];id?:string;reason:string;score:number;scoreBefore:number;displayScore:number;stageScore:number;handPoints:number;timeBonus:number;completedAt:number}
 export interface RoyalBoard {
  rules:{version:'royal-flash/1'|'royal-flash/2'|'royal-flash/3';stageMs:number;introMs:number;readyMs:number;holdMs:number;clearCelebrationMs:number};
@@ -7,6 +8,7 @@ export interface RoyalBoard {
  result?:RoyalResult|null;event:{label:string;points:number;slot?:number};
 }
 export interface RoyalSnapshot {
+ optionalBonus?:OptionalBonus;
  viewerId?:string;
  terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number;achievements:Record<string,import('../arcade/scoreAchievements').ScoreAchievements>};
  abandoned?:boolean;
@@ -38,7 +40,7 @@ export function acceptRoyalSnapshot(old:RoyalSnapshot|null,next:RoyalSnapshot,id
 export function multiplayerSnapshot(v:any):RoyalSnapshot {
  const id=v.identity.dealerGameId,scope=[id,v.identity.roundId,v.activePlayerId,v.stage].join(':');
  const {rules,phase,slots,current,stockRemaining,placements,handPoints,lines,score,deadline,event}=v;
- return {identity:v.identity,financial:v.financial,settlement:v.settlement,results:v.stages,viewerId:v.viewerId,terminal:v.terminal,id,revision:v.revision,serverAt:v.serverAt,scope,round:v.stage,board:{rules,phase,slots,current,stockRemaining,placements,handPoints,lines,score,deadline,event,result:v.phase==='stage_complete'?v.stages.at(-1):null},canAct:v.canAct,paused:v.paused,pausedAt:v.pausedAt,finished:v.finished,settled:v.settlement!==null,solo:false,
+ return {optionalBonus:v.optionalBonus,identity:v.identity,financial:v.financial,settlement:v.settlement,results:v.stages,viewerId:v.viewerId,terminal:v.terminal,id,revision:v.revision,serverAt:v.serverAt,scope,round:v.stage,board:{rules,phase,slots,current,stockRemaining,placements,handPoints,lines,score,deadline,event,result:v.phase==='stage_complete'?v.stages.at(-1):null},canAct:v.canAct,paused:v.paused,pausedAt:v.pausedAt,finished:v.finished,settled:v.settlement!==null,solo:false,
  players:v.players.map((p:any)=>({id:p.id,seat:p.seat,name:p.name,score:v.scores[p.id]??0,active:p.id===v.activePlayerId,chips:v.financial?.balances[p.id]}))};
 }
 export function arcadeSnapshot(v:any,userId:string):RoyalSnapshot {

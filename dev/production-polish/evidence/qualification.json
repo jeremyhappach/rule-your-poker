@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-10",
+  "baseCommit": "098937474c1434c64f74d060eaf80c8a4a43a5ff",
+  "migration": "20261110215626_optional_bonus_choice_and_polish",
+  "hostedFinancialProof": {"liveCases": 16, "asyncCases": 12, "rolledBack": true, "remainingProofTriggers": 0, "remainingNamedProofProfiles": 0},
+  "localFinancialProof": {"liveCases": 16, "asyncCases": 12, "independentConnectionAndFakeMoneyCases": 21, "zeroClientRecoveryPaths": 7},
+  "projection": {"legacyUnchanged": true, "reconnect": true, "opponentPrivacy": true},
+  "browser": {"quintzeeModeViewportCases": 12, "run21GeometryTimingCases": 20, "minimumTargetCssPixels": 48, "physicalIPhone": false},
+  "fullGate": {"pushEnabled": true, "applicationTests": 4027, "applicationFiles": 550, "harnessTests": 241, "harnessFiles": 12, "toolingTests": 46, "failures": 0, "unhandledErrors": 0},
+  "preservation": {"pixelIdenticalImages": 42, "startupImages": 24, "publicUrls": 114, "otherFrozenFiles": 81, "functions": 8, "run21Region": "cle1"},
+  "limitations": ["Financial proofs start from seeded completed-main states, then execute the existing handoff and real settlement.", "Concurrency and zero-client recovery run in the disposable local clone with captured production authority.", "Physical iPhone touch comfort and normal authenticated gameplay remain owner acceptance."]
+}

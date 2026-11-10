@@ -1,4 +1,5 @@
 import {supabase} from '@/integrations/supabase/client';
+import {isBonusIntent,bonusArguments} from '@/lib/optionalBonus';
 import type {Projection,Command} from './model';
 import {UncertainTriAction,RejectedTriAction} from './intentBuffer';
 import {triTiming} from './diagnostics';
@@ -18,7 +19,12 @@ export function acceptSnapshot(prior:Projection|null,incoming:Projection,dealerG
   }
   return incoming;
 }
-export const submit=(command:Command)=>triTowersRpc<Projection>('tri_towers_action',{
+export const submit=async(command:Command)=>{
+ if(isBonusIntent(command.intent)){
+  await triTowersRpc('competitive_bonus_choice',bonusArguments('tri-towers',command.dealerGameId,{...command,intent:command.intent}));
+  return triTowersRpc<Projection>('tri_towers_snapshot',{p_dealer_game_id:command.dealerGameId});
+ }
+ return triTowersRpc<Projection>('tri_towers_action',{
   p_dealer_game_id:command.dealerGameId,p_request_id:command.requestId,p_revision:command.revision,
   p_action:command.intent.type,p_index:command.intent.type==='remove'?command.intent.index:null,
-});
+});};

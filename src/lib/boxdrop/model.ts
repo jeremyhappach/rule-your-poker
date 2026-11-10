@@ -1,4 +1,5 @@
-export type BoxdropIntent={type:'place';items:[number,number]}|{type:'recycle';items:[number]}|{type:'take_score'|'abandon'};
+import type {BonusIntent,OptionalBonus} from '@/lib/optionalBonus';
+export type BoxdropIntent=BonusIntent|{type:'place';items:[number,number]}|{type:'recycle';items:[number]}|{type:'take_score'|'abandon'};
 export interface BoxdropBox {id:number;value:number;color:'red'|'blue'|'green'|'yellow';recycled:boolean}
 export interface BoxdropScale {stage:1|2;target:32|21;limit:6|3;sum:number;status:'active'|'closed'|'short'|'broken';boxes:BoxdropBox[]}
 export interface BoxdropResult {id?:string;reason:string;score:number;scoreBefore:number;displayScore:number;stageScore:number;firstOrderPoints:number;closurePoints:number;partialPoints:number;speedBonus:number;recyclingBonus:number;bonusEligible:boolean;completedFirstOrders:number;remainingMs:number;completedAt:number}
@@ -10,6 +11,7 @@ export interface BoxdropBoard {
  event:{label:string;points:number;scale?:number;box?:BoxdropBox};
 }
 export interface BoxdropSnapshot {
+ optionalBonus?:OptionalBonus;
  viewerId?:string;terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number;achievements:Record<string,import('../arcade/scoreAchievements').ScoreAchievements>};
  abandoned?:boolean;identity?:{sessionId:string;dealerGameId:string;roundId:string};
  financial?:{balances:Record<string,number>;resultId:string|null;batch:import('../canonicalShell/ChipPresentationLedger').ChipPresentationBatch|null};settlement?:Record<string,number>|null;
@@ -34,7 +36,7 @@ export function acceptBoxdropSnapshot(old:BoxdropSnapshot|null,next:BoxdropSnaps
 export function multiplayerSnapshot(v:any):BoxdropSnapshot{
  const id=v.identity.dealerGameId,scope=[id,v.identity.roundId,v.activePlayerId,v.stage].join(':');
  const {rules,phase,scales,current,queue,recycleIndicator,recycleStreak,completedFirstOrders,closures,highScore,score,deadline,event}=v;
- return {identity:v.identity,financial:v.financial,settlement:v.settlement,results:v.stages,viewerId:v.viewerId,terminal:v.terminal,id,revision:v.revision,serverAt:v.serverAt,scope,round:v.stage,
+ return {optionalBonus:v.optionalBonus,identity:v.identity,financial:v.financial,settlement:v.settlement,results:v.stages,viewerId:v.viewerId,terminal:v.terminal,id,revision:v.revision,serverAt:v.serverAt,scope,round:v.stage,
  board:{rules,phase,scales,current,queue,recycleIndicator,recycleStreak,completedFirstOrders,closures,highScore,score,deadline,event,result:phase==='stage_complete'?v.stages.at(-1):null},
  canAct:v.canAct,paused:v.paused,pausedAt:v.pausedAt,finished:v.finished,settled:v.settlement!==null,solo:false,
  players:v.players.map((p:any)=>({id:p.id,seat:p.seat,name:p.name,score:v.scores[p.id]??0,active:p.id===v.activePlayerId,chips:v.financial?.balances[p.id]}))};

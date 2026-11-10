@@ -42,5 +42,7 @@ it.each([true,false])('distinguishes active and watching before first placement 
  const html=renderToStaticMarkup(<Run21Felt layout="fullscreen" view={view} now={100} onIntent={()=>{}}/>);
  expect(html).toContain(`data-run21-turn-state="${self?'active':'watching'}"`);
  expect(html).toContain('data-qualified="false"');
- expect(renderToStaticMarkup(<Run21Timer view={view} now={100}/>)).toContain(self?'Place your first card':'Watching · First placement');
+ const meter=renderToStaticMarkup(<Run21Timer view={view} now={100}/>);
+ expect(meter).toContain('data-run21-time-remaining="29900"');
+ expect(meter.replace(/<[^>]*>/g,'')).toBe('');
 });

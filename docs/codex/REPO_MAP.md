@@ -1,3 +1,10 @@
+Optional competitive bonus orchestration: `supabase/optional-bonus/` owns strict
+win eligibility, persistent choices and dispatch to existing settlement owners.
+`OptionalBonusDialog.tsx` presents the common choice; existing game transports and
+`server/delayed/service.ts` submit it. `delayed_tri_bonus_step` preserves legacy
+TriTowers projections while adding actor-visible choice metadata for new clients.
+Qualification: `dev/production-polish/` and `CONSOLIDATED_POLISH_RELEASE.md`.
+
 Async push navigation: `public/ptown-push-sw.js` wakes and hands an existing app
 the account/match/event UUIDs; `src/hooks/usePushMatchNavigation.ts` receives above
 gated children through `AccountAccessGate.tsx`. The gate owns session/access

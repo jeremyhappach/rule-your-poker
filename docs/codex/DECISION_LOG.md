@@ -1,3 +1,14 @@
+# 2026-11-10 — Optional bonuses retain canonical financial ownership
+
+A real-money sole qualifier can skip only after both main games are complete and
+the shared version-aware policy proves a strict win at the worst possible bonus
+score. The persisted decision is orchestration, not a scoring rule. Skip omits the
+bonus attempt and delegates to existing atomic settlement/results/notification
+owners. Play and unchosen deadlines preserve existing behavior. Arcade, fake money
+and two-qualifier matches keep mandatory normal progression. Old Async TriTowers
+projection shape remains unchanged; new clients use a service-only wrapper.
+See CONSOLIDATED_POLISH_RELEASE.md for proof and rollback.
+
 # 2026-11-08 — Async push taps preserve the authorized document
 
 The push worker transfers a UUID-bound destination to AccountAccessGate's
