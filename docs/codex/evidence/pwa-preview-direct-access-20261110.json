@@ -1,0 +1,428 @@
+{
+  "verifiedAt": "2026-11-10T19:01:29.271Z",
+  "commit": "b60027f61e9e2a17bd6ec1610d283777afd010b5",
+  "deploymentId": "dpl_H2RpCEpyhDkVuDZarChHg4WdLzJh",
+  "url": "https://ptown-poker-os4zcn3f7-jeremy-8e2b.vercel.app",
+  "access": {
+    "scope": "One preview deployment; associated task-branch alias also accessible",
+    "mechanism": "alias-protection-override",
+    "cookiesRequired": false,
+    "vercelSignInRequired": false,
+    "redirects": 0,
+    "projectSso": {
+      "enabled": true,
+      "deploymentType": "all_except_custom_domains"
+    },
+    "olderPreviewStatus": 302,
+    "productionAliasesUnchanged": true,
+    "productionDeployment": "dpl_8UkGyaDgE61TrfV43gb27bYRYU6o"
+  },
+  "auth": {
+    "realSdk": true,
+    "realBackendGetResponses": true,
+    "nonGetHeadRequestsBlocked": true,
+    "webSocketsBlocked": true,
+    "initialCookies": 0,
+    "initialAuthStorageKeys": 0,
+    "stableLoginObservedSeconds": 16,
+    "accountSnapshotRequests": 0,
+    "anonymousReadError": "42501 permission denied for function account_request_guard",
+    "reportedPhoneStallRootCause": "Not established; not reproduced in fresh direct-access contexts",
+    "authorizationCodeChanges": false
+  },
+  "pwa": {
+    "browser": "Desktop Edge with standalone emulation; physical iPhone acceptance pending",
+    "physicalIphoneAccepted": false,
+    "cases": [
+      {
+        "name": "signed-out-home",
+        "passed": true,
+        "pageErrors": [],
+        "blockedWrites": 3,
+        "mediaEnded": {
+          "event": "ended",
+          "time": 3,
+          "duration": 3,
+          "width": 720,
+          "height": 1280,
+          "at": 3868.199999988079
+        },
+        "phases": [
+          {
+            "phase": "none",
+            "at": 213.69999998807907,
+            "login": false
+          },
+          {
+            "phase": "preparing",
+            "at": 674.9000000357628,
+            "login": true
+          },
+          {
+            "phase": "showing",
+            "at": 863.6000000238419,
+            "login": true
+          },
+          {
+            "phase": "fading",
+            "at": 3870.699999988079,
+            "login": true
+          },
+          {
+            "phase": "none",
+            "at": 4083.5,
+            "login": true
+          }
+        ],
+        "handoffs": [
+          {
+            "phase": "preparing",
+            "imageReady": true,
+            "login": true,
+            "at": 674.5
+          },
+          {
+            "phase": "showing",
+            "imageReady": true,
+            "login": true,
+            "at": 863.5
+          },
+          {
+            "phase": "fading",
+            "imageReady": true,
+            "login": true,
+            "at": 4082.900000035763
+          }
+        ]
+      },
+      {
+        "name": "signed-out-existing-root",
+        "passed": true,
+        "pageErrors": [],
+        "blockedWrites": 3,
+        "mediaEnded": {
+          "event": "ended",
+          "time": 3,
+          "duration": 3,
+          "width": 720,
+          "height": 1280,
+          "at": 4354.399999976158
+        },
+        "phases": [
+          {
+            "phase": "none",
+            "at": 146.89999997615814,
+            "login": false
+          },
+          {
+            "phase": "preparing",
+            "at": 872.6999999880791,
+            "login": true
+          },
+          {
+            "phase": "showing",
+            "at": 1347.300000011921,
+            "login": true
+          },
+          {
+            "phase": "fading",
+            "at": 4357.099999964237,
+            "login": true
+          },
+          {
+            "phase": "none",
+            "at": 4570.099999964237,
+            "login": true
+          }
+        ],
+        "handoffs": [
+          {
+            "phase": "preparing",
+            "imageReady": true,
+            "login": true,
+            "at": 872.5
+          },
+          {
+            "phase": "showing",
+            "imageReady": true,
+            "login": true,
+            "at": 1347.300000011921
+          },
+          {
+            "phase": "fading",
+            "imageReady": true,
+            "login": true,
+            "at": 4569.5
+          }
+        ]
+      },
+      {
+        "name": "signed-out-landscape",
+        "passed": true,
+        "pageErrors": [],
+        "blockedWrites": 3,
+        "mediaEnded": {
+          "event": "ended",
+          "time": 3,
+          "duration": 3,
+          "width": 720,
+          "height": 1280,
+          "at": 3958
+        },
+        "phases": [
+          {
+            "phase": "none",
+            "at": 149.5,
+            "login": false
+          },
+          {
+            "phase": "preparing",
+            "at": 834.5,
+            "login": true
+          },
+          {
+            "phase": "showing",
+            "at": 957.0999999642372,
+            "login": true
+          },
+          {
+            "phase": "fading",
+            "at": 3960.399999976158,
+            "login": true
+          },
+          {
+            "phase": "none",
+            "at": 4169.5,
+            "login": true
+          }
+        ],
+        "handoffs": [
+          {
+            "phase": "preparing",
+            "imageReady": true,
+            "login": true,
+            "at": 834.1999999880791
+          },
+          {
+            "phase": "showing",
+            "imageReady": true,
+            "login": true,
+            "at": 957.0999999642372
+          },
+          {
+            "phase": "fading",
+            "imageReady": true,
+            "login": true,
+            "at": 4167.399999976158
+          }
+        ]
+      },
+      {
+        "name": "signed-out-resume-during-video",
+        "passed": true,
+        "pageErrors": [],
+        "blockedWrites": 5,
+        "mediaEnded": null,
+        "phases": [
+          {
+            "phase": "none",
+            "at": 158.5,
+            "login": false
+          },
+          {
+            "phase": "preparing",
+            "at": 888,
+            "login": true
+          },
+          {
+            "phase": "showing",
+            "at": 983.5,
+            "login": true
+          },
+          {
+            "phase": "none",
+            "at": 1259.300000011921,
+            "login": true
+          }
+        ],
+        "handoffs": [
+          {
+            "phase": "preparing",
+            "imageReady": true,
+            "login": true,
+            "at": 887.8999999761581
+          },
+          {
+            "phase": "showing",
+            "imageReady": true,
+            "login": true,
+            "at": 983.3999999761581
+          },
+          {
+            "phase": "showing",
+            "imageReady": true,
+            "login": true,
+            "at": 1258.6000000238419
+          }
+        ]
+      },
+      {
+        "name": "browser-root",
+        "passed": true,
+        "pageErrors": [],
+        "blockedWrites": 2,
+        "mediaEnded": null,
+        "phases": [
+          {
+            "phase": "none",
+            "at": 158.80000001192093,
+            "login": false
+          }
+        ],
+        "handoffs": [
+          {
+            "phase": "none",
+            "imageReady": false,
+            "login": false,
+            "at": 557.5
+          },
+          {
+            "phase": "none",
+            "imageReady": false,
+            "login": true,
+            "at": 568.5
+          },
+          {
+            "phase": "none",
+            "imageReady": false,
+            "login": true,
+            "at": 570.1999999880791
+          }
+        ]
+      },
+      {
+        "name": "direct-auth",
+        "passed": true,
+        "pageErrors": [],
+        "blockedWrites": 0,
+        "mediaEnded": null,
+        "phases": [
+          {
+            "phase": "none",
+            "at": 148.4000000357628,
+            "login": false
+          }
+        ],
+        "handoffs": [
+          {
+            "phase": "none",
+            "imageReady": false,
+            "login": true,
+            "at": 524.6000000238419
+          },
+          {
+            "phase": "none",
+            "imageReady": false,
+            "login": true,
+            "at": 527.7000000476837
+          },
+          {
+            "phase": "none",
+            "imageReady": false,
+            "login": true,
+            "at": 555.4000000357628
+          }
+        ]
+      }
+    ]
+  },
+  "assets": {
+    "publicUrls": 114,
+    "startupImages": 24,
+    "manifestIcons": 3,
+    "soundFiles": 25,
+    "workerByteIdentical": true,
+    "files": 179,
+    "totalServedBytes": 89473717,
+    "budgetBytes": 90000000,
+    "budgetPass": true
+  },
+  "functions": [
+    {
+      "path": "/api/account-access",
+      "status": 405,
+      "type": "application/json",
+      "body": "{\"error\":\"Unsupported request.\"}"
+    },
+    {
+      "path": "/api/arcade",
+      "status": 409,
+      "type": "application/json",
+      "body": "{\"error\":\"arcade:method\"}"
+    },
+    {
+      "path": "/api/canasta?canasta_path=11111111-1111-4111-8111-111111111111/state",
+      "status": 503,
+      "type": "application/json",
+      "body": "{\"error\":\"canasta:release_unavailable\"}"
+    },
+    {
+      "path": "/api/delayed",
+      "status": 405,
+      "type": "application/json",
+      "body": "{\"error\":\"delayed:method\"}"
+    },
+    {
+      "path": "/api/delayed-run21",
+      "status": 405,
+      "type": "application/json",
+      "body": "{\"error\":\"delayed:method\"}"
+    },
+    {
+      "path": "/api/mega-golf",
+      "status": 405,
+      "type": "application/json",
+      "body": "{\"error\":\"mega:method\"}"
+    },
+    {
+      "path": "/api/run21",
+      "status": 401,
+      "type": "application/json",
+      "body": "{\"error\":\"run21:authentication_required\"}"
+    },
+    {
+      "path": "/api/web-push",
+      "status": 503,
+      "type": "application/json",
+      "body": "{\"error\":\"push:disabled\"}"
+    },
+    {
+      "path": "/__run21/11111111-1111-4111-8111-111111111111/state",
+      "status": 401,
+      "type": "application/json",
+      "body": "{\"error\":\"run21:authentication_required\"}"
+    },
+    {
+      "path": "/__canasta/11111111-1111-4111-8111-111111111111/state",
+      "status": 503,
+      "type": "application/json",
+      "body": "{\"error\":\"canasta:release_unavailable\"}"
+    }
+  ],
+  "localValidation": {
+    "typecheck": "passed",
+    "appTests": 4018,
+    "appTestFiles": 548,
+    "harnessTests": 241,
+    "releaseToolingTests": 44,
+    "pixelExactPngs": 42,
+    "localBuildBytes": 89476188,
+    "localBuildBudgetPass": true,
+    "productSourceChangedThisAccessCorrection": false
+  },
+  "limitations": [
+    "Signed-out PWA qualification only; authenticated gameplay is not qualified",
+    "Canasta preview server credentials unavailable; preview push intentionally disabled",
+    "Production remains held until physical acceptance and explicit approval"
+  ]
+}

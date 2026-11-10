@@ -26,8 +26,63 @@ All 34 inspected preview URLs redirected to Vercel SSO without a share cookie,
 and returned 200 with the share cookie. Production returned 200 directly. This
 is a limitation of protected-preview installation, not proof of the reported
 icon's cause. Jeremy's successful Safari installation resolves that ambiguity.
-Keep Vercel protection unchanged; no alternative hosting or public exception
-is currently required.
+This original share-cookie approach was subsequently rejected by physical
+testing: Jeremy was required to sign into Vercel and then saw "Checking account
+access" without reaching login. The direct-access correction below supersedes
+the original share-link instructions.
+
+## Direct preview access correction
+
+Only existing preview deployment `dpl_H2RpCEpyhDkVuDZarChHg4WdLzJh`, serving
+commit `b60027f61e9e2a17bd6ec1610d283777afd010b5`, received Vercel's supported
+`alias-protection-override`. It opens directly without a share token, cookies,
+Vercel login or an expiring sharing session. The associated task-branch alias
+also opens directly. Project SSO remains enabled with
+`deploymentType: all_except_custom_domains`; the earlier f7362b90c preview
+still redirects to Vercel. All four production aliases still resolve to
+`dpl_8UkGyaDgE61TrfV43gb27bYRYU6o`. No deployment, production alias, Supabase,
+billing, retention or global protection setting was changed in this correction.
+
+The two authentication gates have separate owners. Vercel protected the HTTP
+document and PWA assets before the application could run. Inside the app,
+AccountAccessGate waits for the Supabase session; a null identity admits the
+signed-out route, while an authenticated identity requires account_access_snapshot.
+Its existing session and access checks have ten-second failure/retry bounds.
+No gate was skipped or changed to obtain the passing result.
+
+Fresh browser contexts, with no Vercel cookies or Supabase storage, now reach
+the real login screen. Unlike the earlier compiled-app fixtures, these checks
+use the real auth SDK and actual backend GET responses. The anonymous backend
+401 body is `permission denied for function account_request_guard`; it is not
+an invalid API key, and it does not prevent signed-out session initialization.
+No account snapshot RPC is attempted for the null session. All non-GET/HEAD
+requests and WebSockets were blocked to prevent backend mutations. The reported
+physical-phone hang was not reproduced; its original cause remains unproven.
+Do not attribute it to compression, missing service credentials or a Vercel
+redirect without further evidence. The separate preview-only smoke route was
+not needed to exercise the real signed-out application safely.
+
+Direct-origin verification passes six compiled-app cases: new Home Screen
+start, existing root start, landscape, background/resume during animation,
+ordinary browser root and direct auth. Cold launches play through `ended` at
+3.0 seconds; decoded artwork receives the startup cover before the 200 ms fade
+uncovers login. Completed-launch resume and reload do not replay. A separate
+16-second observation remains on login, with no page errors or hanging gate.
+These are desktop Edge checks with standalone emulation, not physical Safari
+acceptance. All 114 public URLs, 24 startup PNGs, three manifest icons, 25 sounds,
+worker and 179 deployed files are accessible without credentials. Served bytes
+total 89,473,717, below the unchanged 90,000,000-byte limit (includes 163 bytes
+of Vercel toolbar injection above packaged output). PNG pixel proofs still pass.
+See [direct-access evidence](evidence/pwa-preview-direct-access-20261110.json).
+The unchanged build also passes a fresh full validation run: typecheck, 4,018
+application tests, 241 harness tests, 44 release-tooling tests, pixel proofs and
+the local 89,476,188-byte build budget check. No tests or release gates were changed.
+
+Full authenticated gameplay is not qualified: Canasta still returns
+`canasta:release_unavailable` without production-only server credentials, and
+preview push remains disabled. The other six function probes fail closed as
+expected. Neither limitation blocks icon, startup animation or signed-out login
+validation. Production stays held pending physical acceptance and explicit approval.
 
 ## Correction and preserve list
 
@@ -73,7 +128,7 @@ emulation does not replace the required physical iPhone retest.
 
 1. Delete only the previous preview Home Screen icon. Keep the production PWA,
    Safari website data and notification permissions unchanged.
-2. Open the new share link in Safari itself and wait for P-Town Poker's login
+2. Open the supplied direct preview link in Safari and wait for P-Town Poker's login
    screen. Use Safari Share → Add to Home Screen, enable Open as Web App if
    offered, verify the custom icon, and name it P-Town Preview.
 3. Remain signed out. Fully close the preview, launch its Home Screen icon and
@@ -84,6 +139,8 @@ emulation does not replace the required physical iPhone retest.
 5. Report icon, complete animation, transition and resume results separately.
    Production requires Jeremy's explicit approval after physical acceptance.
 
-Sources: Apple's Configuring Web Applications documentation and Vercel's
-Sharable Links documentation. Local failure evidence:
+Sources: [Apple's Configuring Web Applications](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html),
+[Vercel's deployment protection exceptions](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/deployment-protection-exceptions)
+and [Supabase auth-event guidance](https://supabase.com/docs/reference/javascript/auth-onauthstatechange).
+Local failure evidence:
 .storage-audit/pwa-failure/comparison.json. Physical report: Jeremy, November 10.

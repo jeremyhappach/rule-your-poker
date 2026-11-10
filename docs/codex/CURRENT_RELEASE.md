@@ -7,7 +7,18 @@ Index; signed-out routing released the startup cover without mounting it in Auth
 The correction reuses the same splash on eligible signed-out Home Screen entry
 and preserves the decoded-frame handoff. Existing authentication and PWA assets,
 all 24 native startup resolutions, push and production settings are unchanged.
-Vercel's protected share-link boundary remains; no protection exception is made.
+The subsequent protected share URL failed Jeremy's physical test: Vercel login
+was required, followed by a reported account-access stall. Under his explicit
+preview-access authorization, only preview deployment `dpl_H2RpCEpyhDkVuDZarChHg4WdLzJh`
+now has Vercel's scoped protection override. Project protection remains enabled;
+the earlier preview remains protected and all four production aliases are unchanged.
+The bare HTTPS URL serves commit `b60027f61` without cookies or redirects. Six
+fresh-browser cases using the real auth client and real backend GET responses
+reach stable login; normal cold launches complete the 3.0-second video. Writes
+and WebSockets were blocked during automation. The reported phone account-access
+stall has not been reproduced or assigned a proven root cause. No authorization
+code or backend configuration was changed. This remains signed-out PWA validation,
+not full authenticated application qualification.
 See [root cause, correction and precise iPhone retest](PWA_PREVIEW_CORRECTION.md).
 **Production remains held until the corrected installed experience passes owner
 smoke and Jeremy explicitly approves publication.**
