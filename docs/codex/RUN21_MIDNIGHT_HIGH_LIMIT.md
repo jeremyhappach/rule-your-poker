@@ -1,8 +1,11 @@
-# Run21 visual recovery — local review candidate, November 9, 2026
+# Run21 visual recovery — coordinated release candidate, November 9, 2026
 
-**Publication held. Jeremy must review and approve the new screenshots before deployment.**
-Isolated branch: `codex/run21-midnight-visual-recovery`, based on production
-`ea1fb95aaa93474e984aac6d731d5904f30af851`. Main and production are unchanged.
+Jeremy's subsequent **Coordinated Production Release** request explicitly approved
+publication with Horses Blitz v5 and 357 Drop v6, superseding the screenshot hold.
+The complete correction is preserved in `e4fed5f6b7ede1f737cfc0a30bdb304bad65abba`
+and integrated on `codex/nov10-coordinated-scoring-release`, based on production
+`ea1fb95aaa93474e984aac6d731d5904f30af851`. See the coordinated release record for
+the exact publication identity and hosted smoke evidence.
 
 ## Diagnosis
 

@@ -1,10 +1,23 @@
-# Run21 visual recovery — November 9, 2026 — local review, publication held
+# Coordinated Run21 / Horses v5 / Drop v6 — November 9, 2026 — qualified
+
+Jeremy approved coordinated publication, superseding the Run21 screenshot hold.
+The complete Run21 recovery is preserved. Horses v5 passes exhaustive strong-hand
+EV qualification; Drop v6 passes all 22,100 hands and 600,000 policy rounds.
+Migration `20261110054915` is installed with new admission closed; ten hosted
+candidate/installed rollback proofs pass. Typecheck, scoped lint, build and
+relevant tests pass; 13 full-suite failures and three mock errors reproduce on
+unchanged main. [Release record, safeguards and evidence](COORDINATED_RUN21_HORSES_DROP_RELEASE.md).
+The `coordinated-run21-horses5-drop6-20261109-verified` tag records the final
+production identity and smoke only after publication and guarded activation pass.
+
+# Run21 visual recovery — November 9, 2026 — original review checkpoint
 
 Jeremy rejected the first production treatment. Replacement casino artwork and
 scoped dimensional styling are prepared on `codex/run21-midnight-visual-recovery`.
 Actual phone-width screenshots cover Arcade empty/placed, Multiplayer, Async and
 the leaderboard. Gameplay geometry matches the baseline exactly. Typecheck,
-build and 530 tests pass. **Do not deploy until Jeremy approves the screenshots.**
+build and 530 tests pass. The later coordinated release request superseded this
+checkpoint's screenshot approval hold.
 See [candidate evidence and limits](RUN21_MIDNIGHT_HIGH_LIMIT.md).
 
 # Run21 Midnight High Limit — November 9, 2026 — original visual release

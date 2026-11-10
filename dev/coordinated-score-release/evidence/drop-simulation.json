@@ -1,0 +1,401 @@
+{
+  "seed": "(0x35700000 + i*2654435761) uint32; Fisher-Yates / LCG1664525,1013904223",
+  "exhaustive": {
+    "count": 22100,
+    "pairMax": 775,
+    "tripsMin": 800,
+    "freq": {
+      "0": 14080,
+      "1": 7392,
+      "3": 628
+    },
+    "averages": {
+      "5": 49.68325791855204,
+      "6": 165.5337556561086
+    },
+    "examples": [
+      {
+        "cards": [
+          5,
+          18,
+          12
+        ],
+        "expected": 246,
+        "actual": 246
+      },
+      {
+        "cards": [
+          12,
+          25,
+          5
+        ],
+        "expected": 761,
+        "actual": 761
+      },
+      {
+        "cards": [
+          5,
+          18,
+          31
+        ],
+        "expected": 1404,
+        "actual": 1404
+      },
+      {
+        "cards": [
+          11,
+          24,
+          37
+        ],
+        "expected": 2460,
+        "actual": 2460
+      },
+      {
+        "cards": [
+          12,
+          25,
+          38
+        ],
+        "expected": 2688,
+        "actual": 2688
+      },
+      {
+        "cards": [
+          1,
+          12,
+          25
+        ],
+        "expected": 2240,
+        "actual": 2240
+      }
+    ]
+  },
+  "reports": [
+    {
+      "policy": "sequential",
+      "version": 5,
+      "n": 100000,
+      "averageRows": [
+        49.72851,
+        326.17105,
+        1440.79355
+      ],
+      "rowSharesPct": [
+        2.3269072147215653,
+        15.262266443903274,
+        67.41792397196892
+      ],
+      "mean": 2137.10756,
+      "allFilledPct": 11.592,
+      "allFilledAverage": 57.96,
+      "timeAverage": 262.45445,
+      "pairTripsNoQualPct": {
+        "pair": 33.538,
+        "trips": 2.792,
+        "none": 63.67
+      },
+      "passesAverage": 0,
+      "seven": {
+        "noQualPct": 6.256,
+        "naturalPct": 41.53,
+        "carryWildPct": 26.08,
+        "categories": {
+          "0": 130,
+          "1": 6126,
+          "2": 16773,
+          "3": 8391,
+          "4": 15593,
+          "5": 12388,
+          "6": 18827,
+          "7": 14789,
+          "8": 3533,
+          "9": 1310,
+          "10": 2140
+        }
+      },
+      "distribution": {
+        "min": 0,
+        "p10": 610,
+        "median": 2034,
+        "p90": 3781,
+        "p99": 5951,
+        "max": 9633,
+        "sd": 1287.1519927385602
+      }
+    },
+    {
+      "policy": "sequential",
+      "version": 6,
+      "n": 100000,
+      "averageRows": [
+        165.87306,
+        326.17105,
+        1440.79355
+      ],
+      "rowSharesPct": [
+        7.3087535472213725,
+        14.371856519005675,
+        63.48472120413148
+      ],
+      "mean": 2269.51229,
+      "allFilledPct": 11.592,
+      "allFilledAverage": 57.96,
+      "timeAverage": 278.71463,
+      "pairTripsNoQualPct": {
+        "pair": 33.538,
+        "trips": 2.792,
+        "none": 63.67
+      },
+      "passesAverage": 0,
+      "seven": {
+        "noQualPct": 6.256,
+        "naturalPct": 41.53,
+        "carryWildPct": 26.08,
+        "categories": {
+          "0": 130,
+          "1": 6126,
+          "2": 16773,
+          "3": 8391,
+          "4": 15593,
+          "5": 12388,
+          "6": 18827,
+          "7": 14789,
+          "8": 3533,
+          "9": 1310,
+          "10": 2140
+        }
+      },
+      "distribution": {
+        "min": 0,
+        "p10": 620,
+        "median": 2107,
+        "p90": 4056,
+        "p99": 6099,
+        "max": 10898,
+        "sd": 1337.1326930970445
+      }
+    },
+    {
+      "policy": "aggressive3",
+      "version": 5,
+      "n": 100000,
+      "averageRows": [
+        357.22168,
+        443.41202,
+        1684.58215
+      ],
+      "rowSharesPct": [
+        11.797060003649468,
+        14.643451109348733,
+        55.632448469048214
+      ],
+      "mean": 3028.05682,
+      "allFilledPct": 36.367,
+      "allFilledAverage": 181.835,
+      "timeAverage": 361.00597,
+      "pairTripsNoQualPct": {
+        "pair": 28.622,
+        "trips": 62.954,
+        "none": 8.424
+      },
+      "passesAverage": 1.41888,
+      "seven": {
+        "noQualPct": 3.949,
+        "naturalPct": 33.56,
+        "carryWildPct": 11.962,
+        "categories": {
+          "0": 136,
+          "1": 3813,
+          "2": 15678,
+          "3": 3767,
+          "4": 10899,
+          "5": 11126,
+          "6": 25611,
+          "7": 17539,
+          "8": 5476,
+          "9": 1529,
+          "10": 4426
+        }
+      },
+      "distribution": {
+        "min": 0,
+        "p10": 1174,
+        "median": 2821,
+        "p90": 5073,
+        "p99": 7129,
+        "max": 10887,
+        "sd": 1469.2763336525531
+      }
+    },
+    {
+      "policy": "aggressive3",
+      "version": 6,
+      "n": 100000,
+      "averageRows": [
+        1296.1407,
+        443.41202,
+        1684.58215
+      ],
+      "rowSharesPct": [
+        31.644150448378966,
+        10.825519692036229,
+        41.1276113752571
+      ],
+      "mean": 4095.9883,
+      "allFilledPct": 36.367,
+      "allFilledAverage": 181.835,
+      "timeAverage": 490.01843,
+      "pairTripsNoQualPct": {
+        "pair": 28.622,
+        "trips": 62.954,
+        "none": 8.424
+      },
+      "passesAverage": 1.41888,
+      "seven": {
+        "noQualPct": 3.949,
+        "naturalPct": 33.56,
+        "carryWildPct": 11.962,
+        "categories": {
+          "0": 136,
+          "1": 3813,
+          "2": 15678,
+          "3": 3767,
+          "4": 10899,
+          "5": 11126,
+          "6": 25611,
+          "7": 17539,
+          "8": 5476,
+          "9": 1529,
+          "10": 4426
+        }
+      },
+      "distribution": {
+        "min": 0,
+        "p10": 2128,
+        "median": 4031,
+        "p90": 6195,
+        "p99": 8475,
+        "max": 13131,
+        "sd": 1644.4882079306954
+      }
+    },
+    {
+      "policy": "balanced",
+      "version": 5,
+      "n": 100000,
+      "averageRows": [
+        304.39542,
+        484.92311,
+        1712.56577
+      ],
+      "rowSharesPct": [
+        9.894688633257951,
+        15.762928313839593,
+        55.66872542998725
+      ],
+      "mean": 3076.35168,
+      "allFilledPct": 40.42,
+      "allFilledAverage": 202.1,
+      "timeAverage": 372.36738,
+      "pairTripsNoQualPct": {
+        "pair": 43.699,
+        "trips": 48.413,
+        "none": 7.888
+      },
+      "passesAverage": 0.69506,
+      "seven": {
+        "noQualPct": 3.94,
+        "naturalPct": 32.189,
+        "carryWildPct": 5.37,
+        "categories": {
+          "0": 116,
+          "1": 3824,
+          "2": 15104,
+          "3": 3944,
+          "4": 10936,
+          "5": 10406,
+          "6": 25429,
+          "7": 18170,
+          "8": 5476,
+          "9": 1828,
+          "10": 4767
+        }
+      },
+      "distribution": {
+        "min": 0,
+        "p10": 1161,
+        "median": 2858,
+        "p90": 5244,
+        "p99": 7273,
+        "max": 11295,
+        "sd": 1536.0710795080988
+      }
+    },
+    {
+      "policy": "balanced",
+      "version": 6,
+      "n": 100000,
+      "averageRows": [
+        1052.56273,
+        488.51284,
+        1712.62696
+      ],
+      "rowSharesPct": [
+        26.734055041562208,
+        12.40774424254018,
+        43.49903536324468
+      ],
+      "mean": 3937.16078,
+      "allFilledPct": 40.787,
+      "allFilledAverage": 203.935,
+      "timeAverage": 479.52325,
+      "pairTripsNoQualPct": {
+        "pair": 47.049,
+        "trips": 45.063,
+        "none": 7.888
+      },
+      "passesAverage": 0.48207,
+      "seven": {
+        "noQualPct": 3.947,
+        "naturalPct": 32.176,
+        "carryWildPct": 5.381,
+        "categories": {
+          "0": 115,
+          "1": 3832,
+          "2": 15064,
+          "3": 3970,
+          "4": 10982,
+          "5": 10411,
+          "6": 25336,
+          "7": 18198,
+          "8": 5489,
+          "9": 1826,
+          "10": 4777
+        }
+      },
+      "distribution": {
+        "min": 0,
+        "p10": 1853,
+        "median": 3842,
+        "p90": 6145,
+        "p99": 8553,
+        "max": 13131,
+        "sd": 1695.9973890044148
+      }
+    }
+  ],
+  "inflation": [
+    {
+      "policy": "sequential",
+      "pct": 6.1955108146264815
+    },
+    {
+      "policy": "balanced",
+      "pct": 27.981492024995003
+    },
+    {
+      "policy": "aggressive3",
+      "pct": 35.26788113573114
+    }
+  ]
+}

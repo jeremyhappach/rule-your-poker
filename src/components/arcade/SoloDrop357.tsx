@@ -27,7 +27,7 @@ export function SoloDrop357({runId,userId,transport:provided}:{runId:string;user
  return <DropBoard game={game} userId={userId} liveEntry={live.current}/>;
 }
 function DropBoard({game,userId,liveEntry}:{game:ReturnType<typeof useDrop357>;userId:string;liveEntry:boolean}){
- const v=game.snapshot!,partial=['357-drop/4','357-drop/5'].includes(v.ruleset),carry=partial||v.ruleset==='357-drop/3',r=v.result,navigate=useNavigate(),runId=v.id;
+ const v=game.snapshot!,partial=['357-drop/4','357-drop/5','357-drop/6'].includes(v.ruleset),carry=partial||v.ruleset==='357-drop/3',r=v.result,navigate=useNavigate(),runId=v.id;
  const surface=useRef<HTMLDivElement>(null),board=useRef<HTMLDivElement>(null),[abandon,setAbandon]=useState(false),done=useRef(false);
  useDrop357Audio(userId,v,game.liveLanes,game.now,surface);
  const [carryDraft,setCarryDraft]=useState<{roundId:string;lane:number;cards:number[]}>({roundId:'',lane:-1,cards:[]});

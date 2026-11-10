@@ -1,3 +1,13 @@
+# Coordinated Run21 / Horses / Drop — November 9, 2026 — qualification checkpoint
+
+Run21 recovery `e4fed5f6` is preserved in the coordinated scoring release. Real
+390×844 browser checks pass for Horses v5 holds/banking/reset and Drop v6
+placements/carries/tally/continuation. Ten candidate and installed hosted rollback
+proofs pass for migration `20261110054915`; both new scoring versions remain closed
+until compatible publication. The `coordinated-run21-horses5-drop6-20261109-verified`
+tag is created only after production verification and activation, and records the
+final SHA/URL. See [qualification and release evidence](COORDINATED_RUN21_HORSES_DROP_RELEASE.md).
+
 # 11 Up billiards polish — November 9, 2026 — approved local review
 
 `eleven-up-billiards-polish-20261109` records the approved table, lamp, ball cues
