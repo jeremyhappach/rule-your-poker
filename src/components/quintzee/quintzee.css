@@ -45,12 +45,15 @@
 .q-filled-bonus { display:flex;align-items:baseline;gap:.4em;text-align:right;white-space:nowrap; }
 .q-bonuses b { font-variant-numeric:tabular-nums; }.q-bonuses em { font-style:normal; color:#ffe16a; }.q-bonuses [data-earned=true] { color:#e8ffaf; }
 .q-play-area { position:relative; display:grid;grid-template-rows:auto minmax(0,1fr) auto; align-items:center; gap:1cqh; min-height:0; padding:.6cqh 0; }
-.q-roll-guide { display:flex;justify-content:space-between;align-items:center;gap:.5em;font-size:clamp(11px,1.9cqh,17px); }
+.q-roll-guide { display:flex;justify-content:space-between;align-items:center;gap:.5em;font-size:clamp(11px,1.9cqh,17px);line-height:1.5;min-height:1.5em; }
 .q-roll-guide strong { color:#ffe16a;white-space:nowrap; }.q-roll-guide span { text-align:right; }
-.q-dice { display:flex; min-width:0; gap:3%; align-items:center; justify-content:space-between; }
-.q-dice button { flex:1; min-width:0; border:1px solid #c8d5c577;border-radius:.6em;background:#ffffff0d; color:inherit; padding:.5cqh; touch-action:manipulation; }
-.q-die { aspect-ratio:1; width:min(100%,10cqh); margin:auto; display:grid; grid-template:repeat(3,1fr)/repeat(3,1fr); gap:6%; padding:1cqh; background:#b51e26; border-radius:18%; box-shadow:inset 0 2px 2px #ff909077,0 .5cqh #4a0c13; }
-.q-die i { display:block; aspect-ratio:1; border-radius:50%; background:#fff4d9; }.q-dice small { display:block; font-size:clamp(10px,1.8cqh,14px); padding-top:.7cqh;font-weight:700; }
+/* Five equal targets share 88% of the lane after four 3% gaps: each is 17.6%.
+   The empty lane reserves the same face, border, padding and HOLD line as a
+   populated lane. No state-dependent sizing or placeholder dice are needed. */
+.q-dice { --q-die-padding:.5cqh;--q-die-size:min(calc(17.6cqw - 2px - 2 * var(--q-die-padding)),10cqh);--q-hold-gap:.7cqh;--q-hold-size:clamp(11px,3.5cqw,14px);display:flex;min-height:calc(var(--q-die-size) + 2px + 2 * var(--q-die-padding) + 1.5 * var(--q-hold-size) + var(--q-hold-gap));min-width:0;gap:3%;align-items:center;justify-content:space-between; }
+.q-dice button { flex:1; min-width:0; border:1px solid #c8d5c577;border-radius:.6em;background:#ffffff0d; color:inherit; padding:var(--q-die-padding); touch-action:manipulation; }
+.q-die { aspect-ratio:1; width:var(--q-die-size); margin:auto; display:grid; grid-template:repeat(3,1fr)/repeat(3,1fr); gap:6%; padding:1cqh; background:#b51e26; border-radius:18%; box-shadow:inset 0 2px 2px #ff909077,0 .5cqh #4a0c13; }
+.q-die i { display:block; aspect-ratio:1; border-radius:50%; background:#fff4d9; }.q-dice small { display:block;font-size:var(--q-hold-size);line-height:1.5;padding-top:var(--q-hold-gap);font-weight:700; }
 .q-dice [data-held=true] { border:1px solid #ffe16a;background:#ffe16a22;box-shadow:inset 0 0 0 1px #ffe16a,0 0 0 1px #ffe16a; }.q-dice [data-held=true] small { color:#ffe16a;font-weight:900; }
 [data-theme=modern] .q-die { background:linear-gradient(135deg,#fffdf2,#cbd3dd); box-shadow:inset -2px -2px 3px #8494a7,0 .5cqh #66768b,0 1cqh 1cqh #0006; }.quintzee-plane[data-theme=modern] .q-die i { background:#253951; box-shadow:inset 0 1px 2px #000; }
 .q-roll { width:100%; min-height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:1em; border:1px solid #fff2ab; border-radius:1.3cqh; padding:1.5cqh 1%; color:#183b1d; background:linear-gradient(#ffe98c,#ddb94c); font-weight:900; font-size:clamp(13px,2.5cqh,22px); touch-action:manipulation; box-shadow:0 .4cqh #91772e; }.q-roll small { font-size:.75em; }.q-roll:disabled { opacity:.55; box-shadow:none; }
@@ -91,7 +94,6 @@
 .q-roll { font-size:clamp(16px,4.8cqw,22px);line-height:1.2;white-space:nowrap; }
 .q-roll small { white-space:nowrap; }
 .q-bonuses { font-size:clamp(16px,4.3cqw,18px); }
-.q-dice small { font-size:clamp(11px,3.5cqw,14px); }
 @container quintzee-space (max-height: 720px) {
  .quintzee-plane { grid-template-rows:minmax(36px,7%) minmax(28px,6%) minmax(318px,1fr) 26px auto 0;gap:2px;padding:3px; }
  .q-players .tri-score-pill { padding:0 2%; }
@@ -104,9 +106,8 @@
  .q-scorecard section { gap:2px; }
  .q-category { font-size:clamp(13px,4cqw,18px); }
  .q-play-area { grid-template-rows:18px auto 64px;gap:2px;padding:2px 0;align-content:space-between; }
- .q-die { width:100%;padding:clamp(5px,1.5cqw,8px); }
- .q-dice button { padding:3px; }
- .q-dice small { padding-top:3px; }
+ .q-dice { --q-die-padding:3px;--q-die-size:calc(17.6cqw - 8px);--q-hold-gap:3px; }
+ .q-die { padding:clamp(5px,1.5cqw,8px); }
  .q-roll { padding:8px 1%; }
  .q-status { position:absolute;bottom:0;left:0;right:0; }
 }

@@ -1,3 +1,20 @@
+# Quintzee layout stability — November 10, 2026 — qualified for publication
+
+The empty dice lane previously collapsed before the first roll, expanding the
+scoring grid by 86.6875px at 393×852. It now reserves the exact existing populated
+footprint, and the empty roll-guide line retains its height. Product changes are
+CSS-only; post-roll sizing, targets, no-scroll layout and game behavior are preserved.
+
+All 15 rendered viewport/mode cases and 150 turn-state measurements pass. Arcade,
+Async and multiplayer retain their frozen approved post-roll geometry within
+0.015625 CSS pixels throughout ready, roll, hold, reroll, category and new-round
+states. The full production-push gate passes TypeScript, 4,027 app tests, 241
+harness tests, 46 tooling tests and build (89,481,040 bytes, below 90 MB).
+
+Publication and hosted verification are pending. Current production/rollback
+target is `604fb12bf9c05557b1b269430d487d3bbad4b13a`. Physical iPhone and
+authenticated owner smoke remain pending. See [evidence](QUINTZEE_LAYOUT_STABILITY.md).
+
 # Quintzee cross-mode hotfix — November 10, 2026 — production published
 
 Production is `604fb12bf9c05557b1b269430d487d3bbad4b13a`, READY deployment

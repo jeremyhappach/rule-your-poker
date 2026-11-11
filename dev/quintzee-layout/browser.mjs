@@ -6,10 +6,14 @@ import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 const output='.quintzee-layout';mkdirSync(output,{recursive:true});
 const baseline=process.argv.includes('--baseline'),hosted=process.env.QUINTZEE_HOSTED_URL;
+const postRollReference=JSON.parse(readFileSync('dev/quintzee-layout/post-roll-reference.json','utf8'));
 let publishedCss='';
 if(hosted){
  const html=await (await fetch(hosted)).text();
- const cssPaths=[...html.matchAll(/href="([^"]+\.css)"/g)].map(m=>m[1]);assert(cssPaths.length);
+ const scripts=[...html.matchAll(/src="([^"]+\.js)"/g)].map(m=>m[1]);
+ const modules=await Promise.all(scripts.map(p=>fetch(new URL(p,hosted)).then(r=>r.text())));
+ const cssPaths=[...new Set([...html.matchAll(/href="([^"]+\.css)"/g)].map(m=>m[1]).concat(modules.flatMap(s=>[...s.matchAll(/["'](assets\/[^"']+\.css)["']/g)].map(m=>m[1]))))];assert(cssPaths.length>=4,'include published lazy route CSS');
+ console.log('Published styles:',cssPaths.join(', '));
  publishedCss=(await Promise.all(cssPaths.map(p=>fetch(new URL(p,hosted)).then(r=>r.text())))).join('\n');
  assert(publishedCss.includes('q-confirm-controls'),'published CSS includes candidate');
 }
@@ -21,6 +25,16 @@ const geometry=page=>page.evaluate(()=>{
  return {plane:get('.quintzee-plane'),board:get('.fullscreen-game-board'),players:get('.q-players'),timing:get('.q-timing'),scorecard:get('.q-scorecard'),bonus:get('.q-bonuses'),guide:get('.q-roll-guide'),dice:[...document.querySelectorAll('.q-dice button')].map(box),faces:[...document.querySelectorAll('.q-die')].map(box),roll:get('.q-roll'),selectors:[...document.querySelectorAll('.q-selector')].map(box),bonusFont:parseFloat(css('.q-bonuses').fontSize),holdFont:parseFloat(css('.q-dice small')?.fontSize||0),buttonFont:parseFloat(css('.q-roll').fontSize),scrollHeight:document.querySelector('.fullscreen-game-board').scrollHeight,clientHeight:document.querySelector('.fullscreen-game-board').clientHeight,scrollTop:document.querySelector('.fullscreen-game-board').scrollTop,bodyOverflow:document.documentElement.scrollHeight>innerHeight+1};
 });
 const update=async(page,change)=>{await page.evaluate(change);await page.waitForTimeout(40);};
+const stableGeometry=page=>page.evaluate(()=>{
+ const rect=e=>{const b=e.getBoundingClientRect();return {top:b.top,left:b.left,width:b.width,height:b.height};};
+ return {parts:Object.fromEntries(['.q-players','.q-timing','.q-scorecard','.q-bonuses','.q-dice','.q-roll'].map(s=>[s,rect(document.querySelector(s))])),rows:[...document.querySelectorAll('.q-category')].map(rect),gaps:[...document.querySelectorAll('.q-scorecard section')].flatMap(s=>[...s.children].slice(1).map((e,i)=>e.getBoundingClientRect().top-s.children[i].getBoundingClientRect().bottom))};
+});
+const differences=(before,after)=>{
+ const diffs=[];
+ for(const key of Object.keys(before.parts))for(const dimension of ['top','left','width','height'])if(Math.abs(before.parts[key][dimension]-after.parts[key][dimension])>1)diffs.push(key+'.'+dimension+': '+before.parts[key][dimension]+' -> '+after.parts[key][dimension]);
+ before.rows.forEach((b,i)=>{for(const key of ['top','height'])if(Math.abs(b[key]-after.rows[i][key])>1)diffs.push('row '+i+' '+key+': '+b[key]+' -> '+after.rows[i][key]);});
+ before.gaps.forEach((gap,i)=>{if(Math.abs(gap-after.gaps[i])>1)diffs.push('row gap '+i+': '+gap+' -> '+after.gaps[i]);});return diffs;
+};
 try{
  for(const [width,height,top,bottom]of [[375,667,20,0],[375,812,44,34],[390,844,47,34],[393,852,59,34],[430,932,59,34]])for(const mode of ['arcade','async','multiplayer']){
   const page=await browser.newPage({viewport:{width,height},isMobile:true,hasTouch:true});page.on('pageerror',e=>errors.push(e.message));
@@ -31,6 +45,16 @@ try{
   // resolved iPhone padding, never a game-specific safe-area override.
   await page.locator('[data-shell-presentation-mode]').evaluate((e,{top,bottom})=>{e.style.paddingTop=top+'px';e.style.paddingBottom=bottom+'px';},{top,bottom});
   const initial=await geometry(page);
+  const postRoll=await stableGeometry(page),states=[];
+  if(!baseline){const reference=postRollReference.cases.find(r=>r.width===width&&r.height===height&&r.mode===mode);assert(reference,'frozen approved post-roll reference');assert.deepEqual(differences(reference.geometry,postRoll),[],mode+' '+width+'x'+height+' preserves approved post-roll layout');}
+  const capture=async name=>{const geometry=await stableGeometry(page),changes=differences(postRoll,geometry);states.push({name,geometry,changes});if(!baseline)assert.deepEqual(changes,[],mode+' '+width+'x'+height+' '+name+' must preserve post-roll geometry');if(width===393&&['before first roll: ready','first roll'].includes(name))await page.screenshot({path:output+'/'+(hosted?'hosted':baseline?'baseline':'candidate')+'-'+mode+'-'+(name==='first roll'?'after-first-roll':'before-first-roll')+'.png'});};
+  await page.evaluate(()=>{window.layoutInitial=structuredClone(window.snapshot);});
+  await update(page,()=>window.setSnapshot(v=>({...v,state:{...v.state,board:{...v.state.board,phase:'ready',dice:[],held:[],rollsRemaining:3}}})));
+  await capture('before first roll: ready');assert.equal(await page.locator('.q-dice button,.q-die').count(),0,'no placeholder dice');
+  await update(page,()=>window.setSnapshot(v=>({...v,state:{...v.state,board:{...v.state.board,phase:'playing'}}})));
+  await capture('before first roll: empty');
+  await update(page,()=>window.setSnapshot(window.layoutInitial));
+  await capture('first roll');
   if(!baseline){
    assert(initial.roll.height>=64,mode+' primary target >=64');
    assert(initial.bonusFont>=16,'readable bonus text');
@@ -52,33 +76,40 @@ try{
    assert.equal(await page.locator('.q-dice [data-held=true]').count(),2);
    await page.locator('.q-dice button').nth(1).tap();assert.equal(await page.locator('.q-dice [data-held=true]').count(),1);await page.locator('.q-dice button').nth(1).tap();
    const held=await geometry(page);assert.deepEqual(held.dice,rolled.dice,'holding never shifts dice boxes');assert.deepEqual(held.faces,rolled.faces,'held face size stays fixed');
+   await capture('held/released');
    await page.locator('.q-roll').tap();assert.deepEqual(await page.evaluate(()=>window.intents.pop()),{type:'roll',items:[4,1]});
    await update(page,()=>{window.setPending(true);});assert(await page.locator('.q-roll').isDisabled());assert.equal((await geometry(page)).roll.height,initial.roll.height);
    await update(page,()=>{window.setPending(false);window.setSnapshot(v=>({...v,revision:2,state:{...v.state,board:{...v.state.board,dice:[6,2,6,6,2],held:[1,4],rollsRemaining:1,rollSerial:1}}}));});
    await page.locator('.q-dice [data-rolling=true]').first().waitFor();assert.equal(await page.locator('.q-dice [data-rolling=true]').count(),3);assert.equal(await page.locator('.q-dice [data-held=true][data-rolling=false]').count(),2);
+   await capture('reroll animation');
    await page.waitForFunction(()=>document.querySelectorAll('.q-dice [data-rolling=true]').length===0);
+   await capture('rerolled');
    await update(page,()=>{window.setPending(false);window.setSnapshot(v=>({...v,revision:3,state:{...v.state,board:{...v.state.board,dice:[5,2,4,1,2],held:[1,4],rollsRemaining:0}}}));});
    assert(await page.locator('.q-roll').isDisabled());assert((await page.locator('.q-roll').innerText()).includes('CHOOSE A CATEGORY'));
+   await capture('zero rerolls');
    assert.equal((await geometry(page)).roll.height,initial.roll.height);
    if(width===393)await page.screenshot({path:output+'/'+(hosted?'hosted':'candidate')+'-'+mode+'-zero-rerolls.png'});
    await page.locator('[data-category=ones]>span').dispatchEvent('click');assert.equal(await page.evaluate(()=>window.intents.length),0);
    await page.locator('[data-category=ones] .q-selector').tap();assert.deepEqual(await page.evaluate(()=>window.intents.pop()),{type:'score',items:[0]});
    await update(page,()=>window.setSnapshot(v=>({...v,revision:3,state:{...v.state,board:{...v.state.board,scores:{ones:1},rollsRemaining:2}}})));
    assert.equal(await page.locator('[data-category=ones] .q-selector').count(),0);assert.equal(await page.locator('[data-category=ones] strong').innerText(),'1');
+   await capture('category completed');
    await page.locator('[data-category=sixes] .q-selector').tap();await page.getByRole('button',{name:'Confirm 0',exact:true}).waitFor();
    await page.getByRole('button',{name:'Confirm 0',exact:true}).click({trial:true});
    const confirm=await page.getByRole('button',{name:'Confirm 0',exact:true}).boundingBox();assert(confirm.height>=64,'confirm target >=64');
    await page.getByRole('button',{name:'Cancel',exact:true}).tap();
    await update(page,()=>window.setSnapshot(v=>({...v,scope:'layout:2',revision:4,state:{...v.state,round:2,board:{...v.state.board,phase:'ready',dice:[],held:[],scores:{},rollsRemaining:3,rollSerial:0}}})));
    assert.equal(await page.locator('.q-dice button').count(),0);assert((await page.locator('.fullscreen-game-heading').innerText()).includes('Round 2 of 2'));
+   await capture('new round: ready');
    await page.locator('.q-roll').tap();assert.deepEqual(await page.evaluate(()=>window.intents.pop()),{type:'start',items:[]});
    assert.equal((await page.locator('.q-roll').boundingBox()).height,initial.roll.height);
    await update(page,()=>window.setSnapshot(v=>({...v,revision:5,state:{...v.state,board:{...v.state.board,phase:'playing',dice:[5,2,4,1,2],rollsRemaining:2}}})));
    assert.equal(await page.locator('.q-dice [data-held=true]').count(),0,'new round clears held state');
+   await capture('new round: rolled');
    const final=await geometry(page);assert.equal(final.scrollTop,0,'interactions never scroll gameplay');assert(final.scrollHeight<=final.clientHeight+1);
   }
   await page.screenshot({path:output+'/'+(hosted?'hosted':baseline?'baseline':'candidate')+'-'+mode+'-'+width+'x'+height+'.png'});
-  results.push({width,height,top,bottom,mode,...initial});await page.close();
+  results.push({width,height,top,bottom,mode,...initial,postRoll,states});await page.close();
  }
  assert.deepEqual(errors,[]);
  writeFileSync(output+'/'+(hosted?'hosted':baseline?'baseline':'candidate')+'.json',JSON.stringify({hosted:hosted??null,renderedComponents:'production QuintzeeView + FullscreenGameShell, fixture state/outer mode wrappers',results,errors},null,2)+'\n');
