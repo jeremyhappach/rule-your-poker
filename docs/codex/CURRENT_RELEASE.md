@@ -1,4 +1,11 @@
-# Quintzee cross-mode hotfix — November 10, 2026 — qualified, publication pending
+# Quintzee cross-mode hotfix — November 10, 2026 — production published
+
+Production is `604fb12bf9c05557b1b269430d487d3bbad4b13a`, READY deployment
+`dpl_DgkTMzAJgfLhmHqNck9NycPthkze`. Both public domains serve that exact commit
+and render login. GitHub run `42939158793` passed qualification, production
+verification and release signaling. No error/fatal runtime logs were returned.
+All 15 rendered cases also pass with the complete published main/route CSS set;
+the hosted check uses controlled snapshots, with physical iPhone acceptance pending.
 
 The 660px compact rule caused 28px actions and undersized dice/bonus text when
 Async/live headers reduced available board height. The approved correction

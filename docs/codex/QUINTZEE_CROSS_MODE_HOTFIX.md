@@ -40,8 +40,13 @@ Existing rule, audio and presentation tests are also run.
 
 The production release gate is unchanged: npm run build invokes production-push
 qualification, TypeScript, full app/harness/tooling tests, build and the 90MB budget.
-The hosted stylesheet can be rerun through the same measured fixtures using
-QUINTZEE_HOSTED_URL. That is published-CSS evidence with fixture state, not proof
+The hosted styles can be rerun through the same measured fixtures. Include the
+main stylesheet AND the three lazy route styles (Delayed, shared arcade, Arcade)
+from the published JavaScript dependency map. The initial main-only attempt
+omitted the flex wrapper and produced a zero-height fixture board; it was a test
+resource-loading error, not a production layout result. The retained helper
+`.quintzee-layout/prepare-published-smoke.mjs` prepares that complete-style runner.
+This is published-CSS evidence with fixture state, not proof
 of authenticated human gameplay or financial settlement.
 
 ## Status
@@ -59,6 +64,18 @@ Final production-push gate PASS after the score-row correction: TypeScript,
 Static output is 89,480,738 bytes / 179 files, below the unchanged 90MB limit.
 No failed tests or unhandled errors. Publication and hosted verification follow
 the normal main push; no extra preview, schema migration or gate modification.
-Current production baseline: e5f4febe62933a62437abadb2241704cce882d6f,
-READY deployment dpl_8PYREgNzZmGxS5UrVqF4ZQME9GYJ.
+Production: `604fb12bf9c05557b1b269430d487d3bbad4b13a`, READY deployment
+`dpl_DgkTMzAJgfLhmHqNck9NycPthkze`. Both holm357.com and ptown-poker.vercel.app
+serve that exact manifest and pass signed-out login rendering with backend writes
+blocked. GitHub run `42939158793` completed successfully, including its independent
+qualification, exact-production verification and release signal. Runtime error/fatal
+query returned no logs. Prior production remains `e5f4febe62933a62437abadb2241704cce882d6f`,
+deployment `dpl_8PYREgNzZmGxS5UrVqF4ZQME9GYJ`.
 Physical iPhone smoke of Arcade, Async and multiplayer remains Jeremy's acceptance.
+
+Hosted visual smoke: all 15 mode/viewport cases pass with the complete published
+CSS set, including all interaction and no-scroll assertions. Zero-reroll images
+for all three modes were inspected. Full measurements and images are retained in
+`.quintzee-layout/hosted.json` and `.quintzee-layout/hosted-*.png`; both-domain
+manifest/login receipts are in `.quintzee-layout/published.json`. No customer
+matches, rolls, historical sessions or financial data were mutated by these checks.
