@@ -4,7 +4,7 @@ import {AsyncSessionName} from '@/components/delayed/AsyncSessionName';
 import {RealMoneyWarningDialog} from '@/components/RealMoneyWarningDialog';
 import {AsyncGameHeader} from '@/components/delayed/AsyncGameHeader';
 import {MatchInfo} from '@/components/delayed/MatchInfo';
-import {isReviewedGame,orderedLobbyGames,lobbyGameGroup} from '@/lib/delayed/lobbyPresentation';
+import {isReviewedGame,orderedLobbyGames,lobbyGameGroup,matchLobbyStatus,localInvitationTime} from '@/lib/delayed/lobbyPresentation';
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {turnEntryHint} from '@/lib/delayed/notifications';
 import {AsyncInvite} from '@/components/delayed/AsyncInvite';
@@ -42,15 +42,34 @@ function useUpdates(userId:string,refresh:()=>void,enabled=true){
 function MatchList({userId}:{userId:string}){
  const [rows,setRows]=useState<Home[]>([]),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);
  const [older,setOlder]=useState(true),[loadingOlder,setLoadingOlder]=useState(false);
+ const [clock,setClock]=useState({serverAt:0,receivedAt:0}),[,refreshClock]=useState(0);
  const epoch=useRef(0);
- const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home[]>('delayed_list').then(v=>{if(generation!==epoch.current)return;setRows(v);setLoaded(true);setError('');}).catch(e=>{if(generation===epoch.current)setError(e.message);});},[]);
+ const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home[]>('delayed_list').then(v=>{
+  if(generation!==epoch.current)return;
+  setClock({serverAt:v[0]?.serverAt??Date.now(),receivedAt:performance.now()});setRows(v);setLoaded(true);setError('');
+ }).catch(e=>{if(generation===epoch.current)setError(e.message);});},[]);
  useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);useUpdates(userId,refresh);
+ const now=clock.serverAt+performance.now()-clock.receivedAt;
+ const matches=rows.map(row=>matchLobbyStatus(row,userId,now))
+  .filter(({home,results})=>home.status!=='settled'||results>0)
+  .sort((a,b)=>Number(b.actionable)-Number(a.actionable));
+ const nextDeadline=Math.min(...matches.map(match=>match.nextDeadline));
+ useEffect(()=>{
+  if(!Number.isFinite(nextDeadline))return;
+  const timer=setTimeout(()=>refreshClock(value=>value+1),
+   Math.max(0,Math.ceil(nextDeadline-clock.serverAt-performance.now()+clock.receivedAt)));
+  return()=>clearTimeout(timer);
+ },[clock,nextDeadline]);
  return <><Link className="delayed-primary" to="/delayed/new">New Async Match</Link>
   {error&&<p role="alert">{error} <button onClick={refresh}>Retry</button></p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
-  {loaded&&!rows.some(r=>r.status!=='settled')&&<p>No active async matches.</p>}
-  <ul className="delayed-lineup">{rows.filter(row=>row.status!=='settled').map(row=><li key={row.id} data-turn={row.status==='active'&&!row.held?(row.lineup.some(c=>!c.terminal&&c.actor===userId)?'own':'opponent'):undefined}><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {row.players.find(p=>p.id!==userId)?.name}</AsyncSessionName></strong> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></Link>
-   <p>{row.status} · {row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>
-   {row.status==='active'&&!row.held&&<strong>{row.lineup.some(c=>!c.terminal&&c.actor===userId)?'Your turn':(row.players.find(p=>p.id!==userId)?.name??'Opponent')+'’s turn'}</strong>}{row.acceptedAt&&<p>Current Net: {money(row.net)}</p>}</li>)}</ul>
+  {loaded&&!matches.length&&<p>No active async matches.</p>}
+  <ul className="delayed-lineup">{matches.map(({home:row,opponent,own,other,results,invitation,accepts,actionable})=><li key={row.id} data-turn={actionable?'own':'opponent'}>
+   <Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {opponent}</AsyncSessionName></strong>{!invitation&&<> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></>}</Link>
+   <p>{!invitation&&<>{row.status} · </>}{row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>
+   {invitation?<strong>Invited <time dateTime={row.createdAt}>{localInvitationTime(row.createdAt)}</time> - Pending {accepts?'Your':opponent+'’s'} Acceptance</strong>:
+    row.status==='active'&&(row.held?<strong>On hold</strong>:<strong>Turns - You: {own}, {opponent}: {other}</strong>)}
+   {results>0&&<p><strong>{results} {results===1?'result':'results'} to view</strong></p>}
+   {row.acceptedAt&&<p>Current Net: {money(row.net)}</p>}</li>)}</ul>
   {rows.length>=30&&older&&<button disabled={loadingOlder} onClick={()=>{const last=rows.at(-1)!;setLoadingOlder(true);
    void delayedRpc<Home[]>('delayed_list',{p_before:last.createdAt,p_before_id:last.id}).then(v=>{
     setRows(old=>[...old,...v.filter(item=>!old.some(existing=>existing.id===item.id))]);setOlder(v.length===30);

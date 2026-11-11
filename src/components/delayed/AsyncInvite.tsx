@@ -3,6 +3,7 @@ import {Link,useNavigate,useSearchParams} from 'react-router-dom';
 import {ArrowDownAZ,History} from 'lucide-react';
 import {delayedRpc,gameName,type Home} from '@/lib/delayed/client';
 import {MegaCompetitionSettings} from '@/components/megaCardGolf/MegaCompetitionConfig';
+import {AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogTitle} from '@/components/ui/alert-dialog';
 import type {MegaCompetitionConfig} from '@/lib/megaCardGolf/competition';
 import {configurationIssue,readRunback,reconstructRunback,runbackReturn,saveRunback,validDraftId,type Capabilities,type InviteEntry,type InvitePerson,type RunbackDraft} from '@/lib/delayed/runback';
 
@@ -13,7 +14,9 @@ export function AsyncInvite({userId=''}:{userId?:string}){
  const [lineup,setLineup]=useState<InviteEntry[]>([{key:crypto.randomUUID(),game:'ptown-words',stake:'5'}]);
  const [caps,setCaps]=useState<Capabilities>({enabled:false,fake_money_only:true,max_children:1,games:[]});
  const [search,setSearch]=useState(''),[sort,setSort]=useState<'username'|'recent'>('recent');
- const [realMoney,setRealMoney]=useState(false),[draft,setDraft]=useState<RunbackDraft|null>(null),[loaded,setLoaded]=useState(!source);
+ const [realMoney,setRealMoney]=useState(!source),[draft,setDraft]=useState<RunbackDraft|null>(null),[loaded,setLoaded]=useState(!source);
+ const [confirmFake,setConfirmFake]=useState(false);
+ const sendButton=useRef<HTMLButtonElement>(null);
  const [people,setPeople]=useState<InvitePerson[]>([]),[opponent,setOpponent]=useState<InvitePerson|null>(null),[cursor,setCursor]=useState<unknown>(null),[more,setMore]=useState(false);
  const [loading,setLoading]=useState(false),[pending,setPending]=useState(false),[error,setError]=useState(''),[peopleError,setPeopleError]=useState(''),[storageError,setStorageError]=useState('');
  const edited=useRef(false),request=useRef<string|null>(null),epoch=useRef(0),busy=useRef(false);
@@ -37,7 +40,10 @@ export function AsyncInvite({userId=''}:{userId?:string}){
     if(saved?.sent){navigate('/delayed',{replace:true});return;}
     if(value.opponent.id===original.opponent.id)value.opponent={...value.opponent,isHuman:original.opponent.isHuman};
     setDraft(value);setLineup(value.lineup);setOpponent(value.opponent);setRealMoney(value.realMoney);setLoaded(true);
-   }else if(!edited.current)setLineup(old=>old.map(c=>({...c,stake:String(capabilities.games.find(g=>g.id===c.game)?.stake??c.stake)})));
+   }else{
+    if(capabilities.fake_money_only)setRealMoney(false);
+    if(!edited.current)setLineup(old=>old.map(c=>({...c,stake:String(capabilities.games.find(g=>g.id===c.game)?.stake??c.stake)})));
+   }
   }).catch(e=>{if(alive)setError(e.message);});return()=>{alive=false;};
  },[source,userId,draftId,navigate]);
  useEffect(()=>{
@@ -59,8 +65,10 @@ export function AsyncInvite({userId=''}:{userId?:string}){
   // Keep historical stakes across explicit mode changes; ordinary creation keeps its established reset.
   if(!value&&!source)setLineup(old=>old.map(c=>({...c,stake:defaultStake(c.game)})));
  }
- async function invite(){
+ async function invite(confirmedFake=false){
   if(busy.current||(!draft?.submission&&(!enabled||!opponent?.isHuman||!valid)))return;
+  if(!realMoney&&!draft?.submission&&!confirmedFake){setConfirmFake(true);return;}
+  setConfirmFake(false);
   busy.current=true;setPending(true);setError('');request.current??=source?draftId:crypto.randomUUID();
   try{
    const payload=draft?.submission??{p_request:request.current,p_opponent:opponent!.id,p_real_money:realMoney,
@@ -114,7 +122,17 @@ export function AsyncInvite({userId=''}:{userId?:string}){
   {!source&&<><p className="delayed-terms">The first player in each game is selected randomly.</p><p className="delayed-terms">Last Call at 24 hours. A missed 36-hour deadline forfeits that game. No funds are reserved; {realMoney?'one net amount is posted to both players’ balances after all games finish.':'real balances are unaffected.'} Invitations expire in 72 hours.</p></>}
   {!opponent&&<p>Choose a human opponent to send your invitation.</p>}
   {draft?.submission&&!pending&&<p role="status">A send was attempted. Retry the same invitation to confirm its outcome before starting another draft.</p>}
-  <button className="delayed-primary" disabled={pending||!!storageError||(!draft?.submission&&(!opponent?.isHuman||!enabled||!valid))} onClick={()=>void invite()}>{pending?'Sending…':'Send Invitation'}</button>
+  <button ref={sendButton} className="delayed-primary" disabled={pending||!!storageError||(!draft?.submission&&(!opponent?.isHuman||!enabled||!valid))} onClick={()=>void invite()}>{pending?'Sending…':'Send Invitation'}</button>
+  <AlertDialog open={confirmFake} onOpenChange={setConfirmFake}>
+   <AlertDialogContent onCloseAutoFocus={event=>{event.preventDefault();sendButton.current?.focus();}}>
+    <AlertDialogTitle>Are you sure you want to set up a fake money match?</AlertDialogTitle>
+    <AlertDialogDescription>Confirm to send the invitation to {opponent?.name}.</AlertDialogDescription>
+    <AlertDialogFooter>
+     <AlertDialogCancel>Cancel</AlertDialogCancel>
+     <AlertDialogAction onClick={()=>void invite(true)}>Send Fake Money Invitation</AlertDialogAction>
+    </AlertDialogFooter>
+   </AlertDialogContent>
+  </AlertDialog>
   {(error||storageError)&&<p role="alert">{error||storageError}</p>}
  </section>;
 }

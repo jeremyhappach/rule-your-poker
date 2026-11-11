@@ -26,6 +26,17 @@ it('respects mute and refuses delayed unmute, then admits a new live result',asy
   h.manager.setPreference('user',true);follow('fresh');expect(h.starts()).toHaveLength(2);
   h.dispose();
 });
+it('plays once with a moving fractional clock and an inexact remaining window',async()=>{
+  const h=audioHarness();for(let i=0;i<6;i++)await Promise.resolve();
+  let now=500.2;
+  h.env.now=()=>now+=.15;
+  const startedAt=now;
+  const event={userId:'user',id:'live-give-up',startedAt,expiresAt:startedAt+RUN21_FAILURE_CUE_MS,
+    cueAt:(elapsed:number,remaining:number)=>run21FailureCueAt(elapsed,remaining-.01)};
+  h.manager.follow(event);h.manager.follow(event);
+  expect(h.starts()).toEqual([10,10.45]);
+  h.dispose();
+});
 it('uses the selected crumble alone, refuses late onset and stops immediately on mute',async()=>{
  const h=audioHarness();for(let i=0;i<6;i++)await Promise.resolve();
  const follow=(id:string)=>h.manager.follow({userId:'user',id,startedAt:Date.now(),expiresAt:Date.now()+RUN21_FAILURE_CUE_MS,cueAt:run21BustCueAt});

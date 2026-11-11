@@ -165,7 +165,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  useRun21Bell(userId,audio.liveEntry&&presentationActive?intro?.key??null:null,intro?.remaining??0);
  useRun21PlacementAudio(userId,childId+':'+initialSegment.current,audio.events,audio.epoch,presentationActive);
  useRun21ScoreAudio(userId,childId,view,now,presentationActive&&!medal);
- useRun21FailureAudio(userId,childId,view,now,0,presentationActive&&!medal);
+ useRun21FailureAudio(userId,childId,view,now,audio.epoch,presentationActive&&!medal);
  useEffect(()=>{
   if(!runResult||!attemptKey)return;
   if(seenMedal.current!==attemptKey){seenMedal.current=attemptKey;

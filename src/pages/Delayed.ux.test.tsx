@@ -87,6 +87,31 @@ it('keeps one lobby parent card and navigation to setup, archive and multiplayer
  expect(screen.getByRole('link',{name:'Archived / Completed Sessions'}).getAttribute('href')).toBe('/?sessions=completed');
  fireEvent.click(screen.getByRole('link',{name:'Lobby'}));expect(screen.getByRole('heading',{name:'Multiplayer lobby'})).toBeTruthy();
 });
+it('renders simultaneous turns, unseen results and local invitations in action order',async()=>{
+ const createdAt=new Date(2026,10,11,8,59).toISOString();
+ const row=(id:string,name:string,props:object)=>({...mock.home,id,createdAt,players:[{id:'me',name:'Viewer'},{id:'other',name}],...props});
+ const turn=(actor:string)=>({...mock.home.lineup[0],actor});
+ const result={...turn('other'),terminal:true,viewed:false};
+ mock.rpc.mockImplementation(async()=>[
+  row('outgoing','TheOG',{organizer:'me',opponent:'other'}),
+  row('both','mcru81',{status:'active',lineup:[turn('me'),turn('me'),turn('other'),result,result]}),
+  row('waiting','Rival',{status:'active',lineup:[turn('other')]}),
+  row('incoming','Hap',{organizer:'other',opponent:'me'}),
+  row('results','Finisher',{status:'settled',lineup:[result]}),
+ ]);
+ const {container}=mount('/delayed');
+ await screen.findByText('Turns - You: 2, mcru81: 1');
+ const cards=[...container.querySelectorAll('.delayed-lineup > li')];
+ expect(cards.map(card=>card.querySelector('a')?.getAttribute('href'))).toEqual(
+  ['/delayed/both','/delayed/incoming','/delayed/results','/delayed/outgoing','/delayed/waiting']);
+ expect(cards.map(card=>card.getAttribute('data-turn'))).toEqual(['own','own','own','opponent','opponent']);
+ expect(cards[0].querySelector('p > strong')?.textContent).toBe('2 results to view');
+ expect(cards[1].textContent).toContain('Invited 11/11 8:59am - Pending Your Acceptance');
+ expect(cards[1].querySelector('time')?.dateTime).toBe(createdAt);
+ expect(cards[2].textContent).toContain('1 result to view');
+ expect(cards[3].textContent).toContain('Invited 11/11 8:59am - Pending TheOG’s Acceptance');
+ expect(cards[4].textContent).toContain('Turns - You: 0, Rival: 1');
+});
 it('refreshes the same match on a new notification tap and removes stale turn actions',async()=>{
  mock.home={...mock.home,status:'active',acceptedAt:new Date().toISOString()};
  function Tap(){const navigate=useNavigate();return <button onClick={()=>navigate('/delayed/match',{state:{asyncPushEventId:'new-event'}})}>Push tap</button>;}

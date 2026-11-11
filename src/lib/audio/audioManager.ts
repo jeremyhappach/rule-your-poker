@@ -35,7 +35,8 @@ interface AudioEnvironment {
   storage: () => Storage;
   document: () => Document;
   savePreference?: (userId: string, enabled: boolean) => Promise<void>;
-  playbackSession?: { activate: () => void; release: () => void; observe?: (interrupted: () => void, recovered: () => void) => () => void };
+  playbackSession?: { activate: () => void; release: () => void; interrupted?: () => boolean | undefined;
+    observe?: (interrupted: () => void, recovered: () => void) => () => void };
 }
 
 /** One application owner. Games supply cues and presentation deadlines, never contexts. */
@@ -210,6 +211,9 @@ export class AudioManager {
   /** Call synchronously in a trusted gesture: do not await preference or auth I/O first. */
   unlock = (trustedGesture = false) => {
     try {
+      const interrupted = this.env.playbackSession?.interrupted?.();
+      if (interrupted === true && !this.sessionInterrupted) this.retireContext('session-interrupted');
+      this.sessionInterrupted = interrupted ?? this.sessionInterrupted;
       this.updateSession();
       if (this.enabled === false || this.pageAway || this.sessionInterrupted || this.env.document().hidden) return;
       if (!this.context || this.context.state === 'closed') {
@@ -330,11 +334,12 @@ export class AudioManager {
 
   private flush() {
     for (const [key, entry] of this.timelines) {
-      const remaining = entry.event.expiresAt - this.env.now();
+      const now = this.env.now();
+      const remaining = entry.event.expiresAt - now;
       if (remaining <= 0) { this.retireTimeline(key,'expired'); continue; }
-      if (entry.stop || !entry.owners.size || this.env.now() < entry.event.startedAt) continue;
-      const cue = entry.event.cueAt(this.env.now() - entry.event.startedAt, remaining);
-      this.schedule(cue, entry.event.expiresAt, stop => { entry.stop = stop; this.remember(key); },entry.event.id);
+      if (entry.stop || !entry.owners.size || now < entry.event.startedAt) continue;
+      const cue = entry.event.cueAt(now - entry.event.startedAt, remaining);
+      this.schedule(cue, entry.event.expiresAt, stop => { entry.stop = stop; this.remember(key); },entry.event.id,now);
     }
     for (const [key, { event }] of this.pending) {
       if (event.expiresAt - this.env.now() < event.cue.durationMs) {
@@ -348,10 +353,10 @@ export class AudioManager {
     }
   }
 
-  private schedule(cue: AudioCue, expiresAt: number, scheduled?: (stop: () => void) => void,eventId?:string) {
+  private schedule(cue: AudioCue, expiresAt: number, scheduled?: (stop: () => void) => void,eventId?:string,now=this.env.now()) {
     const ctx = this.context;
     if (!ctx || ctx.state !== 'running' || this.enabled !== true || this.pageAway || this.sessionInterrupted || this.env.document().hidden) {this.trace('schedule-not-ready',eventId,expiresAt);return false;}
-    if (expiresAt - this.env.now() < cue.durationMs) {this.trace('schedule-window-short',eventId,expiresAt,{durationMs:cue.durationMs});return false;}
+    if (expiresAt - now < cue.durationMs) {this.trace('schedule-window-short',eventId,expiresAt,{durationMs:cue.durationMs});return false;}
     const policy = cue.policy;
     if (policy) {
       const recent = this.env.now() - (this.lastGroup.get(policy.group) ?? -Infinity) < policy.intervalMs;

@@ -16,7 +16,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { getActiveVoiceOperationId } from "@/lib/runtimeInstrumentation/voiceOperation";
 import { getAppInteractionAgeMs } from "@/lib/appActivity";
 
-const TAB_ID_KEY = "voice-op:tab-id-v1";
 const HEARTBEAT_MS = 4000;
 type VoicePresenceStatus = "active" | "hidden" | "leaving";
 
@@ -26,20 +25,8 @@ let currentGameId: string | null = null;
 let currentSessionId: string | null = null;
 let heartbeatInFlight = false;
 let pendingHeartbeatStatus: VoicePresenceStatus | null = null;
-
-function getTabId(): string {
-  if (typeof window === "undefined") return "server";
-  try {
-    let id = window.sessionStorage.getItem(TAB_ID_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      window.sessionStorage.setItem(TAB_ID_KEY, id);
-    }
-    return id;
-  } catch {
-    return "unknown-tab";
-  }
-}
+// sessionStorage can be cloned when another tab opens from this page.
+let tabId: string | null = null;
 
 async function writeHeartbeat(status: VoicePresenceStatus): Promise<void> {
   try {
@@ -51,7 +38,7 @@ async function writeHeartbeat(status: VoicePresenceStatus): Promise<void> {
     if (error || !user_id) return;
     const payload = {
       user_id,
-      tab_id: getTabId(),
+      tab_id: tabId ??= crypto.randomUUID(),
       game_id: currentGameId,
       session_id: currentSessionId,
       route: typeof window !== "undefined" ? window.location.pathname : null,
@@ -95,6 +82,7 @@ export function startVoicePresenceHeartbeat(): void {
     void beat(document.hidden ? "hidden" : "active");
   });
   window.addEventListener("pagehide", () => { void beat("leaving"); });
+  window.addEventListener("pageshow", () => { void beat(document.hidden ? "hidden" : "active"); });
 }
 
 /** Called by app-level route/game observers so heartbeats carry context. */

@@ -27,14 +27,15 @@ const cue: AudioCue = {durationMs: 100, schedule(ctx, output, track) {
 }};
 const settled = async () => {await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();};
 let contexts: ReturnType<typeof contextFixture>[], manager: AudioManager, dispose: () => void;
-let interrupted: () => void, recovered: () => void;
+let interrupted: () => void, recovered: () => void, sessionInterrupted: boolean|undefined;
 const event = (id: string) => ({userId: 'user', id, cue, expiresAt: Date.now() + 1000});
 beforeEach(async () => {
-  vi.useFakeTimers(); sessionStorage.clear(); contexts = [];
+  vi.useFakeTimers(); sessionStorage.clear(); contexts = []; sessionInterrupted=undefined;
   manager = new AudioManager({createContext: () => {const item = contextFixture(); contexts.push(item); return item.ctx as unknown as AudioContext;},
     now: () => Date.now(), storage: () => sessionStorage, document: () => document,
     loadPreference: async () => true, savePreference: async () => {},
-    playbackSession: {activate() {}, release() {}, observe(onInterrupted, onRecovered) {interrupted = onInterrupted; recovered = onRecovered; return () => {};}}});
+    playbackSession: {activate() {}, release() {}, interrupted:()=>sessionInterrupted,
+      observe(onInterrupted, onRecovered) {interrupted = onInterrupted; recovered = onRecovered; return () => {};}}});
   dispose = manager.install(); manager.setUser('user'); await settled();
 });
 afterEach(() => {dispose(); vi.restoreAllMocks(); vi.useRealTimers();});
@@ -77,6 +78,20 @@ it('a real gameplay exit gives the next Arcade/game entry a fresh context; heade
   handoff(); await settled(); expect(old.ctx.close).toHaveBeenCalledOnce();
   const leaveNext = manager.acquireGameplay(); manager.request(event('next-game'));
   expect(contexts).toHaveLength(2); expect(contexts[1].ctx.audible).toBe(1); leaveNext();
+});
+
+it('rechecks native session state on return when WebKit misses its recovery event', () => {
+  manager.request(event('before'));
+  sessionInterrupted=true;
+  interrupted();
+  manager.unlock(true);
+  expect(contexts).toHaveLength(1);
+  sessionInterrupted=false;
+  window.dispatchEvent(new Event('pageshow'));
+  manager.request(event('before'));
+  manager.request(event('after'));
+  expect(contexts).toHaveLength(2);
+  expect(contexts[1].ctx.audible).toBe(1);
 });
 
 it('retires queued requests/timelines and ignores completion/events from an abandoned resume', async () => {

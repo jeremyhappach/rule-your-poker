@@ -6,6 +6,10 @@ export function createPlaybackSession(read = () => (navigator as Navigator & {au
   let session: Session | undefined;
   let previous = 'auto';
   return {
+    interrupted() {
+      try { const state=read()?.state; return state===undefined?undefined:state==='interrupted'; }
+      catch { return undefined; }
+    },
     observe(interrupted: () => void, recovered: () => void) {
       let target: Session | undefined;
       let wasInterrupted = false;

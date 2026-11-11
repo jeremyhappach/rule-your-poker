@@ -1,3 +1,24 @@
+# Audio reliability, foreground push and Async lobby — November 11, 2026
+
+Gameplay timelines use one clock reading for cue position and admission.
+Run21's give-up cue accepts the fractional timing at a live onset. The shared
+audio context rechecks native interruption state when returning to the app.
+
+Migration `20261111153300` records foreground suppression at push event
+creation and rechecks live per-tab presence before dispatch. In-app notices,
+preferences and Quiet Hours continue through their existing owners.
+The rollback proof passed before and after installation with zero fixture
+profiles remaining. It covers both money modes, foreground and background
+delivery, multiple tabs, Last Call, invites, in-app visibility, and replay.
+
+The Async lobby shows both players' turn counts, unseen results and local
+invitation status with actionable matches first. New invitations default to
+real money when available. Fake-money sends require confirmation.
+The 393px browser proof exercised the rendered lobby, colors, ordering, cancel
+and confirmed invitation with fixture responses. The release gate passed
+TypeScript, 4,031 application tests, 241 harness tests, 46 release-tooling tests
+and the 90 MB build budget. Physical iPhone PWA smoke is pending.
+
 # Quintzee layout stability — November 10, 2026 — qualified for publication
 
 The empty dice lane previously collapsed before the first roll, expanding the

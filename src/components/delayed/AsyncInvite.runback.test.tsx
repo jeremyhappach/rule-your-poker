@@ -27,7 +27,9 @@ it.each([false,true])('restores exact ordered config, opponent and money/stakes 
  mock.home.realMoney=money;await mount();expect((screen.getByRole('switch') as HTMLInputElement).checked).toBe(money);
  expect((screen.getByLabelText('Opponent') as HTMLSelectElement).value).toBe('other');
  for(let i=0;i<3;i++){expect((screen.getByLabelText('Game '+(i+1)) as HTMLSelectElement).value).toBe(games[i]);expect((screen.getByLabelText('Stake '+(i+1)) as HTMLInputElement).value).toBe(String([7,9,11][i]));}
- expect(sends()).toHaveLength(0);fireEvent.click(screen.getByRole('button',{name:'Send Invitation'}));await waitFor(()=>expect(sends()).toHaveLength(1));
+ expect(sends()).toHaveLength(0);fireEvent.click(screen.getByRole('button',{name:'Send Invitation'}));
+ if(!money)fireEvent.click(screen.getByRole('button',{name:'Send Fake Money Invitation'}));
+ await waitFor(()=>expect(sends()).toHaveLength(1));
  expect(sends()[0][1]).toEqual({p_request:id,p_opponent:'other',p_real_money:money,p_lineup:games.map((game,i)=>({game,stake:[7,9,11][i],config:rules[i]}))});
 });
 it('editing and reordering never mutates the archive and preserves stakes when switching modes',async()=>{
@@ -36,7 +38,8 @@ it('editing and reordering never mutates the archive and preserves stakes when s
  fireEvent.click(screen.getByRole('button',{name:'Move game 3 up'}));fireEvent.change(screen.getByLabelText('Stake 2'),{target:{value:'13'}});
  fireEvent.click(screen.getByRole('button',{name:'Remove game 1'}));fireEvent.click(screen.getByRole('button',{name:'Add game'}));
  expect(mock.home).toEqual(original);expect(sends()).toHaveLength(0);
- fireEvent.click(screen.getByRole('button',{name:'Send Invitation'}));await waitFor(()=>expect(sends()).toHaveLength(1));expect(sends()[0][1].p_lineup[0]).toMatchObject({game:'boxdrop',stake:13,config:rules[2]});
+ fireEvent.click(screen.getByRole('button',{name:'Send Invitation'}));fireEvent.click(screen.getByRole('button',{name:'Send Fake Money Invitation'}));
+ await waitFor(()=>expect(sends()).toHaveLength(1));expect(sends()[0][1].p_lineup[0]).toMatchObject({game:'boxdrop',stake:13,config:rules[2]});
 });
 it('blocks incompatible frozen config until an explicit resolution, without substituting stakes',async()=>{
  mock.home.lineup[0].config={version:'run21/removed',rounds:99};await mount();

@@ -70,6 +70,7 @@ async function scenario(game,width,mode='async'){
    const req=route.request(),url=new URL(req.url()),path=url.pathname,send=data=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
    if(path.startsWith('/auth/v1/'))return send(path.endsWith('/user')?user:{user,access_token:token});
    if(path.startsWith('/rest/v1/rpc/')){const name=path.split('/').at(-1);
+    if(name==='account_access_snapshot')return send({userId:viewer,enabled:true,status:'enabled',revision:1,email:user.email,verified:true,admin:false});
     if(name==='delayed_home')return send(home());
     if(name==='delayed_respond'){assert.equal(req.postDataJSON().p_action,'accept');invited=false;return send(null);}
     if(name==='delayed_reviews')return send({events:[],terminal:false,actor:state.actor,segment:state.segment,revision:state.revision,started:!!state.board,expiresAt:state.expiresAt,held:false,serverAt:Date.now()});
@@ -77,7 +78,7 @@ async function scenario(game,width,mode='async'){
    }
    if(path.startsWith('/rest/v1/')){const table=path.split('/').at(-1),single=(req.headers().accept??'').includes('object');if(table==='profiles'&&req.method()==='PATCH'){sound=req.postDataJSON().play_sounds;return send({play_sounds:sound});}const value=table==='profiles'?{id:viewer,username:viewer,is_active:true,play_sounds:sound}:null;return send(single?value:value?[value]:[]);}
    if(url.origin!==origin){external.push(req.url());return route.abort();}
-   if(path==='/api/delayed'||path==='/api/arcade'){
+   if(path==='/api/delayed'||path==='/api/delayed-run21'||path==='/api/arcade'){
     const command=req.postDataJSON();commands.push({viewer,...command});advance();
     if(command.op==='leaderboard')return send({ruleset:state.config.preset??state.config.version,rows:[],self:null,personalBest:null,previousBests:[],activeRun:null,latestResult:null});
     if(command.op==='start'){state.board=startBoard(state);state.revision++;return send(arcade());}
@@ -112,7 +113,9 @@ async function scenario(game,width,mode='async'){
     // Unlock through the actual next card gesture after a reload.
     await place(3);await page.waitForFunction(()=>window.audioProof.events.some(e=>e.kind==='sample'));
     await page.getByRole('button',{name:'Mute sounds',exact:true}).click();await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();const muted=await count(page,'sample');await place(4);assert.equal(await count(page,'sample'),muted);
-    await page.getByRole('button',{name:'Unmute sounds',exact:true}).click();await stable(page,'sample');await place(5);await page.waitForFunction(n=>window.audioProof.events.filter(e=>e.kind==='sample').length===n+1,muted);
+    await page.waitForTimeout(1000); // The sound control throttles repeat toggles for one second.
+    await page.getByRole('button',{name:'Unmute sounds',exact:true}).click();await page.getByRole('button',{name:'Mute sounds',exact:true}).waitFor();
+    await stable(page,'sample');await place(5);await page.waitForFunction(n=>window.audioProof.events.filter(e=>e.kind==='sample').length===n+1,muted);
     await page.evaluate(()=>{window.dispatchEvent(new Event('pagehide'));window.dispatchEvent(new Event('pageshow'));window.dispatchEvent(new Event('focus'));});
     const resumed=await stable(page,'sample');await place(1);await page.waitForFunction(n=>window.audioProof.events.filter(e=>e.kind==='sample').length===n+1,resumed);
     // The other participant then receives a genuinely new segment on a separate client.

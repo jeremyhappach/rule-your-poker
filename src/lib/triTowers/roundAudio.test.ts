@@ -35,6 +35,14 @@ it('plays the approved three-second harmony as two voices per rising phrase',asy
  expect(voices.every(n=>n.setPeriodicWave.mock.calls.length===1)).toBe(true);
  expect(Math.max(...voices.map(n=>n.stop.mock.calls[0][0]))).toBeCloseTo(12.995,6);
 });
+it('uses the same clock reading for the fanfare window and scheduler admission',async()=>{
+ await ready();
+ let now=500;
+ h.env.now=()=>now+=6;
+ const event={userId:'user',id:'tri-clear:live',startedAt:now,expiresAt:now+TRI_FANFARE_MS,cueAt:triAllClearCueAt};
+ h.manager.follow(event);h.manager.follow(event);
+ expect(h.starts()).toHaveLength(6);
+});
 it('seeks directly into the third trill without restarting its pickup or envelope',()=>{
  const cue=triAllClearCueAt(2350,650);cue.schedule(h.ctx as unknown as AudioContext,{} as AudioNode,n=>n);
  const voices=h.nodes.filter(n=>n.kind==='oscillator'),gains=h.nodes.filter(n=>n.kind==='gain');

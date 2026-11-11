@@ -2,22 +2,24 @@ import type {AudioCue} from '@/lib/audio/audioManager';
 import {approvedSound} from '@/lib/audio/approvedSounds';
 
 export const RUN21_FAILURE_CUE_MS = 1100;
+const MAX_ONSET_MS = 80;
+const TAIL_MARGIN_MS = 2;
 
 /** Owner-selected crumble at the existing visible bust onset. Never fetch or catch up. */
 export function run21BustCueAt(elapsedMs:number,remainingMs:number):AudioCue {
   const cue=approvedSound('run21Bust');
   return {durationMs:cue?.durationMs??0,policy:cue?.policy,schedule(context,destination,track){
-    if(!cue||elapsedMs<0||elapsedMs>80||remainingMs<cue.durationMs)return false;
+    if(!cue||elapsedMs<0||elapsedMs>MAX_ONSET_MS||remainingMs<cue.durationMs)return false;
     return cue.schedule(context,destination,track);
   }};
 }
 
 /** Original two-note muted-brass fall: a short wah, then a lower, longer wah. */
 export function run21FailureCueAt(elapsedMs:number,remainingMs:number):AudioCue {
-  const durationMs=Math.max(0,Math.min(RUN21_FAILURE_CUE_MS-elapsedMs,remainingMs)-2);
+  const durationMs=Math.max(0,Math.min(RUN21_FAILURE_CUE_MS-elapsedMs,remainingMs)-TAIL_MARGIN_MS);
   return {durationMs,schedule(context,destination,track){
     // Unlock/unmute must not start a detached failure sound after its visible onset.
-    if(elapsedMs<0||elapsedMs>80||remainingMs<RUN21_FAILURE_CUE_MS-elapsedMs)return false;
+    if(elapsedMs<0||elapsedMs>MAX_ONSET_MS||durationMs<RUN21_FAILURE_CUE_MS-MAX_ONSET_MS-TAIL_MARGIN_MS)return false;
     const origin=context.currentTime;
     const notes=[{offset:0,duration:.35,from:196,to:174.61},{offset:.45,duration:.648,from:164.81,to:130.81}];
     for(const note of notes){
