@@ -1,3 +1,18 @@
+# Quintzee compact gameplay layout — November 11, 2026
+
+At 393×500, the previous 318px scorecard minimum pushed the roll control
+outside the felt in Arcade and Async. Short felt containers now reserve the
+dice and primary-action tracks and reflow the scorecard in the remaining
+space. The opponent-turn status uses the same action track.
+
+Chrome verified visible, clickable Start and Roll on both compiled routes
+with controlled responses at 393×500. The roll control ends at y=491 in
+both routes, and the page and felt have no scrolling. The 393×852 Arcade
+layout matches the previous geometry with resolved safe areas. Fifteen
+phone cases and nine compact cases passed, including waiting and a short
+landscape viewport. TypeScript, 4,033 app tests, 241 harness tests, 46 tooling
+tests, and the production build passed. Physical iPhone smoke is pending.
+
 # Quintzee Async polish and shared sound save — November 11, 2026
 
 The shared header and settings sound preference now save through

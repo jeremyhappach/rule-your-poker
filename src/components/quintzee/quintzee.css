@@ -60,7 +60,7 @@
 [data-theme=modern] .q-die { background:linear-gradient(135deg,#fffdf2,#cbd3dd); box-shadow:inset -2px -2px 3px #8494a7,0 .5cqh #66768b,0 1cqh 1cqh #0006; }.quintzee-plane[data-theme=modern] .q-die i { background:#253951; box-shadow:inset 0 1px 2px #000; }
 .q-roll { width:100%; min-height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:1em; border:1px solid #fff2ab; border-radius:1.3cqh; padding:1.5cqh 1%; color:#183b1d; background:linear-gradient(#ffe98c,#ddb94c); font-weight:900; font-size:clamp(13px,2.5cqh,22px); touch-action:manipulation; box-shadow:0 .4cqh #91772e; }.q-roll small { font-size:.75em; }.q-roll:disabled { opacity:.55; box-shadow:none; }
 .q-status { margin:0; text-align:center; font-size:clamp(10px,1.7cqh,15px); align-self:center; }.q-status button { text-decoration:underline; }
-.q-opponent-turn { width:100%;padding:1.5cqh 1%;border:1px solid #ffe16a88;border-radius:1.3cqh;text-align:center;font-size:clamp(13px,2.5cqh,22px);font-weight:800;color:#ffe16a;background:#ffffff0d; }
+.q-opponent-turn { display:grid;place-items:center;width:100%;min-height:var(--q-action-height,64px);padding:1.5cqh 1%;border:1px solid #ffe16a88;border-radius:1.3cqh;text-align:center;font-size:clamp(13px,2.5cqh,22px);font-weight:800;color:#ffe16a;background:#ffffff0d; }
 .q-result { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.5cqh; border:1px solid #e5cd7e; border-radius:1.3cqh; background:#092d22f5; color:#ffe16a; text-align:center; font-size:clamp(15px,3cqh,26px); }.q-result strong { font-size:1.2em; }.q-result small { font-size:.55em; color:white; }
 [data-theme=modern] .q-result { background:#1a2342f5; }
 @media(prefers-reduced-motion:no-preference){.q-result { animation:q-arrive .2s ease-out; }.q-dice [data-rolling=true] .q-die { animation:q-roll .12s linear infinite; }.q-dice [data-held=true] .q-die { animation:none; }@keyframes q-arrive { from{opacity:0;transform:translateY(6%)}to{opacity:1;transform:none} }@keyframes q-roll { 0%{transform:translate(-7%,4%) rotate(-25deg) scale(.96)}25%{transform:translate(6%,-7%) rotate(28deg) scale(1.02)}50%{transform:translate(-5%,-3%) rotate(-32deg) scale(.96)}75%{transform:translate(5%,6%) rotate(22deg) scale(1.01)}100%{transform:translate(-7%,4%) rotate(-25deg) scale(.96)} }}
@@ -123,4 +123,31 @@
  .q-scorecard,.q-bonuses,.q-play-area { grid-column:1/-1; }
  .q-play-area { grid-template-rows:auto 64px; }
  .q-roll-guide { display:none; }
+}
+
+@container quintzee-space (max-height: 550px) or ((max-height: 600px) and (min-width: 460px)) {
+ /* The play lane has a fixed footprint for this felt size, even without dice.
+    The scorecard takes the remaining height and uses three rows per section. */
+ .quintzee-plane { grid-template-rows:40px minmax(0,1fr) 22px min-content; }
+ .quintzee-plane:has(.q-players>.tri-score-cell>small) { grid-template-rows:52px minmax(0,1fr) 22px min-content; }
+ .q-play-area {
+  --q-action-height:clamp(44px,15cqh,64px);
+  --q-compact-die:min(calc(17.6cqw - 8px),clamp(26px,13cqh,62px));
+  --q-dice-height:calc(var(--q-compact-die) + 8px + 1.5 * var(--q-compact-hold) + 3px);
+  --q-compact-hold:clamp(10px,3.5cqw,14px);
+  grid-template-rows:var(--q-dice-height) var(--q-action-height);
+ }
+ .q-dice { --q-die-size:var(--q-compact-die);--q-hold-size:var(--q-compact-hold);min-height:var(--q-dice-height); }
+ .q-roll { min-height:var(--q-action-height); }
+ .q-scorecard section { grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));grid-auto-flow:column; }
+ .q-category { flex-direction:column;justify-content:center;gap:1px;padding:0 2px;text-align:center;font-size:clamp(9px,3cqw,12px); }
+ .q-category>span { flex:0 0 auto; }
+ .q-category[data-selector]:not([data-banked=true])>.q-selector { order:-1;width:clamp(16px,calc(100cqh - 16px),44px);height:clamp(16px,calc(100cqh - 16px),44px);font-size:clamp(11px,calc(80cqh - 14px),28px); }
+}
+
+@container quintzee-space (max-height: 360px) and (min-width: 660px) {
+ .q-scorecard section { grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr)); }
+ .q-category { flex-direction:row;gap:3px;font-size:clamp(10px,2cqw,13px); }
+ .q-category>span { flex:1; }
+ .q-category[data-selector]:not([data-banked=true])>.q-selector { width:clamp(16px,calc(100cqh - 2px),44px);height:clamp(16px,calc(100cqh - 2px),44px); }
 }

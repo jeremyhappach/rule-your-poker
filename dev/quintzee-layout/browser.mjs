@@ -111,7 +111,53 @@ try{
   await page.screenshot({path:output+'/'+(hosted?'hosted':baseline?'baseline':'candidate')+'-'+mode+'-'+width+'x'+height+'.png'});
   results.push({width,height,top,bottom,mode,...initial,postRoll,states});await page.close();
  }
+ const compact=[];
+ if(!baseline)for(const [width,height] of [[393,500],[320,420],[740,360]])for(const mode of ['arcade','async','multiplayer']){
+  const page=await browser.newPage({viewport:{width,height},isMobile:true,hasTouch:true});
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
+  await page.goto('http://127.0.0.1:15462/layout?mode='+mode);
+  await page.locator('.q-roll').waitFor();
+  if(hosted){await page.evaluate(()=>document.querySelectorAll('style[data-vite-dev-id]').forEach(e=>e.remove()));await page.addStyleTag({content:publishedCss});}
+  const measure=()=>page.evaluate(()=>{
+   const board=document.querySelector('.fullscreen-game-board'),card=document.querySelector('.q-scorecard');
+   const dice=document.querySelector('.q-dice'),action=document.querySelector('.q-roll,.q-opponent-turn');
+   const boardBox=board.getBoundingClientRect(),lane=dice.getBoundingClientRect(),button=action.getBoundingClientRect();
+   const within=(e,parent)=>{const r=e.getBoundingClientRect();return r.top>=parent.top-1&&r.bottom<=parent.bottom+1&&r.left>=parent.left-1&&r.right<=parent.right+1;};
+   const hits=e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));};
+   const rows=[...card.querySelectorAll('.q-category')],controls=[...document.querySelectorAll('.q-selector,.q-dice button,.q-roll')];
+   return {lane:[lane.top,lane.height,button.top,button.height],visible:within(dice,boardBox)&&within(action,boardBox),
+    scoreFits:rows.every(e=>within(e,card.getBoundingClientRect())&&(!e.querySelector('button')||within(e.querySelector('button'),e.getBoundingClientRect())))&&card.getBoundingClientRect().bottom<=lane.top,
+    hits:controls.every(hits),fits:document.documentElement.scrollHeight<=innerHeight+1&&board.scrollHeight<=board.clientHeight+1};
+  });
+  const rolled=await measure(),label=mode+' '+width+'x'+height;
+  const check=(state,name)=>{
+   assert(state.visible&&state.scoreFits&&state.hits&&state.fits&&state.lane[3]>=44,label+' '+name+': '+JSON.stringify(state));
+   assert(state.lane.every((value,i)=>Math.abs(value-rolled.lane[i])<=1),label+' '+name+' keeps the allocated lane');
+  };
+  check(rolled,'rolled');
+  await page.locator('.q-dice button').first().tap();
+  await page.locator('.q-roll').tap();
+  assert.deepEqual(await page.evaluate(()=>window.intents.pop()),{type:'roll',items:[0]});
+  await page.evaluate(()=>{window.layoutInitial=structuredClone(window.snapshot);window.setSnapshot(v=>({...v,state:{...v.state,board:{...v.state.board,phase:'ready',dice:[],held:[],rollsRemaining:3}}}));});
+  await page.getByRole('button',{name:'Start',exact:true}).waitFor();
+  check(await measure(),'ready');
+  assert.equal(await page.locator('.q-dice button').count(),0);
+  await page.locator('.q-roll').tap();
+  assert.deepEqual(await page.evaluate(()=>window.intents.pop()),{type:'start',items:[]});
+  await page.evaluate(()=>window.setSnapshot(v=>({...v,state:{...v.state,board:{...v.state.board,phase:'playing'}}})));
+  await page.getByRole('button',{name:'Roll (3 remaining)',exact:true}).waitFor();
+  check(await measure(),'between rolls');
+  if(mode!=='arcade'){
+   await page.evaluate(()=>window.setSnapshot(v=>({...v,state:{...v.state,turnIndex:1}})));
+   await page.getByRole('status').filter({hasText:'mcru81’s turn'}).waitFor();
+   check(await measure(),'waiting');
+   assert.equal(await page.locator('.q-roll').count(),0);
+  }
+  compact.push({mode,width,height,lane:rolled.lane});
+  await page.close();
+ }
  assert.deepEqual(errors,[]);
- writeFileSync(output+'/'+(hosted?'hosted':baseline?'baseline':'candidate')+'.json',JSON.stringify({hosted:hosted??null,renderedComponents:'production QuintzeeView + FullscreenGameShell, fixture state/outer mode wrappers',results,errors},null,2)+'\n');
- console.log(baseline?'MEASURED':'PASS',results.length,'rendered mode/viewport cases, turn states, safe area, target geometry and interaction checks');
+ writeFileSync(output+'/'+(hosted?'hosted':baseline?'baseline':'candidate')+'.json',JSON.stringify({hosted:hosted??null,renderedComponents:'production QuintzeeView + FullscreenGameShell, fixture state/outer mode wrappers',results,compact,errors},null,2)+'\n');
+ console.log(baseline?'MEASURED':'PASS',results.length,'phone cases and',compact.length,'compact cases, turn states, safe area, target geometry and interaction checks');
 }finally{await browser.close();await server.close();}
