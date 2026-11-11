@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-10",
+  "baseline": "e5f4febe62933a62437abadb2241704cce882d6f",
+  "renderedCases": 15,
+  "viewports": [
+    [
+      375,
+      667
+    ],
+    [
+      375,
+      812
+    ],
+    [
+      390,
+      844
+    ],
+    [
+      393,
+      852
+    ],
+    [
+      430,
+      932
+    ]
+  ],
+  "modes": [
+    "arcade",
+    "async",
+    "multiplayer"
+  ],
+  "referenceViewport": {
+    "width": 393,
+    "height": 852,
+    "action": {
+      "width": 366.2,
+      "height": 64
+    },
+    "diceTargets": {
+      "width": 64.5,
+      "height": 86.7
+    },
+    "bonusFont": 16
+  },
+  "scrolling": false,
+  "geometry": "all controls visible, unobstructed, no overlaps or clipped score/chip/category text",
+  "states": [
+    "ready/start",
+    "rolled",
+    "held/released",
+    "reroll animation",
+    "pending",
+    "zero rerolls",
+    "completed category",
+    "zero confirmation",
+    "next round"
+  ],
+  "authority": "controlled snapshots; unchanged production components and shell; no backend writes",
+  "physicalIPhoneAcceptance": "pending owner smoke"
+}

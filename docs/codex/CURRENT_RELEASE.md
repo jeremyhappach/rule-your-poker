@@ -1,3 +1,18 @@
+# Quintzee cross-mode hotfix — November 10, 2026 — qualified, publication pending
+
+The 660px compact rule caused 28px actions and undersized dice/bonus text when
+Async/live headers reduced available board height. The approved correction
+reclaims empty announcement/header space and uses one responsive gameplay layout
+without scrolling. All 15 rendered cases pass across Arcade, Async and live at
+five iPhone portrait sizes, including 393×852 with resolved safe areas. At that
+size each mode has 366.2×64px actions, 64.5×86.7px dice targets and 16px bonus text.
+Held dice, animation, pending/disabled actions, category completion, confirmation
+and next-round reset pass. Rules, backend, money, auth, push and splash are unchanged.
+
+Final production-push gate passes TypeScript, 4,027 app tests, 241 harness tests,
+46 tooling tests, build and 90MB budget (89,480,738 bytes). Physical iPhone and
+authenticated owner smoke remain pending. See [scope and evidence](QUINTZEE_CROSS_MODE_HOTFIX.md).
+
 # Consolidated polish — November 10, 2026 — qualified for one controlled release
 
 Jeremy approved Quintzee's staggered selectors/layout, real-money live/Async bonus

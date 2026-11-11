@@ -1,8 +1,11 @@
-.quintzee-shell { background:#073c2e; }
+.quintzee-shell { background:#073c2e;gap:2px;padding-block:2px; }
 .quintzee-shell .fullscreen-game-board { container-type:size;container-name:quintzee-space; }
+/* Reclaim an unused rail, retaining the canonical owner whenever it has content. */
+.quintzee-shell [data-canonical-shell-announcement-rail]:empty { display:none!important; }
 .quintzee-shell .fullscreen-game-actions:empty { min-height:0; }
 .quintzee-plane button { pointer-events:auto; }
-.quintzee-plane { position:absolute; inset:0; container-type:size; display:grid; grid-template-rows:8% 8% minmax(0,1fr) 32px 28% 4%; gap:0; padding:1.5%; color:#fff8dc; background:radial-gradient(ellipse at top,#187a45,#06432b 70%); font-family:Arial,sans-serif; }
+.q-confirm-controls>button { min-height:64px; }
+.quintzee-plane { position:absolute; inset:0; container-type:size; display:grid; grid-template-rows:minmax(min-content,8%) 8% minmax(0,1fr) 32px 28% 4%; gap:0; padding:1.5%; color:#fff8dc; background:radial-gradient(ellipse at top,#187a45,#06432b 70%); font-family:Arial,sans-serif; }
 .quintzee-plane[data-theme=modern] { background:radial-gradient(ellipse at top,#263b64,#101b35 75%); color:#eff7ff; }
 .quintzee-shell .fullscreen-game-heading strong { font:bold italic 1.3em Georgia,serif;color:#ffe16a; }
 .quintzee-modern .fullscreen-game-heading strong { font-family:Arial,sans-serif;color:#ffcb60; }
@@ -48,52 +51,15 @@
 .q-dice button { flex:1; min-width:0; border:1px solid #c8d5c577;border-radius:.6em;background:#ffffff0d; color:inherit; padding:.5cqh; touch-action:manipulation; }
 .q-die { aspect-ratio:1; width:min(100%,10cqh); margin:auto; display:grid; grid-template:repeat(3,1fr)/repeat(3,1fr); gap:6%; padding:1cqh; background:#b51e26; border-radius:18%; box-shadow:inset 0 2px 2px #ff909077,0 .5cqh #4a0c13; }
 .q-die i { display:block; aspect-ratio:1; border-radius:50%; background:#fff4d9; }.q-dice small { display:block; font-size:clamp(10px,1.8cqh,14px); padding-top:.7cqh;font-weight:700; }
-.q-dice [data-held=true] { border:2px solid #ffe16a;background:#ffe16a22;box-shadow:0 0 0 1px #ffe16a; }.q-dice [data-held=true] small { color:#ffe16a;font-weight:900; }
+.q-dice [data-held=true] { border:1px solid #ffe16a;background:#ffe16a22;box-shadow:inset 0 0 0 1px #ffe16a,0 0 0 1px #ffe16a; }.q-dice [data-held=true] small { color:#ffe16a;font-weight:900; }
 [data-theme=modern] .q-die { background:linear-gradient(135deg,#fffdf2,#cbd3dd); box-shadow:inset -2px -2px 3px #8494a7,0 .5cqh #66768b,0 1cqh 1cqh #0006; }.quintzee-plane[data-theme=modern] .q-die i { background:#253951; box-shadow:inset 0 1px 2px #000; }
-.q-roll { width:100%; display:flex;align-items:center;justify-content:center;gap:1em; border:1px solid #fff2ab; border-radius:1.3cqh; padding:1.5cqh 1%; color:#183b1d; background:linear-gradient(#ffe98c,#ddb94c); font-weight:900; font-size:clamp(13px,2.5cqh,22px); touch-action:manipulation; box-shadow:0 .4cqh #91772e; }.q-roll small { font-size:.75em; }.q-roll:disabled { opacity:.55; box-shadow:none; }
+.q-roll { width:100%; min-height:64px;flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:1em; border:1px solid #fff2ab; border-radius:1.3cqh; padding:1.5cqh 1%; color:#183b1d; background:linear-gradient(#ffe98c,#ddb94c); font-weight:900; font-size:clamp(13px,2.5cqh,22px); touch-action:manipulation; box-shadow:0 .4cqh #91772e; }.q-roll small { font-size:.75em; }.q-roll:disabled { opacity:.55; box-shadow:none; }
 .q-status { margin:0; text-align:center; font-size:clamp(10px,1.7cqh,15px); align-self:center; }.q-status button { text-decoration:underline; }
 .q-opponent-turn { width:100%;padding:1.5cqh 1%;border:1px solid #ffe16a88;border-radius:1.3cqh;text-align:center;font-size:clamp(13px,2.5cqh,22px);font-weight:800;color:#ffe16a;background:#ffffff0d; }
 .q-result { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.5cqh; border:1px solid #e5cd7e; border-radius:1.3cqh; background:#092d22f5; color:#ffe16a; text-align:center; font-size:clamp(15px,3cqh,26px); }.q-result strong { font-size:1.2em; }.q-result small { font-size:.55em; color:white; }
 [data-theme=modern] .q-result { background:#1a2342f5; }
-@container quintzee-space (min-aspect-ratio: 3/2) {
- .quintzee-plane { grid-template-rows:18% 8% minmax(0,1fr) max(32px,10%) 22% 4%; }
- .q-timing { flex-direction:row;gap:1.5%; }.q-base { white-space:nowrap; }.q-time { flex:1; }
- .q-bonuses { padding:.25em 1%; }.q-upper-bonus { grid-template-columns:auto auto 1fr; }.q-upper-bonus>em { grid-column:2; grid-row:1; }.q-upper-bonus>b { grid-column:3; justify-self:end; }.q-filled-bonus { flex-direction:row;justify-content:flex-end;gap:.3em; }
- .q-upper-bonus>[data-upper-pace]{grid-column:3}
- .q-play-area { grid-template-columns:60% 38%;grid-template-rows:auto minmax(0,1fr);gap:1cqh 2%; }
- .q-roll-guide { grid-column:1/-1; }.q-roll,.q-opponent-turn { height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.2em;padding:.5cqh; }
- .q-roll { flex-direction:row;gap:.6em;font-size:clamp(14px,3cqh,20px);line-height:1.1;white-space:nowrap; }
- .q-dice button { display:flex;align-items:center;gap:.5em; }.q-dice small { padding:0; }
- .q-scorecard { grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:1cqh; }
- .q-scorecard section { display:contents; }
-}
 @media(prefers-reduced-motion:no-preference){.q-result { animation:q-arrive .2s ease-out; }.q-dice [data-rolling=true] .q-die { animation:q-roll .12s linear infinite; }.q-dice [data-held=true] .q-die { animation:none; }@keyframes q-arrive { from{opacity:0;transform:translateY(6%)}to{opacity:1;transform:none} }@keyframes q-roll { 0%{transform:translate(-7%,4%) rotate(-25deg) scale(.96)}25%{transform:translate(6%,-7%) rotate(28deg) scale(1.02)}50%{transform:translate(-5%,-3%) rotate(-32deg) scale(.96)}75%{transform:translate(5%,6%) rotate(22deg) scale(1.01)}100%{transform:translate(-7%,4%) rotate(-25deg) scale(.96)} }}
 
-/* Approved short-screen fallback: retain all twelve 48px selectors. The dice
-   keep their existing markup, artwork, holds and animation in a compact lane. */
-@container quintzee-space (max-height: 660px) {
- .quintzee-plane { grid-template-rows:32px 28px minmax(324px,1fr) 22px minmax(68px,1fr) 0; padding:3px; }
- .quintzee-plane .q-players .tri-score-pill { padding:0; }
- .quintzee-plane .q-players .tri-score-pill>strong { font-size:18px;line-height:20px; }
- .quintzee-plane .q-players .tri-score-pill>span { font-size:8px;line-height:8px; }
- .q-timing { gap:1px; }
- .q-scorecard { padding:2px;gap:6px; }
- .q-category { font-size:clamp(12px,4cqw,16px); }
- .q-scorecard section { gap:3px; }
- .q-selector { width:48px;height:48px; }
- .q-play-area { container-type:size;grid-template-rows:1fr auto;gap:2px;padding:2px 0; }
- .q-roll-guide { display:none; }
- .q-die { width:min(100%,calc(100cqh - 46px));padding:3px; }
- .q-dice button { padding:2px; }
- .q-dice small { font-size:8px;padding-top:2px; }
- .q-roll,.q-opponent-turn { padding:4px 1%;font-size:12px; }
- .q-status { position:absolute;bottom:0;left:0;right:0; }
- .q-bonuses { font-size:13px; }
-}
-.quintzee-async-turn { container:quintzee-async/size; }
-@container quintzee-async (max-height: 700px) {
- .quintzee-async-turn>.delayed-turn-nav { display:none; }
-}
 
 .q-category[data-banked=true]{opacity:.48}.q-start-deadline{display:flex;align-items:center;justify-content:center;margin:0;color:#fff4c7;font-weight:bold;font-size:2.4cqh;pointer-events:none}.quintzee-theme-choice{display:flex;align-items:center;gap:.7rem;margin:1rem 0}
 
@@ -117,3 +83,41 @@
 .q-bonuses [data-earned=true]>span{color:#9be5a2;font-weight:800}
 .q-bonuses [data-earned=true]>em{color:#9be5a2}
 .q-bonuses [data-earned=false]>span{color:#ff9e9e;text-decoration:line-through;text-decoration-thickness:.1em}
+
+/* Compress the surrounding space before touching gameplay geometry. These
+   dimensions are shared by Arcade, live and Async, including disabled states. */
+.quintzee-async-turn>.delayed-turn-nav { padding:.25rem .65rem; }
+.quintzee-async-turn>.delayed-turn-nav>a { min-height:1.5rem; }
+.q-roll { font-size:clamp(16px,4.8cqw,22px);line-height:1.2;white-space:nowrap; }
+.q-roll small { white-space:nowrap; }
+.q-bonuses { font-size:clamp(16px,4.3cqw,18px); }
+.q-dice small { font-size:clamp(11px,3.5cqw,14px); }
+@container quintzee-space (max-height: 720px) {
+ .quintzee-plane { grid-template-rows:minmax(36px,7%) minmax(28px,6%) minmax(318px,1fr) 26px auto 0;gap:2px;padding:3px; }
+ .q-players .tri-score-pill { padding:0 2%; }
+ .q-players .tri-score-pill>strong { font-size:22px;line-height:1.1; }
+ .q-players .tri-score-pill>span { font-size:10px;line-height:1.1; }
+ .q-players>.tri-score-cell>small { display:block;font-size:11px;line-height:1.1; }
+ .quintzee-plane:has(.q-players>.tri-score-cell>small) { grid-template-rows:minmax(52px,7%) minmax(28px,6%) minmax(318px,1fr) 26px auto 0; }
+ .q-timing { gap:3px; }
+ .q-scorecard { padding:2px; }
+ .q-scorecard section { gap:2px; }
+ .q-category { font-size:clamp(13px,4cqw,18px); }
+ .q-play-area { grid-template-rows:18px auto 64px;gap:2px;padding:2px 0;align-content:space-between; }
+ .q-die { width:100%;padding:clamp(5px,1.5cqw,8px); }
+ .q-dice button { padding:3px; }
+ .q-dice small { padding-top:3px; }
+ .q-roll { padding:8px 1%; }
+ .q-status { position:absolute;bottom:0;left:0;right:0; }
+}
+@container quintzee-space (max-height: 600px) {
+ /* Place secondary score/timing information together; all twelve categories,
+    full dice and the 64px action remain visible at the same time. */
+ .quintzee-plane { grid-template-columns:1fr 1fr;grid-template-rows:40px minmax(318px,1fr) 22px auto; }
+ .quintzee-plane:has(.q-players>.tri-score-cell>small) { grid-template-rows:52px minmax(318px,1fr) 22px auto; }
+ .q-players { grid-column:1;grid-row:1; }
+ .q-timing { grid-column:2;grid-row:1; }
+ .q-scorecard,.q-bonuses,.q-play-area { grid-column:1/-1; }
+ .q-play-area { grid-template-rows:auto 64px; }
+ .q-roll-guide { display:none; }
+}
