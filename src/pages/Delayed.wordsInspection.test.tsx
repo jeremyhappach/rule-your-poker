@@ -39,9 +39,9 @@ it('opens the committed board and own rack without gameplay, pending-command rep
  expect(screen.getAllByRole('gridcell')).toHaveLength(225);expect(screen.getByRole('gridcell',{name:'H8 A, 1 points'})).toBeTruthy();
  for(const name of ['C, 3 points','Blank, 0 points','Exchange','Pass']){const button=screen.getByRole('button',{name}) as HTMLButtonElement;expect(button.disabled).toBe(true);fireEvent.click(button);}
  expect(container.querySelectorAll('.words-rack button')).toHaveLength(2);expect(screen.getByText('24')).toBeTruthy();expect(screen.queryByRole('button',{name:'Submit Word'})).toBeNull();
- fireEvent.click(screen.getByRole('gridcell',{name:'H8 A, 1 points'}));expect(container.querySelector('.words-scroll')?.getAttribute('data-zoom')).toBe('1');
- const pan=vi.fn();container.querySelector('.words-scroll')!.scrollBy=pan;
- fireEvent.click(screen.getByRole('button',{name:'Pan →'}));expect(pan).toHaveBeenCalledOnce();
+ const viewport=container.querySelector('.words-viewport')!;
+ fireEvent.keyDown(viewport,{key:'+'});expect(viewport.getAttribute('data-zoom')).toBe('1.25');
+ fireEvent.click(screen.getByRole('button',{name:'Reset Zoom'}));expect(viewport.getAttribute('data-zoom')).toBe('1');
  const reads=mock.rpc.mock.calls.length,channels=mock.channel.mock.calls.length;
  mock.snapshot={...mock.snapshot,revision:5,turn:5,canAct:true,activePlayerId:'me',scores:{me:12,other:30}};
  mock.home={...mock.home,revision:5,lineup:[{...mock.home.lineup[0],actor:'me',scores:mock.snapshot.scores}]};

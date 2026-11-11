@@ -45,7 +45,7 @@ it.each([false,true])('only final turn and crosses → count → adjusted board 
  await advance(250);expect(score()).toBe('384');await advance(2000);expect(score()).toBe('385');
  expect(ui.container.querySelector(`[data-score-player="${viewer}"] strong`)?.textContent).toBe('245');
  expect(screen.getByText('Opponent wins')).toBeTruthy();
- expect(ui.container.querySelector('.words-scroll')?.getAttribute('data-zoom')).toBe('0');expect(acks()).toEqual([]);
+ expect(ui.container.querySelector('.words-viewport')?.getAttribute('data-zoom')).toBe('1');expect(acks()).toEqual([]);
  await advance(2999);emphasis();expect(screen.queryByText('Game Complete')).toBeNull();expect(acks()).toEqual([]);
  await advance(101);expect(screen.getByText('Game Complete')).toBeTruthy();expect(acks()).toEqual(['turn-1','turn-3','turn-5']);
  await advance(6100);expect(acks()).toEqual(['turn-1','turn-3','turn-5','child-result']);expect(screen.getByTestId('path').textContent).toBe(matchEnds?'?finale=1':'');

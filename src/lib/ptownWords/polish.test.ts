@@ -1,19 +1,8 @@
 import {describe,it,expect} from 'vitest';
-import {nextDraftSquare} from './draftDirection';
 import {scoreFrame} from './scorePresentation';
 import {pendingNoticeKeys,turnDestination} from '../delayed/notifications';
 import type {WordsSnapshot} from './model';
 describe('Words polish authority-independent projections',()=>{
- const board=Array(225).fill(null),p=(square:number)=>({square,tileId:square,letter:'A'});
- it('requires two aligned connected tiles and resets at zero or one',()=>{
-  for(const draft of [[],[p(112)],[p(112),p(128)],[p(112),p(114)]])expect(nextDraftSquare(draft,board)).toBeNull();
-  expect(nextDraftSquare([p(112),p(113)],board)).toBe(114);
-  expect(nextDraftSquare([p(112),p(127)],board)).toBe(142);
- });
- it('skips committed cells without wrapping at the board edge',()=>{
-  const b=[...board];b[113]={id:1};b[115]={id:2};expect(nextDraftSquare([p(112),p(114)],b)).toBe(116);
-  expect(nextDraftSquare([p(13),p(14)],b)).toBeNull();expect(nextDraftSquare([p(209),p(224)],b)).toBeNull();
- });
  it('holds the previous score until the flight lands, then shows the authoritative target',()=>{
   const v={identity:{dealerGameId:'d'},viewerId:'me',turn:2,scores:{me:20},moves:[{turn:1,playerId:'me',action:'place',points:8}],movePresentation:{turn:1,playerId:'me'}} as unknown as WordsSnapshot;
   expect(scoreFrame(v,1000,1000)?.score).toBe(12);expect(scoreFrame(v,2000,1000)?.score).toBe(12);

@@ -1,3 +1,25 @@
+# Words gameplay polish — November 11, 2026 — local candidate, publication held
+
+Live multiplayer and Async share drag staging, tap selection, blank assignment,
+pinch, bounded pan, and Reset Zoom in the Words board. The final ten-second
+warning follows the authoritative gameplay deadline and uses the existing
+mixer. On narrow boards the numeral sits above the grid, leaving every square
+visible. Arcade has no Words entry.
+
+Chrome exercised both mode adapters against disposable PostgreSQL fixtures.
+Twelve viewport cases covered desktop, narrow, short, emulated portrait,
+small portrait, and landscape. Real browser input covered local staging,
+gesture interruption, pan, zoom, and submission. Native Chrome scheduled all
+ten audible beats in order and honored global mute. Both modes rejected an
+invalid word, scored CAT for 10, refilled the rack, displayed the last score,
+and handed off the turn. Async draft restoration, time-bank extension, and
+the competing submission/expiry calls passed. Local SQL rules and Async clock
+proofs passed with rollback. The browser harness and ignored evidence are in
+`dev/words-gameplay/` and `qualification.local/words-gameplay/`.
+
+The repository-wide ESLint command still fails on existing errors. Physical
+iPhone Safari and installed PWA remain unverified. No publication was attempted.
+
 # Quintzee compact gameplay layout — November 11, 2026
 
 At 393×500, the previous 318px scorecard minimum pushed the roll control
