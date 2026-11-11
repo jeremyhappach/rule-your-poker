@@ -1,3 +1,21 @@
+# Quintzee Async polish and shared sound save — November 11, 2026
+
+The shared header and settings sound preference now save through
+`set_gameplay_sound_preference`. The former authenticated profile update
+could fail resolving a private helper in the profile trigger. Migration
+`20261111174200` is installed. Rollback proofs before and after installation
+confirmed mute, unmute, readback, and account isolation with zero fixtures left.
+
+Quintzee accepts a legal first roll while the preceding numeric score counts
+up. The authoritative bonus pause and one-request guard still apply. Signed
+upper pace is shown beside the subtotal in a green or red pill, and the
+duplicate category guide is removed. The category action retains its timing.
+
+Touch-browser fixtures at 393×852 and 375×667 passed one-tap Start, new groups,
+both pace colors, category timing, and sound state through navigation and
+reload. TypeScript, 4,033 app tests, 241 harness tests, 46 tooling tests, and
+the production build passed. Physical iPhone PWA smoke remains pending.
+
 # Audio reliability, foreground push and Async lobby — November 11, 2026
 
 Gameplay timelines use one clock reading for cue position and admission.

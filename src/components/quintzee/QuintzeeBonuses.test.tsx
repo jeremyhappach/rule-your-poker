@@ -15,7 +15,12 @@ it('preserves the existing permitted upper subtotal without resolving unrevealed
  expect(container.querySelector('[data-upper-pace]')).toBeNull();
 });
 it.each([{scores:{fives:20},pace:'+5'},{scores:{fives:20,threes:6,ones:0},pace:'-1'},{scores:{ones:3,twos:6},pace:'0'},{scores:{fours:20,fives:25,sixes:18},pace:'+18'}])('uses the shared Yahtzee pace for committed scores: $pace',({scores,pace})=>{
- const {container}=render(<QuintzeeBonuses rules={rules} scores={scores} result={null}/>);expect(container.querySelector('[data-upper-pace]')?.textContent).toBe(pace);
+ const {container}=render(<QuintzeeBonuses rules={rules} scores={scores} result={null}/>);
+ const pill=container.querySelector('[data-upper-pace]');
+ expect(pill?.textContent).toBe(pace);
+ expect(pill?.getAttribute('data-upper-pace')).toBe(pace.startsWith('+')?'positive':pace.startsWith('-')?'negative':'neutral');
+ expect(pill?.previousElementSibling).toBe(container.querySelector('[data-upper-progress]'));
+ expect(container.querySelector('.q-filled-bonus')?.contains(pill)).toBe(false);
 });
 it('keeps pace pending when Yahtzee would infer impossibility, then hides on actual Quintzee upper failure',()=>{
  const scores={twos:3,threes:9,fours:12,fives:15,sixes:18};const h=render(<QuintzeeBonuses rules={rules} scores={scores} result={null}/>);

@@ -3302,6 +3302,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_gameplay_sound_preference: {
+        Args: { p_enabled: boolean; p_user_id: string }
+        Returns: boolean
+      }
       arcade_rules_help: {Args:{p_ruleset?:string|null};Returns:Json}
       account_statement: {
         Args: {

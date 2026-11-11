@@ -40,13 +40,15 @@
 [data-theme=modern] .q-category { background:#253956; border-color:#506284; color:#aebbd2; border-radius:1cqh; }
 [data-theme=modern] .q-category[data-banked=true] { background:#18273c; }
 .q-bonuses { display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:clamp(13px,2.2cqh,18px);line-height:1.15;font-weight:600;padding:0 1%;white-space:nowrap; }
-.q-upper-bonus { display:flex;align-items:baseline;gap:.3em;min-width:0;text-align:left; }
-.q-upper-bonus>[data-upper-pace]{margin-left:.3em;font-size:inherit;line-height:inherit;font-weight:700;font-variant-numeric:tabular-nums;color:#fff}
+.q-upper-bonus { display:flex;align-items:center;gap:.3em;min-width:0;text-align:left; }
+.q-upper-bonus>[data-upper-pace] { display:inline-grid;place-items:center;min-inline-size:2.35em;margin-inline-start:.2em;padding:.08em .42em;border-radius:999px;background:#ffffff26;color:#fff;font-size:inherit;line-height:1;font-weight:800;font-variant-numeric:tabular-nums; }
+.q-upper-bonus>[data-upper-pace="positive"] { background:#bdf58d;color:#123b24; }
+.q-upper-bonus>[data-upper-pace="negative"] { background:#ffc4c4;color:#641e25; }
 .q-filled-bonus { display:flex;align-items:baseline;gap:.4em;text-align:right;white-space:nowrap; }
 .q-bonuses b { font-variant-numeric:tabular-nums; }.q-bonuses em { font-style:normal; color:#ffe16a; }.q-bonuses [data-earned=true] { color:#e8ffaf; }
 .q-play-area { position:relative; display:grid;grid-template-rows:auto minmax(0,1fr) auto; align-items:center; gap:1cqh; min-height:0; padding:.6cqh 0; }
 .q-roll-guide { display:flex;justify-content:space-between;align-items:center;gap:.5em;font-size:clamp(11px,1.9cqh,17px);line-height:1.5;min-height:1.5em; }
-.q-roll-guide strong { color:#ffe16a;white-space:nowrap; }.q-roll-guide span { text-align:right; }
+.q-roll-guide strong { color:#ffe16a;white-space:nowrap; }
 /* Five equal targets share 88% of the lane after four 3% gaps: each is 17.6%.
    The empty lane reserves the same face, border, padding and HOLD line as a
    populated lane. No state-dependent sizing or placeholder dice are needed. */

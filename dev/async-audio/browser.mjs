@@ -71,12 +71,13 @@ async function scenario(game,width,mode='async'){
    if(path.startsWith('/auth/v1/'))return send(path.endsWith('/user')?user:{user,access_token:token});
    if(path.startsWith('/rest/v1/rpc/')){const name=path.split('/').at(-1);
     if(name==='account_access_snapshot')return send({userId:viewer,enabled:true,status:'enabled',revision:1,email:user.email,verified:true,admin:false});
+    if(name==='set_gameplay_sound_preference'){const data=req.postDataJSON();assert.equal(data.p_user_id,viewer);sound=data.p_enabled;return send(sound);}
     if(name==='delayed_home')return send(home());
     if(name==='delayed_respond'){assert.equal(req.postDataJSON().p_action,'accept');invited=false;return send(null);}
     if(name==='delayed_reviews')return send({events:[],terminal:false,actor:state.actor,segment:state.segment,revision:state.revision,started:!!state.board,expiresAt:state.expiresAt,held:false,serverAt:Date.now()});
     if(name==='platform_notification_center')return send({actionable:0,items:[]});return send([]);
    }
-   if(path.startsWith('/rest/v1/')){const table=path.split('/').at(-1),single=(req.headers().accept??'').includes('object');if(table==='profiles'&&req.method()==='PATCH'){sound=req.postDataJSON().play_sounds;return send({play_sounds:sound});}const value=table==='profiles'?{id:viewer,username:viewer,is_active:true,play_sounds:sound}:null;return send(single?value:value?[value]:[]);}
+   if(path.startsWith('/rest/v1/')){const table=path.split('/').at(-1),single=(req.headers().accept??'').includes('object');const value=table==='profiles'?{id:viewer,username:viewer,is_active:true,play_sounds:sound}:null;return send(single?value:value?[value]:[]);}
    if(url.origin!==origin){external.push(req.url());return route.abort();}
    if(path==='/api/delayed'||path==='/api/delayed-run21'||path==='/api/arcade'){
     const command=req.postDataJSON();commands.push({viewer,...command});advance();

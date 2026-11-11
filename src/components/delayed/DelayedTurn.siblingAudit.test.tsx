@@ -175,6 +175,28 @@ it('resumed Quintzee keeps its dice and deadline without another Start or rumble
  expect(mock.request.mock.calls.every(([c])=>c.op==='state')).toBe(true);expect(mock.snapshot.board.deadline).toBe(180000);
 });
 
+it('Quintzee accepts the next first roll while the posted score is still counting',async()=>{
+ const initialTurn=initial('quintzee');
+ mock.snapshot=initialTurn;
+ const ui=mount(false,true);await flush();
+ const posted={...initialTurn,revision:2,board:{...initialTurn.board,scores:{twos:4,chance:16},
+  baseScore:20,dice:[],rollsRemaining:3,potentials:{}}};
+ await receive(posted);
+ expect(ui.container.querySelector('[data-base-score]')?.textContent).toBe('4');
+ const nextRoll=ui.getByRole('button',{name:'Roll (3 remaining)'});
+ expect((nextRoll as HTMLButtonElement).disabled).toBe(false);
+ let finishRoll:(value:unknown)=>void=()=>{};
+ mock.request.mockImplementation((command:any)=>command.op==='action'?new Promise(resolve=>{finishRoll=resolve;}):Promise.resolve(posted));
+ fireEvent.click(nextRoll);fireEvent.click(nextRoll);await flush();
+ const actions=mock.request.mock.calls.filter(([command])=>command.op==='action');
+ expect(actions).toHaveLength(1);
+ expect(actions[0][0]).toMatchObject({revision:2,segment:1,intent:{type:'roll',items:[]}});
+ await act(async()=>finishRoll({...posted,revision:3,board:{...posted.board,dice:[1,2,3,4,6],rollsRemaining:2,rollSerial:2}}));
+ expect(ui.getAllByRole('button',{name:/Die \d: rolling/})).toHaveLength(5);
+ await tick(3000);
+ expect(ui.container.querySelector('[data-base-score]')?.textContent).toBe('20');
+});
+
 it.each(['run21','quintzee','boxdrop'])('%s retains both players and only the disclosed opponent total',async game=>{
  mock.snapshot={...initial(game),totals:{me:0,other:125},pendingResults:{other:1}};const ui=mount();await flush();
  expect(ui.getByLabelText('Opponent score 125')).toBeTruthy();await receive({...mock.snapshot,reviewRevision:1,pendingResults:{other:0},totals:{me:0,other:250}});

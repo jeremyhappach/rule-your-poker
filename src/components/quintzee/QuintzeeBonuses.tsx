@@ -8,10 +8,11 @@ export function QuintzeeBonuses({rules,scores,result,showOutcomes=true}:{rules:Q
  const fillEarned=!showOutcomes?undefined:QUINTZEE_CATEGORIES.some(c=>scores[c]===0)?false:QUINTZEE_CATEGORIES.every(c=>(scores[c]??0)>0)?true:result?false:undefined;
  // Reuse Yahtzee pace only; its early-impossibility flag is not Quintzee's failure rule.
  const pace=getUpperBonusProgress(scores).pace,paceText=pace>0?'+'+pace:String(pace);
+ const paceTone=pace>0?'positive':pace<0?'negative':'neutral';
  return <div className="q-bonuses"><div className="q-upper-bonus" data-earned={upperEarned}>
   <span>Upper{upperEarned!==undefined&&<span className="sr-only">{upperEarned?' achieved':' not achieved'}</span>}</span>
   <b data-upper-progress aria-label={`Upper score ${upper} of ${rules.upperThreshold}`}>{upper}/{rules.upperThreshold}</b>
-  {showOutcomes&&upperEarned!==false&&<small data-upper-pace aria-label={`Upper bonus pace ${paceText}`}>{paceText}</small>}
+  {showOutcomes&&upperEarned!==false&&<small data-upper-pace={paceTone} aria-label={`Upper bonus pace ${paceText}`}>{paceText}</small>}
  </div><div className="q-filled-bonus" data-earned={fillEarned}>
   <span>Fill All{fillEarned!==undefined&&<span className="sr-only">{fillEarned?' achieved':' not achieved'}</span>}</span>
   {fillEarned!==false&&<em>+{rules.clearBonus}</em>}
