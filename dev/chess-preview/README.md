@@ -1,0 +1,5 @@
+# P-Town Chess local preview
+
+Run `node dev/chess-preview/server.mjs` from this worktree and open <http://127.0.0.1:15431/>. The tile opens White; the top-right link switches to Black. Open both views to try handoff. The local fixture retains moves in `dev/chess-preview/match.local.json` across reloads and server restarts; New game resets only that fixture. Run `node dev/chess-preview/verify.mjs` for the browser and rules checks (the script resets the local fixture).
+
+The fixture is local, synthetic and nonfinancial: it is not authenticated multiplayer or production persistence. The dotted timer depicts a 36-hour preview deadline; reaching it blocks moves but does not yet award a forfeit or run recovery. Chess.js automatically ends this preview on threefold repetition or the 50-move condition; production claim and automatic-draw policy remains to be designed. Draw offers, resignation, production lifecycle, settlement and security are not implemented. Promotion and special moves are supported by the library, but production readiness requires authoritative server integration and complete qualification.
