@@ -1,3 +1,15 @@
+# 2026-11-12 — Chess shares rules, clocks and canonical settlement
+
+Chess/1 revives only the owner's captured Q/R/B/N, consuming one inventory entry;
+without one, ordinary Q/R/B/N promotion applies. Five-minute opened/live turns and
+two +3-minute banks per player/game are shared across modes. Async retains its
+36-hour availability window and 24-hour Last Call; expiry forfeits. Stalemate is
+an immediate draw. Authenticated Node uses one chess.js reducer; service-only CAS
+RPCs commit immutable identities/config/background and deduplicate UUID commands.
+Live uses the existing Words chip settlement/continuation pattern. Async uses the
+existing parent outcomes/finalization, review and notification owners. Admission
+remains closed; publication, uploads and hosted migrations are not authorized.
+
 # 2026-11-10 — Optional bonuses retain canonical financial ownership
 
 A real-money sole qualifier can skip only after both main games are complete and

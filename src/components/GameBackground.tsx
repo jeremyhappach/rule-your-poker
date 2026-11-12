@@ -17,6 +17,6 @@ export function GameBackground({id}:{id?:string|null}){
   return()=>{alive=false;if(url)URL.revokeObjectURL(url);};
  },[photo]);
  return <div className="game-photo-background" aria-hidden="true" data-background-id={photo?.id}>
-  {photo&&image?.id===photo.id&&<img src={image.url} alt="" draggable={false} style={{objectPosition:photo.position}}/>}
+  {photo&&image?.id===photo.id&&<img src={image.url} alt="" draggable={false} style={{objectPosition:photo.position,transform:photo.scale?`scale(${photo.scale})`:undefined,transformOrigin:photo.origin}}/>}
  </div>;
 }

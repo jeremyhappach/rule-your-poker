@@ -9,6 +9,7 @@ const artwork=(id:string,theme:string):AsyncGameBrand=>({
   theme,logo:`/game-branding/async-v1/${id}-logo.webp`,motif:`/game-branding/async-v1/${id}-motif.webp`,
 });
 export const ASYNC_GAME_BRANDING:Readonly<Record<string,AsyncGameBrand>>={
+  'chess':{theme:'#18352b'},
   'ptown-words':{theme:'#123f58',letterTiles:true},
   run21:artwork('run21','#123c2b'),
   'tri-towers':artwork('tri-towers','#30204d'),

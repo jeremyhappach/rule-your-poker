@@ -67,8 +67,10 @@
     "id": "peoria-crusens-138624087814",
     "source": "image(20261112-185827).png",
     "path": "game-backgrounds/peoria-crusens-138624087814.png",
-    "position": "27% 24%",
+    "position": "0% 24%",
     "sha256": "138624087814412b943817fbaed79fcf5163923b692ed9ab7c917e5230ec3ecb",
-    "bytes": 627476
+    "bytes": 627476,
+    "scale": 1.5,
+    "origin": "0% 100%"
   }
 ]

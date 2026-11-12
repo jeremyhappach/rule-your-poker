@@ -114,3 +114,50 @@ the independent background phase. The accepted-pattern shortcut is insufficient
 for Chess: there is no existing authenticated Chess authority or financial
 adapter to polish. All requested revival/clock/stake decisions are now recorded;
 the next bounded implementation phase is that missing production foundation.
+
+
+## November 12 continuation — local Chess implementation
+
+Implemented files: api/chess.ts; server/chess/operation.ts; src/lib/chess/*;
+src/hooks/useChess.ts and useChessAccess.ts; src/components/chess/*;
+src/components/delayed/ChessTurn.tsx; src/components/rules/ChessRules.tsx;
+Game/Delayed routes, DealerGameSetup, setup authority, catalog, Async branding,
+rules-mode typing and the existing terminal-retention adapter.
+
+Persistence candidate: supabase/chess/{schema.sql,transport.sql,candidate.sql}.
+Regenerate with node dev/chess/prepare.mjs. Exact hosted owner definitions and
+hash guards are recorded in dev/chess/installed*.json. Apply the held shared
+background candidate first, then Chess. No migration was registered or applied
+on a hosted project. All Chess admission/real-money flags default to false.
+The API uses the established RUN21_SUPABASE_URL/service-role environment pattern.
+Browser clients send intents only; service-only load/commit RPCs enforce actor,
+identity, expected revision and request fingerprint under canonical row locks.
+The existing recovery cron calls Chess recovery for expiry and postgame finish.
+
+Nine original PNGs stay outside public/src/dist in ignored asset staging, intended
+for the existing private arcade-artwork Storage bucket under game-backgrounds/.
+Stable IDs and crop metadata are in src/lib/gameBackgrounds/photos.json. SQL picks
+from the active pool at live creation or Async acceptance. Words active-game
+backfill locks the owner rows, assigns only absent IDs, bumps the live revision
+or Async child plus parent revision once, and preserves all assigned IDs. Competing
+backfills are idempotent. No images were uploaded; the existing solid background
+is the fallback until separately authorized installation/upload/publication.
+Crusens uses an original-image crop/scale to keep its existing sign above Chess.
+
+Local checks: app TypeScript; 46 focused rules/catalog/background tests; Vite
+production build; disposable PostgreSQL proofs in play and real-money modes:
+actual legal checkmate, 105/95 canonical chips from 100/100, balanced transfer
+batch, immutable result, duplicate/late/terminal request replay, authorization,
+postgame continuation, live/Async legal stalemate with zero transfer, banks,
+expiry, zero-client recovery and independent-connection same-request/competing-
+move races. Real Async additionally proves two balanced SessionResult postings
+(total 0, absolute total 14 for stake 7). Synthetic mutations roll back before
+isolated concurrency fixtures are committed; the disposable database is dropped.
+Chrome checks at 393x852, 375x667 and 320x568 cover square cells/board, touch drag,
+tap, rejected drops, capture poof, opponent knight hop, reload/remount dedupe,
+revival selection/consumption, reduced motion and all nine photo selections.
+Ignored evidence: qualification.local/chess. Hosted transport/Storage, physical
+Safari/PWA and owner smoke remain unverified. No revival or timer decision remains.
+
+Earlier 'remaining Chess work' above describes the prior checkpoint and is
+superseded by this continuation. The original main worktree was not modified.

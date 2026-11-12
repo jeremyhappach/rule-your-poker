@@ -1,3 +1,4 @@
+import {ChessTurn} from '@/components/delayed/ChessTurn';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {PlayingNow} from '@/components/delayed/PlayingNow';
 import {AsyncSessionName} from '@/components/delayed/AsyncSessionName';
@@ -120,7 +121,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
       {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}
-      {!ours&&c.game==='ptown-words'&&!home.held&&<Link className="delayed-view-board" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
+      {!ours&&['ptown-words','chess'].includes(c.game)&&!home.held&&<Link className="delayed-view-board" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
    </li>;})}</ul>
   {!historical&&home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
    <p>The first player in each game is selected randomly.</p>
@@ -150,5 +151,5 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const child=home?.lineup.find(c=>c.id===childId);
  useUpdates(userId,refresh,child?.game!=='ptown-words');
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
- return child.game==='ptown-words'?<WordsTurn key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
+ return child.game==='chess'?<ChessTurn childId={childId} matchId={matchId} userId={userId}/>:child.game==='ptown-words'?<WordsTurn key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

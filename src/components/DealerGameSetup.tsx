@@ -1,3 +1,4 @@
+import {useChessAccess} from '@/hooks/useChessAccess';
 import {useMegaCompetitionConfig} from '@/hooks/useMegaCompetitionConfig';
 import {MegaCompetitionSettings} from './megaCardGolf/MegaCompetitionConfig';
 import type {MegaCompetitionConfig} from '@/lib/megaCardGolf/competition';
@@ -228,13 +229,14 @@ const DealerGameSetupInner = ({
   const racePokerAllowed = useRacePokerAccess(gameId);
   const battle31Allowed = useBattle31Access(gameId);
   const quintzeeAllowed = useQuintzeeAccess(gameId);
+  const chessAllowed=useChessAccess(gameId);
   const wordsAllowed = usePtownWordsAccess(gameId);
   const boxdropAllowed = useBoxdropAccess(gameId);
   const tripFlipAllowed = useTripFlipAccess(gameId);
   const takeTwoAllowed = useTakeTwoAccess(gameId);
   const royalAllowed = useRoyalFlashAccess(gameId);
   const originalsAccess=useOriginalsAccess(gameId);
-  const catalogAccess = {...originalsAccess,'mega-card-golf':megaCatalog?.enabled??false,'canasta':canastaAllowed,'six-card-golf':golfAllowed,'race-poker':racePokerAllowed,'battle-31':battle31Allowed,'run21':run21Allowed,'tri-towers':triTowersAllowed,'eleven-up':elevenAllowed,'quintzee':quintzeeAllowed,'ptown-words':wordsAllowed,'boxdrop':boxdropAllowed,'trip-flip':tripFlipAllowed,'take-two':takeTwoAllowed,'royal-flash':royalAllowed};
+  const catalogAccess = {'chess':chessAllowed,...originalsAccess,'mega-card-golf':megaCatalog?.enabled??false,'canasta':canastaAllowed,'six-card-golf':golfAllowed,'race-poker':racePokerAllowed,'battle-31':battle31Allowed,'run21':run21Allowed,'tri-towers':triTowersAllowed,'eleven-up':elevenAllowed,'quintzee':quintzeeAllowed,'ptown-words':wordsAllowed,'boxdrop':boxdropAllowed,'trip-flip':tripFlipAllowed,'take-two':takeTwoAllowed,'royal-flash':royalAllowed};
   const catalogRoster = {players:activePlayerCount,humans:activeHumanCount,realMoney};
   const selectionReason = (id:string) => { const game=findGame(id); return game?eligibility(game,catalogRoster,catalogAccess):'Game unavailable'; };
   // ── DIAGNOSTIC: lifecycle continuity audit (Step 1 of poker shell refactor) ──
@@ -901,7 +903,7 @@ const DealerGameSetupInner = ({
   };
   
   const isSimpleAnteGame = (gameType: string) => {
-    return ['crib-lab','chucky-showdown'].includes(gameType) || gameType === 'canasta' || isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21' || gameType === TRI_TOWERS.id || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'mega-card-golf' || gameType === 'six-card-golf' || gameType === 'race-poker' || gameType === 'battle-31' || gameType === 'quintzee' || gameType === 'ptown-words' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
+    return ['crib-lab','chucky-showdown'].includes(gameType) || gameType === 'canasta' || isDiceGame(gameType) || gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'run21' || gameType === TRI_TOWERS.id || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'mega-card-golf' || gameType === 'six-card-golf' || gameType === 'race-poker' || gameType === 'battle-31' || gameType === 'quintzee' || gameType === 'chess' || gameType === 'ptown-words' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
   };
 
   const handleGameSelect = async (gameType: string) => {
@@ -923,6 +925,7 @@ const DealerGameSetupInner = ({
     if (gameType === 'run21' && !run21Allowed) return;
     if (gameType === 'canasta' && (!canastaAllowed||activeHumanCount<1)) return;
     if (gameType === 'battle-31' && (!battle31Allowed||activeHumanCount<1)) return;
+    if(gameType==='chess'&&!chessAllowed)return;
     if (gameType === 'ptown-words' && !wordsAllowed) return;
     if (gameType === 'boxdrop' && (!boxdropAllowed||activeHumanCount<1)) return;
     if (gameType === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1)) return;
@@ -1036,6 +1039,7 @@ const DealerGameSetupInner = ({
     if (gameTypeToSubmit === 'battle-31' && (!battle31Allowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Battle 31 requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'canasta' && (!canastaAllowed||activeHumanCount<1||activePlayerCount!==2)) { toast.error('Canasta requires exactly 2 players including a human'); return; }
     if (gameTypeToSubmit === 'quintzee' && (!quintzeeAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>4)) { toast.error('Quintzee requires 2–4 players including a human, in fake money'); return; }
+    if(gameTypeToSubmit==='chess'&&(!chessAllowed||activeHumanCount!==2||activePlayerCount!==2)){toast.error('Chess requires two players.');return;}
     if (gameTypeToSubmit === 'ptown-words' && (!wordsAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>4||realMoney)) { toast.error('Ptown Words requires 2–4 players including a human; fake money only'); return; }
     if (gameTypeToSubmit === 'boxdrop' && (!boxdropAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Boxdrop requires 2 players including a human'); return; }
     if (gameTypeToSubmit === 'trip-flip' && (!tripFlipAllowed||activeHumanCount<1||activePlayerCount<2||activePlayerCount>2)) { toast.error('Trip Flip requires 2 players including a human'); return; }
@@ -1048,7 +1052,7 @@ const DealerGameSetupInner = ({
       return;
     }
     const simpleTypes = new Set<DealerGameType>([
-      'crib-lab','chucky-showdown','canasta', 'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'eleven-up', 'royal-flash', 'take-two', 'trip-flip', 'battle-31', 'quintzee', 'ptown-words', 'boxdrop', 'mega-card-golf', 'six-card-golf','race-poker',
+      'crib-lab','chucky-showdown','canasta', 'cribbage', 'gin-rummy', 'horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers', 'eleven-up', 'royal-flash', 'take-two', 'trip-flip', 'battle-31', 'quintzee', 'chess', 'ptown-words', 'boxdrop', 'mega-card-golf', 'six-card-golf','race-poker',
     ]);
     if (!simpleTypes.has(gameTypeToSubmit as DealerGameType)) {
       toast.error('Select a supported game');
@@ -1317,7 +1321,7 @@ const DealerGameSetupInner = ({
               <div className="flex shrink-0 items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
-                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 || selectedGameType==='crib-lab' || selectedGameType==='chucky-showdown' || selectedGameType==='canasta' || selectedGameType==='mega-card-golf' || selectedGameType==='six-card-golf' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='quintzee' || selectedGameType==='ptown-words' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || isTriTowers || selectedGameType==='eleven-up' ? 'match stake' : 'ante'}</p>
+                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 || selectedGameType==='crib-lab' || selectedGameType==='chucky-showdown' || selectedGameType==='canasta' || selectedGameType==='mega-card-golf' || selectedGameType==='six-card-golf' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='quintzee' || selectedGameType==='chess' || selectedGameType==='ptown-words' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || isTriTowers || selectedGameType==='eleven-up' ? 'match stake' : 'ante'}</p>
                   {activeHarnessMap[selectedGameType]?.active && (
                     <p className="mt-1 text-sm font-bold text-red-500">
                       Harness: {activeHarnessMap[selectedGameType].label}
@@ -1339,7 +1343,7 @@ const DealerGameSetupInner = ({
               <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
 
                 <div className="space-y-1">
-                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='crib-lab' || selectedGameType==='chucky-showdown' || selectedGameType==='canasta' || selectedGameType==='mega-card-golf' || selectedGameType==='six-card-golf' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='quintzee' || selectedGameType==='ptown-words' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || selectedGameType==='eleven-up' || selectedGameType==='tri-towers' ? 'Match stake ($)' : 'Ante ($)'}</Label>
+                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='crib-lab' || selectedGameType==='chucky-showdown' || selectedGameType==='canasta' || selectedGameType==='mega-card-golf' || selectedGameType==='six-card-golf' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='quintzee' || selectedGameType==='chess' || selectedGameType==='ptown-words' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || selectedGameType==='eleven-up' || selectedGameType==='tri-towers' ? 'Match stake ($)' : 'Ante ($)'}</Label>
                   <Input
                     id="ante-simple"
                     type="text"

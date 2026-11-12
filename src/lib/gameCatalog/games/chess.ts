@@ -1,0 +1,2 @@
+import type {GameDescriptor} from '../types';
+export default {id:'chess',defaultsKey:'chess',name:'P-Town Chess',category:'other',order:20,family:'megatouch',modes:['multiplayer'],moneyModes:['fake','real'],players:{min:2,max:2,selection:'active-roster'},bots:'unsupported',availability:'chess',development:'integrated',ownerSmoke:'pending',rules:{kind:'versioned',key:'chess',fixedVersion:'ptown-chess/1',load:()=>import('@/components/rules/ChessRules')},defaultsEditor:'stake'} as const satisfies GameDescriptor;

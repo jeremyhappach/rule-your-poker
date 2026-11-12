@@ -2,7 +2,7 @@ import type {ComponentType} from 'react';
 export type RulesMode = 'multiplayer' | 'arcade' | 'async';
 export interface RuleRendererProps {config?:unknown;version?:string;solo?:boolean;mode?:RulesMode}
 export type Category = 'cards' | 'dice' | 'other';
-export type Capability = 'river-city-run' | 'ship-cap-voyage' | 'horses-blitz' | '357-drop' | 'crib-lab' | 'chucky-showdown' | 'run21' | 'tri-towers' | 'eleven-up' | 'royal-flash' | 'take-two' | 'trip-flip' | 'battle-31' | 'quintzee' | 'ptown-words' | 'boxdrop' | 'canasta' | 'six-card-golf' | 'race-poker' | 'mega-card-golf';
+export type Capability = 'chess' | 'river-city-run' | 'ship-cap-voyage' | 'horses-blitz' | '357-drop' | 'crib-lab' | 'chucky-showdown' | 'run21' | 'tri-towers' | 'eleven-up' | 'royal-flash' | 'take-two' | 'trip-flip' | 'battle-31' | 'quintzee' | 'ptown-words' | 'boxdrop' | 'canasta' | 'six-card-golf' | 'race-poker' | 'mega-card-golf';
 export type GameDescriptor = {
  id: string; defaultsKey: string; name: string; category: Category; order: number;
  family: 'traditional' | 'megatouch'; modes: readonly ('multiplayer' | 'arcade')[];

@@ -1,3 +1,9 @@
+Chess: shared rules/configuration and client transport in src/lib/chess; Node
+Auth/reducer boundary in api/chess.ts and server/chess/operation.ts; row-locked
+service-only persistence in supabase/chess (closed candidate). ChessTable and
+ChessTurn use ChessView/ChessBoard in canonical live/Async shells. dev/chess
+contains exact inspected SQL owner snapshots and disposable/browser proofs.
+
 Optional competitive bonus orchestration: `supabase/optional-bonus/` owns strict
 win eligibility, persistent choices and dispatch to existing settlement owners.
 `OptionalBonusDialog.tsx` presents the common choice; existing game transports and
