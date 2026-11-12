@@ -1,3 +1,6 @@
+Local Chess / Words background checkpoint, confirmed Chess house rules and
+unfinished production integration: [CHESS_WORDS_LAUNCH_POLISH.md](CHESS_WORDS_LAUNCH_POLISH.md).
+
 Consolidated Quintzee/optional-bonus/Run21 release, financial proof and rollback:
 [CONSOLIDATED_POLISH_RELEASE.md](CONSOLIDATED_POLISH_RELEASE.md).
 

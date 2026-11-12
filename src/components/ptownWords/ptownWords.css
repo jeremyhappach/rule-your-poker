@@ -1,4 +1,6 @@
-.words-host{flex:1;min-width:0;min-height:0;display:flex;container:words-host/size;font-family:Bahnschrift,Aptos,system-ui,sans-serif}
+.words-host{position:relative;isolation:isolate;flex:1;min-width:0;min-height:0;display:flex;container:words-host/size;font-family:Bahnschrift,Aptos,system-ui,sans-serif}
+.words-host[data-game-background] .words-shell,.words-host[data-game-background] .words-viewport{background:transparent}
+.words-host[data-game-background] .fullscreen-game-toolbar,.words-host[data-game-background] .words-scores>div,.words-host[data-game-background] .words-status{background:rgba(15,25,37,.78)}
 .words-shell{background:#141d29;color:#f3f2e8;padding:.35rem;gap:.25rem;--hud-h-announcement:1.5rem}
 .words-shell button,.words-dialog button{min-height:44px;border:1px solid #425469;border-radius:6px;padding:.25rem .5rem;font:inherit;touch-action:manipulation}
 .words-shell button:focus-visible,.words-dialog button:focus-visible{outline:3px solid #7be1cc;outline-offset:1px}

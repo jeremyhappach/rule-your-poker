@@ -3,6 +3,7 @@ export interface Tile {id:number;face:string;value:number;letter?:string;blank?:
 export interface Placement {tileId:number;square:number;letter:string}
 export type Intent={type:'place';items:Placement[]}|{type:'exchange';items:{tileId:number}[]}|{type:'pass'|'request_pause'|'begin_turn'}|{type:'time_bank';items:{slot:number}[]}|{type:'cancel_pause_request';items:{requestId:string}[]};
 export interface WordsSnapshot {
+ backgroundId?:string;
  identity:{sessionId:string;dealerGameId:string;roundId:string};revision:number;serverAt:number;
  rules:{version:string;dictionaryId:string;dictionarySha256:string;turnMs:number;timeBankUses?:number;timeBankMs?:number};
  playDeadline?:number|null;availabilityDeadline?:number;

@@ -15,6 +15,8 @@ import {createPortal} from 'react-dom';
 import {useWordsBoardGestures,type DragTile,type DropTarget,type TileOrigin} from './useWordsBoardGestures';
 import {fittedBoardSize,focusWord} from './wordsBoardCamera';
 import {useWordsCountdown} from './useWordsCountdown';
+import {GameBackground} from '@/components/GameBackground';
+import {gameBackground} from '@/lib/gameBackgrounds/catalog';
 import './ptownWords.css';
 interface Props {reviewPlayerId?:string;readOnly?:boolean;gameplay?:boolean;onMovePresentationComplete?:(playerId:string)=>void;navigation?:ReactNode;asyncDraftUserId?:string;view:WordsSnapshot;now:number;pending:boolean;connected:boolean;error:string;errorVersion?:number;activeTab:ShellTabId;setActiveTab:(tab:ShellTabId)=>void;panel:ReactNode;sessionEnded:boolean;onIntent:(intent:Intent)=>Promise<boolean>;onReconnect:()=>unknown;balance?:(id:string)=>ReactNode;onPause?:()=>unknown;pausePending?:boolean}
 export function PtownWordsRulesLabel(){return <><CircleHelp size={19} aria-hidden="true"/><span className="sr-only">Rules</span></>;}
@@ -156,7 +158,7 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
   <div className="words-turn-actions">{draft.length>0?<><button disabled={!editable} onClick={()=>setDraft(d=>d.slice(0,-1))}>Undo</button><button disabled={!editable} onClick={()=>{setDraft([]);setSelected(null);}}>Recall</button></>:<><button disabled={!editable||v.bagCount<7} title={v.bagCount<7?'Need 7 in bag':undefined} onClick={()=>{setExchanges([]);openDialog('exchange');}}>Exchange</button><button disabled={!editable} onClick={()=>openDialog('pass')}>Pass</button></>}</div>
   {((error&&!isInvalidWord(error))||!connected)&&<div className="words-error" role="status">{text||'Reconnecting…'}{!connected&&<button onClick={onReconnect}>Reconnect</button>}</div>}
  </div>;
- return <div className="words-host" ref={hostElement} {...gestures.pointerHandlers}><FullscreenGameShell gameplay={gameplay} navigation={navigation} announcement={announce?<div className="words-turn-announcement" role="status">YOUR TURN</div>:undefined} className="words-shell" title="Ptown Words" description="" activeTab={activeTab} setActiveTab={setActiveTab} sessionLabel={<PtownWordsRulesLabel/>} panelTitle={activeTab==='lobby'?'Rules':undefined} panel={panel} scores={scores} actions={actions} sessionEnded={sessionEnded}>
+ return <div className="words-host" data-game-background={gameBackground(v.backgroundId)?.id} ref={hostElement} {...gestures.pointerHandlers}><GameBackground id={v.backgroundId}/><FullscreenGameShell gameplay={gameplay} navigation={navigation} announcement={announce?<div className="words-turn-announcement" role="status">YOUR TURN</div>:undefined} className="words-shell" title="Ptown Words" description="" activeTab={activeTab} setActiveTab={setActiveTab} sessionLabel={<PtownWordsRulesLabel/>} panelTitle={activeTab==='lobby'?'Rules':undefined} panel={panel} scores={scores} actions={actions} sessionEnded={sessionEnded}>
   {!sessionEnded&&<div className="words-board-region" data-paused={v.paused}>
    {readOnly&&<div className="words-view-only" role="status">Opponent's Turn — View Only</div>}
    {v.paused&&<div className="words-paused-cover" role="status">Paused{!host&&<small>Waiting for host to resume</small>}</div>}

@@ -117,6 +117,8 @@ export async function openWordsDatabase(template) {
 
   return {
     sql,rpc,prepare,setDeadline,
+    execute: (query, args = []) => pool.query(query,args),
+    connect: () => pool.connect(),
     row: fixture => sql('SELECT * FROM private.' + fixture.table + ' WHERE ' + fixture.key + '=$1',[fixture.id]),
     async close() { await pool.end(); await root.query('DROP DATABASE ' + database); await root.end(); },
   };

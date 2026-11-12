@@ -1,0 +1,74 @@
+[
+  {
+    "id": "peoria-big-als-5ae487317165",
+    "source": "image(3).png",
+    "path": "game-backgrounds/peoria-big-als-5ae487317165.png",
+    "position": "24% 22%",
+    "sha256": "5ae4873171650a116aa35df286e65bcc260921c108ef4b8164cc93bbd0e999cb",
+    "bytes": 645480
+  },
+  {
+    "id": "peoria-pere-marquette-60412a5fefc9",
+    "source": "image(4).png",
+    "path": "game-backgrounds/peoria-pere-marquette-60412a5fefc9.png",
+    "position": "47% 15%",
+    "sha256": "60412a5fefc92c174963f9d315f08eec6e862547bad7869fafb6babf1d9a7900",
+    "bytes": 274712
+  },
+  {
+    "id": "peoria-hoops-79c99a1dbe3d",
+    "source": "image(5).png",
+    "path": "game-backgrounds/peoria-hoops-79c99a1dbe3d.png",
+    "position": "70% 12%",
+    "sha256": "79c99a1dbe3dedf70accf9b2cf22956b2fcf375b396abddf0444bf62665acbf4",
+    "bytes": 299302
+  },
+  {
+    "id": "peoria-sullys-fa5cd5b082eb",
+    "source": "image(6).png",
+    "path": "game-backgrounds/peoria-sullys-fa5cd5b082eb.png",
+    "position": "50% 18%",
+    "sha256": "fa5cd5b082ebdd9af5fc1c5b434c796bf86d288c7cda74c36bd8e28a179c70db",
+    "bytes": 341755
+  },
+  {
+    "id": "peoria-river-autumn-1baa663f8627",
+    "source": "image(7).png",
+    "path": "game-backgrounds/peoria-river-autumn-1baa663f8627.png",
+    "position": "51% 12%",
+    "sha256": "1baa663f86279ce2a601bb0545c34a003c674d226088c47fa1a6a55653d9b03b",
+    "bytes": 582102
+  },
+  {
+    "id": "peoria-ballpark-464bbd71482f",
+    "source": "image(8).png",
+    "path": "game-backgrounds/peoria-ballpark-464bbd71482f.png",
+    "position": "50% 23%",
+    "sha256": "464bbd71482f38732a1b8e58a6506c1ce2273b9d95fe2cc841c53f6147119ff7",
+    "bytes": 355079
+  },
+  {
+    "id": "peoria-bradley-arena-5b1dc169cf70",
+    "source": "image(9).png",
+    "path": "game-backgrounds/peoria-bradley-arena-5b1dc169cf70.png",
+    "position": "50% 20%",
+    "sha256": "5b1dc169cf7045240ab42a4affcb801ea298c4e1bdd4f0e28702e9123ac8923a",
+    "bytes": 335751
+  },
+  {
+    "id": "peoria-theater-18d28958df02",
+    "source": "image(10).png",
+    "path": "game-backgrounds/peoria-theater-18d28958df02.png",
+    "position": "50% 30%",
+    "sha256": "18d28958df02d66a36270a25314c6781aededac3b43f464e6c068e3b185ef601",
+    "bytes": 194259
+  },
+  {
+    "id": "peoria-crusens-138624087814",
+    "source": "image(20261112-185827).png",
+    "path": "game-backgrounds/peoria-crusens-138624087814.png",
+    "position": "27% 24%",
+    "sha256": "138624087814412b943817fbaed79fcf5163923b692ed9ab7c917e5230ec3ecb",
+    "bytes": 627476
+  }
+]

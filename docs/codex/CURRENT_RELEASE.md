@@ -1,3 +1,17 @@
+# Chess / Words launch polish — November 12, 2026 — incomplete local checkpoint
+
+Shared photo presentation and held Words assignment/backfill candidates are
+implemented locally. Nine original photos remain outside the deployment bundle.
+TypeScript, 49 focused tests, disposable database assignment/concurrency proofs,
+54 portrait/photo cases and a Vite build pass. No upload, hosted migration,
+production data change or publication occurred.
+
+Jeremy expanded the task to full production Chess integration and confirmed
+own-captured Q/R/B/N revival, five-minute turns, two +3-minute banks, expiry
+forfeit, canonical stakes and standard stalemate. Production Chess integration
+and its visual/interaction work remain unfinished; the current Chess source is
+only a local preview. See [scope, decisions and remaining work](CHESS_WORDS_LAUNCH_POLISH.md).
+
 # Words gameplay polish — November 11, 2026 — local candidate, publication held
 
 Live multiplayer and Async share drag staging, tap selection, blank assignment,

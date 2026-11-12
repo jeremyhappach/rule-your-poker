@@ -1703,3 +1703,12 @@ replay; `server/riverCityRun` adapts it to private Arcade receipts/results.
 embedded approved presentation. Installed migration:
 `supabase/migrations/20261110023341_river_city_run_the_boat.sql`.
 Qualification and publication receipt: `docs/codex/RIVER_CITY_RUN_RELEASE.md`.
+# Shared game backgrounds — local candidate, November 12, 2026
+
+`src/lib/gameBackgrounds/photos.json` owns stable photo IDs, original hashes,
+Storage paths and crops. `src/components/GameBackground.tsx` owns rendering;
+live/Async Words mount it in `PtownWordsView`. Unapplied persistence and active
+backfill are in `supabase/game-backgrounds/`; qualification is in
+`dev/game-backgrounds/`. See `CHESS_WORDS_LAUNCH_POLISH.md` for the incomplete
+Chess integration and publication hold.
+

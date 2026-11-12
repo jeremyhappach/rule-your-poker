@@ -3304,3 +3304,13 @@ Monitoring is GET-only; missing alias targets block cleanup recommendations.
 No age-only deletion policy or scheduled destructive action is introduced.
 See `VERCEL_STORAGE_PREVENTION.md`; this decision is local until publication is
 explicitly approved and physical iPhone acceptance is recorded.
+# November 12, 2026 — confirmed Chess house rules, implementation pending
+
+Jeremy chose own-captured Q/R/B/N revival (exclude pawns/kings; consume one
+captured piece; standard promotion only when none qualify), five-minute turns,
+two +3-minute banks per player/game, continuous Async timing after opening,
+expiry by forfeit, canonical winner/opponent stake transfer, and no transfer
+on draws including standard stalemate. Full production integration is requested;
+deployment/publication remains prohibited. Details and remaining implementation:
+`CHESS_WORDS_LAUNCH_POLISH.md`.
+
