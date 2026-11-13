@@ -7,12 +7,12 @@ import {chessSound} from '@/lib/chess/sound';
 import {chessMotion,type ChessSound} from '@/lib/chess/presentation';
 import './chess.css';
 type Drag={from:Square;x:number;y:number;startX:number;startY:number;moved:boolean};
-export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationComplete}:{view:ChessSnapshot;pending:boolean;onIntent:(i:ChessIntent)=>Promise<boolean>;players?:ReactNode;onMovePresentationComplete?:()=>void}){
+export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationComplete,returningToLobby=false}:{view:ChessSnapshot;pending:boolean;onIntent:(i:ChessIntent)=>Promise<boolean>;players?:ReactNode;onMovePresentationComplete?:()=>void;returningToLobby?:boolean}){
  const ref=useRef<HTMLDivElement>(null),dragRef=useRef<Drag|null>(null),suppressClick=useRef(false);
  const [selected,select]=useState<Square|null>(null),[drag,setDrag]=useState<Drag|null>(null),[rejected,reject]=useState<Square|null>(null),[tray,setTray]=useState(false),[promotion,setPromotion]=useState<{from:Square;to:Square}|null>(null),[motion,setMotion]=useState<ChessMove|null>(null),[arrived,setArrived]=useState(false),[displayFen,setDisplayFen]=useState(v.fen);
  const white=v.players[0].id===v.viewerId,viewer:Color=white?'w':'b';
  const engine=useMemo(()=>new Chess(v.fen),[v.fen]),display=useMemo(()=>new Chess(displayFen),[displayFen]);
- const active=v.canAct&&v.opened&&!pending&&!motion&&v.phase==='playing';
+ const active=v.canAct&&v.opened&&!pending&&!motion&&!returningToLobby&&v.phase==='playing';
  const squares=useMemo(()=>Array.from({length:64},(_,i)=>`${'abcdefgh'[white?i%8:7-i%8]}${white?8-Math.floor(i/8):1+Math.floor(i/8)}` as Square),[white]);
  const index=(s:Square)=>squares.indexOf(s),position=(s:Square)=>({left:(index(s)%8)*12.5+'%',top:Math.floor(index(s)/8)*12.5+'%'});
  const previous=useRef({key:'',ply:-1}),soundStops=useRef<(()=>void)[]>([]);
@@ -53,6 +53,7 @@ export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationCo
    {Array.from({length:9},(_,i)=>{const col=i%3,row=Math.floor(i/3);return <span className="chess-fragment" key={i} style={{clipPath:`polygon(${col*33.333}% ${row*33.333}%,${(col+1)*33.333}% ${row*33.333}%,${(col+1)*33.333}% ${(row+1)*33.333}%,${col*33.333}% ${(row+1)*33.333}%)`,'--fragment-x':`${(col-1)*24+(i%2?5:-5)}%`,'--fragment-y':`${row*13-8}%`,'--fragment-turn':`${(i%2?1:-1)*(7+i*3)}deg`} as CSSProperties}><ChessPiece color={motion.capture!.color} type={motion.capture!.piece}/></span>;})}
    {Array.from({length:24},(_,i)=><i key={i} style={{'--dust-x':`${Math.cos(i*2.4)*(35+i*1.4)}%`,'--dust-y':`${Math.sin(i*2.4)*32+18}%`,'--dust-delay':`${35+i%5*22}ms`,'--dust-size':`${3+i%3}%`} as CSSProperties}/>)}
   </div>}</div>}
+ {returningToLobby&&<div className="chess-lobby-return" role="status" aria-live="polite"><div>Returning to lobby</div></div>}
  </div><div className="chess-tray-control"><button aria-expanded={tray} aria-label="Captured pieces" onClick={()=>{setTray(!tray);setPromotion(null);}}>♟ <span>{v.captured.w.length+v.captured.b.length}</span></button></div>
  {tray&&<div className="chess-tray" role={promotion?'dialog':'group'} aria-label={promotion?'Choose revival or promotion':'Captured pieces'}>{promotion?promotionOptions(v,viewer).map((p,i)=><button key={p.reviveId??i} aria-label={(p.reviveId?'Revive ':'Promote to ')+pieceNames[p.piece]} disabled={pending} onClick={async()=>{const ok=await onIntent({type:'move',...promotion,promotion:p.piece,reviveId:p.reviveId});if(ok){setPromotion(null);setTray(false);}}}><ChessPiece color={viewer} type={p.piece}/></button>):(['w','b'] as Color[]).map(c=><div key={c} aria-label={(c==='w'?'White':'Black')+' captured pieces'}>{v.captured[c].map(p=><span key={p.id}><ChessPiece color={c} type={p.type}/></span>)}</div>)}<button aria-label="Close captured tray" onClick={()=>{setTray(false);setPromotion(null);}}>×</button></div>}
  </div>;

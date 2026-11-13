@@ -595,3 +595,30 @@ banks, settlement, layout and background persistence. No schema migrations,
 historical-game mutations or new active financial fixtures were performed.
 This pass verifies production delivery and read-only runtime health; physical
 iPhone/PWA gesture/audio behavior remains Jeremy's production smoke check.
+
+# Chess Async return hold — November 13, 2026 — preview candidate
+
+Jeremy requested a preview before production. Root cause: SubmittedChessTurn's
+move-presentation completion callback immediately navigated to Match Home.
+The accepted own-move snapshot already remained frozen against later opponent
+updates; that ownership remains unchanged.
+
+The completion callback now begins a presentation-only five-second hold. A
+board-relative translucent status card reads "Returning to lobby" while the
+finished move remains visible; navigation occurs after the hold. The deadline
+is monotonic and idempotent across duplicate callbacks/rerenders, and unmount
+cancels navigation. Illegal moves, stale/recovered entries, non-move terminal
+snapshots and live multiplayer retain their existing behavior. Reduced motion
+uses the same static five-second message after its instant move presentation.
+No rules, clocks, banks, settlement, schema, audio or board geometry changed.
+
+The preview-only /chess-preview/try.html uses the actual ChessBoard and same hold
+hook, with Moves/Capture/Reset and a clearly identified nonfinancial preview
+lobby. No match/stake is created. Focused checks: 21 passed. Real Chrome measured
+5,012 ms (slide), 5,014 ms (capture), 5,007 ms (reduced motion), centered translucent
+message, unchanged 373 px square board, and zero page errors. Existing six native
+gesture/audio checks also passed. Full npm run build passed unchanged: typecheck,
+4,080 app tests, 241 harness tests, 46 release-tooling checks, Vite and the 90 MB
+size gate. Hosted verification is pending.
+Production remains 049a47c2108ca4a40ab352682c81717e92c7db93; do not promote until
+Jeremy approves this preview.
