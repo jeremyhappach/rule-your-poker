@@ -605,7 +605,8 @@ updates; that ownership remains unchanged.
 
 The completion callback now begins a presentation-only five-second hold. A
 board-relative translucent status card reads "Returning to lobby" while the
-finished move remains visible; navigation occurs after the hold. The deadline
+finished move remains visible; navigation occurs after the hold. The card uses
+a 55%-opaque dark fill without backdrop blur so pieces remain recognizable. The deadline
 is monotonic and idempotent across duplicate callbacks/rerenders, and unmount
 cancels navigation. Illegal moves, stale/recovered entries, non-move terminal
 snapshots and live multiplayer retain their existing behavior. Reduced motion
