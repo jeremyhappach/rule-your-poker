@@ -364,11 +364,13 @@ Chess no longer offers the old live View board link. Live subscription is unchan
 Color-coded name pills sit immediately above the unchanged square board. The
 Async header aligns back/title/speaker/History; the dotted clock has explicit
 flex space and both bank labels are +3m. No SQL, timer rules, settlement or
-background persistence changes. Eight new focused regression cases pass, along
+background persistence changes. Nine new focused regression cases pass, along
 with the existing motion/audio cases. Chrome portrait checks retain board widths
 372.21875 / 354.21875 / 299.21875 at 393 / 375 / 320 pixels, verify header centering,
 non-overlapping controls, name proximity and visible 24-dot timer. Updated real
 recordings pass encoded timing, mute, unmute and reduced-motion checks.
-Full local build passes: 4,070 app tests, 241 harness tests, release tooling,
+Final recovery review adds an entry-revision floor: old pending receipts stay
+unpresented while their canonical recovery read finishes. Focused regression
+coverage includes that race. The preceding full local build passed: 4,070 app tests, 241 harness tests, release tooling,
 typecheck, Vite and bundle size. Hosted verification is pending. Physical iPhone/PWA
 smoke remains required. Production remains 3c322c6ca.

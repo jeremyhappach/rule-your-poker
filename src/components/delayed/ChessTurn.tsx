@@ -22,7 +22,9 @@ export function ChessTurn(props:Props){
 }
 function ActiveChessTurn({childId,matchId,userId,entry,transport}:Props&{entry:ChessSnapshot;transport:ChessTransport}){
  const game=useChess(childId,userId,transport,'ptown:async-chess:1'),[tab,setTab]=useState<ShellTabId>('cards');
- const v=game.snapshot;
+ // Pending-command replay can briefly deliver an older receipt before its
+ // follow-up read. Keep recovery mounted, but do not present or act on that receipt.
+ const v=game.snapshot&&game.snapshot.revision>=entry.revision?game.snapshot:null;
  const leftTurn=!!v&&(v.turn!==entry.turn||v.phase==='complete'||v.finished||v.players[v.turnIndex].id!==userId);
  useEffect(()=>{if(!leftTurn&&v?.identity.sessionId===matchId&&v.canAct&&!v.opened&&!v.paused&&game.connected&&!game.pending)void game.act({type:'open'});},[leftTurn,v?.revision,v?.opened,game.connected,game.pending,matchId]);
  if(v&&v.identity.sessionId!==matchId)return <p role="alert">Match identity mismatch.</p>;
