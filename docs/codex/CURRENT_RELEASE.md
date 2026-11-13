@@ -1,3 +1,13 @@
+# Chess ghost drag / Run21 capture — November 13, 2026 — production authorized
+
+Jeremy approved both changes in the verified c1a396650 preview and explicitly
+requested production. Release the approved runtime through a clean main
+fast-forward and the unchanged push-origin-main.cmd helper. The production
+build excludes the interactive fixture; application runtime remains the approved
+board/source-pulse/ghost and shared TriTowers/Run21 audio implementation.
+No schema, gameplay rule, Async admission, clock/bank, settlement, background or
+layout changes are included. Production qualification/publication is in progress.
+
 # Chess ghost drag / reused capture sound — November 13, 2026 — preview candidate
 
 Requested as a final polish pass, with an interactive preview before release.

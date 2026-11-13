@@ -549,3 +549,14 @@ Changed files for this preview:
 - vite.config.ts: preview-only entry and correct application manifest ownership.
 - dev/chess/preview.tsx and verify-video.mjs: approved sound preload and exact Run21 asset expectations; strict recording sync gate retained.
 - docs/codex/CURRENT_RELEASE.md, CHESS_WORDS_LAUNCH_POLISH.md and STABLE_CHECKPOINTS.md: candidate and verification receipts.
+
+# Chess ghost drag / Run21 capture — November 13, 2026 — production authorized
+
+Jeremy approved both changes in the verified c1a396650 preview and explicitly
+requested production. Release the approved runtime through a clean main
+fast-forward and the unchanged push-origin-main.cmd helper. The production
+build excludes the interactive fixture; application runtime remains the approved
+board/source-pulse/ghost and shared TriTowers/Run21 audio implementation.
+No schema, gameplay rule, Async admission, clock/bank, settlement, background or
+layout changes are included. Production qualification/publication is in progress.
+
