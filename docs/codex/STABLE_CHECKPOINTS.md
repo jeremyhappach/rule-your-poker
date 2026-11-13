@@ -1,3 +1,38 @@
+# Chess Async opponent entry sequence — November 13, 2026 — production live
+
+Jeremy approved the hosted 4dce00274713ba8d9fe04dd79f1738769be5d985 preview and
+requested production. Main was fast-forwarded to
+c82b3e2a5d9c59c2429dbcfd8b3032b3e4c5e0bd and pushed using the unchanged
+.codex/scripts/push-origin-main.cmd helper. Application code is identical to the
+approved preview; only release documentation differs.
+Checkpoint: chess-async-entry-production-20261113.
+Vercel deployment dpl_EVYMmbuVTEduss9nkyM9rFoKnWxr is READY, target production.
+Both https://holm357.com and https://ptown-poker.vercel.app serve the exact SHA.
+
+Async entry now shows Opponent's Move... for three seconds, waits for the
+actual fade completion, presents the opponent move/capture with existing audio,
+then shows Your Turn for two seconds before enabling board moves. The approved
+five-second Returning to lobby hold remains. Rules, server authority, clocks,
+banks, settlement, live multiplayer, board geometry and background behavior are
+unchanged. No schema changes or gameplay/financial data mutations.
+
+The approved candidate passed typecheck, 4,084 app tests, 241 harness tests,
+46 release-tooling checks, Vite and the unchanged 90 MB size gate, plus focused
+and native-browser timing/audio/reduced-motion/gesture checks. Vercel independently
+completed its full production build. GitHub release run 43481210313 passed
+qualification, exact production verification and release-signal publication.
+No gates or timeouts were weakened or bypassed.
+
+Production smoke passed: both manifests and bundles contain the approved entry
+and return sequence; shared translucent/fade and drag styles are served; Run21
+bust and TriTowers invalid assets match the unchanged source bytes; both existing
+test accounts retain live/Async capabilities; existing settled live/Async API
+snapshots retain background IDs; ended live entry returns to lobby. Zero browser
+page errors. Evidence: qualification.local/chess/entry-production-smoke.log and
+entry-production.json in the Chess polish worktree. No new active financial
+match was created. Jeremy's remaining acceptance is the next Async turn on a
+physical iPhone/PWA, including the announcement, move, Your Turn and return hold.
+
 # Chess Async entry pacing — November 13, 2026 — hosted preview ready
 
 Hosted preview is READY at commit 4dce00274713ba8d9fe04dd79f1738769be5d985,
