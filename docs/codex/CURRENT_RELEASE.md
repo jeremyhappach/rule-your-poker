@@ -1,3 +1,36 @@
+# Chess captured trays and on-piece Undo — November 13, 2026 — production live
+
+Jeremy approved both preview changes. Main was fast-forwarded and published
+through the unchanged push-origin-main.cmd helper. Production serves
+4757728c98cc9c3b0c9e16b8f5c271a0a6c44d8d on both https://holm357.com and
+https://ptown-poker.vercel.app. Checkpoint: chess-trays-undo-production-20261113.
+Vercel deployment dpl_5A89H8ot7wduJCfr3E9N4fe2FZWD is READY, target production.
+The redundant branch preview was canceled to free the build slot; production
+completed the full unchanged release gates. Application code matches the
+approved 2ce929c5357354ec5f6ca6ff2148a599c651e2f8 preview.
+
+Local gates passed: typecheck, 4,100 app tests, 241 harness tests, 46 release-tooling
+checks, Vite and the 90 MB limit (89,887,135 local static bytes). Vercel also passed
+its full build. GitHub run 43497747993 passed qualification, exact production
+verification and release-signal publication on retry. The first attempt passed
+qualification but reached its existing production-wait limit during the longer
+Vercel build. The normal retry used unchanged gates/timeouts; none were bypassed.
+
+Production smoke verified both domains' exact SHA and served tray/Undo code and
+styles; preserved opponent/return sequencing; exact unchanged Run21 bust and
+TriTowers invalid assets; both existing test accounts' live/Async capabilities;
+backgrounds in settled live/Async snapshots; and ended-match entry to the lobby.
+Zero browser errors and no error/fatal runtime logs were found for this release.
+Evidence: qualification.local/chess/undo-production-build.log,
+undo-production-smoke.log, undo-production.json and undo-production-smoke.png in the Chess worktree.
+The existing 13 phone-touch/desktop preview checks cover on-piece Undo, expiry,
+captures/audio, correct tray ownership and safe pending-move cancellation.
+
+No schema, game rules, financial, clock/bank, Async pacing or sound-mix changes.
+No new financial match was created for this read-only production smoke. Physical
+iPhone/PWA testing of both trays and a pending move remains Jeremy's acceptance.
+This receipt is documentation-only; production should remain on 4757728c9.
+
 # Chess capture trays and on-piece Undo — November 13, 2026 — approved production release
 
 Jeremy approved both features after reviewing the local preview. The approved
