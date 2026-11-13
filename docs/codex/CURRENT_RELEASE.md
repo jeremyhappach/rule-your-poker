@@ -1,3 +1,26 @@
+# Chess subtle slide / preview synchronization — November 12, 2026 — candidate
+
+Jeremy rejected the pitched twip and loud crumble. Restore the original
+friction-based slide character with a gentle low-pass and a full-travel envelope
+instead of the short swept tone; retain the quiet 45% slide mix. Reduce crumble
+peak from 0.18 to 0.065 (about -9 dB). Knight cue and move-then-crumble sequencing
+are unchanged, as are gameplay, geometry, mute, reduced motion and viewer dedupe.
+
+Investigation found a second failure in the preview recorder: queued CDP image
+decodes delayed visible video by roughly a second while audio remained live.
+The earlier event-timing proof did not establish encoded picture/audio sync.
+Acknowledge screen frames immediately and discard arriving frames while a prior
+frame is decoding, avoiding a stale-frame queue. The revised video verifier
+compares decoded pixel changes in each mover's source square with encoded audio
+onset (within 80 ms), in addition to the actual animation/source event checks.
+All three new recordings pass; actual AAC peaks are slide 0.0436, knight 0.0591,
+capture 0.0600. Capture still moves before crumbling. Native gesture unlock,
+mute/unmute, reduced motion and no replay pass. Focused tests: 21 passed.
+Full local release build passes: typecheck, 4,074 app tests, 241 harness tests,
+46 release-tooling tests, Vite and the 90 MB size gate. This run limits local
+worker concurrency to four, without changing any tests or timeout thresholds.
+Hosted verification is pending; production unchanged.
+
 # Chess sound revision — November 12, 2026 — preview candidate
 
 Jeremy requested a crisper twip, a quieter three-part knight cue, and then

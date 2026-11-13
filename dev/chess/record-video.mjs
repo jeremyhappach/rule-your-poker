@@ -33,12 +33,20 @@ try{
  // Let the native output clock stabilize after the real unlock gesture.
  await page.waitForTimeout(400);
  await page.evaluate(()=>{window.captureCanvas=document.createElement('canvas');window.captureCanvas.width=393;window.captureCanvas.height=852;window.captureContext=window.captureCanvas.getContext('2d');window.animations=[];for(const kind of ['animationstart','animationend'])document.addEventListener(kind,e=>{if(['chess-slide','chess-hop','chess-poof'].includes(e.animationName))window.animations.push({name:e.animationName,kind,time:performance.now()});});});
- const cdp=await context.newCDPSession(page);let pending=Promise.resolve();
- cdp.on('Page.screencastFrame',frame=>{pending=pending.then(async()=>{await page.evaluate(async data=>{const img=new Image();img.src='data:image/jpeg;base64,'+data;await img.decode();window.captureContext.drawImage(img,0,0,393,852);},frame.data);await cdp.send('Page.screencastFrameAck',{sessionId:frame.sessionId});}).catch(e=>console.error('Frame failed:',e.message));});
+ const cdp=await context.newCDPSession(page);let pending=Promise.resolve(),painting=false;
+ const frameTiming=[];
+ cdp.on('Page.screencastFrame',frame=>{
+  // Acknowledge immediately and never queue stale pictures behind live audio.
+  void cdp.send('Page.screencastFrameAck',{sessionId:frame.sessionId});
+  if(painting)return;painting=true;
+  pending=page.evaluate(async ({data,stamp})=>{const img=new Image();img.src='data:image/jpeg;base64,'+data;await img.decode();window.captureContext.drawImage(img,0,0,393,852);return{captured:stamp*1000,painted:Date.now()};},{data:frame.data,stamp:frame.metadata.timestamp}).then(t=>frameTiming.push(t)).catch(e=>console.error('Frame failed:',e.message)).finally(()=>painting=false);
+ });
  await cdp.send('Page.startScreencast',{format:'jpeg',quality:90,maxWidth:393,maxHeight:852,everyNthFrame:1});
  const move=async(a,b)=>{await page.locator(`[data-square="${a}"]`).click();await page.locator(`[data-square="${b}"]`).click();};
  const evidence=[];
  async function clip(name,action){
+  const source={"standard-slide":"e2","capture-poof":"e4","knight-hop":"g8"}[name];
+  const visual=await page.locator(`[data-square="${source}"]`).boundingBox();
   const mime=await page.evaluate(()=>{
    const mime=['video/mp4;codecs=avc1.42001E,mp4a.40.2','video/webm;codecs=vp8,opus'].find(m=>MediaRecorder.isTypeSupported(m));
    const stream=new MediaStream([...window.captureCanvas.captureStream(30).getVideoTracks(),...window.recordingAudio.recording.stream.getAudioTracks()]);
@@ -49,7 +57,7 @@ try{
    await new Promise(resolve=>{window.recorder.onstop=resolve;window.recorder.stop();clearInterval(window.frameTimer);});
    const blob=new Blob(window.videoChunks,{type:window.recorder.mimeType});const data=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result.slice(r.result.lastIndexOf(',')+1));r.readAsDataURL(blob);});return{data,audio:window.audioEvidence,animations:window.animations,startedAt:window.recordingStartedAt};
   });
-  const extension=mime.includes('mp4')?'mp4':'webm',path=out+'/'+name+'.'+extension,bytes=Buffer.from(result.data,'base64');assert(bytes.length>10000,'Playable clip contains encoded video');write(path,bytes);assert(result.audio.length>0,'Actual Web Audio sources were recorded');evidence.push({name,path,bytes:bytes.length,mime,audio:result.audio,animations:result.animations,startedAt:result.startedAt});
+  const extension=mime.includes('mp4')?'mp4':'webm',path=out+'/'+name+'.'+extension,bytes=Buffer.from(result.data,'base64');assert(bytes.length>10000,'Playable clip contains encoded video');write(path,bytes);assert(result.audio.length>0,'Actual Web Audio sources were recorded');evidence.push({name,path,bytes:bytes.length,mime,visual,audio:result.audio,animations:result.animations,startedAt:result.startedAt});
  }
  await clip('standard-slide',()=>move('e2','e4'));
  await page.evaluate(()=>window.opponentMove('d7','d5'));await page.waitForTimeout(600);
@@ -57,6 +65,7 @@ try{
  await clip('knight-hop',()=>page.evaluate(()=>window.opponentMove('g8','f6')));
  await cdp.send('Page.stopScreencast');await pending;
  write(out+'/evidence.json',JSON.stringify(evidence,null,2));
+ write(out+'/frame-timing.json',JSON.stringify(frameTiming,null,2));
  await page.getByRole('button',{name:'Mute sounds',exact:true}).click();
  await page.getByRole('button',{name:'Unmute sounds',exact:true}).waitFor();
  await page.evaluate(()=>window.audioEvidence=[]);await move('g1','f3');await page.waitForTimeout(1100);

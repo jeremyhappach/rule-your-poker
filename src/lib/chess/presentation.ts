@@ -3,10 +3,10 @@ export const chessMotion = {slide: 360, hop: 480, poof: 800, landing: .8} as con
 export const chessAudio = {twip: .16, lift: .12, airborneSlideAt: .15, airborneSlide: .11, crumbleEnd: .66} as const;
 export type ChessSound = 'slide' | 'hop' | 'poof';
 
-/** Short swept movement, tonal lift/wood landing, and separate granular dust. */
+/** Soft sliding friction, quiet lift/wood landing, and separate granular dust. */
 export function chessSamples(type: ChessSound, rate = 48000) {
  const seconds = chessMotion[type] / 1000, samples = new Float32Array(Math.round(rate * seconds));
- let seed = 73021, smooth = 0, bass = 0;
+ let seed = 73021, smooth = 0, bass = 0, slideTexture = 0;
  const random = () => {seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296;};
  const grains = Array.from({length: 42}, (_, i) => ({at: .015 + i / 42 * .66, length: .025 + random() * .09, level: .15 + random() * .3}));
  // A defined swept front with a little air; no sustained friction bed.
@@ -23,7 +23,11 @@ export function chessSamples(type: ChessSound, rate = 48000) {
   const texture = smooth - bass;
   let value = 0;
   if (type === 'slide') {
-   value=twip(t,chessAudio.twip,texture);
+   // Retain the original friction character, gently roll off its bright edge.
+   // Ease in with visible travel instead of front-loading a pitched transient.
+   slideTexture += .3 * (texture - slideTexture);
+   const p=t/seconds,envelope=Math.sin(Math.PI*p)**1.3;
+   value=slideTexture*envelope*(1+.08*Math.sin(t*190));
   } else if (type === 'hop') {
    // Quiet rounded lift, a small mid-hop twip, then a lower wooden landing.
    if(t<chessAudio.lift){
@@ -50,7 +54,7 @@ export function chessSamples(type: ChessSound, rate = 48000) {
   samples[i] = value;
  }
  const peak = samples.reduce((m, n) => Math.max(m, Math.abs(n)), 0);
- const level = type === 'poof' ? .18 : type === 'hop' ? .06 : .1;
+ const level = type === 'poof' ? .065 : type === 'hop' ? .06 : .1;
  for (let i = 0; i < samples.length; i++) samples[i] *= level / peak;
  return {samples, rate};
 }
