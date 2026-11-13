@@ -1,3 +1,18 @@
+# Chess subtle slide / corrected recording sync — November 12, 2026 — verified preview
+
+Hosted preview ed9c327ca0de98b7f94bfe097baadc996aa521c2 is READY:
+https://ptown-poker-dzlk6u2s6-jeremy-8e2b.vercel.app/chess-preview/
+Deployment dpl_DqCYdnQthuZsUp4pGV3KMtoevokK completed the unchanged build gates.
+All three hosted MP4 files match the newly verified recordings byte-for-byte
+and play through unmuted, with nonzero AAC audio and no browser page errors.
+Evidence: qualification.local/chess/subtle-hosted.json, subtle-gallery.png and
+videos/playback.json. Encoded audible/visible onset differences are -47 ms for
+slide, +49 ms for capture movement, and +27 ms for knight. This supersedes the
+prior recorder's event-only synchronization claim. Runtime cue timing still
+comes from actual animation events; no artificial delay was added to gameplay.
+Production remains 3c322c6ca144dc8a6fd2567866beed7e42f2c504. Listening acceptance
+and physical iPhone/PWA verification remain Jeremy's; no production promotion.
+
 # Chess crisp audio / move-first capture — November 12, 2026 — verified preview
 
 Hosted preview 34e313c1c5bbb140f5c926208e2a0e30d636bbf1 is READY:
