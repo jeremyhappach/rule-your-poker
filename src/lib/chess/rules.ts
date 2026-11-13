@@ -1,5 +1,5 @@
 import {Chess,type Color,type PieceSymbol,type Square} from 'chess.js';
-import configuration from './configuration.json';
+import configuration from './configuration.json' with {type:'json'};
 export const CHESS_RULES=configuration;
 export type Promotion='q'|'r'|'b'|'n';
 export interface ChessPlayer {id:string;userId:string;name:string;seat:number;isBot:boolean}

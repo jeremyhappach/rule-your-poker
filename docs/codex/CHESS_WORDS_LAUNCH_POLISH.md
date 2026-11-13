@@ -202,3 +202,18 @@ platformAudio output into MP4 with H.264/AAC. Small clips and their player page
 are public/chess-preview; these are recordings, not separate animation code.
 Hosted browser/API, video decoding and physical iPhone/PWA evidence are recorded
 in the final preview report; physical owner smoke remains required before release.
+
+### Hosted Node boundary correction
+
+Preview 80808a691 completed all Vercel gates. Opening its generated share link in
+a browser establishes the required cookie; a share token is not an automation
+bypass header. Both authenticated users downloaded all nine originals with exact
+hashes. All three hosted H.264/AAC recordings decoded, played and had nonzero
+audio. Downloadable recordings now retain short static holds around each effect.
+
+The first authenticated Chess API request exposed ERR_IMPORT_ATTRIBUTE_MISSING
+for configuration.json under Node 24. rules.ts now declares `with {type:'json'}`.
+nodeRuntime.test.ts verifies the unbundled module in a real child Node process,
+preventing Vite's JSON bundling from masking this failure. This changes no rules,
+database or settlement behavior. Hosted live/Async Chess remains unverified until
+the corrected preview passes its full gates and authenticated smoke.

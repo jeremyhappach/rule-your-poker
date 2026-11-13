@@ -18,8 +18,12 @@ stable game ID. No manager/admin screen was added.
 TypeScript, 46 focused tests, Vite build, disposable PostgreSQL play/real-money
 rollback and concurrency proofs, and Chrome portrait interaction checks pass.
 Actual canonical chip transfers, balanced transfer batches and Async real-account
-postings were exercised. Hosted installation, Storage uploads, physical iPhone/PWA
-and Jeremy's smoke remain unperformed. No deployment, push or publication occurred.
+postings were exercised. Hosted SQL and Storage installation are complete. Preview
+80808a691 passed Vercel build gates, and browser cookie access and all hosted sound
+videos were verified. Hosted Chess revealed a native Node JSON-import failure;
+the explicit import attribute and native-runtime regression test correct that
+boundary. Its rebuilt preview still requires hosted gameplay verification.
+Physical iPhone/PWA and Jeremy's smoke remain unperformed. Production is held.
 See [implementation, held artifacts and validation](CHESS_WORDS_LAUNCH_POLISH.md).
 
 # Words gameplay polish — November 11, 2026 — local candidate, publication held

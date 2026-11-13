@@ -38,11 +38,11 @@ try{
   const mime=await page.evaluate(()=>{
    const mime=['video/mp4;codecs=avc1.42001E,mp4a.40.2','video/webm;codecs=vp8,opus'].find(m=>MediaRecorder.isTypeSupported(m));
    const stream=new MediaStream([...window.captureCanvas.captureStream(30).getVideoTracks(),...window.recordingAudio.recording.stream.getAudioTracks()]);
-   window.videoChunks=[];window.recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:1800000,audioBitsPerSecond:128000});window.recorder.ondataavailable=e=>window.videoChunks.push(e.data);window.audioEvidence=[];window.animations=[];window.recorder.start();return mime;
+   window.videoChunks=[];window.recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:1800000,audioBitsPerSecond:128000});window.recorder.ondataavailable=e=>window.videoChunks.push(e.data);window.audioEvidence=[];window.animations=[];window.frameTimer=setInterval(()=>window.captureContext.drawImage(window.captureCanvas,0,0),33);window.recorder.start();return mime;
   });
   await page.waitForTimeout(650);await action();await page.waitForTimeout(1700);
   const result=await page.evaluate(async()=>{
-   await new Promise(resolve=>{window.recorder.onstop=resolve;window.recorder.stop();});
+   await new Promise(resolve=>{window.recorder.onstop=resolve;window.recorder.stop();clearInterval(window.frameTimer);});
    const blob=new Blob(window.videoChunks,{type:window.recorder.mimeType});const data=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result.slice(r.result.lastIndexOf(',')+1));r.readAsDataURL(blob);});return{data,audio:window.audioEvidence,animations:window.animations};
   });
   const extension=mime.includes('mp4')?'mp4':'webm',path=out+'/'+name+'.'+extension,bytes=Buffer.from(result.data,'base64');assert(bytes.length>10000,'Playable clip contains encoded video');write(path,bytes);assert(result.audio.length>0,'Actual Web Audio sources were recorded');evidence.push({name,path,bytes:bytes.length,mime,audio:result.audio,animations:result.animations});
