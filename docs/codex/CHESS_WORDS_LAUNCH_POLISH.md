@@ -351,3 +351,24 @@ onset/duration and frames were inspected, but this is not a subjective listening
 pass. Jeremy's audition and physical iPhone/PWA speaker/unlock/background-return
 checks remain required. Hosted realtime and full Chess integration checks listed
 above remain outstanding; this effects correction does not claim those passes.
+
+## iPhone / Async follow-up
+
+Requested after production iPhone smoke. Slide gain is now 45% of its approved
+level; PCM, timing, knight and crumble remain unchanged. Each Async visit admits
+one server turn after an ownership inspection and returns to Match Home when
+that turn ends, after the frozen own-move animation completes. Rendering and auto-open both reject later turns, including a
+reconnect that skips directly to another own turn. Non-owner entry returns home;
+Chess no longer offers the old live View board link. Live subscription is unchanged.
+
+Color-coded name pills sit immediately above the unchanged square board. The
+Async header aligns back/title/speaker/History; the dotted clock has explicit
+flex space and both bank labels are +3m. No SQL, timer rules, settlement or
+background persistence changes. Eight new focused regression cases pass, along
+with the existing motion/audio cases. Chrome portrait checks retain board widths
+372.21875 / 354.21875 / 299.21875 at 393 / 375 / 320 pixels, verify header centering,
+non-overlapping controls, name proximity and visible 24-dot timer. Updated real
+recordings pass encoded timing, mute, unmute and reduced-motion checks.
+Full local build passes: 4,070 app tests, 241 harness tests, release tooling,
+typecheck, Vite and bundle size. Hosted verification is pending. Physical iPhone/PWA
+smoke remains required. Production remains 3c322c6ca.

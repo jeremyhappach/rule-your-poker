@@ -1,3 +1,24 @@
+# Chess iPhone / Async correction — November 12, 2026 — preview only
+
+Requested after production iPhone smoke. Slide gain is now 45% of its approved
+level; PCM, timing, knight and crumble remain unchanged. Each Async visit admits
+one server turn after an ownership inspection and returns to Match Home when
+that turn ends, after the frozen own-move animation completes. Rendering and auto-open both reject later turns, including a
+reconnect that skips directly to another own turn. Non-owner entry returns home;
+Chess no longer offers the old live View board link. Live subscription is unchanged.
+
+Color-coded name pills sit immediately above the unchanged square board. The
+Async header aligns back/title/speaker/History; the dotted clock has explicit
+flex space and both bank labels are +3m. No SQL, timer rules, settlement or
+background persistence changes. Eight new focused regression cases pass, along
+with the existing motion/audio cases. Chrome portrait checks retain board widths
+372.21875 / 354.21875 / 299.21875 at 393 / 375 / 320 pixels, verify header centering,
+non-overlapping controls, name proximity and visible 24-dot timer. Updated real
+recordings pass encoded timing, mute, unmute and reduced-motion checks.
+Full local build passes: 4,070 app tests, 241 harness tests, release tooling,
+typecheck, Vite and bundle size. Hosted verification is pending. Physical iPhone/PWA
+smoke remains required. Production remains 3c322c6ca.
+
 # Chess / Words — November 12, 2026 — production live
 
 Production runtime: 3c322c6ca144dc8a6fd2567866beed7e42f2c504, deployment

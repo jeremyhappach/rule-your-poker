@@ -46,3 +46,12 @@ describe.each(['live','async'] as const)('%s opponent presentation',mode=>{
   reduced=true;act(()=>mediaListeners.forEach(f=>f()));expect(host.querySelector('.chess-motion')).toBeNull();expect(vi.mocked(chessSound).mock.results[0].value).toHaveBeenCalled();
  });
 });
+
+it('releases an Async handoff on actual movement end, or instantly for reduced motion',()=>{
+ const done=vi.fn(),v=move(initial('async'),'e2','e4');
+ act(()=>root.render(<ChessBoard view={v} pending={false} onIntent={async()=>true} onMovePresentationComplete={done}/>));
+ expect(done).not.toHaveBeenCalled();event('.chess-slide','animationend');expect(done).toHaveBeenCalledTimes(1);
+ reduced=true;const next=move(v,'e7','e5');
+ act(()=>root.render(<ChessBoard view={next} pending={false} onIntent={async()=>true} onMovePresentationComplete={done}/>));
+ expect(done).toHaveBeenCalledTimes(2);expect(host.querySelector('.chess-motion')).toBeNull();
+});

@@ -121,7 +121,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
       {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}
-      {!ours&&['ptown-words','chess'].includes(c.game)&&!home.held&&<Link className="delayed-view-board" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
+      {!ours&&c.game==='ptown-words'&&!home.held&&<Link className="delayed-view-board" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
    </li>;})}</ul>
   {!historical&&home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
    <p>The first player in each game is selected randomly.</p>

@@ -26,7 +26,7 @@ try{
    for(let i=0;i<times.length;i++){video.currentTime=times[i];await new Promise(r=>video.addEventListener('seeked',r,{once:true}));c.drawImage(video,0,210,video.videoWidth,500,393*i,0,393,500);}
    return{file:ev.name,width:video.videoWidth,height:video.videoHeight,duration:video.duration,audioDuration:audio.duration,channels:audio.numberOfChannels,peak,windows,wav64,frames:canvas.toDataURL('image/png').split(',')[1]};
   },ev);
-  assert(result.width>=392&&result.height===852&&result.duration>2.5&&result.peak>.07);
+  assert(result.width>=392&&result.height===852&&result.duration>2.5&&result.peak>(ev.name==='standard-slide'?.03:.07));
   assert(Math.abs(result.audioDuration-result.duration)<.1,'Encoded audio retains the complete timeline, including silent holds');
   const starts=ev.animations.filter(a=>a.kind==='animationstart');assert.equal(ev.audio.length,starts.length);
   ev.audio.forEach((sound,i)=>assert(Math.abs(sound.time-starts[i].time)<20,'Sound scheduled within one frame of CSS start'));

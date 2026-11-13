@@ -1,0 +1,21 @@
+// @vitest-environment jsdom
+import {act,render,screen,waitFor,cleanup,fireEvent} from '@testing-library/react';
+import {beforeEach,afterEach,it,expect,vi} from 'vitest';
+import {MemoryRouter,Routes,Route} from 'react-router-dom';
+import {newChess,playChess} from '@/lib/chess/rules';
+import {ChessTurn} from './ChessTurn';
+const mock=vi.hoisted(()=>({load:vi.fn(),game:vi.fn(),command:vi.fn(),paint:vi.fn()}));
+vi.mock('@/hooks/useChess',()=>({useChess:(...args:unknown[])=>mock.game(...args)}));
+vi.mock('@/lib/chess/client',async()=>({...await vi.importActual('@/lib/chess/client'),chessTransport:()=>({load:mock.load})}));
+vi.mock('@/components/chess/ChessView',()=>({ChessView:(p:any)=>{mock.paint(p.view);return <><span>Board</span>{p.onMovePresentationComplete&&<button onClick={p.onMovePresentationComplete}>Finish animation</button>}<button onClick={()=>p.onIntent({type:'move',from:'e2',to:'e4'})}>Move</button></>;}}));
+let initial:any,current:any;
+beforeEach(()=>{vi.clearAllMocks();initial={...newChess({identity:{sessionId:'m',dealerGameId:'c',roundId:'r'},players:[{id:'me',userId:'me',name:'Me',seat:0,isBot:false},{id:'other',userId:'other',name:'Other',seat:1,isBot:false}],mode:'async',backgroundId:'photo'},1000),revision:1,viewerId:'me',serverAt:1000,canAct:true,opened:true};current={snapshot:initial,connected:true,pending:false,now:1000,act:mock.command,reconnect:vi.fn()};mock.load.mockResolvedValue(initial);mock.game.mockImplementation(()=>current);mock.command.mockResolvedValue(false);});
+afterEach(cleanup);
+function app(){return <MemoryRouter initialEntries={['/delayed/m/play/c']}><Routes><Route path='/delayed/m/play/c' element={<ChessTurn childId='c' matchId='m' userId='me'/>}/><Route path='/delayed/m' element={<span>Match lobby</span>}/></Routes></MemoryRouter>;}
+it('checks entry before mounting recovery; someone else’s turn returns home',async()=>{mock.load.mockResolvedValue({...initial,turnIndex:1,canAct:false});render(app());await screen.findByText('Match lobby');expect(mock.game).not.toHaveBeenCalled();expect(mock.command).not.toHaveBeenCalled();});
+it('returns home on authoritative move acknowledgement without painting the next turn',async()=>{const ui=render(app());await screen.findByText('Board');current={...current,snapshot:{...initial,turn:2,turnIndex:1,canAct:false}};ui.rerender(app());await screen.findByText('Match lobby');expect(mock.paint.mock.calls.every(([v])=>!v||v.turn===1)).toBe(true);});
+it('does not reopen a later own turn received after reconnect',async()=>{const ui=render(app());await screen.findByText('Board');mock.command.mockClear();current={...current,snapshot:{...initial,turn:3,revision:4,opened:false}};ui.rerender(app());await screen.findByText('Match lobby');expect(mock.command).not.toHaveBeenCalled();});
+it('retains the visit after rejection and bank updates, with the original clock',async()=>{const ui=render(app());await screen.findByText('Board');await act(async()=>fireEvent.click(screen.getByText('Move')));expect(screen.getByText('Board')).toBeTruthy();current={...current,snapshot:{...initial,revision:2,banks:{me:[0],other:[]},deadline:initial.deadline+180000}};ui.rerender(app());expect(screen.getByText('Board')).toBeTruthy();});
+it('opens only the admitted turn and leaves after a terminal snapshot',async()=>{initial.opened=false;const ui=render(app());await waitFor(()=>expect(mock.command).toHaveBeenCalledWith({type:'open'}));current={...current,snapshot:{...initial,phase:'complete',finished:true,canAct:false}};ui.rerender(app());await screen.findByText('Match lobby');expect(mock.paint.mock.calls.every(([v])=>!v||v.phase==='playing')).toBe(true);});
+
+it('finishes only the frozen submitted move, even if a fast opponent replies',async()=>{const ui=render(app());await screen.findByText('Board');const mine={...initial,...playChess(initial,'me',{type:'move',from:'e2',to:'e4'},2000),canAct:false};current={...current,snapshot:mine};ui.rerender(app());expect(screen.getByText('Finish animation')).toBeTruthy();current={...current,snapshot:{...mine,turn:3,opened:false,turnIndex:0,canAct:true,revision:4}};ui.rerender(app());expect(mock.paint.mock.calls.at(-1)![0].turn).toBe(2);expect(mock.command).not.toHaveBeenCalled();fireEvent.click(screen.getByText('Finish animation'));await screen.findByText('Match lobby');});

@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
+import {useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import {Chess,type Color,type Square,type PieceSymbol} from 'chess.js';
 import {promotionOptions,type ChessIntent,type ChessMove} from '@/lib/chess/rules';
 import type {ChessSnapshot} from '@/lib/chess/client';
@@ -7,7 +7,7 @@ import {chessSound} from '@/lib/chess/sound';
 import {chessMotion,type ChessSound} from '@/lib/chess/presentation';
 import './chess.css';
 type Drag={from:Square;x:number;y:number;startX:number;startY:number;moved:boolean;returning?:boolean};
-export function ChessBoard({view:v,pending,onIntent}:{view:ChessSnapshot;pending:boolean;onIntent:(i:ChessIntent)=>Promise<boolean>}){
+export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationComplete}:{view:ChessSnapshot;pending:boolean;onIntent:(i:ChessIntent)=>Promise<boolean>;players?:ReactNode;onMovePresentationComplete?:()=>void}){
  const ref=useRef<HTMLDivElement>(null),dragRef=useRef<Drag|null>(null),suppressClick=useRef(false);
  const [selected,select]=useState<Square|null>(null),[drag,setDrag]=useState<Drag|null>(null),[rejected,reject]=useState<Square|null>(null),[tray,setTray]=useState(false),[promotion,setPromotion]=useState<{from:Square;to:Square}|null>(null),[motion,setMotion]=useState<ChessMove|null>(null),[displayFen,setDisplayFen]=useState(v.fen);
  const white=v.players[0].id===v.viewerId,viewer:Color=white?'w':'b';
@@ -21,14 +21,14 @@ export function ChessBoard({view:v,pending,onIntent}:{view:ChessSnapshot;pending
   const move=v.moves.at(-1),key=`ptown:chess:seen:${v.viewerId}:${v.identity.dealerGameId}`;
   let seen=previous.current.key===key?previous.current.ply:-1;try{seen=Math.max(seen,Number(localStorage.getItem(key)??-1));}catch{/* Memory fallback. */}
   previous.current={key,ply:v.moves.length};try{localStorage.setItem(key,String(v.moves.length));}catch{/* Storage may be unavailable. */}
-  if(!move||move.ply<=seen||document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches){setMotion(null);setDisplayFen(v.fen);return;}
+  if(!move||move.ply<=seen||document.hidden||matchMedia('(prefers-reduced-motion: reduce)').matches){setMotion(null);setDisplayFen(v.fen);onMovePresentationComplete?.();return;}
   setDisplayFen(v.moves.at(-2)?.fen??v.initialFen);setMotion(move);
   const media=matchMedia('(prefers-reduced-motion: reduce)');
   const stop=()=>{soundStops.current.forEach(s=>s());soundStops.current=[];};
-  const settle=()=>{if(document.hidden||media.matches){stop();setDisplayFen(v.fen);setMotion(null);}};
+  const settle=()=>{if(document.hidden||media.matches){stop();setDisplayFen(v.fen);setMotion(null);onMovePresentationComplete?.();}};
   document.addEventListener('visibilitychange',settle);media.addEventListener('change',settle);
   return()=>{stop();document.removeEventListener('visibilitychange',settle);media.removeEventListener('change',settle);};
- },[v.identity.dealerGameId,v.viewerId,v.moves.length,v.fen]);
+ },[v.identity.dealerGameId,v.viewerId,v.moves.length,v.fen,onMovePresentationComplete]);
  useEffect(()=>{if(!rejected&&!drag?.returning)return;const id=setTimeout(()=>{reject(null);setDrag(null);},220);return()=>clearTimeout(id);},[rejected,drag?.returning]);
  const attempt=async(from:Square,to:Square)=>{
   if(!active)return false;const moves=engine.moves({square:from,verbose:true}).filter(m=>m.to===to);
@@ -45,10 +45,10 @@ export function ChessBoard({view:v,pending,onIntent}:{view:ChessSnapshot;pending
   if(e.target!==e.currentTarget||!motion)return;
   soundStops.current.push(chessSound(`${v.viewerId}:${v.identity.dealerGameId}:${motion.ply}`,type,ref.current));
  };
- return <div className="chess-artifacts" data-canonical-felt-interaction-layer><div className="chess-board" ref={ref} role="group" aria-label="Chess board" onPointerMove={e=>{const d=dragRef.current;if(!d)return;const rect=ref.current!.getBoundingClientRect();d.x=(e.clientX-rect.left)/rect.width*100;d.y=(e.clientY-rect.top)/rect.height*100;d.moved||=Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>5;if(d.moved)setDrag({...d});}} onPointerUp={e=>release(e)} onPointerCancel={e=>release(e,true)}>
+ return <div className="chess-artifacts" data-canonical-felt-interaction-layer>{players}<div className="chess-board" ref={ref} role="group" aria-label="Chess board" onPointerMove={e=>{const d=dragRef.current;if(!d)return;const rect=ref.current!.getBoundingClientRect();d.x=(e.clientX-rect.left)/rect.width*100;d.y=(e.clientY-rect.top)/rect.height*100;d.moved||=Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>5;if(d.moved)setDrag({...d});}} onPointerUp={e=>release(e)} onPointerCancel={e=>release(e,true)}>
   {squares.map(square=>{const p=display.get(square),hide=drag?.from===square||motion&&(motion.from===square||motion.rook?.from===square||motion.capture?.square===square);return <button type="button" key={square} data-square={square} className={'chess-square '+(('abcdefgh'.indexOf(square[0])+Number(square[1]))%2?'light':'dark')} data-selected={selected===square||undefined} data-rejected={rejected===square||undefined} aria-label={square+(p?' '+(p.color==='w'?'White ':'Black ')+pieceNames[p.type]:'')} aria-pressed={selected===square} onPointerDown={e=>{suppressClick.current=false;if(!active||e.button!==0||engine.get(square)?.color!==viewer)return;select(square);e.currentTarget.setPointerCapture(e.pointerId);const d={from:square,x:0,y:0,startX:e.clientX,startY:e.clientY,moved:false};dragRef.current=d;}} onClick={()=>{if(suppressClick.current){suppressClick.current=false;return;}if(!active)return;if(selected&&selected!==square){void attempt(selected,square);return;}if(engine.get(square)?.color===viewer)select(square);}}>{p&&!hide&&<ChessPiece {...p}/>}</button>;})}
   {drag&&<div className={'chess-floating '+(drag.returning?'chess-return':'')} style={drag.returning?position(drag.from):{left:`calc(${drag.x}% - 6.25%)`,top:`calc(${drag.y}% - 6.25%)`}}><ChessPiece color={viewer} type={engine.get(drag.from)?.type??'p'}/></div>}
-  {motion&&<div key={`${v.identity.dealerGameId}:${motion.ply}`} className="chess-motion" aria-hidden="true"><div className={'chess-floating chess-slide '+(motion.piece==='n'?'chess-hop':'')} style={moveStyle(motion)} onAnimationStart={e=>soundStart(e,motion.piece==='n'?'hop':'slide')} onAnimationEnd={e=>{if(e.target===e.currentTarget){setDisplayFen(v.fen);setMotion(null);}}}><ChessPiece color={motion.color} type={motion.piece}/></div>{motion.rook&&<div className="chess-floating chess-slide" style={moveStyle(motion,motion.rook.from,motion.rook.to)}><ChessPiece color={motion.color} type="r"/></div>}{motion.capture&&<div className="chess-floating chess-poof" data-color={motion.capture.color} style={{...position(motion.capture.square),'--capture-duration':`${chessMotion.poof}ms`} as CSSProperties} onAnimationStart={e=>soundStart(e,'poof')}>
+  {motion&&<div key={`${v.identity.dealerGameId}:${motion.ply}`} className="chess-motion" aria-hidden="true"><div className={'chess-floating chess-slide '+(motion.piece==='n'?'chess-hop':'')} style={moveStyle(motion)} onAnimationStart={e=>soundStart(e,motion.piece==='n'?'hop':'slide')} onAnimationEnd={e=>{if(e.target===e.currentTarget){setDisplayFen(v.fen);setMotion(null);onMovePresentationComplete?.();}}}><ChessPiece color={motion.color} type={motion.piece}/></div>{motion.rook&&<div className="chess-floating chess-slide" style={moveStyle(motion,motion.rook.from,motion.rook.to)}><ChessPiece color={motion.color} type="r"/></div>}{motion.capture&&<div className="chess-floating chess-poof" data-color={motion.capture.color} style={{...position(motion.capture.square),'--capture-duration':`${chessMotion.poof}ms`} as CSSProperties} onAnimationStart={e=>soundStart(e,'poof')}>
    {Array.from({length:9},(_,i)=>{const col=i%3,row=Math.floor(i/3);return <span className="chess-fragment" key={i} style={{clipPath:`polygon(${col*33.333}% ${row*33.333}%,${(col+1)*33.333}% ${row*33.333}%,${(col+1)*33.333}% ${(row+1)*33.333}%,${col*33.333}% ${(row+1)*33.333}%)`,'--fragment-x':`${(col-1)*24+(i%2?5:-5)}%`,'--fragment-y':`${row*13-8}%`,'--fragment-turn':`${(i%2?1:-1)*(7+i*3)}deg`} as CSSProperties}><ChessPiece color={motion.capture!.color} type={motion.capture!.piece}/></span>;})}
    {Array.from({length:24},(_,i)=><i key={i} style={{'--dust-x':`${Math.cos(i*2.4)*(35+i*1.4)}%`,'--dust-y':`${Math.sin(i*2.4)*32+18}%`,'--dust-delay':`${35+i%5*22}ms`,'--dust-size':`${3+i%3}%`} as CSSProperties}/>)}
   </div>}</div>}
