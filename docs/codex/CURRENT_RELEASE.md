@@ -1,4 +1,4 @@
-# Chess Async entry pacing — November 13, 2026 — preview candidate
+# Chess Async entry pacing — November 13, 2026 — hosted preview ready
 
 Jeremy approved the five-second return overlay, then requested a matching Async
 entry sequence: "Opponent's Move..." for three seconds, fade out completely,
@@ -24,10 +24,46 @@ checks, Vite and the unchanged 90 MB size gate. Native Chrome confirmed actual
 fade completion before movement, sound at animation start, capture breakup before
 Your Turn, three-/two-second holds, silent mute/reduced motion and subsequent
 five-second return. All six existing touch/mouse/tap/audio regression checks also
-passed. Hosted verification is pending. No schema change or new authenticated
-financial fixture. The approved return hold is publishing separately as
-b125e88f54cce044f0023f07e361a3afb5be7f6b through the unchanged main push helper;
-new entry pacing remains preview-only.
+passed. No schema change or new authenticated financial fixture.
+
+Hosted preview is READY at commit 4dce00274713ba8d9fe04dd79f1738769be5d985,
+checkpoint chess-async-entry-preview-20261113, deployment
+dpl_Ee7eUYa5V2awkfsYuxsBjEzmypmn (preview target).
+URL: https://ptown-poker-8hz8rzqvz-jeremy-8e2b.vercel.app/chess-preview/try.html
+Vercel independently completed its unchanged full build. Hosted Chrome verified
+the exact manifest and native fade-end before move-start. Slide: 3,002 ms lead-in
+and 1,999 ms Your Turn; capture: 3,002 / 1,999 ms. Move audio was the existing
+360 ms cue, followed on capture by the actual 1,020 ms Run21 bust. Mute and
+reduced motion were silent; the board stayed 373 px square at 393 x 852, with
+zero page errors and the subsequent five-second return intact. Evidence:
+qualification.local/chess/entry-hosted.log, entry-browser.json,
+entry-opponent.png and entry-your-turn.png. Static output: 89,887,127 bytes.
+The new entry sequence is preview-only, pending Jeremy's visual acceptance.
+This is actual presentation-fixture verification; no new two-player financial
+match or physical iPhone/PWA smoke was performed.
+
+# Chess Async return hold — November 13, 2026 — production live
+
+Jeremy approved the lighter five-second return overlay. Main was fast-forwarded
+and pushed with the unchanged .codex/scripts/push-origin-main.cmd helper.
+Production SHA: b125e88f54cce044f0023f07e361a3afb5be7f6b.
+Checkpoint: chess-async-return-production-20261113.
+Vercel dpl_Ht4EnHLUw52aYStFexPkBoWWUGvm is READY with target production.
+Both https://holm357.com and https://ptown-poker.vercel.app serve this exact
+runtime, including Returning to lobby and the 55%-opaque fill. The new opponent
+entry announcement is excluded from production and remains on the preview branch.
+GitHub release run 43471122180 passed qualification, exact production verification
+and release-signal publication; no gates were weakened or bypassed.
+
+Production smoke confirmed unchanged Run21 bust/TriTowers invalid asset bytes,
+live/Async capabilities for both existing test accounts, background IDs in the
+existing settled live/Async snapshots, and ended live entry returning to lobby.
+Zero browser page errors; no gameplay or financial mutations. Evidence:
+qualification.local/chess/lobby-hold-production-smoke.log and
+lobby-hold-production.json. The approved preview already proved the actual
+five-second presentation and reduced-motion behavior; physical iPhone/PWA
+acceptance in an active Async match remains Jeremy's smoke check.
+
 
 # Chess Async return hold — November 13, 2026 — hosted preview ready
 
