@@ -808,3 +808,27 @@ The full release gates
 recorded below belong to the prior local checkpoint; this placement revision
 is still held for preview review and has not been pushed or deployed.
 Preview: http://127.0.0.1:15441/chess-preview/try.html
+
+# Chess capture trays and on-piece Undo — November 13, 2026 — approved production release
+
+Jeremy approved both features after reviewing the local preview. The approved
+application commit is 2ce929c5357354ec5f6ca6ff2148a599c651e2f8, following the
+initial tray/draft implementation at 42e0747f4. The preview-only deployment hold
+in the historical entries below is superseded by this production approval.
+
+Release target: ptown-poker, Vercel project prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds,
+team team_nQciG8fmHnUCogRJ7jaWawHq, production branch main.
+No SQL, asset upload, rules, clocks, financial, Async sequencing or audio-mix
+changes are included. The application remains identical to the approved preview.
+
+Final npm run build passed: typecheck, 4,100 app tests, 241 harness tests,
+46 release-tooling checks, Vite and the unchanged 90 MB gate
+(89,887,135 bytes / 183 files). Log: qualification.local/chess/undo-production-build.log.
+All 13 native phone-touch/desktop preview checks passed; screenshots and
+qualification.local/chess/undo-browser.json preserve that evidence.
+
+The branch can fast-forward into clean, synchronized main. Publication uses
+the unchanged .codex/scripts/push-origin-main.cmd helper. Hosted deployment,
+exact-SHA domain verification, authenticated read-only smoke and the release
+signal are checked after publication. Physical iPhone/PWA acceptance remains
+Jeremy's next real turn; local emulation does not substitute for that check.
