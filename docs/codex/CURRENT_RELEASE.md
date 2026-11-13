@@ -1,3 +1,21 @@
+# Chess on-piece Undo — November 13, 2026 — local preview only
+
+Jeremy clarified that Undo belongs directly on the landed ghost piece. The
+existing local three-second draft now renders a square-sized Undo button at
+the destination, with a compact blinking Undo/countdown label over the piece.
+Touch release cancels directly; click/keyboard activation remains supported.
+The board size, captured trays, draft safety guards, authority submission,
+accepted-move animations/audio and production release remain unchanged.
+
+Focused checks: 32 passed; npm run typecheck passed. All 13 native Chrome
+phone-touch/desktop checks passed with no page errors, including touching the
+landed piece to cancel, delayed submission, capture/audio and safety guards.
+Phone/desktop screenshots in the existing gallery were refreshed.
+The full release gates
+recorded below belong to the prior local checkpoint; this placement revision
+is still held for preview review and has not been pushed or deployed.
+Preview: http://127.0.0.1:15441/chess-preview/try.html
+
 # Chess captured trays and local Undo — November 13, 2026 — local preview only
 
 Jeremy requested both changes in an isolated preview and explicitly held all
