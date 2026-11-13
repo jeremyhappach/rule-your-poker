@@ -1,3 +1,24 @@
+# Chess corrections — November 12, 2026 — verified production
+
+Production is live at 3cab749a08d63fa3e6a25bc71fd10ed0900a2328, deployment
+dpl_2awBX3CVze52yM46C6Dv49QftBEx (READY). Both https://holm357.com and
+https://ptown-poker.vercel.app serve the exact SHA. GitHub release run
+43367207408 passed qualification, production verification and release-signal
+publication. The approved preview runtime is unchanged; only documentation
+differs from ed9c327ca. The release checkpoint tag is
+chess-corrections-production-20261112.
+
+Production smoke passed: live/Async capabilities in the existing qualified money
+modes; authenticated reads of settled live/Async fixtures with persisted
+background IDs; all three sound MP4s matching approved bytes and playing through
+unmuted at the revised levels; ended live entry returning to lobby; zero browser
+page errors. Evidence: qualification.local/chess/corrections-production.json
+and corrections-production-gallery.png. No schema, background assets, gameplay
+rules, admission, settlement or historical match data changed. Prior two-session
+preview handoff/bank/recovery proofs remain applicable; this production pass did
+not create or replay games. Jeremy approved the sound studio. Physical iPhone/PWA
+audio unlock/mute, two-device Async handoff and portrait smoke remain owner checks.
+
 # Chess subtle slide / corrected recording sync — November 12, 2026 — verified preview
 
 Hosted preview ed9c327ca0de98b7f94bfe097baadc996aa521c2 is READY:

@@ -466,7 +466,7 @@ comes from actual animation events; no artificial delay was added to gameplay.
 Production remains 3c322c6ca144dc8a6fd2567866beed7e42f2c504. Listening acceptance
 and physical iPhone/PWA verification remain Jeremy's; no production promotion.
 
-# Chess corrections — November 12, 2026 — approved production release
+# Chess corrections — November 12, 2026 — production live
 
 Jeremy approved the subtle-slide studio and explicitly requested production.
 Release the tested runtime from ed9c327ca, including the prior Async/portrait
@@ -475,4 +475,21 @@ main push helper. All runtime files match the qualified preview; subsequent
 commits only record verification and this authorization. Full local qualification
 passed: 4,074 app tests, 241 harness tests, 46 release-tooling tests, typecheck,
 Vite and size gate. No schema, rule, settlement, admission or asset-ID changes.
-Production deployment and exact-build smoke verification are pending.
+Production is live at 3cab749a08d63fa3e6a25bc71fd10ed0900a2328, deployment
+dpl_2awBX3CVze52yM46C6Dv49QftBEx (READY). Both https://holm357.com and
+https://ptown-poker.vercel.app serve the exact SHA. GitHub release run
+43367207408 passed qualification, production verification and release-signal
+publication. The approved preview runtime is unchanged; only documentation
+differs from ed9c327ca. The release checkpoint tag is
+chess-corrections-production-20261112.
+
+Production smoke passed: live/Async capabilities in the existing qualified money
+modes; authenticated reads of settled live/Async fixtures with persisted
+background IDs; all three sound MP4s matching approved bytes and playing through
+unmuted at the revised levels; ended live entry returning to lobby; zero browser
+page errors. Evidence: qualification.local/chess/corrections-production.json
+and corrections-production-gallery.png. No schema, background assets, gameplay
+rules, admission, settlement or historical match data changed. Prior two-session
+preview handoff/bank/recovery proofs remain applicable; this production pass did
+not create or replay games. Jeremy approved the sound studio. Physical iPhone/PWA
+audio unlock/mute, two-device Async handoff and portrait smoke remain owner checks.
