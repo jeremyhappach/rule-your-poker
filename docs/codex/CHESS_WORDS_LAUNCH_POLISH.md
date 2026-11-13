@@ -243,3 +243,43 @@ and processed by chess_sync. No historical session was changed or deleted.
 Evidence: qualification.local/chess/{hosted-words.json,words-sync.json,
 release-runtime-fix.log,videos/playback.json}. Hosted smoke script must create
 fresh fixtures before reuse because its recorded IDs are now terminal.
+
+### Revised Chess movement and capture effects — November 12
+
+Jeremy rejected the original sounds and clips. The old cues shared a short,
+bass-heavy exponentially decaying noise buffer; capture lasted only 160 ms and
+effect timers could start sound before the CSS animation painted.
+
+The shared ChessBoard now starts each cue on its own animationstart event and
+finishes presentation on animationend. Both live and Async continue to mount
+that same board. A 360 ms slide uses sustained filtered friction; the 480 ms
+knight hop has a lift cue and a soft wooden landing at 80% of the hop. Capture
+uses an 800 ms granular crumble, nine visible piece fragments and 24 dust motes,
+then advances the mover. Durations come from lib/chess/presentation.ts. Global
+audio preference, once-per-viewer move consumption and audio ledger remain the
+owners. Reduced motion/hidden-page transitions settle presentation immediately.
+No chess rules, timers, financial behavior, SQL or background storage changed.
+
+The recorder captures actual ChessView screen frames and shared mixer output.
+Its recording-only zero-valued source keeps silent holds on the audio timeline;
+without it Chrome could omit gaps in encoded AAC. No effect audio is substituted.
+dev/chess/verify-video.mjs decodes the final MP4s, checks encoded onset against
+the animation timestamps, checks the full audio duration, and extracts real
+video frames and PCM for review. It serves byte ranges for correct MP4 seeking.
+
+Final local release gates pass: app typecheck, 4,062 application tests, 241
+harness tests, 46 release-tooling tests, Vite and the unchanged 90 MB size gate.
+
+Validation: nine new presentation/waveform tests cover both modes, capture event
+bubbling, no pre-animation audio, rerender/remount suppression and reduced motion.
+Chrome 157 exercises native gesture unlock (no autoplay bypass), mute, unmute,
+fresh audio after unmute and no replay of suppressed moves. Three portrait sizes
+retain touch drag, invalid return, capture, opponent knight and revival behavior.
+Encoded clips show slide travel, knight lift and fragmented dissolve; each has
+an H.264 video track and AAC audio track with continuous silent holds.
+
+The agent cannot perceive audio input in this environment. Signal levels,
+onset/duration and frames were inspected, but this is not a subjective listening
+pass. Jeremy's audition and physical iPhone/PWA speaker/unlock/background-return
+checks remain required. Hosted realtime and full Chess integration checks listed
+above remain outstanding; this effects correction does not claim those passes.

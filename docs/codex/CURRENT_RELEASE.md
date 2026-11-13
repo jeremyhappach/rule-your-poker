@@ -1,5 +1,14 @@
 # Chess / Words launch polish — November 12, 2026 — hosted preview qualification
 
+Chess effects revision: movement now starts audio from the CSS animation event,
+with sustained slide friction, knight lift/landing, and an 800 ms fragmented
+capture dissolve before the mover advances. Revised H.264/AAC clips retain the
+complete audio/video timeline. Native Chrome gesture unlock, mute/unmute,
+reduced motion and replay suppression pass; live/Async presentation tests pass.
+Subjective listening and physical iPhone/PWA acceptance remain open. This agent
+environment cannot perceive audio input, so signal/timing checks are not claimed
+as a listening pass. No production promotion is authorized.
+
 Preview preparation continues from 84f2628b9 on codex/chess-words-launch-polish.
 Migration 20261113001204_chess_words_launch_preview is installed on
 xvhmbuppghwmwpwrkzao. Nine hash-verified original PNGs are uploaded to private
