@@ -525,8 +525,27 @@ checks, 46 release-tooling tests, Vite and the 90 MB deployment-size gate.
 Portrait regression passed at 393x852, 375x667 and 320x568, including unchanged
 square board geometry, opponent move/reconnect presentation and revival.
 Production build exclusion and correct main build-manifest entry were checked.
-Hosted interactive verification is pending. Production held.
+Hosted preview verified November 13, 2026:
+- Commit c1a3966502934e9c7d1fd48a16dcfa9aa871b9c2; checkpoint chess-ghost-drag-preview-20261113.
+- Deployment dpl_7BbCRVHYyUmW3i4fbos3Jbu6JWZh, READY, preview target; full hosted npm run build completed in 11 minutes.
+- Interactive preview: https://ptown-poker-em9hx77x3-jeremy-8e2b.vercel.app/chess-preview/try.html?_vercel_share=C92mcd7HkrmXychal4FszzEjxVANI7wO
+- Hosted build manifest matched the exact commit and retained assets/app-DcI_5Y0y.js as the main entry.
+- All six real Chrome interaction checks passed: touch ghost/source continuity and invalid-drop TriTowers recording; legal touch move; move-then-capture with complete Run21 recording scheduled within 20 ms of dissolve onset; mute/no replay; reduced-motion instant/silent fallback; mouse drag and tap play. Zero page errors.
+- Local complete gates: typecheck, 4,078 app tests, 241 harness checks, 46 release-tooling tests, Vite, 89,883,525-byte output below the unchanged 90 MB gate. Three portrait sizes and opponent/reconnect presentation tests passed.
+- Evidence: qualification.local/chess/ghost-build.log, interaction-hosted.log, interaction-browser.json, interaction-drag.png and ghost-portrait.log.
+- No new authenticated multiplayer/Async matches or settlement proofs were run in this presentation-only pass. Existing authoritative rule/Async/financial paths are unchanged; opponent and Async presentation regression tests passed. Physical iPhone/PWA audio unlock, drag feel and device playback remain Jeremy's acceptance checks.
+- Production remains at 3cab749a08d63fa3e6a25bc71fd10ed0900a2328 (HTTP manifest checked); no main integration or production promotion was performed.
+
 
 The candidate provides the playable preview. New video exports failed the strict
 encoded picture/audio onset gate and were not published; existing production
 MP4 files are unchanged. No recording gate was relaxed.
+
+Changed files for this preview:
+- src/components/chess/ChessBoard.tsx and chess.css: source pulse, outline drag, release/rejection behavior.
+- src/lib/chess/sound.ts and presentation.ts: shared TriTowers/Run21 cues and capture duration; slide/hop PCM preserved.
+- src/components/chess/ChessBoard.presentation.test.tsx, src/lib/chess/sound.test.ts and presentation.test.ts: drag/source, cue reuse, mute/reduced-motion and capture timing regressions.
+- chess-preview/try.html, dev/chess/interaction.tsx and interaction.css: isolated playable preview.
+- vite.config.ts: preview-only entry and correct application manifest ownership.
+- dev/chess/preview.tsx and verify-video.mjs: approved sound preload and exact Run21 asset expectations; strict recording sync gate retained.
+- docs/codex/CURRENT_RELEASE.md, CHESS_WORDS_LAUNCH_POLISH.md and STABLE_CHECKPOINTS.md: candidate and verification receipts.
