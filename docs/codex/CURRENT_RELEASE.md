@@ -1,3 +1,26 @@
+# Chess check/checkmate and History — November 13, 2026 — production live
+
+Production serves 1664bc7735f0ff69ddca9d83d1de1502fb5c92d0 on both
+https://holm357.com and https://ptown-poker.vercel.app. Deployment
+dpl_6BPye63gr7FdNbn1BwwGPFHN8WrA is READY, target production; both aliases match
+the exact release SHA. Checkpoint: chess-check-history-release-20261113.
+The unchanged push-origin-main.cmd published the fast-forwarded release.
+The redundant branch preview was canceled; production completed its full gates.
+
+Public verification confirmed the shipped History/check/heartbeat code, the
+approved check WAV SHA256
+94ee211e785ab43a32cad5e3035f519af223eaea01c8db3e367a09a605bd15c6,
+and healthy Chess API startup/authentication enforcement (401 without a token)
+on both domains. No real match was created or played during verification.
+Installed history migration and complete rollback proof passed as recorded below.
+Local full qualification plus all eight isolated portrait sequences passed; the
+additional trusted-clock/duplicate-receipt test also passed.
+
+Physical iPhone/PWA verification of check, checkmate, Async Continue and final
+boards in History remains Jeremy's acceptance. The two-player live Proceed gate
+and whole-game replay controls remain deferred. This receipt changes documentation
+only; the deployed application should remain on 1664bc773.
+
 # Chess check/checkmate and final-board History — November 13, 2026 — approved release
 
 Jeremy approved production after reviewing all eight local sequences and the
