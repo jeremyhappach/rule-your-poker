@@ -465,3 +465,14 @@ prior recorder's event-only synchronization claim. Runtime cue timing still
 comes from actual animation events; no artificial delay was added to gameplay.
 Production remains 3c322c6ca144dc8a6fd2567866beed7e42f2c504. Listening acceptance
 and physical iPhone/PWA verification remain Jeremy's; no production promotion.
+
+# Chess corrections — November 12, 2026 — approved production release
+
+Jeremy approved the subtle-slide studio and explicitly requested production.
+Release the tested runtime from ed9c327ca, including the prior Async/portrait
+corrections on this branch, through a clean main fast-forward and the unmodified
+main push helper. All runtime files match the qualified preview; subsequent
+commits only record verification and this authorization. Full local qualification
+passed: 4,074 app tests, 241 harness tests, 46 release-tooling tests, typecheck,
+Vite and size gate. No schema, rule, settlement, admission or asset-ID changes.
+Production deployment and exact-build smoke verification are pending.
