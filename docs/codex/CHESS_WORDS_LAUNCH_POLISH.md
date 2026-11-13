@@ -559,4 +559,3 @@ build excludes the interactive fixture; application runtime remains the approved
 board/source-pulse/ghost and shared TriTowers/Run21 audio implementation.
 No schema, gameplay rule, Async admission, clock/bank, settlement, background or
 layout changes are included. Production qualification/publication is in progress.
-
