@@ -17,9 +17,30 @@ non-overlapping controls, name proximity and visible 24-dot timer. Updated real
 recordings pass encoded timing, mute, unmute and reduced-motion checks.
 Final recovery review adds an entry-revision floor: old pending receipts stay
 unpresented while their canonical recovery read finishes. Focused regression
-coverage includes that race. The preceding full local build passed: 4,070 app tests, 241 harness tests, release tooling,
-typecheck, Vite and bundle size. Hosted verification is pending. Physical iPhone/PWA
-smoke remains required. Production remains 3c322c6ca.
+coverage includes that race. Final full local build passes: 4,071 app tests, 241 harness tests, release tooling,
+typecheck, Vite and bundle size. Hosted preview f540d8a1623e8537c5313cc39e4977f1657a75a6 is READY:
+https://ptown-poker-49t1cnbfo-jeremy-8e2b.vercel.app
+Deployment dpl_ByBxoQMfusJ8d6ve8ER9y7gBPnuL passed its full build gates.
+Two independent Chrome mobile contexts passed: live opponent slide; Async own
+animation then lobby return for both sides; non-owner entry rejection; unopened
+availability between turns; server rejection of the previous actor; five-minute
+clock and both +3m banks; deadline/background persistence; each viewer's own
+color/name pill on the left; next-turn opponent knight presentation once; and
+an old saved receipt deliberately delivered ahead of fresh reads without leaving
+the admitted turn. All three hosted recordings played to completion unmuted.
+No browser page errors. Both fresh play-money fixtures ended through normal
+commands, with no cleanup error. No historical match was edited.
+Evidence: qualification.local/chess/async-handoff-hosted.json and screenshots.
+Live fixture: 2b5679d5-be29-4c90-8da6-8a8ff1a23e16 / session
+9d7cceb9-9299-4f8d-902d-e4d9a46ece8e. Async fixture:
+cf3108f9-f1d1-44fc-ad28-57f5cf164362 / parent
+b3d3ceac-544b-4d94-a238-ce4d5016445f.
+A Run21 five-second timeout occurred once in the final local suite; that test
+and the entire unchanged build then passed. Final local totals: 4,071 app tests,
+241 harness tests, 46 release-tooling tests, typecheck, Vite and size gate.
+Production manifest still identifies 3c322c6ca144dc8a6fd2567866beed7e42f2c504.
+Physical iPhone/PWA two-device handoff, safe areas, touch and speaker-volume
+acceptance remain unverified. No production promotion occurred.
 
 # Chess / Words — November 12, 2026 — production live
 
