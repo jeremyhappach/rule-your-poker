@@ -4,7 +4,7 @@ import {pcmCue} from '@/lib/audio/pcm';
 import {chessSamples,type ChessSound} from './presentation';
 // Prepared without opening an AudioContext; the shared mixer owns unlock/mute.
 const slide=pcmCue(chessSamples('slide'));
-// Mix only: preserve the approved buffer, envelope, duration and animation trigger.
+// Keep the quieter slide mix; animation events still own the exact start.
 export const chessSlideCue={...slide,schedule:((ctx,destination,track)=>{
  const gain=track(ctx.createGain());gain.gain.value=.45;gain.connect(destination);
  return slide.schedule(ctx,gain,track);

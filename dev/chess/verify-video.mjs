@@ -22,17 +22,29 @@ try{
    const wav64=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result.split(',')[1]);fr.readAsDataURL(new Blob([wav]));});
    const canvas=document.createElement('canvas');canvas.width=393*5;canvas.height=500;const c=canvas.getContext('2d');
    const onset=(ev.animations.find(a=>a.kind==='animationstart').time-ev.startedAt)/1000;
-   const times=ev.name==='capture-poof'?[onset+.04,onset+.24,onset+.48,onset+.72,onset+1.08]:[onset-.1,onset+.05,onset+.15,onset+.28,onset+.5];
+   const crumble=(ev.animations.find(a=>a.name==='chess-poof'&&a.kind==='animationstart')?.time-ev.startedAt)/1000;
+   const times=ev.name==='capture-poof'?[onset+.12,crumble+.04,crumble+.24,crumble+.48,crumble+.72]:[onset-.1,onset+.05,onset+.15,onset+.28,onset+.5];
    for(let i=0;i<times.length;i++){video.currentTime=times[i];await new Promise(r=>video.addEventListener('seeked',r,{once:true}));c.drawImage(video,0,210,video.videoWidth,500,393*i,0,393,500);}
    return{file:ev.name,width:video.videoWidth,height:video.videoHeight,duration:video.duration,audioDuration:audio.duration,channels:audio.numberOfChannels,peak,windows,wav64,frames:canvas.toDataURL('image/png').split(',')[1]};
   },ev);
-  assert(result.width>=392&&result.height===852&&result.duration>2.5&&result.peak>(ev.name==='standard-slide'?.03:.07));
+  assert(result.width>=392&&result.height===852&&result.duration>2.5&&result.peak>(ev.name==='capture-poof'?.07:.025));
   assert(Math.abs(result.audioDuration-result.duration)<.1,'Encoded audio retains the complete timeline, including silent holds');
   const starts=ev.animations.filter(a=>a.kind==='animationstart');assert.equal(ev.audio.length,starts.length);
   ev.audio.forEach((sound,i)=>assert(Math.abs(sound.time-starts[i].time)<20,'Sound scheduled within one frame of CSS start'));
   const onset=result.windows.find(w=>w.rms>.005).at,expected=(ev.audio[0].time-ev.startedAt)/1000;
   assert(Math.abs(onset-expected)<.055,`Encoded audio onset tracks the actual animation: ${onset} vs ${expected}`);
-  assert(result.windows.filter(w=>w.rms>.006).length>15,'Sustained audible signal, not merely nonzero audio');
+  const audible=result.windows.filter(w=>w.rms>.006).length;
+  if(ev.name==='standard-slide'){assert(audible>=7&&audible<=18,'Short audible twip without sustained fuzz');assert(result.peak<.055,'Retains the quieter slide mix');}
+  if(ev.name==='knight-hop'){assert(audible>=14&&audible<=34,'Audible lift, mid-hop slide and landing');assert(result.peak<.07,'Knight remains substantially quieter');}
+  if(ev.name==='capture-poof'){
+   assert.deepEqual(starts.map(a=>a.name),['chess-slide','chess-poof']);
+   const arrival=ev.animations.find(a=>a.name==='chess-slide'&&a.kind==='animationend');
+   assert(starts[1].time>=arrival.time&&starts[1].time-arrival.time<100,'Crumble starts only after actual arrival');
+   const first=(starts[0].time-ev.startedAt)/1000,second=(starts[1].time-ev.startedAt)/1000;
+   assert(result.windows.filter(w=>w.at>first+.21&&w.at<second-.03).every(w=>w.rms<.002),'Clear quiet separation between twip and crumble');
+   assert(result.windows.some(w=>w.at>second+.03&&w.at<second+.2&&w.rms>.008),'Captured piece has its own audible crumble after arrival');
+   assert(audible>40,'Crumble is sustained and distinct');
+  }
   write(out+'/'+ev.name+'.wav',Buffer.from(result.wav64,'base64'));write(out+'/'+ev.name+'-frames.png',Buffer.from(result.frames,'base64'));
   delete result.wav64;delete result.frames;rows.push(result);
  }

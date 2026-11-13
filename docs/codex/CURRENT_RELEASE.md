@@ -1,3 +1,24 @@
+# Chess sound revision — November 12, 2026 — preview candidate
+
+Jeremy requested a crisper twip, a quieter three-part knight cue, and then
+explicitly corrected capture order to movement first, crumble after arrival.
+The short 160 ms swept twip replaces sustained friction while retaining the
+quiet slide gain and animation-start synchronization. Knight peak drops from
+0.14 to 0.06; a rounded lift tone, small mid-hop twip and low wooden landing
+occupy separate intervals. Capture now leaves the target visible during travel,
+starts fragmentation/dust and its sound on actual arrival, and completes Async
+submission presentation only when the crumble ends. Reduced motion/hidden-page
+fallbacks still settle instantly; existing dedupe and mute ownership are retained.
+No clocks, rules, persistence, database or geometry changes.
+
+Actual screen/Web Audio recordings pass encoded timing and separation checks:
+slide peak 0.0458, knight peak 0.0588, capture peak 0.1733. Slide has 10 audible
+10 ms windows; knight has 17, with distinct lift/slide/landing. Capture recording
+proves move then crumble and a quiet interval between their sounds. Native
+Chrome mute, unmute, replay suppression and reduced motion pass. Listening
+acceptance remains Jeremy's; the agent cannot perceive the recorded audio.
+Full release gates and hosted playback are pending. Production is unchanged.
+
 # Chess iPhone / Async correction — November 12, 2026 — preview only
 
 Requested after production iPhone smoke. Slide gain is now 45% of its approved

@@ -1,18 +1,29 @@
 import {it,expect} from 'vitest';
-import {chessSamples,chessMotion} from './presentation';
+import {chessSamples,chessMotion,chessAudio} from './presentation';
 const rms=(a:Float32Array,from:number,to:number)=>{const s=a.slice(Math.round(from*48000),Math.round(to*48000));return Math.sqrt(s.reduce((n,v)=>n+v*v,0)/s.length);};
-it('sustains slide friction across travel without an initial impact',()=>{
+const peak=(a:Float32Array)=>a.reduce((m,n)=>Math.max(m,Math.abs(n)),0);
+it('makes a crisp movement-synchronized twip with no sustained fuzzy tail',()=>{
  const {samples}=chessSamples('slide');expect(samples.length).toBe(chessMotion.slide*48);
- for(const t of [.02,.1,.2,.29])expect(rms(samples,t,t+.03)).toBeGreaterThan(.012);
- expect(rms(samples,0,.008)).toBeLessThan(rms(samples,.1,.108));expect(Math.abs(samples.at(-1)!)).toBeLessThan(.001);
+ expect(rms(samples,.008,.045)).toBeGreaterThan(.025);
+ expect(rms(samples,0,.004)).toBeLessThan(rms(samples,.008,.012));
+ expect(rms(samples,.1,.14)).toBeLessThan(rms(samples,.008,.048)*.3);
+ expect(rms(samples,chessAudio.twip,.36)).toBe(0);
 });
-it('has audible lift and landing separated by a quiet airborne interval',()=>{
+it('keeps the quieter knight lift, airborne slide and landing distinct',()=>{
  const {samples}=chessSamples('hop');expect(samples.length).toBe(chessMotion.hop*48);
- expect(rms(samples,.04,.16)).toBeGreaterThan(.012);expect(rms(samples,.24,.34)).toBe(0);
+ expect(peak(samples)).toBeCloseTo(.06,5);
+ expect(rms(samples,.02,.1)).toBeGreaterThan(.012);
+ expect(rms(samples,.12,.15)).toBe(0);
+ expect(rms(samples,.155,.2)).toBeGreaterThan(.004);
+ expect(rms(samples,.27,.38)).toBe(0);
  expect(rms(samples,.39,.43)).toBeGreaterThan(.012);
+ expect(rms(samples,.39,.43)).toBeGreaterThan(rms(samples,.155,.2));
 });
-it('sustains a textured crumble through the visible breakup and fades out without clipping',()=>{
+it('lets the crumble settle quietly while its final dust remains visible',()=>{
  const {samples}=chessSamples('poof');expect(samples.length).toBe(chessMotion.poof*48);
- for(const t of [.04,.2,.4,.6])expect(rms(samples,t,t+.05)).toBeGreaterThan(.006);
- expect(rms(samples,.75,.8)).toBeLessThan(rms(samples,.3,.35));expect(samples.every(n=>Number.isFinite(n)&&Math.abs(n)<.4)).toBe(true);
+ for(const t of [.04,.2,.4])expect(rms(samples,t,t+.05)).toBeGreaterThan(.006);
+ expect(rms(samples,.6,.65)).toBeLessThan(rms(samples,.3,.35));
+ expect(rms(samples,chessAudio.crumbleEnd,.8)).toBe(0);
+ expect(chessMotion.poof/1000-chessAudio.crumbleEnd).toBeCloseTo(.14);
+ expect(samples.every(n=>Number.isFinite(n)&&Math.abs(n)<.4)).toBe(true);
 });

@@ -33,12 +33,16 @@ describe.each(['live','async'] as const)('%s opponent presentation',mode=>{
   event('.chess-slide','animationend');expect(host.querySelector('.chess-motion')).toBeNull();
   act(()=>root.unmount());root=createRoot(host);render(next);expect(host.querySelector('.chess-motion')).toBeNull();expect(chessSound).toHaveBeenCalledTimes(1);
  });
- it('separates capture breakup and movement sound; particle events cannot duplicate audio',()=>{
-  let v=initial(mode);v=move(v,'e2','e4');v=move(v,'d7','d5');render(v);event('.chess-slide','animationend');
-  vi.clearAllMocks();render(move(v,'e4','d5'));expect(host.querySelectorAll('.chess-fragment')).toHaveLength(9);
-  event('.chess-fragment','animationstart');expect(chessSound).not.toHaveBeenCalled();
-  event('.chess-poof','animationstart');expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual(['poof']);
-  event('.chess-slide','animationstart');expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual(['poof','slide']);
+ it.each([false,true])('moves first, then crumbles; knight=%s; child events cannot duplicate or finish it',knight=>{
+  let v=initial(mode);v=move(v,knight?'g1':'e2',knight?'f3':'e4');v=move(v,knight?'e7':'d7',knight?'e5':'d5');render(v);event('.chess-slide','animationend');
+  vi.clearAllMocks();render(move(v,knight?'f3':'e4',knight?'e5':'d5'));expect(host.querySelector('.chess-poof')).toBeNull();
+  expect(host.querySelector('.chess-capture-target .chess-piece')).not.toBeNull();
+  event('.chess-slide','animationstart');expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual([knight?'hop':'slide']);
+  event('.chess-slide','animationend');expect(host.querySelectorAll('.chess-fragment')).toHaveLength(9);
+  event('.chess-fragment','animationstart');expect(chessSound).toHaveBeenCalledTimes(1);
+  event('.chess-poof','animationstart');expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual([knight?'hop':'slide','poof']);
+  event('.chess-fragment','animationend');expect(host.querySelector('.chess-motion')).not.toBeNull();
+  event('.chess-poof','animationend');expect(host.querySelector('.chess-motion')).toBeNull();
  });
  it('consumes reduced-motion moves silently and settles an in-flight animation when preference changes',()=>{
   let v=initial(mode);render(v);reduced=true;v=move(v,'e2','e4');render(v);expect(host.querySelector('.chess-motion')).toBeNull();expect(chessSound).not.toHaveBeenCalled();
@@ -54,4 +58,12 @@ it('releases an Async handoff on actual movement end, or instantly for reduced m
  reduced=true;const next=move(v,'e7','e5');
  act(()=>root.render(<ChessBoard view={next} pending={false} onIntent={async()=>true} onMovePresentationComplete={done}/>));
  expect(done).toHaveBeenCalledTimes(2);expect(host.querySelector('.chess-motion')).toBeNull();
+});
+
+it('holds the Async submission through capture breakup after the mover arrives',()=>{
+ let v=initial('async');v=move(v,'e2','e4');v=move(v,'d7','d5');v=move(v,'e4','d5');const done=vi.fn();
+ act(()=>root.render(<ChessBoard view={v} pending={false} onIntent={async()=>true} onMovePresentationComplete={done}/>));
+ event('.chess-slide','animationend');expect(done).not.toHaveBeenCalled();
+ event('.chess-fragment','animationend');expect(done).not.toHaveBeenCalled();
+ event('.chess-poof','animationend');expect(done).toHaveBeenCalledTimes(1);
 });

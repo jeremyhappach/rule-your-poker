@@ -3,7 +3,7 @@ vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{}}));
 vi.mock('@/lib/audio/presentationSound',()=>({isSoundSurfaceVisible:()=>true}));
 import {chessSlideCue} from './sound';
 import {chessSamples,chessMotion} from './presentation';
-it('reduces only slide output to 45% while preserving the approved samples and timing',()=>{
+it('keeps slide output at 45% and schedules the current twip at the animation start',()=>{
  const copy=vi.fn(),start=vi.fn(),connect=vi.fn(),gain={gain:{value:1},connect:vi.fn()},source={buffer:null,connect,start};
  const context={currentTime:12,createGain:()=>gain,createBuffer:()=>({copyToChannel:copy}),createBufferSource:()=>source};
  const destination={} as AudioNode,tracked:unknown[]=[];

@@ -3,6 +3,7 @@
 .chess-slide{animation:chess-slide var(--move-duration) cubic-bezier(.35,0,.35,1) var(--delay) both}
 .chess-hop{animation-name:chess-hop;animation-timing-function:linear}
 .chess-poof{animation:chess-poof var(--capture-duration) linear both;z-index:4;--dust-color:#675f54}
+.chess-capture-target{z-index:4}
 .chess-poof[data-color=w]{--dust-color:#e8cca1}
 .chess-fragment{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;animation:chess-fragment var(--capture-duration) ease-in both;transform-origin:50% 65%}
 .chess-poof i{position:absolute;left:48%;top:45%;width:var(--dust-size);height:var(--dust-size);background:var(--dust-color);box-shadow:0 0 2px #bca48388;border-radius:35%;animation:chess-dust calc(var(--capture-duration) - var(--dust-delay)) ease-out var(--dust-delay) both}
