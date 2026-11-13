@@ -1,3 +1,39 @@
+# Chess ghost drag / Run21 capture — November 13, 2026 — production live
+
+Jeremy approved both changes in the hosted c1a396650 preview. Production now
+serves 049a47c2108ca4a40ab352682c81717e92c7db93 on https://holm357.com and
+https://ptown-poker.vercel.app. Vercel deployment dpl_3vPPLGmssJRyFDSB7c3GSxvgRigS
+is READY with target production. Checkpoint: chess-ghost-drag-production-20261113.
+The clean branch was fast-forwarded into main and pushed through the unchanged
+.codex/scripts/push-origin-main.cmd helper.
+
+Production-mode local qualification passed: typecheck, 4,078 app tests, 241
+harness tests, 46 release-tooling tests, Vite and the unchanged 90 MB size gate
+(89,879,070 bytes). The production output excludes /chess-preview/try.html.
+Vercel independently completed the full build gate. No source changes followed
+the approved preview; only release documentation changed.
+
+Production smoke passed: both domain manifests match the exact SHA and serve
+the ghost-drag runtime; source-pulse/outline CSS is present; Run21 bust and
+TriTowers invalid WAVs match the existing source bytes; both authenticated test
+accounts retain live/Async capabilities; settled live/Async snapshots preserve
+background IDs; ended live entry returns to lobby. Zero browser page errors
+and no error/fatal logs in the deployment-scoped runtime scan. Evidence:
+qualification.local/chess/ghost-production-build.log, ghost-production.json,
+ghost-production-smoke.log and ghost-production-smoke.png.
+
+GitHub release run 43457509531 initially passed qualification but exhausted its
+unchanged 10-minute production wait while Vercel was still building. The connector
+could not rerun Actions (integration write permission); the signed-in GitHub UI
+started attempt 2 after production became READY. Attempt 2 passed qualification, exact production verification and release-signal publication.
+No gate, timeout or release logic was weakened.
+
+The approved presentation changes preserve rules, Async admission/handoff, clocks,
+banks, settlement, layout and background persistence. No schema migrations,
+historical-game mutations or new active financial fixtures were performed.
+This pass verifies production delivery and read-only runtime health; physical
+iPhone/PWA gesture/audio behavior remains Jeremy's production smoke check.
+
 # Chess ghost drag / Run21 capture — November 13, 2026 — production authorized
 
 Jeremy approved both changes in the verified c1a396650 preview and explicitly
