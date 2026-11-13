@@ -18,7 +18,7 @@ beforeEach(()=>{
 afterEach(()=>{act(()=>root.unmount());host.remove();vi.useRealTimers();vi.unstubAllGlobals();});
 function initial(mode:'live'|'async') {
  const state=newChess({identity:{sessionId:'s',dealerGameId:'g',roundId:'r'},players:[{id:'white',userId:'w',name:'White',seat:1,isBot:false},{id:'black',userId:'b',name:'Black',seat:2,isBot:false}],backgroundId:'photo',mode},1000);
- return {...state,viewerId:'black',canAct:false,opened:true} as ChessSnapshot;
+ return {...state,revision:0,serverAt:1000,viewerId:'black',canAct:false,opened:true} as ChessSnapshot;
 }
 const render=(v:ChessSnapshot)=>act(()=>root.render(<ChessBoard view={v} pending={false} onIntent={async()=>true}/>));
 // JSDOM exposes WebKit styles but no native AnimationEvent, so React uses this prefix.
@@ -71,8 +71,8 @@ it('holds the Async submission through capture breakup after the mover arrives',
 function pointer(node:Element,type:string,x:number,y:number){act(()=>{const e=new MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:y});Object.defineProperty(e,'pointerId',{value:1});node.dispatchEvent(e);});}
 function dragSetup(onIntent:(i:any)=>Promise<boolean>){const v={...initial('live'),viewerId:'white',canAct:true};act(()=>root.render(<ChessBoard view={v} pending={false} onIntent={onIntent}/>));const board=host.querySelector('.chess-board')!,source=host.querySelector('[data-square="e2"]')!;(source as any).setPointerCapture=vi.fn();board.getBoundingClientRect=()=>({left:0,top:0,width:400,height:400,right:400,bottom:400,x:0,y:0,toJSON(){}});pointer(source,'pointerdown',225,325);pointer(board,'pointermove',225,225);return {v,board,source};}
 it('keeps the home piece visible under the ghost, then solid while a legal drop awaits authority',()=>{
- const send=vi.fn(()=>new Promise<boolean>(()=>{})),{v,board,source}=dragSetup(send);expect(source.querySelector('.chess-piece')).not.toBeNull();expect(source.hasAttribute('data-dragging')).toBe(true);expect(host.querySelector('.chess-drag-ghost')).not.toBeNull();
- pointer(board,'pointerup',225,225);expect(send).toHaveBeenCalledWith({type:'move',from:'e2',to:'e4'});expect(host.querySelector('.chess-drag-ghost')).toBeNull();expect(source.hasAttribute('data-dragging')).toBe(false);expect(source.querySelector('.chess-piece')).not.toBeNull();expect(chessSound).not.toHaveBeenCalled();
+ vi.useFakeTimers();const send=vi.fn(()=>new Promise<boolean>(()=>{})),{v,board,source}=dragSetup(send);expect(source.querySelector('.chess-piece')).not.toBeNull();expect(source.hasAttribute('data-dragging')).toBe(true);expect(host.querySelector('.chess-drag-ghost')).not.toBeNull();
+ pointer(board,'pointerup',225,225);expect(send).not.toHaveBeenCalled();expect(host.querySelector('.chess-pending-ghost')).not.toBeNull();act(()=>vi.advanceTimersByTime(3000));expect(send).toHaveBeenCalledWith({type:'move',from:'e2',to:'e4'},0);expect(host.querySelector('.chess-drag-ghost')).toBeNull();expect(source.hasAttribute('data-dragging')).toBe(false);expect(source.querySelector('.chess-piece')).not.toBeNull();expect(chessSound).not.toHaveBeenCalled();
  render(move(v,'e2','e4'));expect(host.querySelector('.chess-slide')).not.toBeNull();expect((host.querySelector('.chess-slide') as HTMLElement).style.top).toBe('75%');event('.chess-slide','animationstart');expect(vi.mocked(chessSound).mock.calls[0][1]).toBe('slide');
 });
 it('invalid drops remove only the ghost, retain the source and play one existing invalid cue',()=>{
@@ -90,7 +90,7 @@ describe('Async entry announcements',()=>{
   advance(2999);expect(host.querySelector('[data-stage="opponent"]')).not.toBeNull();enter({...v},send);advance(1);expect(host.querySelector('[data-stage="fading"]')).not.toBeNull();advance(199);expect(host.querySelector('.chess-motion')).toBeNull();advance(1);expect(host.querySelector('.chess-motion')).toBeNull();event('.chess-turn-message','animationend');expect(host.querySelector('.chess-turn-message')).toBeNull();
   event('.chess-slide','animationstart');expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual(['slide']);event('.chess-slide','animationend');expect(host.textContent).toContain('Your Turn');
   act(()=>(host.querySelector('[data-square="e7"]') as HTMLElement).click());act(()=>(host.querySelector('[data-square="e5"]') as HTMLElement).click());expect(send).not.toHaveBeenCalled();advance(1999);expect(host.textContent).toContain('Your Turn');advance(1);expect(host.querySelector('.chess-turn-message')).toBeNull();
-  act(()=>(host.querySelector('[data-square="e7"]') as HTMLElement).click());act(()=>(host.querySelector('[data-square="e5"]') as HTMLElement).click());expect(send).toHaveBeenCalledTimes(1);
+  act(()=>(host.querySelector('[data-square="e7"]') as HTMLElement).click());act(()=>(host.querySelector('[data-square="e5"]') as HTMLElement).click());expect(send).not.toHaveBeenCalled();advance(3000);expect(send).toHaveBeenCalledTimes(1);
   act(()=>root.unmount());root=createRoot(host);enter(v);expect(host.querySelector('.chess-turn-message,.chess-motion')).toBeNull();
  });
  it('waits for capture breakup before Your Turn, without replaying on snapshot refresh',()=>{
@@ -103,4 +103,10 @@ describe('Async entry announcements',()=>{
   vi.useFakeTimers();const v=move(initial('async'),'e2','e4');enter(v);Object.defineProperty(document,'hidden',{configurable:true,value:true});act(()=>document.dispatchEvent(new Event('visibilitychange')));advance(6000);expect(host.querySelector('.chess-turn-message,.chess-motion')).toBeNull();expect(chessSound).not.toHaveBeenCalled();Object.defineProperty(document,'hidden',{configurable:true,value:false});
   enter({...v,identity:{...v.identity,dealerGameId:'new'}});act(()=>root.unmount());root=createRoot(host);advance(6000);expect(chessSound).not.toHaveBeenCalled();
  });
+});
+
+
+it('keeps revival selection reversible and consumes no captured inventory before authority accepts it',()=>{
+ vi.useFakeTimers();let state=newChess({identity:{sessionId:'s',dealerGameId:'promotion',roundId:'r'},players:[{id:'white',userId:'white',name:'White',seat:0,isBot:false},{id:'black',userId:'black',name:'Black',seat:1,isBot:false}],mode:'live',backgroundId:''},1000,'7k/P7/8/8/8/1b6/R7/7K b - - 0 1');state=playChess(state,'black',{type:'move',from:'b3',to:'a2'},2000);const v={...state,viewerId:'white',revision:1,serverAt:2000,canAct:true,opened:true} as ChessSnapshot,send=vi.fn(async()=>true);localStorage.setItem('ptown:chess:seen:white:promotion','1');act(()=>root.render(<ChessBoard view={v} pending={false} onIntent={send}/>));const choose=()=>{act(()=>(host.querySelector('[data-square="a7"]') as HTMLElement).click());act(()=>(host.querySelector('[data-square="a8"]') as HTMLElement).click());expect(host.querySelector('[aria-label="Revive Rook"]')).not.toBeNull();act(()=>(host.querySelector('[aria-label="Revive Rook"]') as HTMLElement).click());};
+ choose();expect(send).not.toHaveBeenCalled();expect(v.captured.w).toHaveLength(1);act(()=>(host.querySelector('[aria-label="Undo pending move"]') as HTMLElement).click());act(()=>vi.advanceTimersByTime(4000));expect(send).not.toHaveBeenCalled();expect(host.querySelector('[data-square="a7"] .chess-piece')).not.toBeNull();choose();act(()=>vi.advanceTimersByTime(3000));expect(send).toHaveBeenCalledExactlyOnceWith({type:'move',from:'a7',to:'a8',promotion:'r',reviveId:v.captured.w[0].id},1);expect(v.captured.w).toHaveLength(1);
 });

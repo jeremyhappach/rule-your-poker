@@ -2,3 +2,5 @@
 html,body,#root{height:100%;margin:0;background:#10232c}
 
 .chess-preview-lobby{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid #dec58e80;border-radius:5px}.chess-preview-lobby h2{font-size:1.4rem}.chess-preview-lobby button{padding:.65rem 1rem;border:1px solid #dec58e80;border-radius:.5rem}
+
+.chess-interaction-preview .chess-artifacts{margin-top:3.5rem;margin-bottom:3.5rem}.chess-preview-safety{font-size:.8rem}.chess-preview-safety button{padding:.6rem;border:1px solid #dec58e60;border-radius:.4rem;margin:.3rem}
