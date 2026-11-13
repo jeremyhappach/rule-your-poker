@@ -31,7 +31,7 @@ function ActiveChessTurn({childId,matchId,userId,entry,transport}:Props&{entry:C
  if(v&&v.identity.sessionId!==matchId)return <p role="alert">Match identity mismatch.</p>;
  // Guard rendering too: never paint a later opponent move while navigation commits.
  if(leftTurn)return <SubmittedChessTurn snapshot={v!} entry={entry} matchId={matchId} childId={childId}/>;
- return <div className="async-words-turn"><ChessView {...game} view={v} activeTab={tab} setActiveTab={setTab} onIntent={game.act} onReconnect={game.reconnect} navigation={<nav aria-label="Chess information"><Link aria-label="Match Home" title="Match Home" to={'/delayed/'+matchId}><ChevronLeft size={20} aria-hidden="true"/></Link><button onClick={()=>setTab('history')}>History</button></nav>} panel={<>{v?.moves.map(m=><p key={m.ply}>{m.from} → {m.to}</p>)}</>}/></div>;
+ return <div className="async-words-turn"><ChessView {...game} announceOpponentMove view={v} activeTab={tab} setActiveTab={setTab} onIntent={game.act} onReconnect={game.reconnect} navigation={<nav aria-label="Chess information"><Link aria-label="Match Home" title="Match Home" to={'/delayed/'+matchId}><ChevronLeft size={20} aria-hidden="true"/></Link><button onClick={()=>setTab('history')}>History</button></nav>} panel={<>{v?.moves.map(m=><p key={m.ply}>{m.from} → {m.to}</p>)}</>}/></div>;
 }
 
 // Freeze the accepted own move through its animation and requested lobby hold. Later

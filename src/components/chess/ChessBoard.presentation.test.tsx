@@ -15,7 +15,7 @@ beforeEach(()=>{
  vi.stubGlobal('matchMedia',()=>({get matches(){return reduced;},addEventListener:(_:string,f:()=>void)=>mediaListeners.add(f),removeEventListener:(_:string,f:()=>void)=>mediaListeners.delete(f)}));
  host=document.createElement('div');document.body.append(host);root=createRoot(host);
 });
-afterEach(()=>{act(()=>root.unmount());host.remove();vi.unstubAllGlobals();});
+afterEach(()=>{act(()=>root.unmount());host.remove();vi.useRealTimers();vi.unstubAllGlobals();});
 function initial(mode:'live'|'async') {
  const state=newChess({identity:{sessionId:'s',dealerGameId:'g',roundId:'r'},players:[{id:'white',userId:'w',name:'White',seat:1,isBot:false},{id:'black',userId:'b',name:'Black',seat:2,isBot:false}],backgroundId:'photo',mode},1000);
  return {...state,viewerId:'black',canAct:false,opened:true} as ChessSnapshot;
@@ -77,4 +77,30 @@ it('keeps the home piece visible under the ghost, then solid while a legal drop 
 });
 it('invalid drops remove only the ghost, retain the source and play one existing invalid cue',()=>{
  const send=vi.fn(async()=>true),{board,source}=dragSetup(send);pointer(board,'pointerup',225,175);expect(send).not.toHaveBeenCalled();expect(source.querySelector('.chess-piece')).not.toBeNull();expect(source.hasAttribute('data-dragging')).toBe(false);expect(host.querySelector('.chess-drag-ghost')).toBeNull();expect(host.querySelector('[data-square="e5"]')?.hasAttribute('data-rejected')).toBe(true);expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual(['invalid']);
+});
+
+
+describe('Async entry announcements',()=>{
+ const advance=(ms:number)=>act(()=>vi.advanceTimersByTime(ms));
+ const enter=(v:ChessSnapshot,send=vi.fn(async()=>true))=>act(()=>root.render(<ChessBoard view={{...v,canAct:true,opened:true}} announceOpponentMove pending={false} onIntent={send}/>));
+ it('holds the old position for three seconds, fades before sound/motion, then holds Your Turn for two seconds',()=>{
+  vi.useFakeTimers();const v=move(initial('async'),'e2','e4'),send=vi.fn(async()=>true);enter(v,send);
+  expect(host.textContent).toContain("Opponent's Move...");expect(host.querySelector('[data-square="e2"] .chess-piece')).not.toBeNull();expect(host.querySelector('[data-square="e4"] .chess-piece')).toBeNull();expect(host.querySelector('.chess-motion')).toBeNull();expect(chessSound).not.toHaveBeenCalled();
+  act(()=>(host.querySelector('[data-square="e7"]') as HTMLElement).click());act(()=>(host.querySelector('[data-square="e5"]') as HTMLElement).click());expect(send).not.toHaveBeenCalled();
+  advance(2999);expect(host.querySelector('[data-stage="opponent"]')).not.toBeNull();enter({...v},send);advance(1);expect(host.querySelector('[data-stage="fading"]')).not.toBeNull();advance(199);expect(host.querySelector('.chess-motion')).toBeNull();advance(1);expect(host.querySelector('.chess-motion')).toBeNull();event('.chess-turn-message','animationend');expect(host.querySelector('.chess-turn-message')).toBeNull();
+  event('.chess-slide','animationstart');expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual(['slide']);event('.chess-slide','animationend');expect(host.textContent).toContain('Your Turn');
+  act(()=>(host.querySelector('[data-square="e7"]') as HTMLElement).click());act(()=>(host.querySelector('[data-square="e5"]') as HTMLElement).click());expect(send).not.toHaveBeenCalled();advance(1999);expect(host.textContent).toContain('Your Turn');advance(1);expect(host.querySelector('.chess-turn-message')).toBeNull();
+  act(()=>(host.querySelector('[data-square="e7"]') as HTMLElement).click());act(()=>(host.querySelector('[data-square="e5"]') as HTMLElement).click());expect(send).toHaveBeenCalledTimes(1);
+  act(()=>root.unmount());root=createRoot(host);enter(v);expect(host.querySelector('.chess-turn-message,.chess-motion')).toBeNull();
+ });
+ it('waits for capture breakup before Your Turn, without replaying on snapshot refresh',()=>{
+  vi.useFakeTimers();let v=initial('async');v=move(v,'e2','e4');v=move(v,'d7','d5');v=move(v,'e4','d5');enter(v);advance(3000);advance(200);event('.chess-turn-message','animationend');event('.chess-slide','animationstart');event('.chess-slide','animationend');expect(host.textContent).not.toContain('Your Turn');event('.chess-poof','animationstart');expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual(['slide','poof']);event('.chess-poof','animationend');expect(host.textContent).toContain('Your Turn');enter({...v});advance(2000);expect(host.querySelector('.chess-turn-message,.chess-motion')).toBeNull();
+ });
+ it('keeps reduced-motion announcements static and silent',()=>{
+  vi.useFakeTimers();reduced=true;const v=move(initial('async'),'e2','e4');enter(v);advance(3000);expect(host.textContent).toContain('Your Turn');expect(host.querySelector('.chess-motion')).toBeNull();expect(chessSound).not.toHaveBeenCalled();advance(2000);expect(host.querySelector('.chess-turn-message')).toBeNull();
+ });
+ it('cancels the announcement on hide and never starts a delayed animation after unmount',()=>{
+  vi.useFakeTimers();const v=move(initial('async'),'e2','e4');enter(v);Object.defineProperty(document,'hidden',{configurable:true,value:true});act(()=>document.dispatchEvent(new Event('visibilitychange')));advance(6000);expect(host.querySelector('.chess-turn-message,.chess-motion')).toBeNull();expect(chessSound).not.toHaveBeenCalled();Object.defineProperty(document,'hidden',{configurable:true,value:false});
+  enter({...v,identity:{...v.identity,dealerGameId:'new'}});act(()=>root.unmount());root=createRoot(host);advance(6000);expect(chessSound).not.toHaveBeenCalled();
+ });
 });

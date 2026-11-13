@@ -1,3 +1,34 @@
+# Chess Async entry pacing — November 13, 2026 — preview candidate
+
+Jeremy approved the five-second return overlay, then requested a matching Async
+entry sequence: "Opponent's Move..." for three seconds, fade out completely,
+play the opponent's move, then "Your Turn" for two seconds.
+
+The existing ChessBoard presentation owner now gates an unseen opponent move
+only when ActiveChessTurn opts in. It commits the pre-move position before paint,
+retains the per-viewer/game/ply receipt, and starts movement from the actual fade
+animation-end event. The normal movement/capture completion event begins the
+two-second Your Turn hold. Input stays blocked through these stages. It reuses
+the approved 55%-opaque card without blur. Live multiplayer, own-move animation,
+clock/open/bank rules, authority, settlement and background/layout are unchanged.
+Reduced motion keeps static three-/two-second messages and settles silently;
+hidden/unmount paths cancel pending stages without delayed audio or replay.
+The approved five-second return behavior remains included.
+
+The nonfinancial preview adds Opponent move and Opponent capture controls using
+actual rules, ChessBoard, audio and fade events. Focused tests: 25 passed,
+including stage timing/order, source-position hold, input lock, capture finish,
+rerender/remount dedupe, reduced motion, visibility and cleanup. Full npm run
+build passed: typecheck, 4,084 app tests, 241 harness tests, 46 release-tooling
+checks, Vite and the unchanged 90 MB size gate. Native Chrome confirmed actual
+fade completion before movement, sound at animation start, capture breakup before
+Your Turn, three-/two-second holds, silent mute/reduced motion and subsequent
+five-second return. All six existing touch/mouse/tap/audio regression checks also
+passed. Hosted verification is pending. No schema change or new authenticated
+financial fixture. The approved return hold is publishing separately as
+b125e88f54cce044f0023f07e361a3afb5be7f6b through the unchanged main push helper;
+new entry pacing remains preview-only.
+
 # Chess Async return hold — November 13, 2026 — hosted preview ready
 
 Jeremy requested a preview before production, then a more translucent overlay.
@@ -34,7 +65,8 @@ This smoke covers the actual presentation in the preview fixture, not a newly
 created authenticated two-player Async game or physical iPhone/PWA. Existing
 ChessTurn tests cover frozen snapshots and fast opponent updates during the hold.
 Production remains 049a47c2108ca4a40ab352682c81717e92c7db93. No main integration
-or production promotion; Jeremy must approve this preview before release.
+or production promotion. Jeremy approved this return hold on November 13;
+the additional entry pacing is the current preview candidate.
 
 # Chess ghost drag / Run21 capture — November 13, 2026 — production live
 
