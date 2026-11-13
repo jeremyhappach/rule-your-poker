@@ -17,7 +17,22 @@ slide peak 0.0458, knight peak 0.0588, capture peak 0.1733. Slide has 10 audible
 proves move then crumble and a quiet interval between their sounds. Native
 Chrome mute, unmute, replay suppression and reduced motion pass. Listening
 acceptance remains Jeremy's; the agent cannot perceive the recorded audio.
-Full release gates and hosted playback are pending. Production is unchanged.
+Hosted preview 34e313c1c5bbb140f5c926208e2a0e30d636bbf1 is READY:
+https://ptown-poker-bxwqnl63n-jeremy-8e2b.vercel.app/chess-preview/
+Deployment dpl_HyWyzDrywf24Apkktb8UjEiRkUuz passed the unchanged full Vercel
+build/release gates. All three hosted MP4 hashes match the implemented screen/
+Web Audio recordings; all play to completion unmuted in mobile Chrome with
+nonzero AAC audio and matching audio/video duration. No browser page errors.
+Evidence: qualification.local/chess/crisp-hosted.json and crisp-gallery.png.
+Local focused Chess checks pass (21); portrait/browser checks pass at 393, 375
+and 320 px without changing board size. Local full builds twice hit unrelated
+five-second test timeouts (Words inspection, Run21 and Take Two across runs);
+the final two timed-out files pass individually (15 tests). A further reduced-
+worker rerun was stopped during typecheck to stay within the execution budget,
+so no clean full local build is claimed. No timeout or gate was weakened; the
+exact candidate passed the complete hosted build. Listening and physical
+iPhone/PWA acceptance remain Jeremy's. Production manifest still identifies
+3c322c6ca144dc8a6fd2567866beed7e42f2c504; no production promotion occurred.
 
 # Chess iPhone / Async correction — November 12, 2026 — preview only
 
