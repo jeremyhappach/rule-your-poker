@@ -1,0 +1,2 @@
+.chess-interaction-preview{min-height:100%;background:#10232c;color:#fff;padding:10px;max-width:38rem;margin:auto;font:16px system-ui}.chess-interaction-preview h1{font-size:1.2rem;margin:8px 0}.chess-interaction-preview nav{display:flex;gap:8px;flex-wrap:wrap}.chess-interaction-preview nav button{padding:8px 14px;border:1px solid #dec58e80;border-radius:8px}.chess-interaction-preview p{font-size:.85rem;margin:10px 0;line-height:1.4}.chess-interaction-preview .chess-tray-control{color:white}
+html,body,#root{height:100%;margin:0;background:#10232c}

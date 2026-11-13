@@ -1,14 +1,16 @@
+import {RUN21_FAILURE_CUE_MS} from '@/lib/run21/failureCue';
 /** One presentation timeline for CSS and audio; gameplay clocks are independent. */
-export const chessMotion = {slide: 360, hop: 480, poof: 800, landing: .8} as const;
-export const chessAudio = {twip: .16, lift: .12, airborneSlideAt: .15, airborneSlide: .11, crumbleEnd: .66} as const;
-export type ChessSound = 'slide' | 'hop' | 'poof';
+export const chessMotion = {slide: 360, hop: 480, poof: RUN21_FAILURE_CUE_MS, landing: .8} as const;
+export const chessAudio = {twip: .16, lift: .12, airborneSlideAt: .15, airborneSlide: .11} as const;
+export type ChessSound = 'slide' | 'hop' | 'poof' | 'invalid';
 
-/** Soft sliding friction, quiet lift/wood landing, and separate granular dust. */
-export function chessSamples(type: ChessSound, rate = 48000) {
+/** Soft sliding friction, quiet lift/wood landing, and the existing Run21 capture timeline. */
+export function chessSamples(type: 'slide' | 'hop', rate = 48000) {
  const seconds = chessMotion[type] / 1000, samples = new Float32Array(Math.round(rate * seconds));
  let seed = 73021, smooth = 0, bass = 0, slideTexture = 0;
  const random = () => {seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296;};
- const grains = Array.from({length: 42}, (_, i) => ({at: .015 + i / 42 * .66, length: .025 + random() * .09, level: .15 + random() * .3}));
+ // Preserve the approved move waveform sequence after retiring synthetic capture.
+ for(let i=0;i<84;i++)random();
  // A defined swept front with a little air; no sustained friction bed.
  const twip=(t:number,duration:number,air:number)=>{
   if(t<0||t>=duration)return 0;
@@ -41,20 +43,11 @@ export function chessSamples(type: ChessSound, rate = 48000) {
     const phase=2*Math.PI*(210*land-210*land*land);
     value+=envelope*(.62*Math.sin(phase)+.2*Math.sin(phase*2)+.08*Math.sin(phase*3)+.09*texture);
    }
-  } else {
-   let crumble = .16;
-   for (const grain of grains) {
-    const at = (t - grain.at) / grain.length;
-    if (at > 0 && at < 1) crumble += grain.level * Math.sin(Math.PI * at) ** 2;
-   }
-   // Dust keeps drifting visually; its last 140 ms settle quietly.
-   const envelope = Math.min(1,t/.028)*Math.max(0,Math.min(1,(chessAudio.crumbleEnd-t)/.18));
-   value = texture * crumble * envelope;
   }
   samples[i] = value;
  }
  const peak = samples.reduce((m, n) => Math.max(m, Math.abs(n)), 0);
- const level = type === 'poof' ? .065 : type === 'hop' ? .06 : .1;
+ const level = type === 'hop' ? .06 : .1;
  for (let i = 0; i < samples.length; i++) samples[i] *= level / peak;
  return {samples, rate};
 }

@@ -67,3 +67,14 @@ it('holds the Async submission through capture breakup after the mover arrives',
  event('.chess-fragment','animationend');expect(done).not.toHaveBeenCalled();
  event('.chess-poof','animationend');expect(done).toHaveBeenCalledTimes(1);
 });
+
+function pointer(node:Element,type:string,x:number,y:number){act(()=>{const e=new MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:y});Object.defineProperty(e,'pointerId',{value:1});node.dispatchEvent(e);});}
+function dragSetup(onIntent:(i:any)=>Promise<boolean>){const v={...initial('live'),viewerId:'white',canAct:true};act(()=>root.render(<ChessBoard view={v} pending={false} onIntent={onIntent}/>));const board=host.querySelector('.chess-board')!,source=host.querySelector('[data-square="e2"]')!;(source as any).setPointerCapture=vi.fn();board.getBoundingClientRect=()=>({left:0,top:0,width:400,height:400,right:400,bottom:400,x:0,y:0,toJSON(){}});pointer(source,'pointerdown',225,325);pointer(board,'pointermove',225,225);return {v,board,source};}
+it('keeps the home piece visible under the ghost, then solid while a legal drop awaits authority',()=>{
+ const send=vi.fn(()=>new Promise<boolean>(()=>{})),{v,board,source}=dragSetup(send);expect(source.querySelector('.chess-piece')).not.toBeNull();expect(source.hasAttribute('data-dragging')).toBe(true);expect(host.querySelector('.chess-drag-ghost')).not.toBeNull();
+ pointer(board,'pointerup',225,225);expect(send).toHaveBeenCalledWith({type:'move',from:'e2',to:'e4'});expect(host.querySelector('.chess-drag-ghost')).toBeNull();expect(source.hasAttribute('data-dragging')).toBe(false);expect(source.querySelector('.chess-piece')).not.toBeNull();expect(chessSound).not.toHaveBeenCalled();
+ render(move(v,'e2','e4'));expect(host.querySelector('.chess-slide')).not.toBeNull();expect((host.querySelector('.chess-slide') as HTMLElement).style.top).toBe('75%');event('.chess-slide','animationstart');expect(vi.mocked(chessSound).mock.calls[0][1]).toBe('slide');
+});
+it('invalid drops remove only the ghost, retain the source and play one existing invalid cue',()=>{
+ const send=vi.fn(async()=>true),{board,source}=dragSetup(send);pointer(board,'pointerup',225,175);expect(send).not.toHaveBeenCalled();expect(source.querySelector('.chess-piece')).not.toBeNull();expect(source.hasAttribute('data-dragging')).toBe(false);expect(host.querySelector('.chess-drag-ghost')).toBeNull();expect(host.querySelector('[data-square="e5"]')?.hasAttribute('data-rejected')).toBe(true);expect(vi.mocked(chessSound).mock.calls.map(c=>c[1])).toEqual(['invalid']);
+});

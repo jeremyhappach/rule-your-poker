@@ -75,6 +75,8 @@ export default defineConfig(({ mode }) => {
     "";
 
   return {
+    // The interactive fixture is available on previews only, never production.
+    build: process.env.VERCEL_ENV === 'preview' ? {rollupOptions:{input:{app:path.resolve(__dirname,'index.html'),chessInteraction:path.resolve(__dirname,'chess-preview/try.html')}}} : undefined,
     server: {
       host: run21AppTestLane ? "127.0.0.1" : "::",
       port: 8080,
@@ -108,8 +110,8 @@ export default defineConfig(({ mode }) => {
         generateBundle(_options, bundle) {
           let entryBundleFilename = "";
           for (const [fileName, chunk] of Object.entries(bundle)) {
-            const c = chunk as { type?: string; isEntry?: boolean };
-            if (c.type === "chunk" && c.isEntry) {
+            const c = chunk as { type?: string; isEntry?: boolean; name?: string };
+            if (c.type === "chunk" && c.isEntry && c.name !== "chessInteraction") {
               entryBundleFilename = fileName;
               break;
             }

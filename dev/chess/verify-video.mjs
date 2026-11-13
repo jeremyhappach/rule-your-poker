@@ -51,7 +51,8 @@ try{
    const first=(starts[0].time-ev.startedAt)/1000,second=(starts[1].time-ev.startedAt)/1000;
    assert(result.windows.filter(w=>w.at>first+.34&&w.at<second+.005).every(w=>w.rms<.002),'Slide fades before the separate crumble');
    assert(result.windows.some(w=>w.at>second+.03&&w.at<second+.2&&w.rms>.004),'Captured piece has its own audible crumble after arrival');
-   assert(result.peak<.075,'Crumble stays restrained');
+   assert(Math.abs(ev.audio[1].duration-1.0200226757)<.002,'Capture uses the complete existing Run21 recording');
+   assert(result.peak>.14&&result.peak<.25,'Capture preserves the approved Run21 recording level');
    assert(audible>30,'Soft crumble remains audible after the move');
   }
   write(out+'/'+ev.name+'.wav',Buffer.from(result.wav64,'base64'));write(out+'/'+ev.name+'-frames.png',Buffer.from(result.frames,'base64'));

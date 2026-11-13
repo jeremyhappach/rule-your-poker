@@ -19,12 +19,6 @@ it('keeps the quieter knight lift, airborne slide and landing distinct',()=>{
  expect(rms(samples,.39,.43)).toBeGreaterThan(.012);
  expect(rms(samples,.39,.43)).toBeGreaterThan(rms(samples,.155,.2));
 });
-it('lets the crumble settle quietly while its final dust remains visible',()=>{
- const {samples}=chessSamples('poof');expect(samples.length).toBe(chessMotion.poof*48);
- for(const t of [.04,.2,.4])expect(rms(samples,t,t+.05)).toBeGreaterThan(.006);
- expect(rms(samples,.6,.65)).toBeLessThan(rms(samples,.3,.35));
- expect(rms(samples,chessAudio.crumbleEnd,.8)).toBe(0);
- expect(chessMotion.poof/1000-chessAudio.crumbleEnd).toBeCloseTo(.14);
- expect(peak(samples)).toBeCloseTo(.065,5);
- expect(samples.every(n=>Number.isFinite(n)&&Math.abs(n)<.4)).toBe(true);
+it('holds the dissolve for the complete established Run21 failure timeline',()=>{
+ expect(chessMotion.poof).toBe(1100);
 });

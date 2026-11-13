@@ -1,3 +1,40 @@
+# Chess ghost drag / reused capture sound — November 13, 2026 — preview candidate
+
+Requested as a final polish pass, with an interactive preview before release.
+The original piece now stays filled at home and pulses during a drag; an outline
+follows the finger. Legal release removes the outline and pulse while the source
+stays solid awaiting the canonical snapshot, then the normal source-to-target
+animation runs. Illegal drops clear the preview without moving the source and
+reuse the TriTowers triInvalid asset through the platform mixer.
+
+Capture retains move-then-dissolve ordering and uses run21BustCueAt with the
+actual run21-bust-b.wav recording. The dissolve lasts the established Run21
+1,100 ms failure window so its full 1,020 ms recording completes before Async
+handoff. No generated capture noise remains. Slide and knight PCM hashes are
+identical to the approved production versions. Shared mute, visibility, reduced
+motion and once-per-viewer presentation ownership remain unchanged.
+
+A standalone /chess-preview/try.html entry offers Moves, Capture, Reset and Mute
+using the actual ChessBoard and shared reducer/audio. Vite emits it only for
+preview deployments; production builds retain the single application entry.
+The fixture creates no match, financial state or game commands. Its sound toggle
+is local to this isolated preview. Production rules, Async admission, clocks,
+banks, layout and persistence are unchanged.
+
+Focused checks: 39 passed. Native Chrome touch ghost/source continuity, invalid
+drop recording, legal move, capture sequencing/full Run21 recording, mute,
+reduced motion, desktop mouse and tap play all passed without page errors.
+Full npm run build passed unchanged: typecheck, 4,078 app tests, 241 harness
+checks, 46 release-tooling tests, Vite and the 90 MB deployment-size gate.
+Portrait regression passed at 393x852, 375x667 and 320x568, including unchanged
+square board geometry, opponent move/reconnect presentation and revival.
+Production build exclusion and correct main build-manifest entry were checked.
+Hosted interactive verification is pending. Production held.
+
+The candidate provides the playable preview. New video exports failed the strict
+encoded picture/audio onset gate and were not published; existing production
+MP4 files are unchanged. No recording gate was relaxed.
+
 # Chess corrections — November 12, 2026 — production live
 
 Jeremy approved the subtle-slide studio and explicitly requested production.
