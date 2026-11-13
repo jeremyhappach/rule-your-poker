@@ -1,3 +1,46 @@
+# Async Chess inspection and match-list polish — November 13, 2026
+
+Chess opponent turns now offer View board, using the same passive-entry model
+as Words. The authenticated delayed_chess_inspect RPC returns the latest committed
+position and turn owner without calling chess_load/chess_sync. The board shows
+Opponent's Turn — View Only with the player's name; selection, dragging, move
+drafts and time banks are disabled. Inspection mounts no gameplay recovery,
+subscription or automatic return, and does not consume the move-animation marker.
+Return to Match Home and reenter to fetch the current state and admit an own turn.
+
+The match list derives a compact game mix from the complete current lineup,
+including completed games, with counts only above one. Existing authoritative
+refreshes update it when the lineup changes. Opponent counts now use actor UUID,
+terminal state and the effective server deadline. The previous filter incorrectly
+used viewer-specific playable=false to exclude every opponent turn. Own action
+admission, inactive/held/removed exclusions, result review and sorting remain intact.
+
+Migration 20261113234733_async_chess_read_only_inspection is installed.
+Candidate rollback and installed BEGIN READ ONLY proofs passed against six
+participant projections from three existing Chess games: committed FEN/history,
+identity/turn ownership, terminal action exclusion, repeat reads, outsider/anonymous
+rejection, restricted execution grants and zero table writes. Existing active
+lobby data reproduced incorrect zero counts where the correct opponent counts
+were 3, 1, 1 and 1. No existing game or financial data was changed.
+Proof: supabase/chess/inspect-proof.sql; authority: supabase/chess/inspect.sql.
+
+Focused validation: 78 tests passed, including actual route/board inspection and
+own-turn reentry, stale lobby ownership, disabled banks/selection/dragging, Words
+regressions, all ten async game types, and lineup refresh after addition/removal
+and completion. Full build passed TypeScript, 4,127 application tests, 241 harness
+tests, 46 release-tooling checks, Vite and the unchanged 90 MB static gate
+(89,941,443 bytes). Log: async-chess-lobby-build.log in the task worktree.
+Shared ChessView/ChessBoard callers retain their default active behavior (live
+ChessTable, submitted async turn, and ChessFinalReview); only inspection opts in.
+No dependency, gameplay, settlement, notification or production-data mutation.
+
+Worktree: codex/async-chess-lobby-polish, based on main 160fa5276.
+Publication uses the unchanged push-origin-main.cmd after fast-forward integration.
+Checkpoint: async-chess-lobby-polish-20261113; the matching verified tag records
+the production deployment. Physical-device acceptance remains Jeremy's smoke:
+open opponent Chess, inspect without moving, return and take the next own turn;
+confirm mixed-game summaries and both participants' active-turn counts.
+
 # Chess check/checkmate and History — November 13, 2026 — production live
 
 Production serves 1664bc7735f0ff69ddca9d83d1de1502fb5c92d0 on both

@@ -131,3 +131,15 @@ describe('check and checkmate cues',()=>{
   act(()=>vi.advanceTimersByTime(3199));expect(done).not.toHaveBeenCalled();act(()=>vi.advanceTimersByTime(1));expect(done).toHaveBeenCalledTimes(1);
  });
 });
+
+it('shows the committed board read-only without selection, dragging, drafts, audio or consuming replay',()=>{
+ const v=move(initial('async'),'e2','e4'),intent=vi.fn();
+ act(()=>root.render(<ChessBoard readOnly view={{...v,canAct:true}} pending={false} onIntent={intent}/>));
+ expect(host.querySelector('[data-square="e4"]')?.getAttribute('aria-label')).toBe('e4 White Pawn');
+ expect(host.querySelectorAll('button:disabled')).toHaveLength(64);
+ act(()=>{host.querySelector<HTMLButtonElement>('[data-square="e7"]')!.click();host.querySelector('[data-square="e7"]')!.dispatchEvent(new MouseEvent('pointerdown',{bubbles:true,button:0}));});
+ expect(host.querySelector('[data-selected="true"]')).toBeNull();
+ expect(host.querySelector('.chess-drag-ghost,.chess-motion,.chess-undo')).toBeNull();
+ expect(intent).not.toHaveBeenCalled();expect(chessSound).not.toHaveBeenCalled();expect(chessStatusSound).not.toHaveBeenCalled();
+ expect(localStorage.getItem('ptown:chess:seen:black:g')).toBeNull();
+});

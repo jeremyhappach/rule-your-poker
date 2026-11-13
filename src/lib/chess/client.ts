@@ -3,6 +3,11 @@ import type {ChessIntent,ChessState} from './rules';
 export type ChessSnapshot=ChessState&{id:string;revision:number;serverAt:number;viewerId:string;canAct:boolean;paused:boolean;pausedAt:number|null;finished:boolean;settled:boolean;settlement:Record<string,number>|null;financial:any};
 export interface Command {requestId:string;revision:number;intent:ChessIntent}
 export interface ChessTransport {load:()=>Promise<ChessSnapshot>;send:(c:Command)=>Promise<ChessSnapshot>;subscribe:(refresh:()=>void,status:(connected:boolean)=>void)=>()=>void}
+export async function inspectAsyncChess(childId:string):Promise<ChessSnapshot>{
+ const {data,error}=await (supabase.rpc as any)('delayed_chess_inspect',{p_child:childId});
+ if(error)throw Error(error.message);
+ return data;
+}
 export function acceptChessSnapshot(old:ChessSnapshot|null,next:ChessSnapshot,id:string){
  if(next.identity.dealerGameId!==id||!Number.isSafeInteger(next.revision)||next.players.length!==2)throw Error('chess:identity');
  if(old&&next.revision<old.revision)return old;

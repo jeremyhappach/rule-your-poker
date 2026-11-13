@@ -6,7 +6,7 @@ import {AsyncSessionName} from '@/components/delayed/AsyncSessionName';
 import {RealMoneyWarningDialog} from '@/components/RealMoneyWarningDialog';
 import {AsyncGameHeader} from '@/components/delayed/AsyncGameHeader';
 import {MatchInfo} from '@/components/delayed/MatchInfo';
-import {isReviewedGame,orderedLobbyGames,lobbyGameGroup,matchLobbyStatus,localInvitationTime} from '@/lib/delayed/lobbyPresentation';
+import {isReviewedGame,orderedLobbyGames,lobbyGameGroup,matchLobbyStatus,localInvitationTime,matchGameMix} from '@/lib/delayed/lobbyPresentation';
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {turnEntryHint} from '@/lib/delayed/notifications';
 import {AsyncInvite} from '@/components/delayed/AsyncInvite';
@@ -68,6 +68,7 @@ function MatchList({userId}:{userId:string}){
   <ul className="delayed-lineup">{matches.map(({home:row,opponent,own,other,results,invitation,accepts,actionable})=><li key={row.id} data-turn={actionable?'own':'opponent'}>
    <Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {opponent}</AsyncSessionName></strong>{!invitation&&<> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></>}</Link>
    <p>{!invitation&&<>{row.status} · </>}{row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>
+   <p className="delayed-game-mix" aria-label="Match game mix">{matchGameMix(row.lineup)}</p>
    {invitation?<strong>Invited <time dateTime={row.createdAt}>{localInvitationTime(row.createdAt)}</time> - Pending {accepts?'Your':opponent+'’s'} Acceptance</strong>:
     row.status==='active'&&(row.held?<strong>On hold</strong>:<strong>Turns - You: {own}, {opponent}: {other}</strong>)}
    {results>0&&<p><strong>{results} {results===1?'result':'results'} to view</strong></p>}
@@ -122,7 +123,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
       {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}
-      {!ours&&c.game==='ptown-words'&&!home.held&&<Link className="delayed-view-board" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
+      {!ours&&(c.game==='ptown-words'||c.game==='chess')&&!home.held&&<Link className="delayed-view-board" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
    </li>;})}</ul>
   {!historical&&home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
    <p>The first player in each game is selected randomly.</p>
@@ -150,7 +151,7 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home>('delayed_home',{p_match:matchId}).then(v=>{if(generation!==epoch.current)return;if(v.removedAt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(old=>old&&old.revision>v.revision?old:v);}).catch(e=>{if(generation===epoch.current)setError(e.message);});},[matchId,navigate]);
  useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);
  const child=home?.lineup.find(c=>c.id===childId);
- useUpdates(userId,refresh,child?.game!=='ptown-words');
+ useUpdates(userId,refresh,child?.game!=='ptown-words'&&child?.game!=='chess');
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
  return child.game==='chess'?<ChessTurn childId={childId} matchId={matchId} userId={userId}/>:child.game==='ptown-words'?<WordsTurn key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

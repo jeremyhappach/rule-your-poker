@@ -31,3 +31,5 @@
 .async-completed-details:not([hidden]){display:grid;gap:.5rem;padding:.75rem}
 .delayed-match-page .async-completed-toggle:focus-visible{outline-offset:-3px}
 @media(prefers-reduced-motion:reduce){.async-completed-toggle>svg{transition:none}}
+
+.delayed-game-mix{font-size:.82rem;line-height:1.35}

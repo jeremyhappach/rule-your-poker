@@ -3,7 +3,7 @@ import {Link,Navigate,useNavigate} from 'react-router-dom';
 import {ChevronLeft} from 'lucide-react';
 import {useChess} from '@/hooks/useChess';
 import {useChessLobbyReturn} from '@/hooks/useChessLobbyReturn';
-import {acceptChessSnapshot,chessTransport,type ChessSnapshot,type ChessTransport} from '@/lib/chess/client';
+import {acceptChessSnapshot,chessTransport,inspectAsyncChess,type ChessSnapshot,type ChessTransport} from '@/lib/chess/client';
 import {ChessFinalReview} from '@/components/chess/ChessFinalReview';
 import {ChessView} from '@/components/chess/ChessView';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
@@ -15,13 +15,18 @@ export function ChessTurn(props:Props){
  const transport=useMemo(()=>chessTransport(childId,userId,'async'),[childId,userId]);
  const [entry,setEntry]=useState<ChessSnapshot|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
  useEffect(()=>{let cancelled=false;setEntry(null);setError('');
-  void transport.load().then(v=>{acceptChessSnapshot(null,v,childId);if(v.identity.sessionId!==matchId||v.viewerId!==userId)throw Error('Match identity mismatch.');if(!cancelled)setEntry(v);}).catch(e=>{if(!cancelled)setError((e as Error).message);});
+  void inspectAsyncChess(childId).then(v=>{acceptChessSnapshot(null,v,childId);if(v.identity.sessionId!==matchId||v.viewerId!==userId)throw Error('Match identity mismatch.');if(!cancelled)setEntry(v);}).catch(e=>{if(!cancelled)setError((e as Error).message);});
   return()=>{cancelled=true;};
  },[transport,childId,matchId,userId,attempt]);
  if(!entry||entry.identity.dealerGameId!==childId||entry.identity.sessionId!==matchId||entry.viewerId!==userId)return <main className="delayed-page"><Link to={'/delayed/'+matchId}>Match Home</Link><p role="status">{error||'Restoring Chess…'}</p>{error&&<button onClick={()=>setAttempt(n=>n+1)}>Retry</button>}</main>;
  if(entry.phase==='complete'&&entry.reason==='checkmate')return <FinishedChessTurn view={entry} matchId={matchId} childId={childId}/>;
- if(entry.finished||entry.phase==='complete'||entry.players[entry.turnIndex].id!==userId)return <Navigate replace to={'/delayed/'+matchId+(entry.finished?'?review='+childId:'')}/>;
+ if(entry.finished||entry.phase==='complete')return <Navigate replace to={'/delayed/'+matchId+(entry.finished?'?review='+childId:'')}/>;
+ if(entry.players[entry.turnIndex].id!==userId)return <ChessInspection view={entry} matchId={matchId}/>;
  return <ActiveChessTurn key={childId+':'+userId} {...props} entry={entry} transport={transport}/>;
+}
+function ChessInspection({view,matchId}:{view:ChessSnapshot;matchId:string}){
+ const [tab,setTab]=useState<ShellTabId>('cards');
+ return <div className="async-words-turn"><ChessView readOnly view={view} now={view.serverAt} pending={false} connected error="" activeTab={tab} setActiveTab={setTab} onIntent={async()=>false} onReconnect={()=>{}} navigation={<nav aria-label="Chess information"><Link aria-label="Match Home" title="Match Home" to={'/delayed/'+matchId}><ChevronLeft size={20} aria-hidden="true"/></Link><button onClick={()=>setTab('history')}>History</button></nav>} panel={<>{view.moves.map(m=><p key={m.ply}>{m.from} → {m.to}</p>)}</>}/></div>;
 }
 function ActiveChessTurn({childId,matchId,userId,entry,transport}:Props&{entry:ChessSnapshot;transport:ChessTransport}){
  const game=useChess(childId,userId,transport,'ptown:async-chess:1'),[tab,setTab]=useState<ShellTabId>('cards');

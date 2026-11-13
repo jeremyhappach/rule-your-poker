@@ -90,7 +90,7 @@ it('keeps one lobby parent card and navigation to setup, archive and multiplayer
 it('renders simultaneous turns, unseen results and local invitations in action order',async()=>{
  const createdAt=new Date(2026,10,11,8,59).toISOString();
  const row=(id:string,name:string,props:object)=>({...mock.home,id,createdAt,players:[{id:'me',name:'Viewer'},{id:'other',name}],...props});
- const turn=(actor:string)=>({...mock.home.lineup[0],actor});
+ const turn=(actor:string)=>({...mock.home.lineup[0],actor,playable:actor==='me'});
  const result={...turn('other'),terminal:true,viewed:false};
  mock.rpc.mockImplementation(async()=>[
   row('outgoing','TheOG',{organizer:'me',opponent:'other'}),
@@ -122,4 +122,20 @@ it('refreshes the same match on a new notification tap and removes stale turn ac
  await waitFor(()=>expect(screen.queryByRole('link',{name:'Take Turn'})).toBeNull());
  expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_home')).toHaveLength(2);
  expect(mock.rpc.mock.calls.every(c=>c[0]==='delayed_home')).toBe(true);
+});
+
+it('refreshes the game mix and opponent counts from the new lineup without dropping completed games',async()=>{
+ mock.home.status='active';mock.home.acceptedAt=new Date().toISOString();
+ mock.home.lineup=mock.home.lineup.map((c:any)=>({...c,playable:c.actor==='me'}));
+ mount('/delayed');
+ await screen.findByText('Turns - You: 1, Opponent: 2');
+ expect(screen.getByLabelText('Match game mix').textContent).toBe('Run21, Tri-Towers, quintzee');
+ mock.home={...mock.home,revision:2,completed:1,lineup:[{...mock.home.lineup[0],terminal:true},...mock.home.lineup.slice(1),{...mock.home.lineup[1],id:'added',ordinal:4}]};
+ await act(async()=>mock.changed());
+ await screen.findByText('Turns - You: 0, Opponent: 3');
+ expect(screen.getByLabelText('Match game mix').textContent).toBe('Run21, 2x Tri-Towers, quintzee');
+ mock.home={...mock.home,revision:3,lineup:mock.home.lineup.filter((c:any)=>c.id!=='added')};
+ await act(async()=>mock.changed());
+ await screen.findByText('Turns - You: 0, Opponent: 2');
+ expect(screen.getByLabelText('Match game mix').textContent).toBe('Run21, Tri-Towers, quintzee');
 });

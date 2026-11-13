@@ -1,5 +1,6 @@
 import type {ChildSummary,Home} from './client';
 import {needsChildReview} from './reviews';
+import {gameName} from './client';
 import {isAvailableTurn,turnDeadline} from './notifications';
 
 // Only an explicit server-projected ACK admits the compact presentation.
@@ -20,15 +21,25 @@ export function orderedLobbyGames(home:Home,userId:string,now:number){
 export function matchLobbyStatus(home:Home,userId:string,now:number){
  const opponent=home.players.find(player=>player.id!==userId);
  const results=home.lineup.filter(child=>needsChildReview(child,userId)).length;
- const turns=home.status==='active'&&!home.held
-  ?home.lineup.filter(child=>isAvailableTurn(child,now))
+ // playable is viewer-specific; an opponent-owned turn deliberately has false.
+ const turns=home.status==='active'&&!home.held&&!home.removedAt
+  ?home.lineup.filter(child=>!child.terminal&&turnDeadline(child)>now)
   :[];
- const own=turns.filter(child=>child.actor===userId).length;
+ const own=turns.filter(child=>child.actor===userId&&isAvailableTurn(child,now)).length;
  const other=opponent?turns.filter(child=>child.actor===opponent.id).length:0;
  const invitation=home.status==='invited';
  const accepts=invitation&&home.opponent===userId;
  return {home,opponent:opponent?.name??'Opponent',own,other,results,invitation,accepts,
   actionable:accepts||own>0||results>0,nextDeadline:Math.min(...turns.map(turnDeadline))};
+}
+
+export function matchGameMix(lineup:ChildSummary[]){
+ const counts=new Map<string,number>();
+ for(const child of [...lineup].sort((a,b)=>a.ordinal-b.ordinal))counts.set(child.game,(counts.get(child.game)??0)+1);
+ return [...counts].map(([game,count])=>{
+  const name=game==='run21'?'Run21':game==='tri-towers'?'Tri-Towers':game==='ptown-words'?'P-Town Words':gameName(game);
+  return (count>1?count+'x ':'')+name;
+ }).join(', ');
 }
 
 export function localInvitationTime(value:string){
