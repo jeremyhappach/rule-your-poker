@@ -1,7 +1,8 @@
 import type {AudioCue} from '@/lib/audio/audioManager';
 import {approvedSound} from '@/lib/audio/approvedSounds';
 
-export const RUN21_FAILURE_CUE_MS = 1100;
+import {RUN21_FAILURE_CUE_MS} from './failureTiming';
+export {RUN21_FAILURE_CUE_MS} from './failureTiming';
 const MAX_ONSET_MS = 80;
 const TAIL_MARGIN_MS = 2;
 

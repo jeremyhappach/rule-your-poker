@@ -1,3 +1,4 @@
+import {ChessHistoryButton} from '@/components/chess/ChessHistory';
 import {ChessTurn} from '@/components/delayed/ChessTurn';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {PlayingNow} from '@/components/delayed/PlayingNow';
@@ -112,7 +113,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
      <span className={'async-completed-outcome '+(c.result&&c.result.delta>0?'delayed-win':c.result&&c.result.delta<0?'delayed-loss':'')}>
       {c.result?<>{c.result.delta>0?'W':c.result.delta<0?'L':'T'} {money(Math.abs(c.result.delta)).replace('+','')}</>:'Result unavailable'}
      </span>}}/>
-     <div id={panelId} hidden={!expanded} className="async-completed-details">{scores}{c.result?.reason==='timeout_forfeit'&&<p>Forfeit</p>}</div>
+     <div id={panelId} hidden={!expanded} className="async-completed-details">{scores}{c.game==='chess'&&<ChessHistoryButton mode="async" matchId={id} id={c.id}/>} {c.result?.reason==='timeout_forfeit'&&<p>Forfeit</p>}</div>
     </>:<><AsyncGameHeader game={c.game} name={gameName(c.game)} stake={c.stake}/>
     {scores}
     {needsChildReview(c,userId)&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}

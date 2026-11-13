@@ -1,6 +1,7 @@
-import {RUN21_FAILURE_CUE_MS} from '@/lib/run21/failureCue';
+import {chessMotion} from './timeline';
+export {chessMotion} from './timeline';
 /** One presentation timeline for CSS and audio; gameplay clocks are independent. */
-export const chessMotion = {slide: 360, hop: 480, poof: RUN21_FAILURE_CUE_MS, landing: .8} as const;
+
 export const chessAudio = {twip: .16, lift: .12, airborneSlideAt: .15, airborneSlide: .11} as const;
 export type ChessSound = 'slide' | 'hop' | 'poof' | 'invalid';
 

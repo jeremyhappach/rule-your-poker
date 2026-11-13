@@ -1,4 +1,4 @@
-import {useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from 'react';
+import {useEffect,useLayoutEffect,useMemo,useRef,useState,useSyncExternalStore,type CSSProperties,type ReactNode} from 'react';
 import {Chess,type Color,type Square,type PieceSymbol} from 'chess.js';
 import {promotionOptions,type ChessIntent,type ChessMove} from '@/lib/chess/rules';
 import type {ChessSnapshot} from '@/lib/chess/client';
@@ -7,16 +7,24 @@ import {chessSound} from '@/lib/chess/sound';
 import {chessMotion,type ChessSound} from '@/lib/chess/presentation';
 import {useChessMoveDraft,type ChessMoveIntent} from '@/hooks/useChessMoveDraft';
 import './chess.css';
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {chessStatus,CHESS_CHECK_HOLD_MS,CHESS_CHECKMATE_HOLD_MS} from '@/lib/chess/status';
+import {preloadChessStatusSound,chessStatusSound,chessHeartbeat} from '@/lib/chess/statusSound';
 export const CHESS_OPPONENT_HOLD_MS=3000,CHESS_MESSAGE_FADE_MS=200,CHESS_YOUR_TURN_HOLD_MS=2000;
 type TurnMessage='opponent'|'fading'|'your-turn'|null;
 type Drag={from:Square;x:number;y:number;startX:number;startY:number;moved:boolean};
-export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationComplete,returningToLobby=false,announceOpponentMove=false}:{view:ChessSnapshot;pending:boolean;onIntent:(i:ChessIntent,expectedRevision?:number)=>Promise<boolean>;players?:ReactNode;onMovePresentationComplete?:()=>void;returningToLobby?:boolean;announceOpponentMove?:boolean}){
+export function ChessBoard({view:v,now=v.serverAt,pending,onIntent,players,onMovePresentationComplete,returningToLobby=false,announceOpponentMove=false}:{view:ChessSnapshot;now?:number;pending:boolean;onIntent:(i:ChessIntent,expectedRevision?:number)=>Promise<boolean>;players?:ReactNode;onMovePresentationComplete?:()=>void;returningToLobby?:boolean;announceOpponentMove?:boolean}){
  const ref=useRef<HTMLDivElement>(null),dragRef=useRef<Drag|null>(null),suppressClick=useRef(false);
  const [selected,select]=useState<Square|null>(null),[drag,setDrag]=useState<Drag|null>(null),[rejected,reject]=useState<Square|null>(null),[promotion,setPromotion]=useState<{from:Square;to:Square}|null>(null),[motion,setMotion]=useState<ChessMove|null>(null),[arrived,setArrived]=useState(false),[displayFen,setDisplayFen]=useState(v.fen);
  const [turnMessage,setTurnMessage]=useState<TurnMessage>(null),finishPresentation=useRef<()=>void>(()=>{}),startMotion=useRef<()=>void>(()=>{});
  const white=v.players[0].id===v.viewerId,viewer:Color=white?'w':'b';
  const engine=useMemo(()=>new Chess(v.fen),[v.fen]),display=useMemo(()=>new Chess(displayFen),[displayFen]);
- const available=v.canAct&&v.opened&&!v.paused&&!v.finished&&!pending&&!motion&&!returningToLobby&&!turnMessage&&v.phase==='playing';
+ const status=useMemo(()=>chessStatus(v),[v.fen,v.phase,v.reason]),[cue,setCue]=useState<{mate:boolean;positive:boolean}|null>(null),[presented,setPresented]=useState(!v.moves.length),[visible,setVisible]=useState(!document.hidden),nowRef=useRef(now);nowRef.current=now;
+ const audio=useSyncExternalStore(platformAudio.subscribe,platformAudio.getSnapshot),heartEpoch=useRef(0);
+ useEffect(()=>{void preloadChessStatusSound();const changed=()=>setVisible(!document.hidden);document.addEventListener('visibilitychange',changed);return()=>document.removeEventListener('visibilitychange',changed);},[]);
+ const underCheck=presented&&visible&&displayFen===v.fen&&v.canAct&&v.opened&&!v.paused&&v.phase==='playing'&&status.check&&status.color===viewer&&!motion&&!turnMessage&&!cue;
+ useEffect(()=>{if(!underCheck||audio.enabled!==true)return;return chessHeartbeat(v.identity.dealerGameId+':'+v.viewerId+':'+v.turn+':'+(++heartEpoch.current),ref.current);},[underCheck,audio.enabled,v.identity.dealerGameId,v.viewerId,v.turn]);
+ const available=!cue&&v.canAct&&v.opened&&!v.paused&&!v.finished&&!pending&&!motion&&!returningToLobby&&!turnMessage&&v.phase==='playing';
  const scope=[v.identity.sessionId,v.identity.dealerGameId,v.identity.roundId,v.viewerId,v.turn,v.fen].join(':');
  const submit=async(intent:ChessMoveIntent,revision:number)=>{try{const ok=await onIntent(intent,revision);if(!ok&&ref.current)rejectMove(intent.to);return ok;}catch{if(ref.current)rejectMove(intent.to);return false;}};
  const draft=useChessMoveDraft(scope,v.revision,available,submit),active=available&&!draft.draft&&!draft.submitting;
@@ -26,20 +34,23 @@ export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationCo
  const previous=useRef({key:'',ply:-1}),soundStops=useRef<(()=>void)[]>([]);
  // Commit the pre-move position and announcement before the first visible frame.
  useLayoutEffect(()=>{
-  select(null);setPromotion(null);setDrag(null);dragRef.current=null;setArrived(false);setTurnMessage(null);
+  setCue(null);setPresented(false);select(null);setPromotion(null);setDrag(null);dragRef.current=null;setArrived(false);setTurnMessage(null);
   const move=v.moves.at(-1),key=`ptown:chess:seen:${v.viewerId}:${v.identity.dealerGameId}`;
   let seen=previous.current.key===key?previous.current.ply:-1;try{seen=Math.max(seen,Number(localStorage.getItem(key)??-1));}catch{/* Memory fallback. */}
   previous.current={key,ply:v.moves.length};try{localStorage.setItem(key,String(v.moves.length));}catch{/* Storage may be unavailable. */}
-  if(!move||move.ply<=seen||document.hidden){setMotion(null);setDisplayFen(v.fen);onMovePresentationComplete?.();return;}
-  const announce=announceOpponentMove&&move.color!==viewer&&v.phase==='playing';
+  if(!move||move.ply<=seen||document.hidden){setMotion(null);setDisplayFen(v.fen);setPresented(true);onMovePresentationComplete?.();return;}
+  const announce=announceOpponentMove&&move.color!==viewer&&(v.phase==='playing'||status.checkmate);
   const media=matchMedia('(prefers-reduced-motion: reduce)'),timers:ReturnType<typeof setTimeout>[]=[];
   const later=(run:()=>void,ms:number)=>timers.push(setTimeout(run,ms));
   const clear=()=>{timers.forEach(clearTimeout);soundStops.current.forEach(s=>s());soundStops.current=[];};
   let completed=false;
   const finish=()=>{
    if(completed)return;completed=true;setDisplayFen(v.fen);setMotion(null);
-   if(announce){setTurnMessage('your-turn');later(()=>{setTurnMessage(null);onMovePresentationComplete?.();},CHESS_YOUR_TURN_HOLD_MS);}
-   else onMovePresentationComplete?.();
+   const done=()=>{setCue(null);setPresented(true);if(announce&&v.phase==='playing'){setTurnMessage('your-turn');later(()=>{setTurnMessage(null);onMovePresentationComplete?.();},CHESS_YOUR_TURN_HOLD_MS);}else onMovePresentationComplete?.();};
+   if(status.check&&(v.phase==='playing'||status.checkmate)){
+    const duration=status.checkmate?(v.mode==='live'&&v.terminal?Math.max(0,Math.min(CHESS_CHECKMATE_HOLD_MS,v.terminal.startedAt-nowRef.current)):CHESS_CHECKMATE_HOLD_MS):CHESS_CHECK_HOLD_MS;
+    if(duration>0){const positive=status.color!==viewer;setCue({mate:status.checkmate,positive});soundStops.current.push(chessStatusSound(v.viewerId+':'+v.identity.dealerGameId+':'+move.ply,status.checkmate?positive?'win':'loss':'check',ref.current));later(done,duration);}else done();
+   }else done();
   };
   finishPresentation.current=finish;
   const start=()=>{setTurnMessage(null);if(media.matches)finish();else setMotion(move);};
@@ -48,7 +59,7 @@ export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationCo
   if(announce){setTurnMessage('opponent');later(()=>{if(media.matches)start();else setTurnMessage('fading');},CHESS_OPPONENT_HOLD_MS);}
   else start();
   const settle=()=>{
-   if(document.hidden){clear();completed=true;setTurnMessage(null);setDisplayFen(v.fen);setMotion(null);onMovePresentationComplete?.();}
+   if(document.hidden){clear();completed=true;setCue(null);setPresented(true);setTurnMessage(null);setDisplayFen(v.fen);setMotion(null);onMovePresentationComplete?.();}
    else if(media.matches&&!completed){clear();finish();}
   };
   document.addEventListener('visibilitychange',settle);media.addEventListener('change',settle);
@@ -71,7 +82,7 @@ export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationCo
   if(e.target!==e.currentTarget||!motion)return;
   soundStops.current.push(chessSound(`${v.viewerId}:${v.identity.dealerGameId}:${motion.ply}`,type,ref.current));
  };
- return <div className="chess-artifacts" data-canonical-felt-interaction-layer>{players}<div className="chess-board" ref={ref} role="group" aria-label="Chess board" onPointerMove={e=>{const d=dragRef.current;if(!d)return;const rect=ref.current!.getBoundingClientRect();d.x=(e.clientX-rect.left)/rect.width*100;d.y=(e.clientY-rect.top)/rect.height*100;d.moved||=Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>5;if(d.moved)setDrag({...d});}} onPointerUp={e=>release(e)} onPointerCancel={e=>release(e,true)}>
+ return <div className="chess-artifacts" data-canonical-felt-interaction-layer>{players}<div className="chess-board" data-in-check={underCheck||undefined} ref={ref} role="group" aria-label="Chess board" onPointerMove={e=>{const d=dragRef.current;if(!d)return;const rect=ref.current!.getBoundingClientRect();d.x=(e.clientX-rect.left)/rect.width*100;d.y=(e.clientY-rect.top)/rect.height*100;d.moved||=Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>5;if(d.moved)setDrag({...d});}} onPointerUp={e=>release(e)} onPointerCancel={e=>release(e,true)}>
   {squares.map(square=>{const p=display.get(square),hide=motion&&(motion.from===square||motion.rook?.from===square||motion.capture?.square===square);return <button type="button" key={square} data-square={square} className={'chess-square '+(('abcdefgh'.indexOf(square[0])+Number(square[1]))%2?'light':'dark')} data-drafting={draft.draft?.intent.from===square||undefined} data-dragging={drag?.from===square||undefined} data-selected={selected===square||undefined} data-rejected={rejected===square||undefined} aria-label={square+(p?' '+(p.color==='w'?'White ':'Black ')+pieceNames[p.type]:'')} aria-pressed={selected===square} onPointerDown={e=>{suppressClick.current=false;if(!active||e.button!==0||engine.get(square)?.color!==viewer)return;select(square);e.currentTarget.setPointerCapture(e.pointerId);const d={from:square,x:0,y:0,startX:e.clientX,startY:e.clientY,moved:false};dragRef.current=d;}} onClick={()=>{if(suppressClick.current){suppressClick.current=false;return;}if(!active)return;if(selected&&selected!==square){void attempt(selected,square);return;}if(engine.get(square)?.color===viewer)select(square);}}>{p&&!hide&&<ChessPiece {...p}/>}</button>;})}
   {drag&&<div className="chess-floating chess-drag-ghost" aria-hidden="true" style={{left:`calc(${drag.x}% - 6.25%)`,top:`calc(${drag.y}% - 6.25%)`}}><ChessPiece color={viewer} type={engine.get(drag.from)?.type??'p'}/></div>}
   {draft.draft&&<button type="button" className="chess-floating chess-drag-ghost chess-pending-ghost chess-undo" style={position(draft.draft.intent.to)} onPointerUp={e=>{if(e.button===0){e.stopPropagation();draft.cancel();}}} onClick={draft.cancel} aria-label="Undo pending move"><ChessPiece color={viewer} type={draft.draft.intent.promotion??engine.get(draft.draft.intent.from)?.type??'p'}/><span className="chess-undo-label" aria-hidden="true"><span>Undo</span><span className="chess-undo-count">{draft.seconds}s</span></span></button>}
@@ -79,6 +90,7 @@ export function ChessBoard({view:v,pending,onIntent,players,onMovePresentationCo
    {Array.from({length:9},(_,i)=>{const col=i%3,row=Math.floor(i/3);return <span className="chess-fragment" key={i} style={{clipPath:`polygon(${col*33.333}% ${row*33.333}%,${(col+1)*33.333}% ${row*33.333}%,${(col+1)*33.333}% ${(row+1)*33.333}%,${col*33.333}% ${(row+1)*33.333}%)`,'--fragment-x':`${(col-1)*24+(i%2?5:-5)}%`,'--fragment-y':`${row*13-8}%`,'--fragment-turn':`${(i%2?1:-1)*(7+i*3)}deg`} as CSSProperties}><ChessPiece color={motion.capture!.color} type={motion.capture!.piece}/></span>;})}
    {Array.from({length:24},(_,i)=><i key={i} style={{'--dust-x':`${Math.cos(i*2.4)*(35+i*1.4)}%`,'--dust-y':`${Math.sin(i*2.4)*32+18}%`,'--dust-delay':`${35+i%5*22}ms`,'--dust-size':`${3+i%3}%`} as CSSProperties}/>)}
   </div>}</div>}
+ {cue&&<div className="chess-lobby-return chess-check-cue" data-positive={cue.positive} role="status" aria-live="assertive"><div><strong>{cue.mate?'Checkmate':'Check'}</strong></div></div>}
  {turnMessage&&<div className="chess-lobby-return chess-turn-message" data-stage={turnMessage} onAnimationEnd={e=>{if(e.target===e.currentTarget&&turnMessage==='fading')startMotion.current();}} style={{'--message-fade-duration':`${CHESS_MESSAGE_FADE_MS}ms`} as CSSProperties} role="status" aria-live="polite"><div>{turnMessage==='your-turn'?'Your Turn':"Opponent's Move..."}</div></div>}
  {returningToLobby&&<div className="chess-lobby-return" role="status" aria-live="polite"><div>Returning to lobby</div></div>}
  </div>

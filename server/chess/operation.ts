@@ -1,3 +1,4 @@
+import {CHESS_CHECKMATE_HOLD_MS,chessMoveDuration} from '../../src/lib/chess/timeline.js';
 import {isUuid} from '../../src/lib/run21/model.js';
 import {playChess,type ChessIntent,type ChessState} from '../../src/lib/chess/rules.js';
 export interface ChessRow {state:ChessState;revision:number;serverAt:number;viewerId:string;paused:boolean;pausedAt:number|null;finished:boolean;settled:boolean;settlement:Record<string,number>|null;financial:any;receipt?:{actor:string;fingerprint:unknown}}
@@ -12,6 +13,7 @@ export async function chessOperation(rpc:(name:string,args:Record<string,unknown
   if(row.receipt){if(row.receipt.actor!==actor||JSON.stringify(sort(row.receipt.fingerprint))!==JSON.stringify(sort(fingerprint)))throw Error('chess:request_conflict');return projectChess(row);}
   if(row.revision!==body.revision||!projectChess(row).canAct)throw Error('chess:stale_action');
   const next=playChess(row.state,row.viewerId,body.intent as ChessIntent,Number(row.serverAt));
+  if(next.mode==='live'&&next.reason==='checkmate'){const move=next.moves.at(-1)!;next.movePresentation={readyAt:Number(row.serverAt)+chessMoveDuration(move)+CHESS_CHECKMATE_HOLD_MS};}
   const result=await rpc('chess_commit',{...args,p_revision:body.revision,p_state:next,p_request:body.requestId,p_fingerprint:fingerprint});
   if(!['committed','duplicate'].includes(result.outcome))throw Error('chess:stale_action');row=result.record;
  }

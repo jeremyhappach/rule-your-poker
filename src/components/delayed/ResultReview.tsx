@@ -1,3 +1,6 @@
+import {ChessFinalReview} from '@/components/chess/ChessFinalReview';
+import {ChessHistoryButton} from '@/components/chess/ChessHistory';
+import type {ChessSnapshot} from '@/lib/chess/client';
 import {useVisible,usePlayback} from '@/lib/delayed/usePlayback';
 import {OriginalsBoard} from '@/components/originals/OriginalsBoard';
 import {AsyncSessionName} from './AsyncSessionName';
@@ -104,24 +107,27 @@ function SavedBoard({event,scores,childId,userId,elapsed,holeResults}:{holeResul
 export function ChildResults({childId,matchId,userId}:Identity){
  const [home,setHome]=useState<Home|null>(null),[state,setState]=useState<Reviews|null>(null),[error,setError]=useState(''),[overlay,setOverlay]=useState(false),[query]=useSearchParams(),navigate=useNavigate();
  const [wordsReview,setWordsReview]=useState<ReturnType<typeof wordsFinalReview>|null>(null);
+ const [chessReview,setChessReview]=useState<ChessSnapshot|null>(null),[chessContinued,setChessContinued]=useState(query.has('chess-reviewed')),[historyOpen,setHistoryOpen]=useState(false);
  const played=useRef(false),[playId]=useState(()=>crypto.randomUUID());
  const load=useCallback(async()=>{try{const [h,r]=await Promise.all([delayedRpc<Home>('delayed_home',{p_match:matchId}),delayedRpc<Reviews>('delayed_reviews',{p_child:childId})]);if(h.removedAt||!h.lineup.some(c=>c.id===childId&&c.terminal)){navigate('/delayed/'+matchId,{replace:true});return;}
-  const words=h.lineup.find(c=>c.id===childId)?.game==='ptown-words';
+  const childGame=h.lineup.find(c=>c.id===childId)?.game,words=childGame==='ptown-words';
+   let holdChess=false;if(childGame==='chess'&&!query.has('chess-reviewed')){const saved=await delayedRpc<any[]>('chess_history',{p_mode:'async',p_match:matchId,p_id:childId});if(saved[0]?.state.reason==='checkmate'){const v=saved[0].state;setChessReview({...v,id:childId,revision:0,serverAt:h.serverAt,canAct:false,paused:false,pausedAt:null,finished:true,settled:true,settlement:null,financial:{balances:{},resultId:null,batch:null}});holdChess=true;}}
   if(words){const snapshot=await delayedRpc<WordsSnapshot>('delayed_words_inspect',{p_child:childId});setWordsReview(wordsFinalReview(r.events,snapshot,childId,matchId,userId));}
-  setHome(h);setState(r);setOverlay(words?played.current:!r.events.some(e=>e.kind==='attempt'&&!e.seen)&&(query.has('finished')||!r.events.some(e=>e.kind==='attempt')||played.current));
+  setHome(h);setState(r);setOverlay(holdChess?false:words?played.current:!r.events.some(e=>e.kind==='attempt'&&!e.seen)&&(query.has('finished')||!r.events.some(e=>e.kind==='attempt')||played.current));
  }catch{setError('Unable to restore saved results.');}},[matchId,childId,userId,navigate,query]);
- useEffect(()=>{void load();},[load]);
+ useEffect(()=>{setChessReview(null);setChessContinued(query.has('chess-reviewed'));setHistoryOpen(false);void load();},[load]);
  const final=state?.events.find(e=>e.kind==='child'),child=home?.lineup.find(c=>c.id===childId),winner=final?.receipt.winner??child?.result?.winner,won=winner===userId;
  const reduced=useReduced(),play=usePlayback(reduced?1200:6000,overlay?'overlay:'+childId:'waiting'),busy=useRef(false);
- useEffect(()=>{if(!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
+ useEffect(()=>{if(historyOpen||!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
   .then(()=>delayedRpc<Home>('delayed_home',{p_match:matchId}))
   .then(fresh=>navigate('/delayed/'+matchId+(mayViewFinale(fresh)?'?finale=1':''),{replace:true}))
-  .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[overlay,play.done,final,home,matchId,navigate]);
+  .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[historyOpen,overlay,play.done,final,home,matchId,navigate]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
+ if(chessReview&&!chessContinued)return <ChessFinalReview view={chessReview} matchId={matchId} onContinue={()=>{setChessContinued(true);setOverlay(true);}}/>;
  const event=wordsReview?.event??state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
  if(!overlay&&event)return <AttemptReview key={event.id} events={state.events} home={home} {...{childId,matchId,userId,event}} acknowledgeEvents={wordsReview?.acknowledge} onDone={()=>{played.current=true;return load();}}/>;
- return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
+ return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<>{child.game==='chess'&&<ChessHistoryButton mode="async" matchId={matchId} onOpenChange={setHistoryOpen}/>}<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link></>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
   {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>
   <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+' banked the $'+child.stake+' stake':'Tie · $0'}</strong>
   {child.game==='mega-card-golf'&&<MegaCompetitionScorecard course={(child.config as any).course.name} holes={(child.config as any).course.holes} hole={(child.config as any).course.holes} players={home.players} results={child.holeResults??[]}/>}
@@ -137,7 +143,7 @@ export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home)return <AsyncTurnStage matchId={matchId} title="Loading match finale…"/>;
  const winner=home.net===0?null:home.net>0?userId:home.players.find(p=>p.id!==userId)!.id;
- return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link>} panel={<p>Match results</p>} announcement={false}><div className="async-finale" data-phase={imageReady&&play.elapsed>=7500?'breakdown':imageReady&&play.elapsed>=7000?'fade':'ring'}>
+ return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<>{home.lineup.some(c=>c.game==='chess')&&<ChessHistoryButton mode="async" matchId={matchId}/>}<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link></>} panel={<p>Match results</p>} announcement={false}><div className="async-finale" data-phase={imageReady&&play.elapsed>=7500?'breakdown':imageReady&&play.elapsed>=7000?'fade':'ring'}>
   {home.net>0&&!reduced&&<Confetti identity={'match:'+matchId+(home.finaleViewed?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<figure className="async-boxing" data-outcome={winner?'decisive':'draw'}>
    <div className="async-boxing-scene"><img src={winner?boxingWinner:boxingDraw} onLoad={()=>setImageReady(true)} onError={()=>setError('Unable to load the match artwork. The saved results remain available.')} alt={winner?home.players.find(p=>p.id===winner)?.name+' wins the match':'Match drawn'} decoding="async"/>
     {winner&&<span className="async-cash-label" aria-label={'Net winnings $'+Math.abs(home.net).toLocaleString()} style={{'--cash-chars':Math.max(4,('$'+Math.abs(home.net).toLocaleString()).length)} as CSSProperties}>{'$'+Math.abs(home.net).toLocaleString()}</span>}

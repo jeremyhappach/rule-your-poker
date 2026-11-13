@@ -1,3 +1,4 @@
+import {ChessHistoryButton} from '@/components/chess/ChessHistory';
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -237,6 +238,7 @@ export const MyGameHistory = ({ userId, open, onOpenChange }: MyGameHistoryProps
                         <strong>{score.game==='eleven-up'?'11 Up':score.game} · Your score {score.score.toLocaleString()}</strong>
                         {scoreAchievementLabels(score.name,score.record).map(label=><p key={label}>{label}</p>)}
                       </div>)}
+                      <ChessHistoryButton mode="live" matchId={session.id} label="Chess boards"/>
                       <div className="flex items-center justify-between mt-0.5">
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] text-muted-foreground">

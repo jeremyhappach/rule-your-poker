@@ -1718,3 +1718,14 @@ backfill are in `supabase/game-backgrounds/`; qualification is in
 `dev/game-backgrounds/`. See `CHESS_WORDS_LAUNCH_POLISH.md` for the incomplete
 Chess integration and publication hold.
 
+
+
+### Chess status presentation and saved final boards (2026-11-13)
+- src/components/chess/ChessBoard.tsx: move-complete check/mate cues, checked-turn border/audio.
+- src/components/chess/ChessFinalReview.tsx: local Async final-board Continue.
+- src/components/chess/ChessHistory.tsx: read-only final position and saved-board sheet.
+- src/lib/chess/timeline.ts: shared presentation durations; server/chess/operation.ts
+  sets the existing terminal presentation prerequisite for live checkmate.
+- src/lib/chess/statusSound.ts and statusSamples.ts: canonical audio admission and approved PCM.
+- supabase/chess/history.sql: participant-only completed snapshot read;
+  history-proof.sql proves authorization and preserved settlement/continuation.

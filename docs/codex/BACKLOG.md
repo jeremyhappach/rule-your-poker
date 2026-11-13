@@ -2428,3 +2428,19 @@ Run a read-only source audit to document legal actions, state machines, scoring,
 ### 15. Complete repository map
 
 Populate `REPO_MAP.md` from the final tagged source after cutover.
+
+
+## Queued — Chess whole-game replay and optional live Proceed gate — 2026-11-13
+
+Jeremy requested replay after reviewing check/checkmate previews. Existing live
+and Async snapshots retain initialFen, ordered moves (from/to, capture, castling,
+promotion/revival) and a FEN after each move. V1 ships read-only final positions
+in History. Follow-up: replay controls over that saved sequence, with no gameplay,
+settlement, timers or historical sound re-admission.
+
+Jeremy explicitly deferred the live two-player Proceed gate for v1: proposed
+button “Proceed to next game”, a 30-second authoritative deadline, and release
+when both participants acknowledge or the deadline expires. The existing
+automatic winner/eligible-caller continuation remains in place. Reconsider only
+after final-board History smoke; no production gate is included in this release.
+Source: Jeremy's Chess review chat and production approval, November 13, 2026.

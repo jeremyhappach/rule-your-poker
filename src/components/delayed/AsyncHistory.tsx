@@ -1,3 +1,4 @@
+import {ChessHistoryButton} from '@/components/chess/ChessHistory';
 import {useEffect,useRef,useState} from 'react';
 import {Link,useLocation} from 'react-router-dom';
 import {RunbackLink} from './RunbackLink';
@@ -25,6 +26,7 @@ export function AsyncHistory({profileId,balance=false,viewerName}:{profileId?:st
   {!balance&&<small>Started {new Date(r.startedAt).toLocaleString()}</small>}
   <b>{r.net>0?'W':r.net<0?'L':'Draw'} {money(r.net)}</b>{r.realMoney&&<small>Balances have been settled</small>}
   <Link className="async-see-results" to={'/delayed/'+r.id+'?finale=1'}>See Results</Link>
+  <ChessHistoryButton mode="async" matchId={r.id} label="Chess boards"/>
   {!balance&&<RunbackLink matchId={r.id} returnTo={location.pathname+location.search} label={'Run It Back against '+r.opponent+' · '+new Date(r.completedAt).toLocaleString()}/>}
  </article>)}{pending&&<p role="status">Loading async history…</p>}{more&&<button disabled={pending} onClick={()=>void load(true)}>Load older async matches</button>}</section>;
 }

@@ -3331,3 +3331,14 @@ on draws including standard stalemate. Full production integration is requested;
 deployment/publication remains prohibited. Details and remaining implementation:
 `CHESS_WORDS_LAUNCH_POLISH.md`.
 
+
+
+## 2026-11-13 — Chess final-board review and History
+
+Approved by Jeremy after local video/audio review. Async checkmate waits for a
+local Continue before existing result announcements. Live uses the established
+server terminal timestamp and automatic continuation; the coordinated two-player
+gate is deferred. The immutable Chess roster authorizes read-only final-board
+History after departure; the history RPC never calls gameplay sync. Existing
+initial/per-move FEN and move records remain replay source data. Full replay is
+queued. Check, heartbeat and mate cues use the canonical global audio owner.

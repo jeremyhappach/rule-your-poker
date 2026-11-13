@@ -6,6 +6,8 @@ import {ChessBoard} from './ChessBoard';
 import {newChess,playChess} from '@/lib/chess/rules';
 import type {ChessSnapshot} from '@/lib/chess/client';
 import {chessSound} from '@/lib/chess/sound';
+import {chessStatusSound} from '@/lib/chess/statusSound';
+vi.mock('@/lib/chess/statusSound',()=>({preloadChessStatusSound:vi.fn(),chessStatusSound:vi.fn(()=>vi.fn()),chessHeartbeat:vi.fn(()=>vi.fn())}));
 vi.mock('@/lib/chess/sound',()=>({chessSound:vi.fn(()=>vi.fn())}));
 let root:Root,host:HTMLDivElement,reduced=false;
 const mediaListeners=new Set<()=>void>();
@@ -109,4 +111,23 @@ describe('Async entry announcements',()=>{
 it('keeps revival selection reversible and consumes no captured inventory before authority accepts it',()=>{
  vi.useFakeTimers();let state=newChess({identity:{sessionId:'s',dealerGameId:'promotion',roundId:'r'},players:[{id:'white',userId:'white',name:'White',seat:0,isBot:false},{id:'black',userId:'black',name:'Black',seat:1,isBot:false}],mode:'live',backgroundId:''},1000,'7k/P7/8/8/8/1b6/R7/7K b - - 0 1');state=playChess(state,'black',{type:'move',from:'b3',to:'a2'},2000);const v={...state,viewerId:'white',revision:1,serverAt:2000,canAct:true,opened:true} as ChessSnapshot,send=vi.fn(async()=>true);localStorage.setItem('ptown:chess:seen:white:promotion','1');act(()=>root.render(<ChessBoard view={v} pending={false} onIntent={send}/>));const choose=()=>{act(()=>(host.querySelector('[data-square="a7"]') as HTMLElement).click());act(()=>(host.querySelector('[data-square="a8"]') as HTMLElement).click());expect(host.querySelector('[aria-label="Revive Rook"]')).not.toBeNull();act(()=>(host.querySelector('[aria-label="Revive Rook"]') as HTMLElement).click());};
  choose();expect(send).not.toHaveBeenCalled();expect(v.captured.w).toHaveLength(1);act(()=>(host.querySelector('[aria-label="Undo pending move"]') as HTMLElement).click());act(()=>vi.advanceTimersByTime(4000));expect(send).not.toHaveBeenCalled();expect(host.querySelector('[data-square="a7"] .chess-piece')).not.toBeNull();choose();act(()=>vi.advanceTimersByTime(3000));expect(send).toHaveBeenCalledExactlyOnceWith({type:'move',from:'a7',to:'a8',promotion:'r',reviveId:v.captured.w[0].id},1);expect(v.captured.w).toHaveLength(1);
+});
+
+describe('check and checkmate cues',()=>{
+ it.each(['white','black'])('finishes motion before check, then allows the checked turn: viewer %s',viewerId=>{
+  vi.useFakeTimers();let v=initial('async');v=move(v,'e2','e4');v=move(v,'f7','f6');v=move(v,'d1','h5');v={...v,viewerId,canAct:viewerId==='black',opened:true};
+  render(v);expect(host.querySelector('.chess-check-cue')).toBeNull();event('.chess-slide','animationend');
+  expect(host.querySelector('.chess-check-cue')?.getAttribute('data-positive')).toBe(String(viewerId==='white'));expect(chessStatusSound).toHaveBeenCalledTimes(1);
+  expect(host.querySelector('[data-in-check]')).toBeNull();act(()=>vi.advanceTimersByTime(2000));expect(!!host.querySelector('[data-in-check]')).toBe(viewerId==='black');
+  render({...v});expect(chessStatusSound).toHaveBeenCalledTimes(1);
+ });
+ it('holds mate after the final capture and releases only after the cue',()=>{
+  vi.useFakeTimers();let state=newChess({identity:{sessionId:'s',dealerGameId:'mate',roundId:'r'},players:initial('async').players,backgroundId:'',mode:'async'},1000,'R5bk/8/4Q1K1/8/8/8/8/8 w - - 0 1');
+  state=playChess({...state,opened:true},'white',{type:'move',from:'e6',to:'g8'},2000);
+  const done=vi.fn(),v={...state,viewerId:'white',revision:1,serverAt:2000,canAct:false,opened:true} as ChessSnapshot;
+  act(()=>root.render(<ChessBoard view={v} pending={false} onIntent={async()=>true} onMovePresentationComplete={done}/>));
+  event('.chess-slide','animationend');expect(host.querySelector('.chess-check-cue')).toBeNull();event('.chess-poof','animationend');
+  expect(host.textContent).toContain('Checkmate');expect(vi.mocked(chessStatusSound).mock.calls[0][1]).toBe('win');expect(done).not.toHaveBeenCalled();
+  act(()=>vi.advanceTimersByTime(3199));expect(done).not.toHaveBeenCalled();act(()=>vi.advanceTimersByTime(1));expect(done).toHaveBeenCalledTimes(1);
+ });
 });

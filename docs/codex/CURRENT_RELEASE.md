@@ -1,3 +1,35 @@
+# Chess check/checkmate and final-board History — November 13, 2026 — approved release
+
+Jeremy approved production after reviewing all eight local sequences and the
+sounds. The coordinated two-player Proceed/30-second gate is explicitly deferred.
+Async holds the final checkmate board until Continue, then uses the existing game
+and eligible match announcements. Live keeps automatic canonical continuation.
+
+Check follows actual movement/capture completion: green when given, red when
+received, shared approved cocking cue. An active checked turn has the approved
+red board pulse and heartbeat. Checkmate uses the approved win/loss sound and
+3.2-second cue. The existing server terminal presentation timestamp delays live
+chip presentation/results; settlement remains immediate and atomic.
+
+Migration 20261113222526_chess_completed_history adds only a read-only,
+participant-authorized completed-board RPC. Both live and Async use immutable
+saved rosters, retaining access after departure. No history backfill is required.
+The installed-function rollback proof passed authorization, unfinished exclusion,
+win/tie, duplicate/late replay, financial rollback, automatic/terminal continuation
+and no retained synthetic records. Proof: supabase/chess/history-proof.sql.
+
+Local full build passed: typecheck, 4,104 app tests, 241 harness tests, 46 release
+tooling checks, Vite, 89,939,818 static bytes under the unchanged 90 MB gate.
+The focused PCM parity test matches all three approved generated sounds exactly.
+All eight portrait browser scenarios passed without browser errors; incoming and
+outgoing check, checkmate, Async Continue, persistent History and live automatic
+finish were verified with isolated transports. Physical phone/PWA smoke remains
+Jeremy's acceptance. Production verification is recorded in the release receipt.
+
+Full replay UI is deferred. Existing initial FEN, ordered moves and per-move FEN
+support reconstruction, including captures, castling and promotion/revival.
+V1 exposes the saved final board and move list without gameplay timers or audio.
+
 # Chess captured trays and on-piece Undo — November 13, 2026 — production live
 
 Jeremy approved both preview changes. Main was fast-forwarded and published

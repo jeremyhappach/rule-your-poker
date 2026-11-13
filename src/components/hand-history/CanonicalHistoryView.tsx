@@ -1,3 +1,4 @@
+import {ChessSavedHistory} from '@/components/chess/ChessHistory';
 import type { ReactNode } from 'react';
 import { MiniCardRow } from './MiniPlayingCard';
 import { actionNames, historyGameNames, peggingTotals, playerName, recordedChange, resultText } from './canonicalHistory';
@@ -87,6 +88,6 @@ export function CanonicalHistoryView({ games, selected, selectGame, viewerId }: 
       return <section key={game.id} className="overflow-hidden rounded-lg border border-border/50 bg-card/50"><button type="button" aria-expanded={selected === game.id} className="flex w-full items-start justify-between gap-3 p-3 text-left hover:bg-muted/30" onClick={() => selectGame(selected === game.id ? null : game.id)}>
         <span className="space-y-1"><span className="block text-sm font-medium">#{games.length - index} {historyGameNames[game.gameType] ?? game.gameType}</span><span className="block text-[10px] text-muted-foreground">{new Date(game.startedAt).toLocaleString()}</span>{terminal && <Scores scores={terminal.scoresAfter} hand={terminal} />}</span>
         {net !== null && <span className={`text-right text-xs tabular-nums ${net > 0 ? 'text-poker-chip-green' : net < 0 ? 'text-poker-chip-red' : 'text-muted-foreground'}`}><span className="block text-[10px] text-muted-foreground">Recorded net</span>{net > 0 ? '+' : ''}${net.toLocaleString()}</span>}
-      </button>{selected === game.id && <div className="space-y-2 px-3 pb-3">{game.hands.map(hand => <Nested key={hand.id} title={`Hand ${hand.handNumber}`}><HandContents hand={hand} gameType={game.gameType} /></Nested>)}</div>}</section>;
+      </button>{selected === game.id && <div className="space-y-2 px-3 pb-3">{game.gameType==='chess'&&<ChessSavedHistory mode="live" id={game.id}/>} {game.hands.map(hand => <Nested key={hand.id} title={`Hand ${hand.handNumber}`}><HandContents hand={hand} gameType={game.gameType} /></Nested>)}</div>}</section>;
     })}</div>;
 }

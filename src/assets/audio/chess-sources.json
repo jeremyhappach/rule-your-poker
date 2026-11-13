@@ -1,0 +1,66 @@
+[
+  {
+    "id": "check-shotgun",
+    "duration": 0.454421768707483,
+    "rate": 44100,
+    "peakDb": -12,
+    "rmsDb": -23.748339811652666,
+    "source": {
+      "author": "SpringySpringo",
+      "title": "Gun reload sounds · shotguncock.wav",
+      "license": "CC0 1.0",
+      "url": "https://opengameart.org/content/gun-reload-sounds",
+      "download": "https://opengameart.org/sites/default/files/shotguncock_0.wav",
+      "sourceSha256": "33e007321ba83301c861aef573f2c40b70bc62f8f24c0164877e6dd123e24371"
+    },
+    "sha256": "94ee211e785ab43a32cad5e3035f519af223eaea01c8db3e367a09a605bd15c6",
+    "auditionFile": "check-shotgun.wav",
+    "production": "src/assets/audio/chess-check.wav"
+  },
+  {
+    "id": "in-check-heartbeat",
+    "duration": 1.6666666666666667,
+    "rate": 44100,
+    "peakDb": -20,
+    "rmsDb": -36.063808739340885,
+    "source": {
+      "author": "Original procedural composition for this isolated Chess audition",
+      "thirdPartySamples": false,
+      "bpm": 72,
+      "loopSeconds": 1.6666666666666667
+    },
+    "sha256": "ffdde05a2c1f536874e7dd32d128bc958628f3be5171a2f4f74a79b70d03ee0d",
+    "auditionFile": "in-check-heartbeat.wav",
+    "production": "src/lib/chess/statusSamples.ts (PCM16 sample parity verified)"
+  },
+  {
+    "id": "checkmate-win",
+    "duration": 2.75,
+    "rate": 44100,
+    "peakDb": -14,
+    "rmsDb": -25.085300351184642,
+    "source": {
+      "author": "Original procedural composition for this isolated Chess audition",
+      "thirdPartySamples": false,
+      "description": "Two pickups, rising major brass phrase, held resolution."
+    },
+    "sha256": "15dc68aa3e6279625eb9480f2056f5c0bead825682ac8ae6e52f0e9f7db9b062",
+    "auditionFile": "checkmate-win.wav",
+    "production": "src/lib/chess/statusSamples.ts (PCM16 sample parity verified)"
+  },
+  {
+    "id": "checkmate-loss",
+    "duration": 3.1,
+    "rate": 44100,
+    "peakDb": -16,
+    "rmsDb": -28.664618621709383,
+    "source": {
+      "author": "Original procedural composition for this isolated Chess audition",
+      "thirdPartySamples": false,
+      "description": "Descending warm bell phrase resolving to a low minor chord."
+    },
+    "sha256": "0dc3f42b09959596bed3d7971130ce4e4892caac46152fd27a706221fc088d73",
+    "auditionFile": "checkmate-loss.wav",
+    "production": "src/lib/chess/statusSamples.ts (PCM16 sample parity verified)"
+  }
+]
