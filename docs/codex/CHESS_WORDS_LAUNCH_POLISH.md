@@ -217,3 +217,29 @@ nodeRuntime.test.ts verifies the unbundled module in a real child Node process,
 preventing Vite's JSON bundling from masking this failure. This changes no rules,
 database or settlement behavior. Hosted live/Async Chess remains unverified until
 the corrected preview passes its full gates and authenticated smoke.
+
+### Fifteen-minute extension checkpoint
+
+Correction committed/pushed as cf6d9f62b5567c1313750cdc54a5ffa6bb82f324.
+Full local gates pass again: 4,053 application tests, 241 harness tests, 46 release
+tooling tests, typecheck, Vite and size gate. Corrected Vercel preview is
+ptown-poker-56eihgcwk-jeremy-8e2b.vercel.app, deployment
+dpl_26QittfE7jMvgSkSDymzgCc2TBAU; full hosted build was still running at checkpoint.
+No main integration or production promotion occurred.
+
+Browser share-link access, exact old preview SHA, all hosted sound-video decoding,
+and live/Async Words background rendering and reload passed without page errors.
+Both users' authenticated Words projections agree on the background after every
+pass through completion. Realtime subscription did not reach SUBSCRIBED in this
+environment; neither realtime transport nor opponent animation is claimed as a
+hosted pass. Chess HTTP smoke found the import error above and must be repeated
+on the corrected deployment. Timer/banks/settlement remain covered by the prior
+database and local proofs, not an elapsed-time hosted-browser Chess test.
+
+All six synthetic fake-money fixtures are ended/settled using canonical authority:
+Words completed through authenticated passes; live Chess expired under server
+recovery; the synthetic unopened Async Chess deadline was advanced for cleanup
+and processed by chess_sync. No historical session was changed or deleted.
+Evidence: qualification.local/chess/{hosted-words.json,words-sync.json,
+release-runtime-fix.log,videos/playback.json}. Hosted smoke script must create
+fresh fixtures before reuse because its recorded IDs are now terminal.

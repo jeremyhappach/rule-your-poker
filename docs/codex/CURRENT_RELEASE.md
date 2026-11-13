@@ -24,6 +24,10 @@ videos were verified. Hosted Chess revealed a native Node JSON-import failure;
 the explicit import attribute and native-runtime regression test correct that
 boundary. Its rebuilt preview still requires hosted gameplay verification.
 Physical iPhone/PWA and Jeremy's smoke remain unperformed. Production is held.
+Correction cf6d9f62b passes all local gates (4,053 app tests plus harness/release
+tests). Its hosted build is dpl_26QittfE7jMvgSkSDymzgCc2TBAU. Hosted Words photo
+render/reload and both participant projections pass; realtime subscription and
+corrected hosted Chess remain unverified. Synthetic fixtures are now terminal.
 See [implementation, held artifacts and validation](CHESS_WORDS_LAUNCH_POLISH.md).
 
 # Words gameplay polish — November 11, 2026 — local candidate, publication held
