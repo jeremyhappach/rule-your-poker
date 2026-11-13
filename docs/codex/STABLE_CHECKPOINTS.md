@@ -1,3 +1,41 @@
+# Chess Async return hold — November 13, 2026 — hosted preview ready
+
+Jeremy requested a preview before production, then a more translucent overlay.
+Preview runtime: 3c39a01c690bde07687f5666b831bf2fd9cc4d67.
+Checkpoint: chess-async-return-translucent-preview-20261113.
+Vercel: dpl_DszyJQWAkZ9Ez47UxDEbjpXuAHqk, READY, target preview.
+URL: https://ptown-poker-8zxwro0jx-jeremy-8e2b.vercel.app/chess-preview/try.html
+
+Root cause: SubmittedChessTurn immediately navigated on move presentation
+completion. That callback now begins a five-second presentation-only hold with
+"Returning to lobby" centered on the board. Its 55%-opaque fill has no backdrop
+blur, keeping pieces recognizable beneath it. The accepted own-move snapshot
+remains frozen against opponent updates; the monotonic deadline cannot extend
+on duplicate callbacks or rerenders, and unmount cancels navigation. Reduced
+motion retains the same static hold after instant presentation. Illegal moves,
+stale/recovered entry, non-move terminal snapshots and live multiplayer preserve
+their existing behavior. No rules, clocks, banks, settlement, schema, audio or
+board geometry changed.
+
+The preview uses the actual ChessBoard and shared hold hook, with Moves/Capture/
+Reset and an explicitly nonfinancial preview lobby; it creates no match or stake.
+Hosted Chrome at 393 x 852 verified the exact build manifest, 55% opacity without
+blur, completed animation before the hold, centered overlay, unchanged 373 px
+square board, reset, and zero page errors. Hold durations: slide 5,016 ms;
+capture 5,009 ms; reduced motion 5,008 ms. Evidence:
+qualification.local/chess/lobby-hold-hosted.log, lobby-hold-browser.json and
+lobby-hold-preview.png. Focused checks: 21 passed. Existing six native gesture/
+audio checks passed locally. Full local npm run build passed unchanged:
+typecheck, 4,080 app tests, 241 harness tests, 46 release-tooling tests, Vite and
+the 90 MB size gate. The subsequent CSS-only revision passed Vite/size again
+(89,885,523 bytes); Vercel independently completed its full build and is READY.
+
+This smoke covers the actual presentation in the preview fixture, not a newly
+created authenticated two-player Async game or physical iPhone/PWA. Existing
+ChessTurn tests cover frozen snapshots and fast opponent updates during the hold.
+Production remains 049a47c2108ca4a40ab352682c81717e92c7db93. No main integration
+or production promotion; Jeremy must approve this preview before release.
+
 # Chess ghost drag / Run21 capture — November 13, 2026 — production live
 
 Jeremy approved both changes in the hosted c1a396650 preview. Production now
