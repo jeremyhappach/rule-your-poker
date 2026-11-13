@@ -1,3 +1,17 @@
+# Chess / Words — November 12, 2026 — automated production checkpoint
+
+`chess-words-production-20261112` identifies runtime commit
+3c322c6ca144dc8a6fd2567866beed7e42f2c504 and Vercel production deployment
+dpl_HANg4oX22GavvH9jCXVAHRkE4Mtm. Both production domains serve the exact SHA;
+GitHub release workflow 43349865136 and the release_publication signal match.
+Installed financial gate PASS covers both money modes with rollback containment;
+hosted two-player live/Async moves, realtime, clocks/banks and settlement pass.
+Production capabilities, native API, original-photo hashes, sound gallery and
+ended-session routing pass. Chess admission is open in live/Async and qualified
+real money; bots remain closed. Active Words missing backgrounds: 0 / 0.
+Jeremy approved the revised audio. Physical iPhone/PWA smoke remains pending.
+See [release and rollback receipt](CHESS_WORDS_LAUNCH_POLISH.md).
+
 # Storage prevention — November 10, 2026 — hosted production checkpoint
 
 `storage-production-verified-20261110` records production commit

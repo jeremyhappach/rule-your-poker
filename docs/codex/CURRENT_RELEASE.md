@@ -1,4 +1,15 @@
-# Chess / Words — November 12, 2026 — production release authorized
+# Chess / Words — November 12, 2026 — production live
+
+Production runtime: 3c322c6ca144dc8a6fd2567866beed7e42f2c504, deployment
+dpl_HANg4oX22GavvH9jCXVAHRkE4Mtm (READY). holm357.com and
+ptown-poker.vercel.app serve that exact version. GitHub run 43349865136 passed
+and published the matching release signal. Guarded admission is applied:
+enabled/admission_enabled/async_enabled/real_qualified=true, preview_only=false,
+bots_enabled=false. Thirteen eligible non-preview accounts are admitted.
+All nine background objects retain their exact original hashes; active live and
+Async Words games without background IDs: 0 / 0. Production authenticated Chess
+API, capabilities, gallery playback and ended-session lobby routing pass with
+no browser page errors. Physical iPhone/PWA owner smoke remains pending.
 
 Jeremy approved the revised sounds and explicitly requested production release.
 Approved implementation: c621de788; preview dpl_6bs4ydbmsqdTHeJyzVk5JN3mrgGD.

@@ -2,6 +2,27 @@
 
 ## November 12 production authorization and qualification
 
+**Production receipt:** runtime commit
+3c322c6ca144dc8a6fd2567866beed7e42f2c504, Vercel
+dpl_HANg4oX22GavvH9jCXVAHRkE4Mtm, READY on holm357.com and
+ptown-poker.vercel.app. GitHub release run 43349865136 completed successfully and
+published the matching release_publication signal at 2026-11-13 02:17:50 UTC
+(November 12, 8:17 PM Central). The guarded activation followed production API
+and credentials verification; preview_only=false, real_qualified=true,
+enabled/admission_enabled/async_enabled=true and bots_enabled=false. No financial
+or gameplay rules changed during activation. Thirteen eligible accounts outside
+the preview tester list now qualify for Chess admission.
+
+Production checks passed: exact SHA on both domains; live/Async capabilities;
+authenticated native API with settled live/Async snapshots and retained photo
+IDs; all nine original Storage hashes; all three public sound videos playing to
+completion; fresh ended-session entry returning to the lobby; no page errors.
+Active Words games missing a persisted background: live 0, Async 0. Both synthetic
+Chess smoke fixtures are finished/terminal. Current evidence:
+qualification.local/chess/production.json. Production gallery:
+https://holm357.com/chess-preview/. No additional migrations or photo uploads
+were required in this release pass. Physical iPhone/PWA owner smoke remains open.
+
 Jeremy approved the revised audio on preview c621de788 and explicitly requested
 production release. That instruction supersedes the publication holds recorded
 in the historical checkpoints below. Preview deployment
