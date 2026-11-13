@@ -1,5 +1,52 @@
 # Chess / Words launch polish — local checkpoint, November 12, 2026
 
+## November 12 production authorization and qualification
+
+Jeremy approved the revised audio on preview c621de788 and explicitly requested
+production release. That instruction supersedes the publication holds recorded
+in the historical checkpoints below. Preview deployment
+dpl_6bs4ydbmsqdTHeJyzVk5JN3mrgGD is READY and its three hosted sound recordings
+match the approved source files byte-for-byte and play through with AAC audio.
+
+Financial gate: **PASS**. The complete installed-authority rollback proof was
+rerun on xvhmbuppghwmwpwrkzao immediately before release. It proves both money
+modes, win/draw, actual canonical chip/ledger/final snapshots, injected financial
+failure, unauthorized calls, invalid stake, duplicate/late terminal requests,
+continuation and Async recovery. The earlier independent-connection race proof
+remains valid: gameplay/financial authority is unchanged since that qualification.
+Actual chess_requests uniqueness is (mode, match_id, request_id); both update
+tables remain in supabase_realtime. The recovery cron remains active. No
+synthetic rows from the rollback proof remain.
+
+Fresh hosted smoke passed on the approved SHA: native Node API; actual touch
+move and opponent realtime slide; both live +3-minute banks and replayed request
+IDs; persistent background and no animation replay after reload; legal checkmate
+with exact 105/95 canonical chips from 100/100 at stake 5; Async 36-hour unopened
+window, continuous 5-minute opened clock, both banks, UI opening/reload behavior,
+opponent realtime knight hop and canonical terminal settlement. Fresh entry to
+the ended live session returns to the lobby. No browser page errors. The two
+synthetic fake-money sessions were settled through normal authority. Evidence:
+qualification.local/chess/release-hosted.json and release-hosted*.mjs.
+One harness assertion used JavaScript's lexicographic sort for numeric balances;
+correcting its comparator confirmed the expected balances without product changes.
+
+Publication fast-forwards main from 698ab0e5d and uses the unmodified approved
+push helper. supabase/chess/activate.sql is the guarded, idempotent admission
+change applied only after the matching production app is READY. It removes the
+tester-only restriction and enables real-money admission qualified by the proof;
+live/Async remain enabled and bots remain disabled. Original photos and stable
+IDs stay in private arcade-artwork/game-backgrounds. Existing Words assignment
+and backfill semantics are unchanged; no additional asset upload is needed.
+
+Rollback: close new Chess admission/Async offers first while leaving enabled=true
+and real_qualified=true so existing matches can finish. Do not remove Chess
+authority or assigned background objects. Reverting the application to the prior
+production checkpoint requires accounting for any newly active Chess games.
+Physical iPhone/PWA audio unlock, mute, reduced motion, touch and background-return
+smoke remains owner acceptance; desktop/portrait emulation is not that proof.
+
+## Historical checkpoints
+
 This is an incomplete implementation checkpoint, not a release. Jeremy explicitly
 requested no deployment/publication and no background-management/admin screen.
 No hosted schema, Storage objects, production data, admission or deployment changed.

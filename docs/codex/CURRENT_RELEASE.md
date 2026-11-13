@@ -1,4 +1,22 @@
-# Chess / Words launch polish — November 12, 2026 — hosted preview qualification
+# Chess / Words — November 12, 2026 — production release authorized
+
+Jeremy approved the revised sounds and explicitly requested production release.
+Approved implementation: c621de788; preview dpl_6bs4ydbmsqdTHeJyzVk5JN3mrgGD.
+Financial gate: PASS against installed Supabase authority, rerun before activation
+with complete rollback containment. Hosted native API, two-player touch/realtime
+slide, live and Async banks, immutable backgrounds, Async auto-open/reload clock,
+opponent knight hop, canonical settlement and ended-session fresh entry pass.
+No browser page errors. Both synthetic Chess fixtures are settled/terminal.
+
+Local and hosted build gates pass for this implementation: 4,062 app tests, 241
+harness tests, 46 release-tooling tests, typecheck, Vite and unchanged size limit.
+Release uses the normal main fast-forward/push workflow; activation.sql removes
+the preview tester restriction and enables qualified real-money admission after
+production is READY. Bots remain disabled. Physical iPhone/PWA drag, speaker,
+mute/reduced motion and background-return smoke remain Jeremy's acceptance step.
+See CHESS_WORDS_LAUNCH_POLISH.md for proof, deployment and rollback details.
+
+# Earlier preview checkpoints (superseded authorization)
 
 Chess effects revision: movement now starts audio from the CSS animation event,
 with sustained slide friction, knight lift/landing, and an 800 ms fragmented

@@ -1,5 +1,10 @@
 # 2026-11-12 — Chess shares rules, clocks and canonical settlement
 
+Production authorization update: Jeremy approved revised sounds and publication.
+The installed financial gate passes both money modes; live/Async hosted authority,
+realtime and settlement now pass. Release removes preview-only admission and
+enables qualified real money; bots stay disabled. See CHESS_WORDS_LAUNCH_POLISH.md.
+
 Chess/1 revives only the owner's captured Q/R/B/N, consuming one inventory entry;
 without one, ordinary Q/R/B/N promotion applies. Five-minute opened/live turns and
 two +3-minute banks per player/game are shared across modes. Async retains its
