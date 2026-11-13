@@ -161,3 +161,44 @@ Safari/PWA and owner smoke remain unverified. No revival or timer decision remai
 
 Earlier 'remaining Chess work' above describes the prior checkpoint and is
 superseded by this continuation. The original main worktree was not modified.
+
+## Hosted preview qualification — November 12 continuation
+
+User authorized a hosted preview, SQL installation and original asset upload;
+production promotion is still held. Baseline 84f2628b9 was reviewed against main.
+All fourteen recorded hosted function hashes matched. Target: ptown-poker-prod
+Supabase xvhmbuppghwmwpwrkzao; Vercel ptown-poker / prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds.
+
+Installed migration: 20261113001204_chess_words_launch_preview. Background triggers
+and Chess schema install before the active Words backfill; backfilling before the
+constraint update caused pending trigger events, so the failed transaction was
+rolled back and the ordering corrected. Nine original PNGs (3,655,916 bytes) were
+SHA-256 verified and uploaded through the existing Supabase CLI to private
+arcade-artwork/game-backgrounds. Full-size photos remain outside the deployment.
+Both live and Async active Words counts without background IDs are zero after
+installation. Existing assignments remain immutable; backfill uses owner locks,
+bumps child/live revisions and Async parent revisions once, and publishes updates.
+
+Financial proof: supabase/chess/financial-proof.sql and dev/chess/hosted-proof.mjs.
+The actual hosted candidate and installed authority passed rollback-contained
+win/draw cases in both money modes, actual canonical chip/ledger/snapshot checks,
+injected failure after chip changes, invalid stake, role/membership rejection,
+late/duplicate terminal requests, continuation/closure and Async recovery.
+dev/chess/proof.mjs additionally passes legal checkmate/stalemate, clock/banks,
+zero-client live recovery and independent-connection duplicate/competing requests
+in a disposable database. dev/game-backgrounds/proof.mjs passes concurrency,
+immutable assignment, retirement/current pool and both participant projections.
+
+The preview has an explicit private.chess_preview_users admission list. It does
+not expose Chess to ordinary production users; preview_only remains true, bots
+and real-money admission remain false. Production activation requires a separate
+decision. Preview runtime credentials are scoped to this Git branch.
+
+Full npm run build passed: app typecheck, 4,052 application tests, 241 harness
+tests, 46 release-tooling tests, Vite and the existing size gate. Gate failures
+from the new Chess registry/access hook were corrected without removing checks.
+dev/chess/record-video.mjs captures actual ChessView screen frames and actual
+platformAudio output into MP4 with H.264/AAC. Small clips and their player page
+are public/chess-preview; these are recordings, not separate animation code.
+Hosted browser/API, video decoding and physical iPhone/PWA evidence are recorded
+in the final preview report; physical owner smoke remains required before release.

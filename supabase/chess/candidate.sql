@@ -23,8 +23,14 @@ DO $$BEGIN IF EXISTS(SELECT FROM pg_publication WHERE pubname='supabase_realtime
 CREATE FUNCTION private.chess_publish() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN INSERT INTO public.chess_revisions VALUES(NEW.dealer_game_id,NEW.game_id,NEW.revision) ON CONFLICT(dealer_game_id) DO UPDATE SET revision=EXCLUDED.revision;RETURN NEW;END $$;
 CREATE TRIGGER chess_publish AFTER INSERT OR UPDATE ON private.chess_matches FOR EACH ROW EXECUTE FUNCTION private.chess_publish();
+-- Preview admission is restricted while the shared backend also serves production.
+CREATE TABLE private.chess_preview_users(actor uuid PRIMARY KEY REFERENCES public.profiles(id));
+ALTER TABLE private.chess_preview_users ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.chess_preview_users FROM PUBLIC,anon,authenticated,service_role;
+ALTER TABLE private.chess_release ADD COLUMN preview_only boolean NOT NULL DEFAULT true;
 CREATE FUNCTION private.chess_actor_allowed(actor uuid) RETURNS boolean LANGUAGE sql STABLE SET search_path='' AS $$
  SELECT EXISTS(SELECT FROM public.profiles WHERE id=actor AND is_active) AND private.account_enabled(actor)
+ AND (NOT (SELECT preview_only FROM private.chess_release WHERE singleton) OR EXISTS(SELECT FROM private.chess_preview_users WHERE chess_preview_users.actor=chess_actor_allowed.actor))
 $$;
 CREATE FUNCTION public.chess_capabilities(p_session_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT jsonb_build_object('version',1,'user_id',auth.uid(),'session_id',p_session_id,'enabled',private.chess_actor_allowed(auth.uid()) AND enabled AND admission_enabled AND (p_session_id IS NULL OR EXISTS(SELECT FROM public.games WHERE id=p_session_id AND (NOT real_money OR real_qualified))),'fake_money_only',NOT real_qualified) FROM private.chess_release WHERE singleton
@@ -678,7 +684,7 @@ BEGIN
    OR (item-ARRAY['game','stake','config'])<>'{}'::jsonb OR jsonb_typeof(item)<>'object' THEN RAISE EXCEPTION 'delayed:invalid_child'; END IF;
   CASE item->>'game'
   WHEN 'chess' THEN
-   IF NOT EXISTS(SELECT FROM private.chess_release WHERE singleton AND async_enabled AND (NOT p_real_money OR real_qualified)) THEN RAISE EXCEPTION 'chess:async_closed';END IF;
+   IF NOT private.chess_actor_allowed(auth.uid()) OR NOT private.chess_actor_allowed(p_opponent) OR NOT EXISTS(SELECT FROM private.chess_release WHERE singleton AND enabled AND admission_enabled AND async_enabled AND (NOT p_real_money OR real_qualified)) THEN RAISE EXCEPTION 'chess:async_closed';END IF;
    cfg:=private.chess_rules();
   WHEN 'ptown-words' THEN cfg:=private.ptown_words_rules_for('ptown-words/2');
   WHEN 'run21' THEN SELECT config INTO STRICT cfg FROM private.gameplay_rulesets WHERE id='run21/3' AND game='run21';
@@ -764,7 +770,7 @@ BEGIN
     SELECT c.id,r,private.take_two_shuffle() FROM generate_series(1,3) r;
    END IF;
    IF c.game_type='chess' THEN
-    IF NOT EXISTS(SELECT FROM private.chess_release WHERE singleton AND async_enabled AND (NOT m.real_money OR real_qualified)) THEN RAISE EXCEPTION 'chess:async_closed';END IF;
+    IF NOT private.chess_actor_allowed(m.organizer) OR NOT private.chess_actor_allowed(m.opponent) OR NOT EXISTS(SELECT FROM private.chess_release WHERE singleton AND enabled AND admission_enabled AND async_enabled AND (NOT m.real_money OR real_qualified)) THEN RAISE EXCEPTION 'chess:async_closed';END IF;
     dealt:=private.chess_seed(jsonb_build_object('identity',jsonb_build_object('sessionId',m.id,'dealerGameId',c.id,'roundId',c.id),'players',(SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.id,'name',p.username,'seat',CASE WHEN p.id=first_actor THEN 1 ELSE 2 END,'isBot',false) ORDER BY CASE WHEN p.id=first_actor THEN 1 ELSE 2 END) FROM public.profiles p WHERE p.id IN(m.organizer,m.opponent))),'async',floor(extract(epoch FROM at_time)*1000)::bigint);
    END IF;
    UPDATE private.delayed_children SET state=dealt,starter=first_actor,actor=first_actor,segment=1,revision=1,
@@ -841,7 +847,7 @@ END $function$
 DO $$BEGIN IF md5(pg_get_functiondef('delayed_capabilities()'::regprocedure))<>'7884a3cc311678d340e20ae6fcded282' THEN RAISE EXCEPTION 'Chess owner changed: public.delayed_capabilities';END IF;END $$;
 
 CREATE OR REPLACE FUNCTION public.delayed_capabilities() RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- SELECT CASE WHEN private.delayed_multi_enabled() AND EXISTS(SELECT FROM private.chess_release WHERE singleton AND async_enabled) THEN jsonb_set(v,'{games}',(v->'games')||jsonb_build_array(jsonb_build_object('id','chess','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='chess'),'rules',private.chess_rules()))) ELSE v END FROM (SELECT private.chess_prior_delayed_capabilities() v)t $$;
+ SELECT CASE WHEN private.chess_actor_allowed(auth.uid()) AND private.delayed_multi_enabled() AND EXISTS(SELECT FROM private.chess_release WHERE singleton AND enabled AND admission_enabled AND async_enabled) THEN jsonb_set(v,'{games}',(v->'games')||jsonb_build_array(jsonb_build_object('id','chess','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='chess'),'rules',private.chess_rules()))) ELSE v END FROM (SELECT private.chess_prior_delayed_capabilities() v)t $$;
 
 ALTER TABLE private.delayed_children DROP CONSTRAINT IF EXISTS delayed_children_game_type_check;
 ALTER TABLE private.delayed_children ADD CONSTRAINT delayed_children_game_type_check CHECK(game_type IN('chess','ptown-words','run21','tri-towers','quintzee','boxdrop','mega-card-golf','take-two','crib-lab','chucky-showdown'));

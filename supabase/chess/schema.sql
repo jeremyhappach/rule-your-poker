@@ -19,8 +19,14 @@ DO $$BEGIN IF EXISTS(SELECT FROM pg_publication WHERE pubname='supabase_realtime
 CREATE FUNCTION private.chess_publish() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN INSERT INTO public.chess_revisions VALUES(NEW.dealer_game_id,NEW.game_id,NEW.revision) ON CONFLICT(dealer_game_id) DO UPDATE SET revision=EXCLUDED.revision;RETURN NEW;END $$;
 CREATE TRIGGER chess_publish AFTER INSERT OR UPDATE ON private.chess_matches FOR EACH ROW EXECUTE FUNCTION private.chess_publish();
+-- Preview admission is restricted while the shared backend also serves production.
+CREATE TABLE private.chess_preview_users(actor uuid PRIMARY KEY REFERENCES public.profiles(id));
+ALTER TABLE private.chess_preview_users ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.chess_preview_users FROM PUBLIC,anon,authenticated,service_role;
+ALTER TABLE private.chess_release ADD COLUMN preview_only boolean NOT NULL DEFAULT true;
 CREATE FUNCTION private.chess_actor_allowed(actor uuid) RETURNS boolean LANGUAGE sql STABLE SET search_path='' AS $$
  SELECT EXISTS(SELECT FROM public.profiles WHERE id=actor AND is_active) AND private.account_enabled(actor)
+ AND (NOT (SELECT preview_only FROM private.chess_release WHERE singleton) OR EXISTS(SELECT FROM private.chess_preview_users WHERE chess_preview_users.actor=chess_actor_allowed.actor))
 $$;
 CREATE FUNCTION public.chess_capabilities(p_session_id uuid DEFAULT NULL) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
  SELECT jsonb_build_object('version',1,'user_id',auth.uid(),'session_id',p_session_id,'enabled',private.chess_actor_allowed(auth.uid()) AND enabled AND admission_enabled AND (p_session_id IS NULL OR EXISTS(SELECT FROM public.games WHERE id=p_session_id AND (NOT real_money OR real_qualified))),'fake_money_only',NOT real_qualified) FROM private.chess_release WHERE singleton

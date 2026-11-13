@@ -27,14 +27,14 @@ import {GameRules} from '../GameRules';
 afterEach(cleanup);
 
 it('covers the audited registry and current solo additions exactly',()=>{
- expect(GAME_CATALOG.map(g=>g.defaultsKey).sort()).toEqual([...audit.defaults,...candidates.map(g=>g.game)].sort());
+ expect(GAME_CATALOG.map(g=>g.defaultsKey).sort()).toEqual([...audit.defaults,...candidates.map(g=>g.game),'chess'].sort());
  expect(ARCADE_GAMES.map(g=>g.id).sort()).toEqual([...new Set(audit.arcade.map(r=>r.game)),...candidates.map(g=>g.game)].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
 });
 it('covers every Async adapter and every explicit Arcade service dispatch',()=>{
  const adapter=readFileSync('server/delayed/adapter.ts','utf8');
  const asyncIds=[...adapter.match(/export type Game=([^;]+)/)![1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
- expect(Object.keys(ASYNC_RULES_GAMES).sort()).toEqual([...asyncIds,'ptown-words'].sort());
+ expect(Object.keys(ASYNC_RULES_GAMES).sort()).toEqual([...asyncIds,'ptown-words','chess'].sort());
  const arcade=readFileSync('server/arcade/service.ts','utf8');
  const dispatched=[...arcade.matchAll(/(?:body|row|input)\.game\s*===\s*'([^']+)'/g)].map(m=>m[1]);
  for(const id of [...asyncIds,...dispatched,'run21'])expect(GAME_CATALOG.find(g=>g.id===id)?.rules.load,id).toBeTypeOf('function');

@@ -1,4 +1,13 @@
-# Chess / Words launch polish — November 12, 2026 — local implementation, publication held
+# Chess / Words launch polish — November 12, 2026 — hosted preview qualification
+
+Preview preparation continues from 84f2628b9 on codex/chess-words-launch-polish.
+Migration 20261113001204_chess_words_launch_preview is installed on
+xvhmbuppghwmwpwrkzao. Nine hash-verified original PNGs are uploaded to private
+arcade-artwork/game-backgrounds. Production app promotion remains prohibited.
+Full local build gates passed after adding Chess to exact registry coverage and
+the existing stake-test access mock. Hosted rollback financial proof passed before
+and after installation; preview admission remains restricted to its explicit
+tester list. See CHESS_WORDS_LAUNCH_POLISH.md for qualification and remaining smoke.
 
 Chess now has a shared versioned rule core, authenticated live/Async adapters,
 closed-admission SQL candidate, canonical settlement/continuation, opaque sculpted

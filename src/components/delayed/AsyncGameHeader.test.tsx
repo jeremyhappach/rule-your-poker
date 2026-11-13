@@ -32,8 +32,8 @@ it('uses native Words tiles and readable fallback for a game without branding',(
   expect(screen.getByRole('heading',{name:/Future Game/})).toBeTruthy();
   expect(container.querySelector('img')).toBeNull();
 });
-it('prepares only the ten requested canonical branding identities',()=>{
-  expect(Object.keys(ASYNC_GAME_BRANDING)).toEqual(['ptown-words','run21','tri-towers','quintzee','boxdrop','take-two','royal-flash','mega-card-golf','trip-flip','eleven-up']);
+it('prepares the approved canonical branding identities including Chess',()=>{
+  expect(Object.keys(ASYNC_GAME_BRANDING)).toEqual(['chess','ptown-words','run21','tri-towers','quintzee','boxdrop','take-two','royal-flash','mega-card-golf','trip-flip','eleven-up']);
   for(const id of Object.keys(ASYNC_GAME_BRANDING))expect(findGame(id)?.id).toBe(id);
 });
 it('uses the canonical catalog title for a prepared future game without changing admission',()=>{

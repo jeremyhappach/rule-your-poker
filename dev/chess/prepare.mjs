@@ -27,11 +27,11 @@ for(const name of ['private.advance_ante_phase_exact','private.megatouch_frozen_
 for(const name of ['public.delayed_create','public.delayed_respond']){
  let s=source(name).replaceAll("IN('ptown-words'","IN('chess','ptown-words'");
  if(name.endsWith('create'))s=change(s,"WHEN 'ptown-words' THEN",`WHEN 'chess' THEN
-   IF NOT EXISTS(SELECT FROM private.chess_release WHERE singleton AND async_enabled AND (NOT p_real_money OR real_qualified)) THEN RAISE EXCEPTION 'chess:async_closed';END IF;
+   IF NOT private.chess_actor_allowed(auth.uid()) OR NOT private.chess_actor_allowed(p_opponent) OR NOT EXISTS(SELECT FROM private.chess_release WHERE singleton AND enabled AND admission_enabled AND async_enabled AND (NOT p_real_money OR real_qualified)) THEN RAISE EXCEPTION 'chess:async_closed';END IF;
    cfg:=private.chess_rules();
   WHEN 'ptown-words' THEN`);
  else s=change(s,'UPDATE private.delayed_children SET state=dealt',`IF c.game_type='chess' THEN
-    IF NOT EXISTS(SELECT FROM private.chess_release WHERE singleton AND async_enabled AND (NOT m.real_money OR real_qualified)) THEN RAISE EXCEPTION 'chess:async_closed';END IF;
+    IF NOT private.chess_actor_allowed(m.organizer) OR NOT private.chess_actor_allowed(m.opponent) OR NOT EXISTS(SELECT FROM private.chess_release WHERE singleton AND enabled AND admission_enabled AND async_enabled AND (NOT m.real_money OR real_qualified)) THEN RAISE EXCEPTION 'chess:async_closed';END IF;
     dealt:=private.chess_seed(jsonb_build_object('identity',jsonb_build_object('sessionId',m.id,'dealerGameId',c.id,'roundId',c.id),'players',(SELECT jsonb_agg(jsonb_build_object('id',p.id,'userId',p.id,'name',p.username,'seat',CASE WHEN p.id=first_actor THEN 1 ELSE 2 END,'isBot',false) ORDER BY CASE WHEN p.id=first_actor THEN 1 ELSE 2 END) FROM public.profiles p WHERE p.id IN(m.organizer,m.opponent))),'async',floor(extract(epoch FROM at_time)*1000)::bigint);
    END IF;
    UPDATE private.delayed_children SET state=dealt`);
@@ -49,7 +49,7 @@ capabilities=change(capabilities,"jsonb_build_object('id','ptown-words'", "jsonb
 capabilities=capabilities.replace('public.delayed_capabilities(', 'private.chess_prior_delayed_capabilities(');
 chunks.push(capabilities+';');
 patches['public.delayed_capabilities']=`CREATE OR REPLACE FUNCTION public.delayed_capabilities() RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
- SELECT CASE WHEN private.delayed_multi_enabled() AND EXISTS(SELECT FROM private.chess_release WHERE singleton AND async_enabled) THEN jsonb_set(v,'{games}',(v->'games')||jsonb_build_array(jsonb_build_object('id','chess','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='chess'),'rules',private.chess_rules()))) ELSE v END FROM (SELECT private.chess_prior_delayed_capabilities() v)t $$`;
+ SELECT CASE WHEN private.chess_actor_allowed(auth.uid()) AND private.delayed_multi_enabled() AND EXISTS(SELECT FROM private.chess_release WHERE singleton AND enabled AND admission_enabled AND async_enabled) THEN jsonb_set(v,'{games}',(v->'games')||jsonb_build_array(jsonb_build_object('id','chess','stake',(SELECT ante_amount FROM public.game_defaults WHERE game_type='chess'),'rules',private.chess_rules()))) ELSE v END FROM (SELECT private.chess_prior_delayed_capabilities() v)t $$`;
 chunks.push(fs.readFileSync('supabase/chess/transport.sql','utf8'));
 for(const [name,definition] of Object.entries(patches)){
  const original=installed.find(x=>x.name===name);

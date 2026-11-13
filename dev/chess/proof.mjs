@@ -18,7 +18,7 @@ try{
  for(const d of [...JSON.parse(readFileSync('dev/chess/installed.json','utf8')),...JSON.parse(readFileSync('dev/chess/installed-views.json','utf8'))])await db.execute(d.definition);
  await db.execute(readFileSync('supabase/game-backgrounds/candidate.sql','utf8'));
  await db.execute(readFileSync('supabase/chess/candidate.sql','utf8'));
- await db.execute('UPDATE private.chess_release SET enabled=true,admission_enabled=true,async_enabled=true');
+ await db.execute('UPDATE private.chess_release SET enabled=true,admission_enabled=true,async_enabled=true,preview_only=false');
  if(real)await db.execute('UPDATE private.chess_release SET real_qualified=true');
  const client=await db.connect();
  try{
