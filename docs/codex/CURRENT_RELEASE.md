@@ -1,4 +1,9 @@
-# Cribbage scoring sequence — November 14, 2026 — owner smoke pending
+# Cribbage scoring sequence — November 14, 2026 — hand scoring smoke passed
+
+Jeremy confirmed "scoring is good" on the published release. Pegging remains
+a separate follow-up: point sound precedes the played card landing, and final
+Last +1 is silent. The read-only investigation and proposed correction are
+recorded in BACKLOG.md; no pegging follow-up implementation is authorized yet.
 
 Scoring callouts now follow their own highlight beat on the canonical rail.
 Counting retains the outgoing cards and scores through the complete point burst
@@ -10,7 +15,7 @@ pause/rejoin safeguards and existing sounds remain intact. No migration.
 Forty-four focused checks and native Edge trip-7/early-successor audio and visual
 evidence pass. Full qualification passes typecheck, 4,243 application tests,
 241 harness tests, 46 release-tooling tests, Vite and the 90 MB static-size gate.
-Jeremy's production PWA smoke remains acceptance truth. See
+Jeremy's hand-scoring smoke passed; broader scenarios remain unconfirmed. See
 [root cause, preservation and smoke](CRIBBAGE_SCORING_SEQUENCE.md).
 Checkpoint: `cribbage-scoring-sequence-20261114`.
 

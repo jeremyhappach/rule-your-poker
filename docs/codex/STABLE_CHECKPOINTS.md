@@ -1,3 +1,14 @@
+# Cribbage hand-scoring sequence — November 14, 2026 — owner smoke passed
+
+Jeremy confirmed "scoring is good" after publication of
+`f4a472e66ae017839ea848013951f7d2600af207`, checkpoint
+`cribbage-scoring-sequence-20261114`. Vercel deployment
+`dpl_CoT5PkwyfufRyQqTNxxbVToQmDGs` reached READY; the production manifest,
+HTML and served `assets/index-NQwOj6h8.js` matched that commit.
+This acceptance covers hand scoring. The same report identifies separate
+pegging audio timing and silent Last +1 issues, retained in BACKLOG.md.
+Preserve the accepted counting callout/highlight/burst and outgoing-hand hold.
+
 # Async result reader — November 14, 2026 — owner smoke passed
 
 Jeremy confirmed TheOG's pending Quintzee result played and handed off to his

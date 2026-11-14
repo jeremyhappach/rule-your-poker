@@ -1,3 +1,29 @@
+## Queued — Cribbage pegging audio landing and final Last +1 — November 14, 2026
+
+Jeremy's production smoke after `f4a472e66` confirms hand scoring is good,
+but the pegging point sound plays before the played card lands and Last +1
+has no sound. Expected: the scoring notice and point clicks follow the matching
+card's landing; the final point sounds once before counting takes over.
+Exact session/round/card and device were not supplied; no historical state was
+changed or reconstructed. Provenance: direct follow-up in the scoring chat.
+
+Read-only investigation: CribbagePegBoard sounds live displayed-score deltas,
+while CribbageMobileGameTable deliberately supplies accepted scores even when
+card transport still holds its presentation. The audio path never waits for
+CribbagePlayCardAnimation's identity-checked `onSettled` callback. On entry to
+counting, the committed counting-plan baseline immediately makes
+`effectiveCountingScoreOverrides` truthy, disabling pegboard audio on the same
+snapshot that includes the final pegging award. The score baseline then advances
+silently. These paths already exist in `da5e245de`, before the counting fix.
+
+Recommended scope, awaiting approval: coordinate pegging notices and point audio
+by accepted event identity and the matching transport completion, retain the
+final Last/Go/31 presentation through counting entry, and retire once without
+replaying on duplicate/reconnect snapshots. Preserve accepted hand scoring,
+live authoritative scores, rules, existing sounds, mute and recovery guards.
+Validate self/opponent landing, Last +1, Go, 31, repeat/rejoin and counting handoff.
+No product edits or database changes made during this investigation.
+
 ## Qualified — P0 Chess pause/resume hotfix — November 14, 2026 — publication authorized
 
 Host pause/resume and non-host request/cancel match live Words. Pending command
