@@ -2444,3 +2444,11 @@ when both participants acknowledge or the deadline expires. The existing
 automatic winner/eligible-caller continuation remains in place. Reconsider only
 after final-board History smoke; no production gate is included in this release.
 Source: Jeremy's Chess review chat and production approval, November 13, 2026.
+## Queued — Words five-minute turn deadline — 2026-11-13
+
+Jeremy requested increasing the Words deadline to five minutes while approving
+Chess bot implementation. Implement after the active Chess bot task. Trace the
+shared Words timing configuration and freeze the new duration for new games;
+preserve historical/in-progress rule versions, time banks and Async availability.
+Source: Jeremy's "approved / also increase words deadline to 5m" message.
+
