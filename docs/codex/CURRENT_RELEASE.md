@@ -13,7 +13,10 @@ no new holds or clock resets in this correction. No client change is required.
 Full build passes TypeScript, 4,172 app tests, 241 harness tests, 46 release checks,
 Vite and the unchanged static-size gate.
 See [evidence and PWA acceptance](ASYNC_REVIEW_ROW_TYPE_20261114.md).
-Checkpoint: `async-review-row-type-20261114`. Owner smoke remains pending.
+Production `9aef7bcfed54903f02738c4a6b7724d7a036bddc` is verified; Vercel
+`dpl_4WmjyBBoyhi2VvEnZD4TJJyPb5Q6` is READY. Jeremy confirmed the pending
+Quintzee result playback and handoff worked on November 14.
+Checkpoint: `async-review-row-type-20261114`. Owner smoke passed.
 
 # Chess bot setup correction — November 14, 2026 — approved release candidate
 

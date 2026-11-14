@@ -59,5 +59,11 @@ operation; this correction neither reopens holds nor changes those clocks.
 
 Return to the match and open TheOG's pending Quintzee result. Confirm Round 2
 plays, its score is shown, and the normal handoff admits your turn. Refreshing
-mid-review should resume safely. Physical PWA acceptance remains Jeremy's smoke.
+mid-review should resume safely.
+
+Jeremy answered “it worked” to the result-playback and turn-handoff smoke question
+on November 14. This accepts that PWA path; it does not separately claim a
+mid-review interruption test. Production manifest and READY deployment
+`dpl_4WmjyBBoyhi2VvEnZD4TJJyPb5Q6` identify
+`9aef7bcfed54903f02738c4a6b7724d7a036bddc`.
 Release checkpoint: `async-review-row-type-20261114`.

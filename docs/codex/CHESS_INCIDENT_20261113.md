@@ -1,4 +1,30 @@
-# Chess incident — corrected November 14, 2026; held
+# November 14 follow-up — new timeout after authorized Async resume
+
+After the result-reader smoke passed, Jeremy asked whether mcru81's displayed
+$2 win was the earlier reversed result, since the board had not reached checkmate.
+Read-only production inspection confirms a new timeout settlement:
+
+- The original reversal remains intact: Hap +$2 / mcru81 -$2 at 16:13:42 UTC.
+- Jeremy subsequently requested releasing the Async holds. The canonical
+  close operation released this hold at 17:42:03 UTC (11:42:03 AM CST).
+- The restored turn retained `opened=true`. Its replenished five-minute active
+  clock therefore resumed immediately, with deadline 17:47:03 UTC.
+- No accepted move or board change occurred after restoration. Both banks
+  remain unused; the authoritative reason is `timeout` / `timeout_forfeit`.
+- Recovery recorded the new outcome and settlement at 17:48:00 UTC
+  (11:48 AM CST), awarding mcru81 $2 and completing the single-game match.
+- New financial game: `8ef32074-a00a-48d9-b6f9-d4d066aeee0e`.
+  New result: `d63aaddd-6ed5-481b-b525-4323b6bd83a9`.
+  Hap -$2 entry: `f4ab642a-9e77-4674-af13-ac5ac7d78a1c`;
+  mcru81 +$2 entry: `cf07d6af-02e5-4bad-b805-800292664fa5`.
+
+The old charge and reversal net to zero; this new timeout produces the current
+net $2 loss. It is not checkmate or a replay of the old settlement. This follow-up
+changed no production data and does not authorize another reversal or restoration.
+The earlier held-state instructions below are historical and were superseded by
+the explicit resume request.
+
+# Chess incident — corrected November 14, 2026; historical held checkpoint
 
 Publication and all-player clock replenishment were subsequently authorized.
 The current delivery record is [CHESS_HOTFIX_RELEASE_20261114.md](CHESS_HOTFIX_RELEASE_20261114.md).

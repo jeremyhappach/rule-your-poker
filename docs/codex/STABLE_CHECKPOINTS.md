@@ -1,3 +1,14 @@
+# Async result reader — November 14, 2026 — owner smoke passed
+
+Jeremy confirmed TheOG's pending Quintzee result played and handed off to his
+turn after the row-type correction. Production serves
+`9aef7bcfed54903f02738c4a6b7724d7a036bddc`; Vercel deployment
+`dpl_4WmjyBBoyhi2VvEnZD4TJJyPb5Q6` is READY.
+Checkpoint: `async-review-row-type-20261114`.
+Candidate and installed SQL proofs each passed 174 participant projections;
+the full build passed. Scores, finances, clocks and review privacy are preserved.
+Scope and evidence: [result reader](ASYNC_REVIEW_ROW_TYPE_20261114.md).
+
 # Chess captured trays and on-piece Undo — November 13, 2026 — production live
 
 Jeremy approved both preview changes. Main was fast-forwarded and published
