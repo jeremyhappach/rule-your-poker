@@ -308,7 +308,7 @@ Local Words polish: `src/lib/ptownWords/scorePresentation.ts` and
 `useWordScorePresentation.ts` own visual score timing/receipts;
 `src/components/ptownWords/WordsScoreFlight.tsx` measures rendered word/pill geometry.
 `turnPresentation.ts` owns recorded action labels; `useNonWordTurn.ts` owns the
-local async non-word viewing receipt. See `WORDS_SCORE_TURN_POLISH.md` (local only).
+local async non-word viewing receipt. See `WORDS_SCORE_TURN_POLISH.md`.
 `draftDirection.ts` owns the draft-only auto-placement projection.
 `supabase/delayed/polish-local.sql` prepares local notification/discovery and
 presentation metadata changes, registered in installed migration

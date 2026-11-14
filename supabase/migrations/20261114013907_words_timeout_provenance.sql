@@ -1,4 +1,4 @@
--- Local candidate only. Preserve the existing pass action/rules and append
+-- Preserve the existing pass action/rules and append
 -- server-recorded provenance to new timeout moves. No historical backfill.
 DO $migration$
 DECLARE source text; changed text;

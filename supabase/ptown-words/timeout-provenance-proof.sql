@@ -33,6 +33,7 @@ BEGIN
      IF candidate->'moves'->-1->>'reason' IS DISTINCT FROM 'timeout' OR candidate->'moves'->-1->>'action'<>'pass' THEN RAISE EXCEPTION 'Timeout provenance missing'; END IF;
      last_index:=(jsonb_array_length(candidate->'moves')-1)::text;
      candidate:=jsonb_set(candidate,ARRAY['moves',last_index],(candidate->'moves'->-1)-'reason');
+     old:=jsonb_set(old,ARRAY['moves',last_index],(old->'moves'->-1)-'reason');
     ELSIF candidate->'moves'->-1 ? 'reason' THEN RAISE EXCEPTION 'Voluntary pass mislabeled'; END IF;
     IF candidate IS DISTINCT FROM old THEN RAISE EXCEPTION 'Rules, score, continuation, or terminal output changed'; END IF;
     IF pg_temp.words_timeout_candidate(s,action,NULL,at_ms) IS DISTINCT FROM pg_temp.words_timeout_candidate(s,action,NULL,at_ms) THEN RAISE EXCEPTION 'Replay differs'; END IF;

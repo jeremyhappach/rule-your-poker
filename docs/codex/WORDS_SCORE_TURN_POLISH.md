@@ -1,10 +1,12 @@
-# Words score and turn polish — November 13, 2026 — local only
+# Words score and turn polish — November 13, 2026 — production release approved
 
 Branch: `codex/words-score-turn-polish`, based on main `318299eb0`.
 Worktree: `C:/Users/jerem/source/repos/ptown-words-score-turn-polish`.
 Jeremy requested implementation of score/non-word polish, a read-only scrolling
 audit, and no deployment. He separately approved preparing an unapplied local
-timeout-provenance migration. No push, installation or deployment occurred.
+timeout-provenance migration. He subsequently requested production publication.
+The migration is installed and its post-install rollback proof passed. Publication
+will use the unchanged main push helper after the complete release build.
 
 ## Scrolling audit (no correction implemented)
 
@@ -68,14 +70,15 @@ retains `action:pass` and appends `reason:timeout` only to newly recorded expiry
 moves. It changes no grants, tables, indexes, rules or accounting, and performs
 no historical backfill. Existing ambiguous passes remain PASS.
 
-Migration `20261114011536_words_timeout_provenance.sql` is UNAPPLIED.
+Migration `20261114013907_words_timeout_provenance.sql` is installed. The local
+filename was aligned with the version assigned by the migration service.
 Its declaration/move substitutions are guarded and idempotent. The proof compiled
 temporary baseline/candidate copies of the installed reducer inside BEGIN/ROLLBACK;
 the installed function and customer data were never changed. V1/V2 cases prove
 voluntary-pass distinction, old-history preservation, exact remaining JSON parity,
 winner/tie and terminal/continuation behavior, early/duplicate expiry and replay.
 This is metadata qualification, not a new production financial-release claim.
-Future production timeout labels require explicit migration/release authorization.
+Production release authorization was given after local review.
 
 ## Verification
 
