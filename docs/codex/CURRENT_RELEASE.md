@@ -1,3 +1,20 @@
+# Async saved-result reader — November 14, 2026 — server correction live
+
+The shared results reader now passes the filtered event row using the original
+type required by its existing privacy predicate. The Chess correction's view
+change had caused SQLSTATE 42883 and “Unable to verify this turn” for Async
+result entry. TheOG's saved Round 2 Quintzee result is intact and readable.
+
+Migration `20261114174824` is installed. Candidate and installed rollback proofs
+each pass 174 participant projections, authorization, repeated reads, corrected
+history filtering, same-deck privacy and unchanged state/clocks/finances/ACKs.
+The four earlier incident holds were released separately at 17:42 UTC; there are
+no new holds or clock resets in this correction. No client change is required.
+Full build passes TypeScript, 4,172 app tests, 241 harness tests, 46 release checks,
+Vite and the unchanged static-size gate.
+See [evidence and PWA acceptance](ASYNC_REVIEW_ROW_TYPE_20261114.md).
+Checkpoint: `async-review-row-type-20261114`. Owner smoke remains pending.
+
 # Chess bot setup correction — November 14, 2026 — approved release candidate
 
 The Chess Start button now uses the same catalog eligibility as game selection.
