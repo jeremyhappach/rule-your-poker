@@ -1,4 +1,4 @@
-# Words score/turn polish — November 13, 2026 — production release approved
+# Words score/turn polish — November 13, 2026 — production live
 
 Local and opponent/replayed word points hold at the measured rendered word and
 fly at full readable size to the measured scorer pill. Latest-turn summaries,
@@ -10,7 +10,15 @@ and zoomed-board pan starts only on empty cells. No gesture changes were made.
 191 focused tests, TypeScript, production bundle, 33 browser cases and temporary
 function SQL parity/rollback proof pass. The approved local migration
 20261114013907 preserves future timeout provenance; it is installed and the
-post-install rollback proof passed. Jeremy authorized production publication.
+post-install rollback proof passed. Production is live at holm357.com and
+ptown-poker.vercel.app on `b3dcf9252b7e09af74805618ca8bc552a22e89d3`;
+both public manifests, bundles and score styles were verified. Vercel deployment
+`dpl_FyWeiGPgB8htEPPwHwYQRvXFssVb` is READY. GitHub run `43542098834`
+passed qualification, production verification and release-signal publication;
+the persisted signal matches that SHA. Full release build passed 4,142 application
+tests, 241 harness tests, 46 release-tooling checks, TypeScript, Vite and the
+unchanged static-size gate. Checkpoint: `words-score-turn-polish-release-20261113`.
+Physical-device gameplay acceptance remains Jeremy's smoke.
 Historical ambiguous passes remain PASS. Details, exact changed files,
 scroll findings and smoke: [WORDS_SCORE_TURN_POLISH.md](WORDS_SCORE_TURN_POLISH.md).
 

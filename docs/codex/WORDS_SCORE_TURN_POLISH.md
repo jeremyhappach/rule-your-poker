@@ -1,12 +1,21 @@
-# Words score and turn polish — November 13, 2026 — production release approved
+# Words score and turn polish — November 13, 2026 — production live
 
 Branch: `codex/words-score-turn-polish`, based on main `318299eb0`.
 Worktree: `C:/Users/jerem/source/repos/ptown-words-score-turn-polish`.
 Jeremy requested implementation of score/non-word polish, a read-only scrolling
 audit, and no deployment. He separately approved preparing an unapplied local
 timeout-provenance migration. He subsequently requested production publication.
-The migration is installed and its post-install rollback proof passed. Publication
-will use the unchanged main push helper after the complete release build.
+The migration is installed and its post-install rollback proof passed. The task
+branch was fast-forwarded into main and published using the unchanged main helper.
+
+Production commit: `b3dcf9252b7e09af74805618ca8bc552a22e89d3`.
+Vercel deployment: `dpl_FyWeiGPgB8htEPPwHwYQRvXFssVb` (READY).
+Both `https://holm357.com` and `https://ptown-poker.vercel.app` serve that exact
+manifest SHA and the verified Words JavaScript/score CSS. GitHub release run
+`43542098834` completed successfully, including production verification and signal
+publication. The persisted release signal matches the commit, published at
+`2026-11-14T01:53:39.695Z`. Checkpoint tag:
+`words-score-turn-polish-release-20261113`. Physical-device gameplay smoke is pending.
 
 ## Scrolling audit (no correction implemented)
 
@@ -74,7 +83,7 @@ Migration `20261114013907_words_timeout_provenance.sql` is installed. The local
 filename was aligned with the version assigned by the migration service.
 Its declaration/move substitutions are guarded and idempotent. The proof compiled
 temporary baseline/candidate copies of the installed reducer inside BEGIN/ROLLBACK;
-the installed function and customer data were never changed. V1/V2 cases prove
+those proof runs changed neither the installed function nor customer data. V1/V2 cases prove
 voluntary-pass distinction, old-history preservation, exact remaining JSON parity,
 winner/tie and terminal/continuation behavior, early/duplicate expiry and replay.
 This is metadata qualification, not a new production financial-release claim.
@@ -87,6 +96,9 @@ Production release authorization was given after local review.
   refresh/dismissal, clock-start ordering and shared review schedules.
 - Application TypeScript check and production Vite build pass. Existing bundle
   size/Browserslist notices remain; no dependencies were installed or changed.
+- Full release build passes 4,142 application tests in 568 files, 241 harness tests
+  in 12 files, 46 release-tooling checks, TypeScript, Vite and the unchanged 90 MB
+  static gate. Log: `qualification-words-release.log`.
 - 33 browser cases pass with zero page errors: local/opponent/async/saved score
   geometry at four sizes, readable constant-size flight and exact landing,
   pass/timeout/exchange dialogs and reload receipts, plus the scrolling audit.
@@ -95,8 +107,10 @@ Production release authorization was given after local review.
 - Evidence: `qualification.local/words-score-polish/report.json`, screenshots in
   the same directory, and `qualification-words-{tests,typecheck,build,browser}.log`.
   Browser fixtures are local presentation evidence, not a production game smoke.
+- Public production manifests and shipped JavaScript/CSS passed verification on
+  both domains; evidence: `qualification.local/words-score-polish/production.json`.
 
-Owner acceptance after an authorized release: score one local word and watch an
+Owner acceptance: score one local word and watch an
 opponent/replayed word in portrait and landscape; confirm origin/landing, unchanged
 tile input, one dialog for pass/exchange/expiry before Your Turn, correct exchange
 counts and Last/History labels, and normal word animation without an action modal.
@@ -115,6 +129,6 @@ counts and Last/History labels, and normal word animation without an action moda
   `src/components/delayed/WordsFinalReview.test.tsx`,
   `src/lib/delayed/reviewPresentation.test.ts`.
 - Browser fixture: `dev/words-score-polish/index.html`, `preview.tsx`, `browser.mjs`.
-- Database candidate: `supabase/migrations/20261114011536_words_timeout_provenance.sql`;
+- Installed migration: `supabase/migrations/20261114013907_words_timeout_provenance.sql`;
   proof: `supabase/ptown-words/timeout-provenance-proof.sql`.
 - Documentation: this record, `CURRENT_RELEASE.md`, `REPO_MAP.md`.
