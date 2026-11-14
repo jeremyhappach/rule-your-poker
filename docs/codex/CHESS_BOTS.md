@@ -59,8 +59,13 @@ Evidence: `qualification.local/chess-bots/{local,browser}.json`, screenshots and
 `release-build.log`. Physical phone/production gameplay smoke remains Jeremy's.
 
 Worker version 1 is deployed and completing successful scheduled health checks.
-Bot admission is enabled and the stored default is Medium. Client publication is
-pending.
+Bot admission is enabled and the stored default is Medium. Both public domains
+serve `1b933c5e65c1eb6dba1e9f4f1af2381732b34ee2`; Vercel deployment
+`dpl_CwTJwuCHaF4J1ykq8qy4chUUpbb7` is READY. Production bundle checks confirm
+the difficulty control; unauthenticated gameplay and worker calls reject with
+401 and 403. GitHub run `43548120979`, attempt 2, successfully qualified,
+verified production and published the matching persisted release signal on
+November 14. The first attempt only timed out waiting for Vercel publication.
 Smoke: set each level in Game Defaults; add one bot to a fake-money table, select
 Chess, play and reload during a bot turn; verify a legal reply, unchanged pause,
 move animation and payout/Session Ended. Human live/Async still works normally.
@@ -79,4 +84,4 @@ move animation and payout/Session Ended. Human live/Async still works normally.
   `dev/chess-bots/{index.html,preview.tsx,client.ts,browser.mjs}`.
 - Release memory: this report, `CURRENT_RELEASE.md`, `REPO_MAP.md`.
 
-The separately committed Words five-minute request is queued in BACKLOG.md.
+The separately approved Words five-minute request is tracked in BACKLOG.md.

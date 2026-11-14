@@ -1,4 +1,4 @@
-# Chess bots — November 13, 2026 — qualified, publication pending
+# Chess bots — November 14, 2026 — production live
 
 Approved live fake-money human-versus-bot Chess uses Game Defaults difficulty
 Easy / Medium / Expert (default Medium), frozen per game. A bounded server search
@@ -6,10 +6,15 @@ uses the shared rules; expiring database leases drive zero-client bot turns.
 Human commits share the existing guarded persistence/settlement owner.
 Migration 20261114024027 is installed and rollback qualification passed; worker
 version 1 is deployed with a verified scheduled heartbeat; bot admission is
-enabled and the stored difficulty is Medium. Client publication is pending.
+enabled and the stored difficulty is Medium. Both public domains serve
+`1b933c5e65c1eb6dba1e9f4f1af2381732b34ee2`; Vercel
+`dpl_CwTJwuCHaF4J1ykq8qy4chUUpbb7` is READY. GitHub run `43548120979`,
+attempt 2, passed qualification, production verification and release publication;
+the persisted release signal matches that SHA. The first attempt had timed out
+waiting for Vercel; the successful retry required no code change.
 Full build passed 4,156 application tests, 241 harness tests, 46 tooling checks,
 TypeScript, Vite and the static-size gate. See [CHESS_BOTS.md](CHESS_BOTS.md).
-Words five-minute turns are queued separately. Physical gameplay smoke is pending.
+Physical gameplay smoke is pending.
 
 # Words score/turn polish — November 13, 2026 — production live
 
