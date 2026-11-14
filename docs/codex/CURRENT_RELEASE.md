@@ -1,4 +1,4 @@
-# Chess forfeit presentation — November 14, 2026 — production authorized
+# Chess forfeit presentation — November 14, 2026 — production verified
 
 Confirmed forfeit now plays the losing king's charge/explosion, a descending
 mournful sound and the explicit result announcement. Live multiplayer admits its
@@ -22,6 +22,9 @@ with isolated fixtures: both directions show the explosion, running platform
 audio and 100/100 → 98/102 chip flight; both Async directions automatically reach
 the settled finale. Background review does not advance. Production PWA smoke
 remains Jeremy's. Checkpoint: `chess-forfeit-sequence-20261114`.
+Production `071d7caa6f41297f7103c88a83bb5adc5b804a09` is verified:
+Vercel `dpl_4WPujwqEf6KpvpjuzdFz5RFevhiS` is READY and holm357.com's
+manifest matches, published at 19:39:10 UTC with `assets/index-CsyHXYrZ.js`.
 
 # Chess timeout restoration and confirmed forfeit — November 14, 2026
 
