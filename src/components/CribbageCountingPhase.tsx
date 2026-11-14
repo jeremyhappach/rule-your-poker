@@ -1,6 +1,6 @@
 import type { CountingTime } from '@/lib/cribbage/countingClock';
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
-import {presentSound} from '@/lib/audio/presentationSound';
+import {presentCribbageScore} from '@/lib/cribbage/sounds';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { getHandScoringCombos, getTotalFromCombos, type ScoringCombo } from '@/lib/cribbageScoringDetails';
 import {
@@ -110,7 +110,7 @@ export const CribbageCountingPhase = ({
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
   const [highlightedCards, setHighlightedCards] = useState<CribbageCard[]>([]);
-  const [highlightSoundKey, setHighlightSoundKey] = useState<string | null>(null);
+  const [scoreSound, setScoreSound] = useState<{key: string; points: number} | null>(null);
   // Store announcement WITH its target label to prevent label mismatch during transitions
   // Announcement carries owner-identity (targetIndex + comboIndex) so the
   // render layer can identity-suppress stale prior-owner announcements
@@ -433,10 +433,10 @@ export const CribbageCountingPhase = ({
   const scoringToCutGap = useCardOverlap('cardOverlap.cribbage.scoringHandToCutGap');
   const firstCardRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
-    if (highlightSoundKey && highlightedCards.length && countingTime.current()) {
-      presentSound('cribbageHighlight', highlightSoundKey, audioActive ? firstCardRef.current : null);
+    if (scoreSound && countingTime.current()) {
+      presentCribbageScore(scoreSound.points, scoreSound.key, audioActive ? firstCardRef.current : null);
     }
-  }, [highlightSoundKey, highlightedCards, audioActive, winFrozen]);
+  }, [scoreSound, audioActive, winFrozen]);
   const [measuredCardWidthPx, setMeasuredCardWidthPx] = useState<number>(40);
   useEffect(() => {
     const el = firstCardRef.current;
@@ -1332,6 +1332,8 @@ export const CribbageCountingPhase = ({
           });
           setHighlightedCards([]);
           publishAnnouncement('0 points', currentTarget.label, 'zero');
+          if (debugContext?.gameId && debugContext.roundId) setScoreSound({points: 0, key:
+            `${debugContext.gameId}:${debugContext.roundId}:${debugContext.handNumber}:${currentTarget.playerId}:${currentTargetIndex}:zero`});
 
           innerTimer = schedule(() => {
             if (!winFrozenRef.current) startExitTransition();
@@ -1372,8 +1374,8 @@ export const CribbageCountingPhase = ({
         });
         if (!isResumedActiveCombo) {
           setHighlightedCards(combo.cards);
-          if (debugContext?.gameId && debugContext.roundId) setHighlightSoundKey(
-            `${debugContext.gameId}:${debugContext.roundId}:${debugContext.handNumber}:${currentTarget.playerId}:${currentTargetIndex}:${currentComboIndex}`);
+          if (debugContext?.gameId && debugContext.roundId) setScoreSound({points: combo.points, key:
+            `${debugContext.gameId}:${debugContext.roundId}:${debugContext.handNumber}:${currentTarget.playerId}:${currentTargetIndex}:${currentComboIndex}`});
           publishAnnouncement(`${combo.label}: +${combo.points}`, currentTarget.label, 'combo');
         }
 

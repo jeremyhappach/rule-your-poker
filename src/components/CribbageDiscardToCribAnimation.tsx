@@ -1,3 +1,4 @@
+import {cribbageSlideSoundRef} from '@/lib/cribbage/sounds';
 /**
  * Cribbage Task C1 — discard-to-crib transport animation (visual overlay only).
  *
@@ -52,6 +53,7 @@ export interface CribbageDiscardIntent {
 }
 
 interface Props {
+  audioActive?: boolean;
   intent: CribbageDiscardIntent | null;
   onSettled: (id: string) => void;
 }
@@ -83,7 +85,7 @@ function resolveSelfHandStageRect(): DOMRect | null {
   return el ? el.getBoundingClientRect() : null;
 }
 
-export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => {
+export const CribbageDiscardToCribAnimation = ({ intent, audioActive = true, onSettled }: Props) => {
   const [flights, setFlights] = useState<Flight[] | null>(null);
   const [animating, setAnimating] = useState<Record<string, boolean>>({});
   const [visible, setVisible] = useState(false);
@@ -179,6 +181,7 @@ export const CribbageDiscardToCribAnimation = ({ intent, onSettled }: Props) => 
         return (
           <div
             key={f.key}
+            ref={cribbageSlideSoundRef(f.key, on && audioActive)}
             style={{
               position: 'fixed',
               left: x,

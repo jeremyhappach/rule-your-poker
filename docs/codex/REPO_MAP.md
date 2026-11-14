@@ -172,6 +172,12 @@ disposable local PostgreSQL/concurrency/financial regression proof. See
 
 ## Approved game sound presentation
 
+Cribbage point/zero and direct-flight admission: `src/lib/cribbage/sounds.ts`.
+The pegboard owns pegging audio; counting combinations/zero targets own counting
+audio and suppress the pegboard lane. `useYahtzeeRollSound` covers the separate
+local Yahtzee tray, while `DiceRollAnimation` retains opponent rolls. See
+`CRIBBAGE_YAHTZEE_SOUNDS.md` for samples, identities and smoke.
+
 `src/lib/delayed/turnAudio.ts` verifies fresh local Async action presentation
 against accepted snapshots. `DelayedTurn` supplies its ephemeral Start admission
 and Run21 feedback to existing shared bell/card hooks; recovery/history cannot

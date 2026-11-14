@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, type TransitionEvent } from 'react';
-import {presentSound} from '@/lib/audio/presentationSound';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import {presentCribbageScore} from '@/lib/cribbage/sounds';
 import type { CribbagePlayerState } from '@/lib/cribbageTypes';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
@@ -79,9 +79,9 @@ export const CribbagePegBoard = ({
 
   const prevScores = prevRenderedScoresRef.current;
   const previousAudioScores = useRef<{scope?: string; scores: Record<string, number>} | null>(null);
-  const pendingPegs = useRef(new Map<string, string>());
+  const soundSurface = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const reset = () => { pendingPegs.current.clear(); previousAudioScores.current = null; };
+    const reset = () => { previousAudioScores.current = null; };
     const hidden = () => { if (document.hidden) reset(); };
     document.addEventListener('visibilitychange', hidden); window.addEventListener('offline', reset);
     return () => { document.removeEventListener('visibilitychange', hidden); window.removeEventListener('offline', reset); };
@@ -89,19 +89,17 @@ export const CribbagePegBoard = ({
   const audioScoreKey = JSON.stringify(currentDisplayScores);
   useLayoutEffect(() => {
     const previous = previousAudioScores.current;
-    if (!audioActive || previous?.scope !== audioScope || document.hidden) pendingPegs.current.clear();
-    else if (previous) for (const [playerId, score] of Object.entries(currentDisplayScores)) {
-      if (previous.scores[playerId] !== undefined && score > previous.scores[playerId])
-        pendingPegs.current.set(playerId, `${audioScope}:${playerId}:${score}`);
+    if (audioScope && previous?.scope === audioScope) {
+      for (const [playerId, score] of Object.entries(currentDisplayScores)) {
+        const before = previous.scores[playerId];
+        if (before !== undefined && score > before) {
+          presentCribbageScore(score - before, `${audioScope}:${playerId}:${score}`,
+            audioActive ? soundSurface.current : null);
+        }
+      }
     }
     previousAudioScores.current = {scope: audioScope, scores: {...currentDisplayScores}};
   }, [audioScope, audioActive, audioScoreKey]);
-  const pegLanded = (playerId: string, event: TransitionEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget || event.propertyName !== 'left') return;
-    const identity = pendingPegs.current.get(playerId);
-    pendingPegs.current.delete(playerId);
-    if (identity && audioScope) presentSound('peg', identity, audioActive ? event.currentTarget : null);
-  };
   const regressions: Array<{ playerId: string; prev: number; now: number; source: string }> = [];
   for (const [pid, nowScore] of Object.entries(currentDisplayScores)) {
     const prevScore = prevScores[pid];
@@ -211,7 +209,7 @@ export const CribbagePegBoard = ({
   // so we never render an unsized board.
   if (!useRectSizing) {
     return (
-      <div className="space-y-1.5" data-pegboard-sizing="fallback">
+      <div className="space-y-1.5" ref={soundSurface} data-pegboard-sizing="fallback">
         {players.map((player, index) => {
           const score = Math.max(0, currentDisplayScores[player.id] ?? 0);
           const percentage = Math.min(100, (score / winningScore) * 100);
@@ -228,7 +226,6 @@ export const CribbagePegBoard = ({
                 <div
                   className={`absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ${getPlayerColor(index)} border border-white shadow transition-all duration-500`}
                   style={{ left: `calc(${displayPercentage}% - 5px)` }}
-                  onTransitionEnd={event => pegLanded(player.id, event)}
                 />
               </div>
               <span className="text-xs font-bold text-poker-gold w-8 text-right">{score}</span>
@@ -241,6 +238,7 @@ export const CribbagePegBoard = ({
 
   return (
     <div
+      ref={soundSurface}
       data-pegboard-sizing="rect-driven"
       data-pegboard-assigned-height-px={Math.round(assignedHeightPx)}
       data-pegboard-row-px={targetRowPx}
@@ -309,7 +307,6 @@ export const CribbagePegBoard = ({
               />
               <div
                 className={`${getPlayerColor(index)} transition-all duration-500`}
-                onTransitionEnd={event => pegLanded(player.id, event)}
                 style={{
                   position: 'absolute',
                   top: '50%',

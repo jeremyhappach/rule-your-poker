@@ -1,3 +1,19 @@
+# Cribbage and Yahtzee sounds — November 14, 2026 — owner smoke pending
+
+Cribbage now sounds its admitted cut-card face reveal, each self/opponent play
+and discard, and one existing wooden peg click per displayed point at 90 ms
+intervals. Counting combinations own their point audio; the pegboard owns
+pegging/His Heels audio and yields during counting. The old counting ding is
+removed, and each zero hand or crib uses the existing two-note womp.
+Yahtzee's confirmed local roll uses the opponent's Cup C sample for the existing
+roll animation, with standard hold/release tones on valid local die toggles.
+
+The shared speaker preference, mute cancellation, visibility suppression and
+once-only identities remain in charge. Rules, scores, clocks, RPCs, settlement
+and historical state are unchanged. No migration or new sound asset.
+See [event paths, checks and production smoke](CRIBBAGE_YAHTZEE_SOUNDS.md).
+Checkpoint: `cribbage-yahtzee-sounds-20261114`.
+
 # Chess forfeit presentation — November 14, 2026 — production verified
 
 Confirmed forfeit now plays the losing king's charge/explosion, a descending

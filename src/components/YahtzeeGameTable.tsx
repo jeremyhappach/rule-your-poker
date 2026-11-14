@@ -1,3 +1,5 @@
+import {useYahtzeeRollSound} from '@/hooks/useYahtzeeRollSound';
+import {presentQuintzeeHold} from '@/lib/audio/quintzeeHoldCue';
 import {useLiveSoundEvent} from '@/hooks/useLiveSoundEvent';
 import {yahtzeePostedSound} from '@/lib/audio/achievementSounds';
 import {presentSound} from '@/lib/audio/presentationSound';
@@ -564,6 +566,8 @@ export function YahtzeeGameTable({
   }, [viewState?.currentTurnPlayerId, viewState?.playerStates, gameId, dealerGameId, currentRoundId]);
 
   const [uiRolling, setUiRolling] = useState(false);
+  const [localRollSound, setLocalRollSound] = useState<{roundId: string; id: string} | null>(null);
+  const localDiceSoundSurface = useRef<HTMLDivElement>(null);
   const [lastScoredCategory, setLastScoredCategory] = useState<YahtzeeCategory | null>(null);
   const [lastScoredValue, setLastScoredValue] = useState<number | null>(null);
   // Optimistic scorecard overlay: keeps the scored value visible until DB catches up
@@ -999,6 +1003,8 @@ export function YahtzeeGameTable({
   const maxTotal = Math.max(0, ...allTotals.map(t => t.total));
 
   const rolling = uiRolling;
+  useYahtzeeRollSound(localRollSound?.roundId === currentRoundId ? localRollSound.id : null,
+    rolling, activeTab === 'cards' && !isPaused && isMyTurn, localDiceSoundSurface);
   const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
   const showMyDice = isMyTurn
     && !isMyAutoRollTurn
@@ -1487,6 +1493,7 @@ export function YahtzeeGameTable({
       if (isYahtzee(diceValues) && diceValues[0] !== 0) {
         setTimeout(() => setShowYahtzeeOverlay(getPlayerUsername(myPlayer)), duration + 200);
       }
+      setLocalRollSound({roundId: currentRoundId, id: `yahtzee:${myPlayer.id}:${committedPs.rollKey ?? currentRoundId + ':' + result.state.actionSequence}`});
       setUiRolling(true);
       if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
       uiRollingTimerRef.current = window.setTimeout(() => {
@@ -1547,11 +1554,13 @@ export function YahtzeeGameTable({
     }));
     localDiceRef.current = optimisticDice;
     setLocalDice(optimisticDice);
+    if (currentUserId) presentQuintzeeHold(currentUserId, `yahtzee:${currentRoundId}:${myPlayer.id}:${dieIndex}`,
+      nextMask[dieIndex], localDiceSoundSurface.current);
 
     // Attach a rejection handler for tap-only usage. Roll/score callers await
     // the same shared promise and therefore still observe a failed flush.
     void ensureHoldMaskSynced().catch(() => {});
-  }, [isManualTurnOpenNow, currentRoundId, myPlayer, rolling, ensureHoldMaskSynced]);
+  }, [isManualTurnOpenNow, currentRoundId, myPlayer, currentUserId, rolling, ensureHoldMaskSynced]);
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
@@ -2871,6 +2880,7 @@ export function YahtzeeGameTable({
                     opponent scorecard. */}
                 {showMyDice && (
                   <div
+                    ref={localDiceSoundSurface}
                     className="flex items-center justify-center mb-1"
                     style={{ gap: `${dieRowLayout?.gapPx ?? 4}px` }}
                   >

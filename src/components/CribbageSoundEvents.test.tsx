@@ -5,7 +5,7 @@ import {CribbagePegBoard} from './CribbagePegBoard';
 import {CribbageCountingPhase} from './CribbageCountingPhase';
 import type {CribbageState} from '@/lib/cribbageTypes';
 const audio=vi.hoisted(()=>({play:vi.fn()}));
-vi.mock('@/lib/audio/presentationSound',()=>({presentSound:audio.play}));
+vi.mock('@/lib/cribbage/sounds',()=>({presentCribbageScore:audio.play}));
 vi.mock('@/lib/debugEventLogger',()=>({logDebugEvent:vi.fn()}));
 vi.mock('@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider',()=>({useCribbageGameplayGeometry:()=>({placementsById:new Map(),lastValidPlacementsById:new Map()})}));
 vi.mock('@/lib/wave4LayoutResolver/useLiveGeometryConstraints',()=>({useLiveGeometryConstraints:()=>({vminInPx:3.9})}));
@@ -20,29 +20,46 @@ beforeEach(()=>{vi.useFakeTimers();audio.play.mockReset();vi.spyOn(console,'log'
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
 const tick=async(ms:number)=>{for(let n=0;n<ms;n+=100)await act(async()=>{vi.advanceTimersByTime(100);});};
 
-it('sounds only when an actual peg left-transition ends, once per new score; mount/resize/recovery are silent',()=>{
+it.each([1,2,4,12])('sounds exactly the %i-point displayed award for either player without relying on CSS movement',points=>{
  const props={players,winningScore:121,playerStates:state.playerStates,audioScope:'game:round:hand',audioActive:true};
- const ui=render(<CribbagePegBoard {...props}/>);
- const peg=()=>ui.container.querySelector<HTMLDivElement>('[style*="left:"]')!;
- fireEvent.transitionEnd(peg(),{propertyName:'left'});expect(audio.play).not.toHaveBeenCalled();
- ui.rerender(<CribbagePegBoard {...props} overrideScores={{p1:6,p2:0}}/>);expect(audio.play).not.toHaveBeenCalled();
- fireEvent.transitionEnd(peg(),{propertyName:'width'});expect(audio.play).not.toHaveBeenCalled();
- fireEvent.transitionEnd(peg(),{propertyName:'left'});fireEvent.transitionEnd(peg(),{propertyName:'left'});
- expect(audio.play).toHaveBeenCalledTimes(1);expect(audio.play.mock.calls[0].slice(0,2)).toEqual(['peg','game:round:hand:p1:6']);
- ui.rerender(<CribbagePegBoard {...props} audioScope="other-hand" overrideScores={{p1:10,p2:0}}/>);
- fireEvent.transitionEnd(peg(),{propertyName:'left'});expect(audio.play).toHaveBeenCalledTimes(1);
+ const ui=render(<CribbagePegBoard {...props}/>);expect(audio.play).not.toHaveBeenCalled();
+ ui.rerender(<CribbagePegBoard {...props} overrideScores={{p1:4+points,p2:0}}/>);
+ expect(audio.play.mock.lastCall?.slice(0,2)).toEqual([points,'game:round:hand:p1:'+String(4+points)]);
+ ui.rerender(<CribbagePegBoard {...props} overrideScores={{p1:4+points,p2:points}}/>);
+ expect(audio.play.mock.lastCall?.slice(0,2)).toEqual([points,'game:round:hand:p2:'+points]);
+ ui.rerender(<CribbagePegBoard {...props} overrideScores={{p1:4+points,p2:points}}/>);
+ const peg=ui.container.querySelector<HTMLDivElement>('[style*="left:"]')!;
+ fireEvent.transitionEnd(peg,{propertyName:'left'});expect(audio.play).toHaveBeenCalledTimes(2);
+ ui.rerender(<CribbagePegBoard {...props} audioScope="next-hand" overrideScores={{p1:20,p2:20}}/>);
+ expect(audio.play).toHaveBeenCalledTimes(2);
 });
-it('plays one cue per raised scoring pair; persistent highlights and score totals do not produce more cues',async()=>{
- const props={cribbageState:state,players,cardBackColors:{color:'#123',darkColor:'#012'},onCountingComplete:vi.fn(),initialScores:{p1:0,p2:0},audioActive:true,debugContext:{gameId:'g',roundId:'r',userId:'u1',handNumber:1}};
- audio.play.mockImplementation(()=>expect(document.querySelectorAll('[data-card-highlighted="true"]').length).toBeGreaterThanOrEqual(2));
- const ui=render(<CribbageCountingPhase countingTime={timing} {...props}/>);expect(audio.play).not.toHaveBeenCalled();
- await tick(1500);expect(audio.play).toHaveBeenCalledTimes(1);
- for(let i=0;i<5;i++)ui.rerender(<CribbageCountingPhase countingTime={timing} {...props}/>);
+it('consumes hidden-tab awards and rebases after an interruption',()=>{
+ const props={players,winningScore:121,playerStates:state.playerStates,audioScope:'scope',audioActive:true};
+ const ui=render(<CribbagePegBoard {...props}/>);
+ ui.rerender(<CribbagePegBoard {...props} audioActive={false} overrideScores={{p1:6,p2:0}}/>);
+ expect(audio.play.mock.lastCall?.[2]).toBeNull();
+ ui.rerender(<CribbagePegBoard {...props} overrideScores={{p1:6,p2:0}}/>);
  expect(audio.play).toHaveBeenCalledTimes(1);
- await tick(2600);expect(audio.play).toHaveBeenCalledTimes(2);
- expect(audio.play.mock.calls.map(c=>c[1])).toEqual(['g:r:1:p1:0:0','g:r:1:p1:0:1']);
+ act(()=>window.dispatchEvent(new Event('offline')));
+ ui.rerender(<CribbagePegBoard {...props} overrideScores={{p1:10,p2:2}}/>);
+ expect(audio.play).toHaveBeenCalledTimes(1);
+});
+it('hand combinations award only their own points with no extra ding or total cue',async()=>{
+ const props={cribbageState:state,players,cardBackColors:{color:'#123',darkColor:'#012'},onCountingComplete:vi.fn(),initialScores:{p1:0,p2:0},audioActive:true,debugContext:{gameId:'g',roundId:'r',userId:'u1',handNumber:1}};
+ const ui=render(<CribbageCountingPhase countingTime={timing} {...props}/>);
+ await tick(4100);
+ for(let i=0;i<5;i++)ui.rerender(<CribbageCountingPhase countingTime={timing} {...props}/>);
+ expect(audio.play.mock.calls.map(c=>c.slice(0,2))).toEqual([[2,'g:r:1:p1:0:0'],[2,'g:r:1:p1:0:1']]);
 });
 it('does not sound an already-highlighted persisted combo on reconnect',async()=>{
  render(<CribbageCountingPhase countingTime={timing} cribbageState={state} players={players} cardBackColors={{color:'#123',darkColor:'#012'}} onCountingComplete={()=>{}} initialScores={{p1:0,p2:0}} audioActive debugContext={{gameId:'g',roundId:'r',userId:'u1',handNumber:1}} persistedTargetIndex={0} persistedBeatIndex={0} persistedHandKey="r:1"/>);
  await tick(300);expect(audio.play).not.toHaveBeenCalled();
+});
+
+it('plays a separate zero cue for each hand and the crib, without a positive score or total ding',async()=>{
+ const zeroCards=[{rank:'2',suit:'clubs'},{rank:'4',suit:'diamonds'},{rank:'6',suit:'hearts'},{rank:'8',suit:'spades'}];
+ const blank={...state,cribOwnerPlayerId:'p2',pegging:{...state.pegging,playedCards:players.flatMap(p=>zeroCards.map(card=>({playerId:p.id,card})))},crib:zeroCards} as CribbageState;
+ render(<CribbageCountingPhase countingTime={{...timing,frame:{...timing.frame,state:blank}}} cribbageState={blank} players={players} cardBackColors={{color:'#123',darkColor:'#012'}} onCountingComplete={()=>{}} initialScores={{p1:0,p2:0}} audioActive debugContext={{gameId:'g',roundId:'zero-r',userId:'u1',handNumber:1}}/>);
+ await tick(10000);
+ expect(audio.play.mock.calls.map(c=>c.slice(0,2))).toEqual([[0,'g:zero-r:1:p1:0:zero'],[0,'g:zero-r:1:p2:1:zero'],[0,'g:zero-r:1:p2:2:zero']]);
 });

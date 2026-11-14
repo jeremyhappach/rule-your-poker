@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { presentSound } from '@/lib/audio/presentationSound';
+import { presentCribbageScore } from '@/lib/cribbage/sounds';
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
 import { createCountingClock } from '@/lib/cribbage/countingClock';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 
-vi.mock('@/lib/audio/presentationSound', () => ({ presentSound: vi.fn() }));
+vi.mock('@/lib/cribbage/sounds', () => ({ presentCribbageScore: vi.fn() }));
 vi.mock('@/lib/debugEventLogger', () => ({ logDebugEvent: vi.fn() }));
 vi.mock('@/lib/geometryLab/cardArtifactOverlap', () => ({ useCardOverlap: () => 0.2 }));
 vi.mock('./CribbagePlayingCard', () => ({ CribbagePlayingCard: () => null }));
@@ -75,6 +75,6 @@ describe('first Cribbage counting target on resume', () => {
     expect(highlighted()).toBe(2);
     expect(score).toHaveBeenLastCalledWith({ pone: saved === 1 ? 16 : 14, dealer: 10 });
     expect(progress.mock.calls).toEqual(firstHighlightAfter ? [[0, 0]] : []);
-    expect(presentSound).toHaveBeenCalledTimes(firstHighlightAfter ? 1 : 0);
+    expect(presentCribbageScore).toHaveBeenCalledTimes(firstHighlightAfter ? 1 : 0);
   });
 });

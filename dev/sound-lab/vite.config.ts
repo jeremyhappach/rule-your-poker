@@ -7,6 +7,7 @@ export default defineConfig({
   cacheDir: repo + '/qualification.local/sound-lab/vite-cache',
   root, envDir:repo, publicDir: false, plugins: [react()],
   resolve: {alias: [
+    {find: './platformAudio', replacement: root + 'labAudio.ts'},
     {find: '@/lib/audio/platformAudio', replacement: root + 'labAudio.ts'},
     {find: '@', replacement: repo + '/src'},
   ]},

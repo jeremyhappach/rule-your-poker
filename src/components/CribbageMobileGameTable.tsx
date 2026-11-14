@@ -8814,7 +8814,7 @@ export const CribbageMobileGameTable = ({
             >
               {!sessionEndedPhase && <CribbagePegBoard
                 audioScope={`${gameId}:${dealerGameId}:${currentRoundId}:${currentHandNumber}`}
-                audioActive={activeTab === 'cards' && !sessionEndedPhase}
+                audioActive={activeTab === 'cards' && !sessionEndedPhase && !effectiveCountingScoreOverrides && !countingStateSnapshot}
                 players={players}
                 playerStates={pegboardPlayerStates}
                 winningScore={
@@ -8885,6 +8885,7 @@ export const CribbageMobileGameTable = ({
               Portals into document.body; consumes discardIntent state
               seeded by handleDiscard (self) or opponent growth detector. */}
           <CribbageDiscardToCribAnimation
+            audioActive={activeTab === 'cards' && !sessionEndedPhase}
             intent={discardIntent}
             onSettled={settleDiscardIntent}
           />
@@ -8893,6 +8894,7 @@ export const CribbageMobileGameTable = ({
               Portals into document.body; consumes playCardIntent seeded by
               handlePlayCard (self) or opponent playedCards-growth detector. */}
           <CribbagePlayCardAnimation
+            audioActive={activeTab === 'cards' && !sessionEndedPhase}
             intent={playCardIntent}
             destinationReady={playCardIntent?.mode !== 'self' || Boolean(
               gameplayRenderState?.pegging?.playedCards?.some(({ playerId, card }) =>

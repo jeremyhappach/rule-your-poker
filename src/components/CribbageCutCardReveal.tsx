@@ -1,5 +1,5 @@
-import {cardFlipSoundRef} from '@/lib/audio/presentationSound';
-import { useState, useEffect, useRef } from 'react';
+import {presentSound} from '@/lib/audio/presentationSound';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { isCardFaceResolved } from '@/lib/cardGames/resolvedCardFace';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
@@ -8,6 +8,7 @@ import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
 
 interface CribbageCutCardRevealProps {
+  audioLive?: boolean;
   card: CribbageCard | null;
   cardBackColors: { color: string; darkColor: string };
   /** When provided, clearing the revealed-cards cache on change prevents re-flip after remount */
@@ -63,6 +64,7 @@ function getConsumedSet(handBoundaryKey: string | undefined): Set<string> {
  */
 export const CribbageCutCardReveal = ({
   card,
+  audioLive,
   cardBackColors,
   handBoundaryKey,
   widthPx,
@@ -89,12 +91,21 @@ export const CribbageCutCardReveal = ({
   );
 
   const [isFlipping, setIsFlipping] = useState(false);
-  const audioEntry = useRef({hand: handBoundaryKey, sawBack: !card});
-  if (audioEntry.current.hand !== handBoundaryKey) audioEntry.current = {hand: handBoundaryKey, sawBack: !card};
-  else if (!card) audioEntry.current.sawBack = true;
+  const audioEntry = useRef({hand: handBoundaryKey, sawBack: !faceResolved});
+  if (audioEntry.current.hand !== handBoundaryKey) audioEntry.current = {hand: handBoundaryKey, sawBack: !faceResolved};
+  else if (!faceResolved) audioEntry.current.sawBack = true;
   // Show face immediately only on true remounts (registry already consumed).
   // Legitimate first reveals start back-side so the flip animation can play.
   const [showFace, setShowFace] = useState(alreadyConsumedAtMount);
+  const soundSurface = useRef<HTMLDivElement>(null);
+  const soundEnabled = audioLive ?? audioEntry.current.sawBack;
+  // A newly mounted cut can miss transitionrun. The existing midpoint is the
+  // exact face reveal, and works for both an already-mounted back and a new child.
+  useLayoutEffect(() => {
+    if (isFlipping && showFace && faceResolved && handBoundaryKey) {
+      presentSound('flip', `${handBoundaryKey}:cut`, soundEnabled ? soundSurface.current : null);
+    }
+  }, [isFlipping, showFace, faceResolved, handBoundaryKey, soundEnabled]);
 
   const currentCardKeyRef = useRef<string | null>(null);
   const previousHandBoundaryKeyRef = useRef<string | undefined>(handBoundaryKey);
@@ -235,7 +246,7 @@ export const CribbageCutCardReveal = ({
   );
 
   return (
-    <div className={labelInFlow ? 'flex flex-col items-center' : 'relative flex items-center justify-center'}>
+    <div ref={soundSurface} className={labelInFlow ? 'flex flex-col items-center' : 'relative flex items-center justify-center'}>
       {cutLabel}
       <div
         className="transition-transform duration-600 ease-out"
@@ -245,7 +256,6 @@ export const CribbageCutCardReveal = ({
       >
         <div
           className="relative transition-transform duration-300 ease-out"
-          ref={cardFlipSoundRef(`${handBoundaryKey}:cut`, isFlipping && !!handBoundaryKey && audioEntry.current.sawBack)}
           style={{
             transformStyle: 'preserve-3d',
             transform: isFlipping

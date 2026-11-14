@@ -1,5 +1,5 @@
 import type {AudioCue} from './audioManager';
-import {decodePCM, pcmCue} from './pcm';
+import {decodePCM, pcmCue, repeatPcmCue} from './pcm';
 import slide from '@/assets/audio/deal-paper.wav?url';
 import flip from '@/assets/audio/flip-soft.wav?url';
 import diceMany from '@/assets/audio/dice-land.wav?url';
@@ -69,6 +69,7 @@ export function preloadApprovedSounds() {
       if (!response.ok) return;
       const pcm = decodePCM(await response.arrayBuffer());
       if(name==='slide')paperRecording=pcm;
+      if(name==='peg')pegRecording=pcm;
       const cue = name==='chucky'?pcmCue(pcm,0,400):pcmCue(pcm);
       if (name === 'dropCountdown') ['3','2','1'].forEach((beat,i) =>
         countdown.set(beat, {...pcmCue(pcm,i*900,180),policy:policies.dropCountdown}));
@@ -137,4 +138,16 @@ export function approvedCountdownBeat(beat:string) { return countdown.get(beat);
 export function diceLandingSound(indices: readonly number[], diceCount: number): ApprovedSound | null {
   const count = new Set(indices.filter(i => Number.isInteger(i) && i >= 0 && i < diceCount)).size;
   return count === 0 ? null : count === 1 ? 'diceOne' : 'diceMany';
+}
+
+// One mixer voice for the complete award, so rapid points cannot throttle each other.
+let pegRecording: ReturnType<typeof decodePCM> | undefined;
+const pegAwards = new Map<number, AudioCue>();
+export function cribbagePointsCue(points: number): AudioCue | undefined {
+  if (!pegRecording || !Number.isSafeInteger(points) || points <= 0) return;
+  if (!pegAwards.has(points)) pegAwards.set(points, {
+    ...repeatPcmCue(pegRecording, points, 90),
+    policy: {priority: 45, group: 'cribbage-points', intervalMs: 0},
+  });
+  return pegAwards.get(points);
 }

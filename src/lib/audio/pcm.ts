@@ -33,3 +33,25 @@ export function pcmCue(pcm:PCM, elapsedMs=0, remainingMs=Infinity): AudioCue {
     source.connect(destination); source.start(ctx.currentTime,offset,seconds); return true;
   }};
 }
+
+/** Schedule identical samples on the audio clock as one cancellable cue. */
+export function repeatPcmCue(pcm: PCM, count: number, intervalMs: number): AudioCue {
+  const buffers = new WeakMap<AudioContext, AudioBuffer>();
+  const seconds = pcm.samples.length / pcm.rate;
+  return {durationMs: (count - 1) * intervalMs + seconds * 1000, schedule(ctx, destination, track) {
+    let buffer = buffers.get(ctx);
+    if (!buffer) {
+      buffer = ctx.createBuffer(1, pcm.samples.length, pcm.rate);
+      buffer.copyToChannel(pcm.samples, 0);
+      buffers.set(ctx, buffer);
+    }
+    const start = ctx.currentTime;
+    for (let i = 0; i < count; i++) {
+      const source = track(ctx.createBufferSource());
+      source.buffer = buffer;
+      source.connect(destination);
+      source.start(start + i * intervalMs / 1000);
+    }
+    return true;
+  }};
+}

@@ -296,6 +296,10 @@ export function CribbageAnchoredCribCutMount({
 
   const cribRef = useRef<HTMLDivElement | null>(null);
   const cutRef = useRef<HTMLDivElement | null>(null);
+  // This owner sees the uncut hand; the reveal child mounts only after admission.
+  const cutAudio = useRef({hand: handBoundaryKey, sawBack: !cribbageState.cutCard});
+  if (cutAudio.current.hand !== handBoundaryKey) cutAudio.current = {hand: handBoundaryKey, sawBack: !cribbageState.cutCard};
+  else if (!cribbageState.cutCard) cutAudio.current.sawBack = true;
 
   // Presentation-owned visible count — clamped to reservedCount so a
   // stale visibleCribCount can never render more cardbacks than the
@@ -439,6 +443,7 @@ export function CribbageAnchoredCribCutMount({
       {cutEligible ? (
         <CribbageCutCardReveal
           card={cribbageState.cutCard}
+          audioLive={cutAudio.current.sawBack}
           cardBackColors={cardBackColors}
           handBoundaryKey={handBoundaryKey}
           widthPx={cutCardWidthPx}

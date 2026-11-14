@@ -1,3 +1,4 @@
+import {cribbageSlideSoundRef} from '@/lib/cribbage/sounds';
 /**
  * Cribbage Task C2 — hand → pegging-row transport (visual overlay only).
  *
@@ -49,6 +50,7 @@ export type CribbagePlayCardLifecycleEvent =
   | 'skipped';
 
 interface Props {
+  audioActive?: boolean;
   intent: CribbagePlayCardIntent | null;
   destinationReady?: boolean;
   onSettled: (id: string) => void;
@@ -93,7 +95,7 @@ function resolveSelfHandStageRect(): DOMRect | null {
   return el ? el.getBoundingClientRect() : null;
 }
 
-export const CribbagePlayCardAnimation = ({ intent, destinationReady = true, onSettled, onLifecycle, onCancelled }: Props) => {
+export const CribbagePlayCardAnimation = ({ intent, audioActive = true, destinationReady = true, onSettled, onLifecycle, onCancelled }: Props) => {
   const [flight, setFlight] = useState<Flight | null>(null);
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -206,6 +208,7 @@ export const CribbagePlayCardAnimation = ({ intent, destinationReady = true, onS
   const node = (
     <div className="pointer-events-none" data-cribbage-play-card-animation="">
       <div
+        ref={cribbageSlideSoundRef(flight.key, animating && audioActive)}
         style={{
           position: 'fixed',
           left: x,
