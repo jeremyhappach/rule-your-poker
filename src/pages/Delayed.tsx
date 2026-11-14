@@ -151,7 +151,7 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const refresh=useCallback(()=>{const generation=++epoch.current;void delayedRpc<Home>('delayed_home',{p_match:matchId}).then(v=>{if(generation!==epoch.current)return;if(v.removedAt){navigate('/delayed/'+matchId,{replace:true});return;}setHome(old=>old&&old.revision>v.revision?old:v);}).catch(e=>{if(generation===epoch.current)setError(e.message);});},[matchId,navigate]);
  useEffect(()=>{refresh();return()=>{epoch.current++;};},[refresh]);
  const child=home?.lineup.find(c=>c.id===childId);
- useUpdates(userId,refresh,child?.game!=='ptown-words'&&child?.game!=='chess');
+ useUpdates(userId,refresh,child?.game!=='ptown-words');
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
  return child.game==='chess'?<ChessTurn childId={childId} matchId={matchId} userId={userId}/>:child.game==='ptown-words'?<WordsTurn key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

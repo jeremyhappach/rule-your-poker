@@ -40,7 +40,7 @@ it('opens the committed board passively and reenters the current own turn throug
  mock.snapshot={...mock.snapshot,...playChess({...mock.snapshot,opened:true},'other',{type:'move',from:'e7',to:'e5'},mock.snapshot.serverAt+1),revision:3,canAct:true,opened:true};
  mock.home={...mock.home,revision:3,lineup:[{...mock.home.lineup[0],actor:'me'}]};
  await act(async()=>{window.dispatchEvent(new Event('online'));document.dispatchEvent(new Event('visibilitychange'));});
- expect(mock.rpc).toHaveBeenCalledTimes(reads);expect(mock.channel).toHaveBeenCalledTimes(channels);expect(mock.inspect).toHaveBeenCalledOnce();
+ expect(mock.rpc.mock.calls.length).toBeGreaterThan(reads);expect(mock.channel).toHaveBeenCalledTimes(channels);expect(mock.inspect).toHaveBeenCalledOnce();
  expect(mock.play).not.toHaveBeenCalled();expect(mock.intent).not.toHaveBeenCalled();expect(sessionStorage.getItem(request)).toBe('saved request');
  expect(screen.getByRole('button',{name:'e7 Black Pawn'})).toBeTruthy();
  expect(localStorage.getItem('ptown:chess:seen:me:chess')).toBeNull();
@@ -55,4 +55,12 @@ it('opens the committed board passively and reenters the current own turn throug
 it('uses inspected ownership when the lobby still claims it is your turn',async()=>{
  mock.home.lineup[0].actor='me';mount();fireEvent.click(await screen.findByRole('link',{name:'Take Turn'}));
  await screen.findByText("Opponent's Turn — View Only · Blair");expect(mock.play).not.toHaveBeenCalled();expect(mock.intent).not.toHaveBeenCalled();
+});
+it('preserves parent removal recovery during an active Chess visit',async()=>{
+ mock.home.lineup[0].actor='me';mock.snapshot={...mock.snapshot,turnIndex:0,canAct:true};
+ mount();fireEvent.click(await screen.findByRole('link',{name:'Take Turn'}));
+ await waitFor(()=>expect(mock.play).toHaveBeenCalled());
+ mock.home={...mock.home,revision:3,removedAt:new Date().toISOString()};
+ await act(async()=>window.dispatchEvent(new Event('online')));
+ await screen.findByText('Match deleted');
 });

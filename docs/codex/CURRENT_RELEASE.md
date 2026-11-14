@@ -5,7 +5,9 @@ as Words. The authenticated delayed_chess_inspect RPC returns the latest committ
 position and turn owner without calling chess_load/chess_sync. The board shows
 Opponent's Turn — View Only with the player's name; selection, dragging, move
 drafts and time banks are disabled. Inspection mounts no gameplay recovery,
-subscription or automatic return, and does not consume the move-animation marker.
+gameplay subscription or automatic return, and does not consume the move-animation
+marker. The existing parent match listener remains active for removal/reconnect
+recovery; those reads do not refresh or admit actions on the inspection board.
 Return to Match Home and reenter to fetch the current state and admit an own turn.
 
 The match list derives a compact game mix from the complete current lineup,
@@ -24,12 +26,14 @@ lobby data reproduced incorrect zero counts where the correct opponent counts
 were 3, 1, 1 and 1. No existing game or financial data was changed.
 Proof: supabase/chess/inspect-proof.sql; authority: supabase/chess/inspect.sql.
 
-Focused validation: 78 tests passed, including actual route/board inspection and
+Focused validation: 79 tests passed, including actual route/board inspection and
 own-turn reentry, stale lobby ownership, disabled banks/selection/dragging, Words
 regressions, all ten async game types, and lineup refresh after addition/removal
 and completion. Full build passed TypeScript, 4,127 application tests, 241 harness
 tests, 46 release-tooling checks, Vite and the unchanged 90 MB static gate
 (89,941,443 bytes). Log: async-chess-lobby-build.log in the task worktree.
+Final review restored the unchanged parent lifecycle listener and added an active
+match-removal regression; focused checks and typecheck were rerun for that change.
 Shared ChessView/ChessBoard callers retain their default active behavior (live
 ChessTable, submitted async turn, and ChessFinalReview); only inspection opts in.
 No dependency, gameplay, settlement, notification or production-data mutation.
