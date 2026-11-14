@@ -1,0 +1,23 @@
+.chess-forfeit-effect{position:absolute;width:12.5%;height:12.5%;z-index:25;pointer-events:none}
+.chess-board:has(.chess-forfeit-effect){overflow:visible}
+.chess-board:has(.chess-forfeit-effect[data-burst=true]){animation:chess-forfeit-impact 450ms ease-out}
+@keyframes chess-forfeit-impact{0%,100%{transform:translate(0,0)}15%{transform:translate(-1%,.75%)}30%{transform:translate(1%,-.75%)}45%{transform:translate(-.75%,-.25%)}60%{transform:translate(.5%,.5%)}}
+.chess-forfeit-effect *{animation-delay:var(--forfeit-delay,0ms);animation-fill-mode:both}
+.chess-forfeit-charge,.chess-forfeit-shard{position:absolute;inset:0}
+.chess-forfeit-charge svg,.chess-forfeit-shard svg{width:100%;height:100%}
+.chess-forfeit-charge{animation-name:chess-king-charge;animation-duration:760ms;animation-timing-function:ease-in;filter:drop-shadow(0 0 6px #ffba56)}
+.chess-forfeit-shard{animation-name:chess-king-shard;animation-duration:1450ms;animation-timing-function:cubic-bezier(.12,.66,.3,1);filter:drop-shadow(2px 5px 2px #000b)}
+.chess-forfeit-shock{position:absolute;left:50%;top:50%;width:40%;height:40%;border:3px solid #ffeac5;border-radius:50%;box-shadow:0 0 25px #ffcf74;animation-name:chess-king-shock;animation-duration:700ms;animation-timing-function:ease-out}
+.chess-forfeit-flare{position:absolute;left:50%;top:50%;width:260%;height:260%;border-radius:50%;background:radial-gradient(circle,#fff,#ffe5b9 13%,#ffb74a90 35%,transparent 70%);animation-name:chess-king-flare;animation-duration:600ms;mix-blend-mode:screen}
+.chess-forfeit-ember{position:absolute;left:50%;top:50%;width:7%;height:7%;background:#ffdd97;border-radius:40%;box-shadow:0 0 6px #ffc35b;animation-name:chess-king-ember;animation-duration:1600ms;animation-timing-function:ease-out}
+.chess-forfeit-smoke{position:absolute;left:50%;top:50%;width:110%;height:110%;border-radius:50%;background:radial-gradient(ellipse,#a8a6a287,#66697560 40%,transparent 71%);animation-name:chess-king-smoke;animation-duration:2700ms;animation-timing-function:ease-out;filter:blur(5px)}
+@keyframes chess-king-charge{0%{transform:scale(1)}55%{transform:scale(1.22) rotate(-6deg)}70%{transform:scale(1.27) rotate(7deg)}83%{transform:scale(1.32) rotate(-8deg)}100%{transform:scale(1.4) rotate(4deg);filter:brightness(3) drop-shadow(0 0 22px #ffcf79)}}
+@keyframes chess-king-shard{0%{transform:scale(1.4);opacity:1}65%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.45);opacity:0}}
+@keyframes chess-king-shock{0%{transform:translate(-50%,-50%) scale(.3);opacity:1}100%{transform:translate(-50%,-50%) scale(13);opacity:0}}
+@keyframes chess-king-flare{0%{transform:translate(-50%,-50%) scale(.4);opacity:1}20%{transform:translate(-50%,-50%) scale(1.8)}100%{transform:translate(-50%,-50%) scale(2.6);opacity:0}}
+@keyframes chess-king-ember{0%{transform:translate(0,0);opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(400deg);opacity:0}}
+@keyframes chess-king-smoke{0%{transform:translate(-50%,-50%) scale(.2);opacity:0}15%{opacity:.85}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(3);opacity:0}}
+.chess-forfeit-announcement{text-align:center;padding:.75rem;border-block:1px solid #c7a46a80;background:linear-gradient(90deg,transparent,#0a111df5 13%,#0a111df5 87%,transparent);color:#fff0d5}
+.chess-forfeit-announcement small{display:block;font-size:.65rem;letter-spacing:.3em;color:#cbab76}
+.chess-forfeit-announcement strong{display:block;font:600 1.35rem Georgia,serif;margin:.35rem 0}
+@media(prefers-reduced-motion:reduce){.chess-forfeit-charge,.chess-board:has(.chess-forfeit-effect){animation:none}.chess-forfeit-shard,.chess-forfeit-shock,.chess-forfeit-ember,.chess-forfeit-smoke{display:none}.chess-forfeit-flare{animation:none;transform:translate(-50%,-50%);opacity:.25}}

@@ -1,3 +1,28 @@
+# Chess forfeit presentation — November 14, 2026 — production authorized
+
+Confirmed forfeit now plays the losing king's charge/explosion, a descending
+mournful sound and the explicit result announcement. Live multiplayer admits its
+existing canonical chip flight at 5.2 seconds, after the announcement; it retains
+the existing three-second settlement presentation and cursor-completion guard.
+Async automatically hands the final-board presentation into Game Complete and
+the normal match-finale eligibility flow, without a Continue tap.
+
+Installed migration `20261114192644` changes only the server-owned presentation
+window in `private.chess_settle`; money, outcome, dedupe and final-board owners
+are preserved. Candidate and installed rollback proofs pass both forfeiting
+players in both money modes, canonical chips/ledger/snapshots, authorization,
+duplicate and late replay, early-close rejection and terminal continuation.
+No existing match data was changed.
+
+Full build passes TypeScript, 4,186 application tests, 241 harness tests,
+46 release checks and the 90 MB static gate. The final focused suite additionally
+preserves timeout/stalemate final-board coverage. Browser checks use actual
+ChessTable, the canonical chip ledger/runtime and Async result/finale components
+with isolated fixtures: both directions show the explosion, running platform
+audio and 100/100 → 98/102 chip flight; both Async directions automatically reach
+the settled finale. Background review does not advance. Production PWA smoke
+remains Jeremy's. Checkpoint: `chess-forfeit-sequence-20261114`.
+
 # Chess timeout restoration and confirmed forfeit — November 14, 2026
 
 Jeremy's second $2 loss against mcru81 is reversed. The same 58-move position is

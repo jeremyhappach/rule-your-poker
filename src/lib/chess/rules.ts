@@ -15,7 +15,7 @@ export interface ChessState {
  moves:ChessMove[];captured:Record<Color,CapturedPiece[]>;banks:Record<string,number[]>;
  positions:string[];scores:Record<string,number>;winnerIds:string[];reason?:string;
  movePresentation?:{readyAt:number};
- terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number};
+ terminal?:{forfeitStartedAt?:number|null;resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number};
 }
 export type ChessIntent={type:'move';from:Square;to:Square;promotion?:Promotion;reviveId?:string}|{type:'open'}|{type:'bank';slot:number}|{type:'resign'}|{type:'request_pause'}|{type:'cancel_pause_request';requestId:string};
 const eligible=(p:CapturedPiece)=>['q','r','b','n'].includes(p.type);

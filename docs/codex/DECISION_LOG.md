@@ -1,3 +1,14 @@
+# 2026-11-14 — Forfeit presentation precedes existing settlement presentation
+
+The database stamps live Chess forfeit presentation origin and admits canonical
+chip presentation 5.2 seconds later. Atomic money/result settlement still occurs
+in its original transaction; the animation never owns finance or progression.
+The existing three-second terminal window follows that admission. Other reasons
+retain their existing timing. Chess owns only its king artifact and procedural
+audio cue through platformAudio; the shell owns the live result announcement
+and chip flight. Async final review automatically calls the existing completion
+handoff after the visible forfeit sequence; saved boards remain in History.
+
 # 2026-11-14 — Repeated Chess corrections preserve immutable generations
 
 The second restored-turn timeout requires another auditable correction rather

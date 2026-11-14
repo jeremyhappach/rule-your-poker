@@ -1,3 +1,10 @@
+Chess forfeit sequence: ChessForfeitEffect/forfeit.css own the board-relative
+explosion; lib/chess/forfeitSound.ts supplies the platform audio timeline.
+lib/chess/forfeitPresentation.ts mirrors migration 20261114192644's live timing.
+ChessTable gates the existing canonical ledger; ChessFinalReview automatically
+hands Async forfeits to the existing result flow. The rollback proof is
+supabase/chess/forfeit-presentation-proof.sql.
+
 Chess timeout restoration and forfeit: migration 20261114182034 appends correction
 generations and preserves immutable earlier receipts. supabase/chess/repeated-correction-proof.sql,
 live-forfeit-proof.sql and uncorrected-receipts-proof.sql cover the financial paths.
