@@ -78,6 +78,15 @@ it('lets a rack tap choose its destination after two aligned placements',()=>{
  tap(screen.getByRole('button',{name:'A, 1 points'}));expect(container.querySelectorAll('.is-staged')).toHaveLength(1);
 });
 const bankView={...view,rules:{...view.rules,version:'ptown-words/2',timeBankUses:2,timeBankMs:180000},hostUserId:'u1',pauseVersion:0,timeBankSpent:{}};
+it('renders the five-minute authoritative deadline and unchanged three-minute bank increment',()=>{
+ const five={...bankView,rules:{...bankView.rules,version:'ptown-words/4',turnMs:300000},deadline:301000};
+ const ui=render(<PtownWordsView {...props} view={five}/>);
+ expect(ui.container.querySelector('time')?.textContent).toBe('5:00');
+ fireEvent.click(screen.getByRole('button',{name:'Use time bank 1: add 3 minutes'}));
+ expect(intent).toHaveBeenLastCalledWith({type:'time_bank',items:[{slot:0}]});
+ ui.rerender(<PtownWordsView {...props} view={{...five,revision:1,deadline:481000,timeBankSpent:{me:[0]}}}/>);
+ expect(ui.container.querySelector('time')?.textContent).toBe('8:00');
+});
 it('keeps two match-scoped bank slots, preserves draft and displays added remaining time',()=>{
  const {container,rerender}=render(<PtownWordsView {...props} view={bankView}/>);fireEvent.click(container.querySelector('[data-square="112"]')!);fireEvent.click(container.querySelector('[data-square="112"]')!);fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);
  fireEvent.click(screen.getByRole('button',{name:'Use time bank 1: add 3 minutes'}));expect(intent).toHaveBeenLastCalledWith({type:'time_bank',items:[{slot:0}]});

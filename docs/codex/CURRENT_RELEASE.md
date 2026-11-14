@@ -1,3 +1,19 @@
+# Words five-minute turns — November 14, 2026
+
+Approved new live games and Async offers now freeze `ptown-words/4` with
+five-minute playable turns. Existing games/offers keep their frozen duration;
+two +3-minute banks and the 36-hour Async availability window remain unchanged.
+Migration `20261114160043` is installed; candidate and installed hosted rollback
+proofs passed, including actual financial settlement, authorization, replay,
+terminal continuation, legacy offers, banks, pauses and exact timeout handling.
+Client rule text follows the frozen version; clocks use authoritative deadlines.
+TypeScript, all 4,159 app tests, 241 harness tests, 46 tooling checks, production
+bundle and the static-size gate passed. Local app qualification used two workers
+and a 15-second test timeout after load-related timeouts at the default limit.
+Release checkpoint: `words-five-minute-release-20261114`. Public deployment
+verification belongs to its delivery receipt; physical gameplay
+acceptance remains Jeremy's smoke. See [WORDS_FIVE_MINUTE_TURNS.md](WORDS_FIVE_MINUTE_TURNS.md).
+
 # Chess bots — November 14, 2026 — production live
 
 Approved live fake-money human-versus-bot Chess uses Game Defaults difficulty

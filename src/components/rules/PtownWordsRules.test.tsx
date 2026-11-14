@@ -14,3 +14,20 @@ it('preserves the frozen earlier async rules',()=>{
  expect(screen.getByText(/without a separate active-turn clock or banks/)).toBeTruthy();
  expect(screen.queryByText(/Two time banks/)).toBeNull();
 });
+it('explains five-minute new live and async turns while preserving three-minute banks',()=>{
+ const ui=render(<PtownWordsRules version="ptown-words/4"/>);
+ expect(screen.getByText(/Five minutes per turn/)).toBeTruthy();
+ expect(screen.getByText(/add three minutes each/)).toBeTruthy();
+ ui.rerender(<PtownWordsRules version="ptown-words/4" mode="async"/>);
+ expect(screen.getByText(/separate five-minute clock/)).toBeTruthy();
+ expect(screen.getByText(/36-hour availability window/)).toBeTruthy();
+});
+it('keeps the rules text accurate for frozen historical versions',()=>{
+ const ui=render(<PtownWordsRules version="ptown-words/2"/>);
+ expect(screen.getByText(/Three minutes per turn/)).toBeTruthy();
+ ui.rerender(<PtownWordsRules version="ptown-words/2" mode="async"/>);
+ expect(screen.getByText(/separate three-minute clock/)).toBeTruthy();
+ ui.rerender(<PtownWordsRules version="ptown-words/3" mode="async"/>);
+ expect(screen.getByText(/without a separate active-turn clock/)).toBeTruthy();
+ expect(screen.queryByText(/add three minutes each/)).toBeNull();
+});
