@@ -1,3 +1,13 @@
+## Qualified — P0 Chess pause/resume hotfix — November 14, 2026 — publication authorized
+
+Host pause/resume and non-host request/cancel match live Words. Pending command
+recovery cancels stalled local waits and retains the canonical request UUID.
+The exact $2 timeout was reversed once and restored under hold. All seven current
+real-money turns have full configured clocks or availability windows; nothing is
+resumed. Full standard build and mobile Chrome gesture/resume checks pass.
+Jeremy explicitly requested publication; physical iPhone/PWA acceptance remains
+pending. See [release and clock audit](CHESS_HOTFIX_RELEASE_20261114.md).
+
 ## Implemented — Arcade leaderboard theming — November 8, 2026 — owner smoke pending
 
 Jeremy explicitly deferred leaderboard theming from the seven-fix smoke follow-up.

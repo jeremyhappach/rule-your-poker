@@ -6,7 +6,11 @@ export function projectChess(row:ChessRow){const {receipt,state,...rest}=row;ret
 export async function chessOperation(rpc:(name:string,args:Record<string,unknown>)=>Promise<any>,actor:string,body:Record<string,any>){
  if(!['state','action'].includes(body.op)||!['live','async'].includes(body.mode)||!isUuid(body.matchId))throw Error('chess:invalid_request');
  const args={p_mode:body.mode,p_id:body.matchId,p_actor:actor};
- if(body.op==='action'&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||!body.intent||!['move','open','bank','resign'].includes(body.intent.type)))throw Error('chess:invalid_action');
+ if(body.op==='action'&&(!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||!body.intent||!['move','open','bank','resign','request_pause','cancel_pause_request'].includes(body.intent.type)))throw Error('chess:invalid_action');
+ if(body.op==='action'&&['request_pause','cancel_pause_request'].includes(body.intent.type)){
+  if(body.mode!=='live')throw Error('chess:pause_request_unavailable');
+  return projectChess(await rpc('chess_request_pause',{p_id:body.matchId,p_actor:actor,p_request:body.requestId,p_revision:body.revision,p_intent:body.intent}));
+ }
  let row:ChessRow=await rpc('chess_load',{...args,p_request:body.op==='action'?body.requestId:null});
  if(body.op==='action'){
   const fingerprint={revision:body.revision,intent:body.intent};

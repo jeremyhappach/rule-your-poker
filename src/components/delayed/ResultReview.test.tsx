@@ -5,6 +5,9 @@ import {finalWordsFixture,viewer,opponent,childId,matchId} from '@/lib/delayed/w
 import {PtownWordsView} from '@/components/ptownWords/PtownWordsView';
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+// Full-suite CPU contention can exceed five seconds while advancing animation clocks.
+// Keep every timing assertion; allow the test runner time to execute those frames.
+vi.setConfig({testTimeout:20_000});
 import {useState} from 'react';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';

@@ -1,3 +1,18 @@
+# Chess hotfix — November 14, 2026 — publication authorized; all games held
+
+Jeremy authorized the Chess pause/resume client hotfix and full current-turn
+replenishment before resume. The $2 correction is already applied and retained.
+Seven active real-money turns now have full configured play clocks or fresh Async
+availability windows under existing holds. No game has resumed. Candidate and
+installed rollback proofs verify idempotency, exact identity, unchanged history/
+banks/finances and full clocks after canonical resume. Installed clock migration:
+`20261114163234`. The release preserves current main's Words update below.
+Physical iPhone/PWA acceptance remains pending; publication is explicitly requested.
+The standard build passes 4,163 app tests, 241 harness tests, 46 tooling checks,
+TypeScript, Vite and the unchanged static-size gate. Four mobile Chrome
+background/resume drag/tap cases pass on the integrated main-based candidate.
+See [hotfix and clock audit](CHESS_HOTFIX_RELEASE_20261114.md).
+
 # Words five-minute turns — November 14, 2026
 
 Approved new live games and Async offers now freeze `ptown-words/4` with

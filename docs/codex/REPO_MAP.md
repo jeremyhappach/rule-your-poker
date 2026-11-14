@@ -1,3 +1,10 @@
+Chess incident operations: supabase/chess/correction.sql, pause-control.sql and
+replenish-held-turns.sql; their frozen rollback proofs and installed migration
+mirrors accompany them. ChessPauseControl owns live host/guest controls; useChess
+owns cancellable pending-UUID recovery. dev/chess/incident-browser.mjs checks the
+isolated nonfinancial mobile fixture. CHESS_HOTFIX_RELEASE_20261114.md records
+the exact production replenishment and publication evidence.
+
 Chess: shared rules/configuration and client transport in src/lib/chess; Node
 Auth/reducer boundary in api/chess.ts and server/chess/operation.ts; row-locked
 service-only persistence in supabase/chess (closed candidate). ChessTable and

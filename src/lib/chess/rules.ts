@@ -7,6 +7,7 @@ export interface ChessPlayer {id:string;userId:string;name:string;seat:number;is
 export interface CapturedPiece {id:string;type:PieceSymbol}
 export interface ChessMove {ply:number;from:Square;to:Square;color:Color;piece:PieceSymbol;promotion?:Promotion;capture?:{square:Square;piece:PieceSymbol;color:Color};rook?:{from:Square;to:Square};at:number;fen:string}
 export interface ChessState {
+ pauseRequest?:{id:string;playerId:string;hostUserId:string;pauseVersion:number};
  bot?:{version:'ptown-chess-bot/1';difficulty:ChessBotDifficulty};
  identity:{sessionId:string;dealerGameId:string;roundId:string};rules:typeof CHESS_RULES;
  mode:'live'|'async';players:ChessPlayer[];backgroundId:string;initialFen:string;fen:string;
@@ -16,7 +17,7 @@ export interface ChessState {
  movePresentation?:{readyAt:number};
  terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number};
 }
-export type ChessIntent={type:'move';from:Square;to:Square;promotion?:Promotion;reviveId?:string}|{type:'open'}|{type:'bank';slot:number}|{type:'resign'};
+export type ChessIntent={type:'move';from:Square;to:Square;promotion?:Promotion;reviveId?:string}|{type:'open'}|{type:'bank';slot:number}|{type:'resign'}|{type:'request_pause'}|{type:'cancel_pause_request';requestId:string};
 const eligible=(p:CapturedPiece)=>['q','r','b','n'].includes(p.type);
 export function promotionOptions(s:ChessState,color:Color){const lost=s.captured[color].filter(eligible);return lost.length?lost.map(p=>({piece:p.type as Promotion,reviveId:p.id})):(['q','r','b','n'] as Promotion[]).map(piece=>({piece,reviveId:undefined}));}
 export function chessPosition(s:Pick<ChessState,'fen'|'captured'>){return s.fen.split(' ').slice(0,4).join(' ')+'|'+(['w','b'] as Color[]).map(c=>s.captured[c].filter(eligible).map(p=>p.type).sort().join('')).join('|');}
@@ -29,6 +30,7 @@ export function finishChess(s:ChessState,winner:string|null,reason:string){s.pha
 export function chessTimeout(input:ChessState,at:number){const s=structuredClone(input);if(s.phase==='playing'&&at>=s.deadline)finishChess(s,s.players[1-s.turnIndex].id,'timeout');return s;}
 /** Shared server reducer. Browser may inspect legal destinations, never commit a state. */
 export function playChess(input:ChessState,actor:string,intent:ChessIntent,at:number):ChessState {
+ if(intent.type==='request_pause'||intent.type==='cancel_pause_request')throw Error('chess:control_requires_authority');
  const s=structuredClone(input);
  if(s.rules.version!==CHESS_RULES.version)throw Error('chess:rules');
  if(s.phase!=='playing'||at>=s.deadline)throw Error('chess:deadline');

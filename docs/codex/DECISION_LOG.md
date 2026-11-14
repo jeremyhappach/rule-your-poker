@@ -1,3 +1,16 @@
+# 2026-11-14 — Audited incident correction and held-turn replenishment
+
+Correction retains original immutable outcomes and financial history, appends
+canonical reversals, and uses one audited correction generation for later
+settlement and review. Exact revision/hash and accepted receipts govern reopening.
+Restoration begins held. An independent admin-only replenishment operation accepts
+exact current turn/hold identities, derives durations from frozen rules, and records
+immutable before/after rows. It never resumes, changes banks or moves balances.
+Same-UUID replay returns the original receipt; unique hold/turn keys prevent repeat
+replenishment under a new UUID. Canonical resume shifts replenished deadlines by
+the measured hold duration. Both candidate and installed rollback proofs passed.
+See CHESS_HOTFIX_RELEASE_20261114.md for exact production evidence and release.
+
 # 2026-11-12 — Chess shares rules, clocks and canonical settlement
 
 Production authorization update: Jeremy approved revised sounds and publication.

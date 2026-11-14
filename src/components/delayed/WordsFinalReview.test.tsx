@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+// Full-suite CPU contention can exceed five seconds while advancing animation clocks.
+// Keep every timing assertion; allow the test runner time to execute those frames.
+vi.setConfig({testTimeout:20_000});
 import {MemoryRouter,Routes,Route,useLocation} from 'react-router-dom';
 import {TooltipProvider} from '@/components/ui/tooltip';
 import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';

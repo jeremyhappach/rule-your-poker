@@ -105,6 +105,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   <MatchInfo home={home} userId={userId} historical={historical}/>
   {mayViewFinale(home)?<Link className="delayed-primary" to={'/delayed/'+id+'?finale=1'}>{home.finaleViewed?'Replay match finale':'View match results'}</Link>:home.receipt&&!home.removedAt&&<p role="status">View the remaining game results below before the match finale.</p>}
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
+  {home.correction?.reversed&&<p role="status">The previous timeout result was reversed. Chess was restored with a fresh five-minute turn and its prior time banks. The original result remains in the audit history.</p>}
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
   <ul className="delayed-lineup" aria-label="Match games">{orderedLobbyGames(home,userId,now).map(c=>{const ours=c.actor===userId,remaining=Date.parse(c.expiresAt??'')-now;
    const reviewed=isReviewedGame(c,userId),expanded=expandedGame===c.id,panelId='completed-game-'+c.id;
