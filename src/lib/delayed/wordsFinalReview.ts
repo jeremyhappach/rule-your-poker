@@ -1,3 +1,4 @@
+import {nonWordTurn} from '@/lib/ptownWords/turnPresentation';
 import {acceptWordsSnapshot,type WordsSnapshot} from '@/lib/ptownWords/model';
 import type {ReviewEvent} from './reviews';
 
@@ -12,8 +13,10 @@ export function wordsFinalReview(events:ReviewEvent[],snapshot:WordsSnapshot,chi
   ?events.find(e=>e.kind==='attempt'&&e.actor===move.playerId&&e.round===move.turn):undefined;
  // Own finishes, passes, forfeits and legacy results show the final board, never
  // the last earlier placement. The server snapshot owns all adjusted totals.
+ const lastAction=final.receipt.reason!=='timeout_forfeit'&&move&&nonWordTurn(move)?move:undefined;
  const event:ReviewEvent={...(attempt??final),score:attempt?move!.points:0,
-  receipt:{...(attempt??final).receipt,game:'ptown-words',move:attempt?move:undefined},
-  board:{...snapshot,moves:attempt?[move!]:[],movePresentation:attempt?presentation:undefined}};
+  ...(lastAction?{actor:lastAction.playerId,actorName:snapshot.players.find(p=>p.id===lastAction.playerId)?.name}:{}),
+  receipt:{...(attempt??final).receipt,game:'ptown-words',move:attempt?move:lastAction},
+  board:{...snapshot,moves:attempt?[move!]:lastAction?[lastAction]:[],movePresentation:attempt?presentation:undefined}};
  return {event,acknowledge:events.filter(e=>e.kind==='attempt'&&e.actor!==userId&&!e.seen).map(e=>e.id)};
 }

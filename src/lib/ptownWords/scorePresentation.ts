@@ -10,8 +10,3 @@ export function scoreFrame(v:WordsSnapshot,at:number,start:number,limit=Infinity
   phase:at<start?'reveal':progress===0?'hold':progress<1?'flight':'after',
   score:progress<1?target-move.points:target,active:at<end};
 }
-
-export function lastScoredWord(v:WordsSnapshot,playerId:string){
- const move=[...v.moves].reverse().find(m=>m.playerId===playerId&&m.action==='place'&&m.points>0);
- return move?`Last: ${move.words.map(w=>w.word).join(', ')} (${move.points})`:'';
-}

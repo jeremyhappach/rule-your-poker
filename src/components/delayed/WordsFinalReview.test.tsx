@@ -71,7 +71,7 @@ it.each(['own','pass','forfeit'])('%s finish retains final scores without revivi
  if(reason==='own'){fixture.snapshot.moves.at(-1)!.playerId=viewer;fixture.snapshot.movePresentation!.playerId=viewer;}
  else if(reason==='pass')fixture.snapshot.moves.push({turn:6,playerId:opponent,action:'pass',points:0,count:0,words:[]});
  else fixture.events.at(-1)!.receipt.reason='timeout_forfeit';
- const ui=mount();await flush();expect(screen.getByText('Final board')).toBeTruthy();expect(ui.container.querySelectorAll('[data-word-highlight="true"]')).toHaveLength(0);await advance(3100);expect(screen.getByText('Game Complete')).toBeTruthy();
+ const ui=mount();await flush();expect(reason==='pass'?screen.getByRole('dialog',{name:'Opponent passed'}):screen.getByText('Final board')).toBeTruthy();expect(ui.container.querySelectorAll('[data-word-highlight="true"]')).toHaveLength(0);await advance(3100);expect(screen.getByText('Game Complete')).toBeTruthy();
 });
 it('reduced motion still shows final adjusted totals for three seconds',async()=>{
  window.matchMedia=vi.fn().mockReturnValue({matches:true});const ui=mount();await flush();expect(ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent).toBe('385');await advance(2999);expect(acks()).toEqual([]);await advance(101);expect(screen.getByText('Game Complete')).toBeTruthy();
@@ -79,4 +79,12 @@ it('reduced motion still shows final adjusted totals for three seconds',async()=
 it('rejects foreign identity and does not mutate the saved snapshot/history',()=>{
  const before=structuredClone(fixture);const result=wordsFinalReview(fixture.events,fixture.snapshot,childId,matchId,viewer);expect(result.event.board.moves).toHaveLength(1);expect(fixture).toEqual(before);
  expect(()=>wordsFinalReview(fixture.events,fixture.snapshot,childId,'wrong',viewer)).toThrow();
+});
+
+it.each([['pass','timeout',0,'Opponent timed out','TIMED OUT'],['exchange',undefined,4,'Opponent exchanged 4 tiles','EXCHANGED 4']] as const)('uses recorded %s / %s in final replay',async(action,reason,count,title,label)=>{
+ fixture.snapshot.moves.push({turn:6,playerId:opponent,action,reason,count,points:0,words:[]});fixture.snapshot.turn=7;
+ const ui=mount();await flush();expect(screen.getByRole('dialog',{name:title})).toBeTruthy();
+ expect(ui.container.querySelector('[data-score-player="'+opponent+'"] .words-last')?.textContent).toBe('Last: '+label);
+ expect(ui.container.querySelectorAll('[data-word-highlight="true"]')).toHaveLength(0);
+ await advance(3100);expect(screen.getByText('Game Complete')).toBeTruthy();
 });

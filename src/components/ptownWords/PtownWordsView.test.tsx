@@ -13,7 +13,7 @@ const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,ser
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
 const hit=vi.fn<(x:number,y:number)=>Element|null>();
 beforeEach(()=>{
- localStorage.clear();vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});
+ localStorage.clear();sessionStorage.clear();vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});
  vi.spyOn(Element.prototype,'clientWidth','get').mockReturnValue(360);
  vi.spyOn(Element.prototype,'clientHeight','get').mockReturnValue(380);
  Object.defineProperty(document,'elementFromPoint',{configurable:true,value:hit});
@@ -311,5 +311,16 @@ it.each(['me','other'])('reserves both Last labels and changes only the scorer o
  ui.rerender(<PtownWordsView {...props} view={scored} now={4000}/>);
  expect(label('me')).toBe('Last: HIM (6)');expect(label('other')).toBe('Last: CAT (8)');expect(ui.container.querySelector('[data-score-player="me"] strong')?.textContent).toBe('10');
  ui.rerender(<PtownWordsView {...props} view={{...scored,turn:5,movePresentation:undefined,moves:[...scored.moves,{turn:4,playerId:'other',action:'pass',points:0,words:[],count:0} as WordsSnapshot['moves'][number]]}} now={5000}/>);
- expect(label('me')).toBe('Last: HIM (6)');expect(label('other')).toBe('Last: CAT (8)');
+ expect(label('me')).toBe('Last: HIM (6)');expect(label('other')).toBe('Last: PASS');
+});
+
+it.each([['pass',undefined,0,'Pat passed'],['pass','timeout',0,'Pat timed out'],['exchange',undefined,5,'Pat exchanged 5 tiles']] as const)('shows a recorded %s before admitting the async clock',async(action,reason,count,title)=>{
+ const v={...view,turn:2,playDeadline:null,moves:[{turn:1,playerId:'other',action,reason,count,points:0,words:[]}]};
+ const ui=render(<PtownWordsView {...props} view={v} asyncDraftUserId="u1"/>);
+ expect(screen.getByRole('dialog',{name:title})).toBeTruthy();
+ await act(async()=>{await vi.advanceTimersByTimeAsync(3000);});expect(intent).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Continue'}));
+ expect(screen.queryByRole('dialog')).toBeNull();
+ await act(async()=>{await vi.advanceTimersByTimeAsync(2100);});expect(intent).toHaveBeenCalledWith({type:'begin_turn'});
+ ui.unmount();render(<PtownWordsView {...props} view={v} asyncDraftUserId="u1"/>);expect(screen.queryByRole('dialog')).toBeNull();
 });

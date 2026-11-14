@@ -60,8 +60,8 @@
 .words-dialog h2{color:#f3f2e8;padding-right:2rem}.words-dialog p{color:#c6d2dd}.words-dialog button{background:#293d50;color:#f3f2e8;border-color:#788b9b}.words-dialog button:disabled{background:#243140;color:#aebac5;border-color:#617181;cursor:default}.words-dialog .words-exchange button{background:#f2eee0;color:#182b3b;min-width:44px}.words-dialog .words-exchange button[aria-pressed=true]{background:#7be1cc;color:#102831;border:2px solid #f4fff9;box-shadow:0 0 0 1px #7be1cc}.words-dialog>button:last-child{min-width:44px;display:grid;place-items:center;opacity:1}
 .words-scores>div{position:relative;overflow:visible}
 .words-scores{padding-bottom:1.4rem}
-.words-scores .words-score-plus{position:absolute;top:100%;left:50%;font-size:1.1rem;font-weight:800;color:#f6da76;white-space:nowrap;pointer-events:none;z-index:3;transform:translate(-50%,calc(-1.6rem * var(--score-progress)));opacity:calc(1 - var(--score-progress));text-shadow:0 1px 3px #000}
-@media(prefers-reduced-motion:reduce){.words-scores .words-score-plus{transform:translateX(-50%)}}
+.words-score-flight{position:fixed;z-index:60;pointer-events:none;user-select:none;visibility:hidden;transform:translate(-50%,-50%);padding:.15rem .4rem;border:1px solid #ffe28f;border-radius:.5rem;background:#172535f2;color:#ffe28f;font:800 2rem/1.15 Bahnschrift,Aptos,system-ui,sans-serif;white-space:nowrap;text-shadow:0 2px 3px #000;box-shadow:0 2px 8px #0006}
+.words-turn-dialog h2{font-size:1.6rem;line-height:1.25;overflow-wrap:anywhere}
 
 /* Passive Async inspection keeps private letters legible and navigation free. */
 .words-view-only{flex-shrink:0;border:1px solid #62768a;border-radius:5px;background:#29394b;color:#f6da76;padding:.2rem .5rem;font-size:.75rem;text-align:center}

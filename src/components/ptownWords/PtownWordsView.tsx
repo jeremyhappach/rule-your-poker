@@ -1,14 +1,16 @@
 import {usePlayback} from '@/lib/delayed/usePlayback';
 import {draftPrefix,draftIdentity,restoreDraft} from '@/lib/delayed/drafts';
 import {useWordScorePresentation} from '@/lib/ptownWords/useWordScorePresentation';
-import {lastScoredWord} from '@/lib/ptownWords/scorePresentation';
+import {lastTurn} from '@/lib/ptownWords/turnPresentation';
+import {useNonWordTurn} from '@/lib/ptownWords/useNonWordTurn';
+import {WordsScoreFlight} from './WordsScoreFlight';
 import {useEffect,useLayoutEffect,useMemo,useRef,useState,type ReactNode,type CSSProperties} from 'react';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import type {ShellTabId} from '@/lib/canonicalShell/ShellTabBar';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {CircleHelp,RefreshCw,Pause,Play,X} from 'lucide-react';
 import {premiumAt,type Intent,type Placement,type WordsSnapshot} from '@/lib/ptownWords/model';
-import {wordPresentation,wordSquares,visibleBoard} from '@/lib/ptownWords/presentation';
+import {wordPresentation,wordSquares,visibleBoard,playedWord} from '@/lib/ptownWords/presentation';
 import {shuffleRack,isInvalidWord} from '@/lib/ptownWords/rackPresentation';
 import {presentSound} from '@/lib/audio/presentationSound';
 import {createPortal} from 'react-dom';
@@ -59,8 +61,9 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
  useEffect(()=>{if(!draftKey)return;skipSave.current=true;try{setDraft(restoreDraft(localStorage.getItem(draftKey),draftSnapshot.current));}catch{setDraft([]);}},[draftKey,draftScope]);
  useEffect(()=>{if(!draftKey)return;if(skipSave.current){skipSave.current=false;return;}try{if(v.phase==='complete'||!v.canAct||!draft.length)localStorage.removeItem(draftKey);else localStorage.setItem(draftKey,JSON.stringify({identity:draftScope,placements:draft}));}catch{/* Drafts remain editable if storage is unavailable. */}},[draftKey,draftScope,draft,v.phase,v.canAct]);
  useEffect(()=>{if(!draftKey)setDraft([]);setSelected(null);setDialog(null);setBlank(null);setExchanges([]);setInvalid(false);},[draftKey,scope]);
+ const nonWord=useNonWordTurn(v,!!asyncDraftUserId&&!readOnly&&gameplay&&!sessionEnded);
  const waitingForClock=!!asyncDraftUserId&&v.playDeadline===null&&!readOnly&&v.canAct&&!v.finished;
- const announce=waitingForClock&&!presentation&&!scoreMotion&&!v.paused&&!pending&&!error&&connected&&activeTab==='cards';
+ const announce=waitingForClock&&!nonWord.notice&&!presentation&&!scoreMotion&&!v.paused&&!pending&&!error&&connected&&activeTab==='cards';
  const turnKey=v.identity.dealerGameId+':'+v.turn;
  const handoff=usePlayback(announce?2000:0,announce?turnKey:'');
  const sentStart=useRef('');
@@ -70,7 +73,7 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
    void onIntent({type:'begin_turn'}).then(ok=>{if(!ok)sentStart.current='';});
   }
  },[announce,handoff.done,turnKey,onIntent]);
- const editable=gameplay&&activeTab==='cards'&&!waitingForClock&&!readOnly&&v.canAct&&!presentation&&!scoreMotion&&!v.paused&&!pending&&(connected||!!asyncDraftUserId)&&now<v.deadline&&v.phase==='playing'&&!v.finished&&!sessionEnded;
+ const editable=gameplay&&!nonWord.notice&&activeTab==='cards'&&!waitingForClock&&!readOnly&&v.canAct&&!presentation&&!scoreMotion&&!v.paused&&!pending&&(connected||!!asyncDraftUserId)&&now<v.deadline&&v.phase==='playing'&&!v.finished&&!sessionEnded;
  useEffect(()=>{if(readOnly){setDraft([]);setSelected(null);setDialog(null);setBlank(null);setExchanges([]);}},[readOnly]);
  useEffect(()=>{if(v.paused){setDialog(null);setSelected(null);setBlank(null);}},[v.paused]);
  const host=v.hostUserId===v.players.find(p=>p.id===v.viewerId)?.userId;
@@ -144,7 +147,9 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
  const draggedTile=(tile:TileOrigin)=>ghost?.tile.tileId===tile.tileId&&ghost.tile.square===tile.square;
  const hoverSquare=ghost?.target?.kind==='square'?ghost.target.square:undefined;
  const text=error.replace(/^.*ptown_words:/,'').replace('invalid_word:', 'Not in ENABLE2K: ').replace(/_/g,' ');
- const scores=<div className="words-scores">{v.players.map(p=><div key={p.id} data-score-player={p.id} data-active={p.id===(!gameplay&&reviewPlayerId?reviewPlayerId:scoreMotion?.playerId??presentation?.playerId??(waitingForClock?v.movePresentation?.playerId:undefined)??(v.phase==='playing'?v.activePlayerId:null))}><span>{p.id===v.viewerId?'You':p.name}</span><strong>{scoreMotion?.playerId===p.id?scoreMotion.score:v.scores[p.id]??0}</strong>{scoreMotion?.playerId===p.id&&scoreMotion.phase!=='reveal'&&<span className="words-score-plus" aria-hidden="true" data-phase={scoreMotion.phase} style={{'--score-progress':scoreMotion.progress} as CSSProperties}>+{scoreMotion.points}</span>}<span className="words-last" aria-label="Last scored word">{scoreMotion?.playerId===p.id&&scoreMotion.phase!=='after'?'':lastScoredWord(v,p.id)}</span>{balance?.(p.id)}</div>)}</div>;
+ const scores=<div className="words-scores">{v.players.map(p=><div key={p.id} data-score-player={p.id} data-active={p.id===(!gameplay&&reviewPlayerId?reviewPlayerId:scoreMotion?.playerId??presentation?.playerId??(waitingForClock?v.movePresentation?.playerId:undefined)??(v.phase==='playing'?v.activePlayerId:null))}><span>{p.id===v.viewerId?'You':p.name}</span><strong>{scoreMotion?.playerId===p.id?scoreMotion.score:v.scores[p.id]??0}</strong><span className="words-last" aria-label="Last turn">{scoreMotion?.playerId===p.id&&scoreMotion.phase!=='after'?'':lastTurn(v,p.id)}</span>{balance?.(p.id)}</div>)}</div>;
+ const word=playedWord(v);
+ const flightSquares=typeof word?.square==='number'&&typeof word.direction==='number'?[...word.word].map((_,i)=>word.square!+i*(word.direction===1?15:1)):v.movePresentation?.squares??[];
  const actions=sessionEnded?<span>Session ended</span>:v.phase==='complete'&&!presentation?<div className="words-result"><strong>{v.terminal?.winnerIds.map(id=>v.players.find(p=>p.id===id)?.name).join(' & ')} {v.terminal?.winnerIds.length===1?'wins':'tie'}</strong>{!asyncDraftUserId&&<span>Final rack deductions applied</span>}</div>:<div className="words-player" data-canonical-felt-interaction-layer="">
   <div className="words-status"><strong className={editable?'words-your-turn':undefined}>{v.paused?'Paused':presentation?`${v.players.find(p=>p.id===presentation.playerId)?.name??'Player'} played`:v.canAct?'Your turn':`${actor?.name??'Opponent'}’s turn`}</strong>{v.canAct&&<button className="words-rumble" aria-label="Shuffle rack" title="Shuffle rack" disabled={!editable} onClick={()=>setRackOrder(shuffleRack(rack.map(t=>t.id)))}><RefreshCw size={16} aria-hidden="true"/></button>}<div className="words-clock"><time>{asyncDraftUserId&&v.playDeadline==null?Math.floor(left/3600)+'h '+Math.floor(left%3600/60)+'m':Math.floor(left/60)+':'+String(left%60).padStart(2,'0')}</time>{!readOnly&&v.canAct&&banks.map(slot=><button key={slot} className="words-bank" aria-label={'Use time bank '+(slot+1)+': add 3 minutes'} disabled={!editable} onClick={()=>void onIntent({type:'time_bank',items:[{slot}]})}>+3m</button>)}</div>{!asyncDraftUserId&&!!v.rules.timeBankUses&&<button className="words-pause" data-cancel-request={cancelRequest||undefined} aria-label={cancelRequest?'Cancel pause request':v.paused?'Resume game':host?'Pause game':'Request pause'} title={cancelRequest?'Cancel pause request':v.paused?'Resume':host?'Pause':'Request pause'} disabled={readOnly||pending||pausePending||!connected||(v.paused&&!host)||(!host&&!!v.pauseRequest&&!cancelRequest)||v.phase!=='playing'} onClick={()=>host?onPause?.():void onIntent(cancelRequest?{type:'cancel_pause_request',items:[{requestId:v.pauseRequest!.id}]}:{type:'request_pause'})}>{cancelRequest?<X size={18}/>:v.paused?<Play size={18}/>:<Pause size={18}/>}</button>}<span>{v.bagCount} in bag</span></div>
   <div className="words-rack" data-view-only={readOnly||undefined} data-concealed={v.paused} data-actionable={editable} data-drop-target={ghost?.target?.kind==='rack'||undefined} aria-label="Your private rack">
@@ -195,6 +200,8 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
    </div>}
   </div>}
  </FullscreenGameShell>
+ {scoreMotion&&!v.paused&&!sessionEnded&&activeTab==='cards'&&<WordsScoreFlight root={hostElement} squares={flightSquares} frame={scoreMotion} paused={v.paused}/>}
+ <Dialog open={!!nonWord.notice&&activeTab==='cards'} onOpenChange={open=>{if(!open)nonWord.dismiss();}}><DialogContent className="words-dialog words-turn-dialog" onCloseAutoFocus={event=>{event.preventDefault();viewport.current?.focus();}}><DialogTitle>{nonWord.notice}</DialogTitle><DialogDescription>Opponent’s last turn</DialogDescription><button onClick={nonWord.dismiss}>Continue</button></DialogContent></Dialog>
  <Dialog open={dialog!==null&&!v.paused&&!readOnly} onOpenChange={open=>{if(!open){setDialog(null);setBlank(null);}}}><DialogContent ref={dialogSurface} className="words-dialog" onCloseAutoFocus={e=>{e.preventDefault();dialogReturnFocus.current?.focus();}}><DialogTitle>{dialog==='blank'?'Choose blank letter':dialog==='pass'?'Pass this turn?':'Exchange tiles'}</DialogTitle><DialogDescription>{dialog==='pass'?'Your staged tiles return to your rack.':dialog==='exchange'?'Choose the tiles to exchange.':'The blank always scores zero.'}</DialogDescription>
  {dialog==='blank'?<div className="words-alphabet">{'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter=><button key={letter} onClick={()=>{if(blank)moveTile(blank.tile,{kind:'square',square:blank.square},letter);setBlank(null);setDialog(null);}}>{letter}</button>)}</div>:dialog==='exchange'?<><div className="words-exchange">{v.rack.map(tile=><button key={tile.id} aria-label={`${tile.face==='?'?'Blank':tile.face}, ${tile.value} points`} aria-pressed={exchanges.includes(tile.id)} onClick={()=>setExchanges(e=>e.includes(tile.id)?e.filter(id=>id!==tile.id):[...e,tile.id])}>{tile.face==='?'?'◇':tile.face}</button>)}</div><button disabled={!editable||!connected||!exchanges.length} onClick={()=>void send({type:'exchange',items:exchanges.map(tileId=>({tileId}))})}>Exchange {exchanges.length} tiles</button></>:<button disabled={!editable} onClick={()=>void send({type:'pass'})}>Pass turn</button>}
  <button onClick={()=>{setDialog(null);setBlank(null);}}>Cancel</button></DialogContent></Dialog>

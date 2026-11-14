@@ -1,3 +1,18 @@
+# Words score/turn polish — November 13, 2026 — local only, not deployed
+
+Local and opponent/replayed word points hold at the measured rendered word and
+fly at full readable size to the measured scorer pill. Latest-turn summaries,
+history and replay use recorded pass/exchange/timeout metadata; unseen async
+non-word turns show a username/action modal before the normal handoff.
+Scrolling was audited only: native scrolling is blocked across the board/rack,
+and zoomed-board pan starts only on empty cells. No gesture changes were made.
+
+191 focused tests, TypeScript, production bundle, 33 browser cases and temporary
+function SQL parity/rollback proof pass. The approved local migration
+20261114011536 preserves future timeout provenance; it is UNAPPLIED. Historical
+ambiguous passes remain PASS. No push or deployment. Details, exact changed files,
+scroll findings and smoke: [WORDS_SCORE_TURN_POLISH.md](WORDS_SCORE_TURN_POLISH.md).
+
 # Async Chess inspection and match-list polish — November 13, 2026
 
 Chess opponent turns now offer View board, using the same passive-entry model
