@@ -1,12 +1,12 @@
 vi.mock('@/hooks/useQuintzeeAccess',()=>({useQuintzeeAccess:()=>true}));
 vi.mock('@/hooks/usePtownWordsAccess',()=>({usePtownWordsAccess:()=>true}));
-vi.mock('@/hooks/useChessAccess',()=>({useChessAccess:()=>false}));
+vi.mock('@/hooks/useChessAccess',()=>({useChessAccess:()=>state.chessAllowed}));
 vi.mock('@/hooks/useBattle31Access',()=>({useBattle31Access:()=>true}));
 vi.mock('@/hooks/useCanastaAccess',()=>({useCanastaAccess:()=>false}));
 // @vitest-environment jsdom
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-const state=vi.hoisted(()=>({pending:new Map<string,{promise:Promise<unknown>;resolve:(value:unknown)=>void}>(),configure:vi.fn()}));
+const state=vi.hoisted(()=>({pending:new Map<string,{promise:Promise<unknown>;resolve:(value:unknown)=>void}>(),configure:vi.fn(),chessAllowed:true}));
 vi.mock('@/hooks/useTriTowersTestAccess',()=>({useTriTowersTestAccess:()=>true}));
 vi.mock('@/hooks/useElevenUpAccess',()=>({useElevenUpAccess:()=>true}));
 vi.mock('@/hooks/useRoyalFlashAccess',()=>({useRoyalFlashAccess:()=>true}));
@@ -31,7 +31,7 @@ vi.mock('@/integrations/supabase/client',()=>({supabase:{
 }}));
 import {DealerGameSetup} from './DealerGameSetup';
 function defer(key:string){let resolve!:(value:unknown)=>void;const promise=new Promise(r=>{resolve=r;});state.pending.set(key,{promise,resolve});return resolve;}
-beforeEach(()=>{state.pending.clear();state.configure.mockReset();state.configure.mockResolvedValue({dealer_game:{id:'dealer'},game:{status:'ante_decision'},deduped:false});});afterEach(cleanup);
+beforeEach(()=>{state.pending.clear();state.chessAllowed=true;state.configure.mockReset();state.configure.mockResolvedValue({dealer_game:{id:'dealer'},game:{status:'ante_decision'},deduped:false});});afterEach(cleanup);
 describe('dealer stake defaults cannot overwrite a financial offer',()=>{
  it('Golf Run Back submits the saved stake once through fresh setup',async()=>{
   const previous={game_type:'six-card-golf',run_back_config:{ante_amount:17},ante_amount:17,rollover_amount:0,leg_value:0,legs_to_win:0,pussy_tax_enabled:false,pussy_tax_value:0,pot_max_enabled:false,pot_max_value:0,chucky_cards:0,rabbit_hunt:false,reveal_at_showdown:false};
@@ -52,5 +52,44 @@ describe('dealer stake defaults cannot overwrite a financial offer',()=>{
   expect((input as HTMLInputElement).value).toBe('9');
   fireEvent.click(screen.getByRole('button',{name:'Start '+label}));
   await waitFor(()=>expect(state.configure).toHaveBeenCalledWith(expect.objectContaining({gameType:game,config:{ante_amount:9,...(game==='six-card-golf'?{holes:9}:{})}})));
+ });
+});
+
+describe('Chess selection and submission share catalog admission',()=>{
+ const props={gameId:'session',dealerUsername:'Caller',isBot:false,dealerPlayerId:'caller',dealerPosition:2,gameSetupTimerSeconds:600,anteDecisionTimerSeconds:30,onConfigComplete:()=>{},onSessionEnd:()=>{}};
+ async function selectChess(){
+  fireEvent.mouseDown(await screen.findByRole('tab',{name:'Other'}),{button:0,ctrlKey:false});
+  fireEvent.click(document.querySelector('[data-dealer-game-option="chess"]')!);
+  return screen.findByLabelText('Match stake ($)');
+ }
+ it.each([
+  {humans:1,realMoney:false},
+  {humans:2,realMoney:false},
+  {humans:2,realMoney:true},
+ ])('starts two-player Chess once with $humans human(s), real money $realMoney',async({humans,realMoney})=>{
+  const deadline=new Date(Date.now()+600000).toISOString();
+  render(<DealerGameSetup {...props} configDeadline={deadline} activePlayerCount={2} activeHumanCount={humans} realMoney={realMoney}/>);
+  fireEvent.change(await selectChess(),{target:{value:'9'}});
+  const start=screen.getByRole('button',{name:'Start chess'});
+  fireEvent.click(start);fireEvent.click(start);
+  await waitFor(()=>expect(state.configure).toHaveBeenCalledExactlyOnceWith({gameId:'session',dealerPlayerId:'caller',expectedDealerPosition:2,expectedConfigDeadline:deadline,gameType:'chess',config:{ante_amount:9}}));
+ });
+ it.each([
+  {players:1,humans:1,realMoney:false,allowed:true},
+  {players:3,humans:1,realMoney:false,allowed:true},
+  {players:2,humans:0,realMoney:false,allowed:true},
+  {players:2,humans:1,realMoney:true,allowed:true},
+  {players:2,humans:1,realMoney:undefined,allowed:true},
+  {players:2,humans:1,realMoney:false,allowed:false},
+ ])('rechecks changed admission before starting: %j',async({players,humans,realMoney,allowed})=>{
+  const deadline=new Date(Date.now()+600000).toISOString();
+  const view=render(<DealerGameSetup {...props} configDeadline={deadline} activePlayerCount={2} activeHumanCount={1} realMoney={false}/>);
+  await selectChess();
+  state.chessAllowed=allowed;
+  view.rerender(<DealerGameSetup {...props} configDeadline={deadline} activePlayerCount={players} activeHumanCount={humans} realMoney={realMoney}/>);
+  const start=screen.getByRole('button',{name:'Start chess'});
+  expect((start as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(start);
+  expect(state.configure).not.toHaveBeenCalled();
  });
 });

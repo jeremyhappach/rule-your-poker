@@ -1,3 +1,25 @@
+# Chess bot setup correction — November 14, 2026 — approved release candidate
+
+The Chess Start button now uses the same catalog eligibility as game selection.
+An obsolete second check required two humans and rejected the already-qualified
+fake-money human/bot roster before calling `chess_configure`. Exactly two players,
+at least one human, capability gating and fake-money-only bots remain enforced by
+the catalog and deployed server. No rules, bot difficulty, clocks, settlement,
+database or existing-game changes. The release starts from main `3a2a0c292`,
+preserving the Chess resume hotfix and Words five-minute update below.
+
+The new component regression failed on the original human/bot Start path, then
+passed after removing that redundant check. All 118 focused setup/catalog tests
+pass, including human/human games in both money modes, duplicate submission and
+changed roster/money/capability rejection. Full `npm run build` passes TypeScript,
+4,172 application tests, 241 harness tests, 46 release-tooling checks, Vite and
+the unchanged 90 MB static-size gate. Validation reused the already-installed
+Chess dependencies after correcting this worktree's stale dependency junction;
+no packages or lockfiles changed. Publication is the remaining release step.
+Checkpoint: `chess-bot-setup-20261114`. Physical production smoke remains Jeremy's:
+start a fake-money table with one bot, choose Chess, press Start and play a move
+to confirm the bot replies. Existing held games remain held.
+
 # Chess hotfix — November 14, 2026 — publication authorized; all games held
 
 Jeremy authorized the Chess pause/resume client hotfix and full current-turn
