@@ -1,3 +1,16 @@
+# Chess bots — November 13, 2026 — qualified, publication pending
+
+Approved live fake-money human-versus-bot Chess uses Game Defaults difficulty
+Easy / Medium / Expert (default Medium), frozen per game. A bounded server search
+uses the shared rules; expiring database leases drive zero-client bot turns.
+Human commits share the existing guarded persistence/settlement owner.
+Migration 20261114024027 is installed and rollback qualification passed; worker
+version 1 is deployed with a verified scheduled heartbeat; bot admission is
+enabled and the stored difficulty is Medium. Client publication is pending.
+Full build passed 4,156 application tests, 241 harness tests, 46 tooling checks,
+TypeScript, Vite and the static-size gate. See [CHESS_BOTS.md](CHESS_BOTS.md).
+Words five-minute turns are queued separately. Physical gameplay smoke is pending.
+
 # Words score/turn polish — November 13, 2026 — production live
 
 Local and opponent/replayed word points hold at the measured rendered word and

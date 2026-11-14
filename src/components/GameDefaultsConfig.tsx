@@ -25,6 +25,7 @@ import { useHarnessesMode } from '@/lib/debugHarness/useGlobalDebugMode';
 
 
 interface GameDefaults {
+  chess_bot_difficulty?: 'easy' | 'medium' | 'expert';
   quintzee_theme?: 'classic'|'modern';
   crib_lab_round_seconds?: number;
   quintzee_round_seconds?: number;
@@ -386,6 +387,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             decision_timer_seconds: defaultConfig.decision_timer_seconds,
             ...(defaultConfig.game_type==='quintzee'?{quintzee_theme:defaultConfig.quintzee_theme??'classic',quintzee_round_seconds:Number(defaultConfig.quintzee_round_seconds??QUINTZEE_ROUND_SECONDS.initial)}:{}),
             ...(defaultConfig.game_type==='canasta'?{canasta_mode:defaultConfig.canasta_mode??'beginner'}:{}),
+            ...(defaultConfig.game_type==='chess'?{chess_bot_difficulty:defaultConfig.chess_bot_difficulty??'medium'}:{}),
             chucky_second_to_last_delay_seconds: defaultConfig.chucky_second_to_last_delay_seconds,
             chucky_last_card_delay_seconds: defaultConfig.chucky_last_card_delay_seconds,
             holm_after_tabled_delay_ms: defaultConfig.holm_after_tabled_delay_ms,
@@ -1099,6 +1101,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
     const inner = (() => {
       const entry=findGame(selectedGameType);
+      if(selectedGameType==='chess') {const d=getDefaultByType('chess');return d?<div className="space-y-2">
+        <Label className="block" htmlFor="chess-bot-difficulty">Bot difficulty</Label><select className="block h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="chess-bot-difficulty" value={d.chess_bot_difficulty??'medium'} onChange={e=>updateDefault('chess','chess_bot_difficulty',e.target.value)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="expert">Expert</option></select>
+        <p className="text-xs text-muted-foreground">Default: Medium. New bot games use this level; games in progress keep their starting difficulty.</p></div>:null;}
       if(selectedGameType==='battle-31') {const d=getDefaultByType('battle-31');return d?<details className="catalog-settings-group" open><summary>Timing</summary><div className="space-y-2">
         <Label htmlFor="battle31-turn-timer">Turn duration (seconds)</Label><Input id="battle31-turn-timer" type="number" min={5} max={60} step={1} value={d.decision_timer_seconds} onChange={e=>updateDefault('battle-31','decision_timer_seconds',e.target.value)}/>
         <p className="text-xs text-muted-foreground">Default 30 seconds. New matches freeze this setting; active matches keep their timer.</p></div></details>:null;}

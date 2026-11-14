@@ -1732,3 +1732,8 @@ Chess integration and publication hold.
 - src/lib/chess/statusSound.ts and statusSamples.ts: canonical audio admission and approved PCM.
 - supabase/chess/history.sql: participant-only completed snapshot read;
   history-proof.sql proves authorization and preserved settlement/continuation.
+Chess bot policy: `server/chess/bot.ts`; server wake: `server/chess/recovery.ts`
+and `supabase/functions/chess-recovery/index.ts`; lease/admission/shared commit:
+`supabase/chess/bot-recovery.sql` and migration 20261114024027. Game Defaults
+freezes Easy/Medium/Expert via `src/lib/chess/botConfig.ts`; qualification and
+release record: `CHESS_BOTS.md`. Human Chess settlement remains unchanged.
