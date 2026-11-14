@@ -28,19 +28,23 @@ export function newChess(input:Pick<ChessState,'identity'|'players'|'backgroundI
 }
 export function finishChess(s:ChessState,winner:string|null,reason:string){s.phase='complete';s.reason=reason;s.winnerIds=winner?[winner]:s.players.map(p=>p.id);s.scores=Object.fromEntries(s.players.map(p=>[p.id,winner===p.id?1:0]));return s;}
 export function chessTimeout(input:ChessState,at:number){const s=structuredClone(input);if(s.phase==='playing'&&at>=s.deadline)finishChess(s,s.players[1-s.turnIndex].id,'timeout');return s;}
+export function mayForfeitChess(s:ChessState,actor:string){return s.phase==='playing'&&s.players.some(p=>p.id===actor&&!p.isBot);}
 /** Shared server reducer. Browser may inspect legal destinations, never commit a state. */
 export function playChess(input:ChessState,actor:string,intent:ChessIntent,at:number):ChessState {
  if(intent.type==='request_pause'||intent.type==='cancel_pause_request')throw Error('chess:control_requires_authority');
  const s=structuredClone(input);
  if(s.rules.version!==CHESS_RULES.version)throw Error('chess:rules');
  if(s.phase!=='playing'||at>=s.deadline)throw Error('chess:deadline');
+ if(intent.type==='resign'){
+  if(!mayForfeitChess(s,actor))throw Error('chess:not_a_player');
+  return finishChess(s,s.players.find(p=>p.id!==actor)!.id,'resignation');
+ }
  if(s.players[s.turnIndex].id!==actor)throw Error('chess:not_your_turn');
  if(intent.type==='open'){
   if(s.mode!=='async')throw Error('chess:invalid_action');
   if(!s.opened){s.opened=true;s.clockDuration=s.rules.turnMs;s.deadline=at+s.rules.turnMs;}return s;
  }
  if(!s.opened)throw Error('chess:turn_not_open');
- if(intent.type==='resign')return finishChess(s,s.players[1-s.turnIndex].id,'resignation');
  if(intent.type==='bank'){
   if(![0,1].includes(intent.slot)||s.banks[actor].includes(intent.slot))throw Error('chess:bank_used');
   s.banks[actor].push(intent.slot);s.deadline+=s.rules.timeBankMs;s.clockDuration+=s.rules.timeBankMs;return s;

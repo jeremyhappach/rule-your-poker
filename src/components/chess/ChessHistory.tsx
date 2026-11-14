@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import {Chess} from 'chess.js';
+import {chessResultText} from '@/lib/chess/result';
 import {supabase} from '@/integrations/supabase/client';
 import {Sheet,SheetContent,SheetDescription,SheetTitle} from '@/components/ui/sheet';
 import type {ChessState} from '@/lib/chess/rules';
@@ -10,8 +11,8 @@ type Saved={id:string;sessionId:string;completedAt:number;state:ChessSavedPositi
 export function ChessFinalPosition({view:v}:{view:ChessSavedPosition}){
  let engine:Chess;try{engine=new Chess(v.fen);}catch{return <p role="alert">The saved board is unavailable.</p>;}
  const white=v.players[0].id===v.viewerId,squares=Array.from({length:64},(_,i)=>`${'abcdefgh'[white?i%8:7-i%8]}${white?8-Math.floor(i/8):1+Math.floor(i/8)}`);
- const winner=v.players.find(p=>p.id===v.winnerIds[0]),outcome=v.winnerIds.length===2?'Draw':winner?.id===v.viewerId?'You won':(winner?.name??'Opponent')+' won';
- return <section className="chess-history"><h3>Final position · {v.reason==='checkmate'?'Checkmate':'Game complete'}</h3><p>{outcome} · {v.moves.length} {v.moves.length===1?'move':'moves'}</p><div className="chess-board chess-history-board" role="img" aria-label="Saved final Chess board">{squares.map(square=>{const p=engine.get(square as any);return <div key={square} data-history-square={square} className={'chess-square '+(('abcdefgh'.indexOf(square[0])+Number(square[1]))%2?'light':'dark')} aria-label={square+(p?' '+(p.color==='w'?'White ':'Black ')+pieceNames[p.type]:'')}>{p&&<ChessPiece {...p}/>}</div>;})}</div><p>Saved final board · read only</p><details><summary>Moves</summary><ol>{v.moves.map(m=><li key={m.ply}>{m.ply}. {m.from} → {m.to}{m.capture?' · capture':''}{m.promotion?' · promotion':''}</li>)}</ol></details></section>;
+ const outcome=chessResultText(v);
+ return <section className="chess-history"><h3>Final position</h3><p>{outcome} · {v.moves.length} {v.moves.length===1?'move':'moves'}</p><div className="chess-board chess-history-board" role="img" aria-label="Saved final Chess board">{squares.map(square=>{const p=engine.get(square as any);return <div key={square} data-history-square={square} className={'chess-square '+(('abcdefgh'.indexOf(square[0])+Number(square[1]))%2?'light':'dark')} aria-label={square+(p?' '+(p.color==='w'?'White ':'Black ')+pieceNames[p.type]:'')}>{p&&<ChessPiece {...p}/>}</div>;})}</div><p>Saved final board · read only</p><details><summary>Moves</summary><ol>{v.moves.map(m=><li key={m.ply}>{m.ply}. {m.from} → {m.to}{m.capture?' · capture':''}{m.promotion?' · promotion':''}</li>)}</ol></details></section>;
 }
 export function ChessSavedHistory({mode,matchId,id}:{mode:'live'|'async';matchId?:string;id?:string}){
  const [rows,setRows]=useState<Saved[]|null>(null),[error,setError]=useState(''),[attempt,retry]=useState(0);

@@ -1,3 +1,19 @@
+# 2026-11-14 — Repeated Chess corrections preserve immutable generations
+
+The second restored-turn timeout requires another auditable correction rather
+than replacing the first. Corrections and reopened receipts carry a generation;
+current views select the latest generation while old outcomes, settlements,
+reviews, acknowledgements and Run Back receipts remain immutable. Existing
+parent locks and request UUID/fingerprint checks serialize and deduplicate writes.
+Admin timeout restoration now returns an unopened turn with a normal availability
+deadline and null gameplay clock; the existing explicit open intent starts five
+minutes. This supersedes the earlier correction's opened-and-held restoration.
+
+Confirmed Chess forfeit is an existing shared rule intent available to either
+human participant, including during opponent inspection. The service boundary
+enforces an unchanged board and an opponent win; canonical settlement is reused.
+See CHESS_TIMEOUT_FORFEIT_20261114.md for proofs and exact production correction.
+
 # 2026-11-14 — Audited incident correction and held-turn replenishment
 
 Correction retains original immutable outcomes and financial history, appends

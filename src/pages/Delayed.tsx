@@ -105,21 +105,22 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   <MatchInfo home={home} userId={userId} historical={historical}/>
   {mayViewFinale(home)?<Link className="delayed-primary" to={'/delayed/'+id+'?finale=1'}>{home.finaleViewed?'Replay match finale':'View match results'}</Link>:home.receipt&&!home.removedAt&&<p role="status">View the remaining game results below before the match finale.</p>}
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
-  {home.correction?.reversed&&<p role="status">The previous timeout result was reversed. Chess was restored with a fresh five-minute turn and its prior time banks. The original result remains in the audit history.</p>}
+  {home.correction?.reversed&&<p role="status">The previous timeout result was reversed. Chess was restored with its prior time banks. The five-minute clock starts when the player opens the restored turn. Earlier results remain in the audit history.</p>}
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
   <ul className="delayed-lineup" aria-label="Match games">{orderedLobbyGames(home,userId,now).map(c=>{const ours=c.actor===userId,remaining=Date.parse(c.expiresAt??'')-now;
    const reviewed=isReviewedGame(c,userId),expanded=expandedGame===c.id,panelId='completed-game-'+c.id;
+   const timeoutLabel=c.result?.reason==='timeout_forfeit'?(c.game==='chess'?(home.players.find(p=>p.id!==c.result?.winner)?.name??'Player')+' timed out':'Forfeit'):'';
    const scores=home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">Pending</em>}</div></div>)}</div>;
    return <li className="delayed-game-card" data-group={lobbyGameGroup(c,home,userId,now)} data-completed={reviewed||undefined} data-unviewed={needsChildReview(c,userId)||undefined} key={c.id}>
     {reviewed?<><AsyncGameHeader game={c.game} name={gameName(c.game)} disclosure={{expanded,controls:panelId,onToggle:()=>setExpandedGame(old=>old===c.id?null:c.id),summary:
      <span className={'async-completed-outcome '+(c.result&&c.result.delta>0?'delayed-win':c.result&&c.result.delta<0?'delayed-loss':'')}>
       {c.result?<>{c.result.delta>0?'W':c.result.delta<0?'L':'T'} {money(Math.abs(c.result.delta)).replace('+','')}</>:'Result unavailable'}
      </span>}}/>
-     <div id={panelId} hidden={!expanded} className="async-completed-details">{scores}{c.game==='chess'&&<ChessHistoryButton mode="async" matchId={id} id={c.id}/>} {c.result?.reason==='timeout_forfeit'&&<p>Forfeit</p>}</div>
+     <div id={panelId} hidden={!expanded} className="async-completed-details">{scores}{c.game==='chess'&&<ChessHistoryButton mode="async" matchId={id} id={c.id}/>} {timeoutLabel&&<p>{timeoutLabel}</p>}</div>
     </>:<><AsyncGameHeader game={c.game} name={gameName(c.game)} stake={c.stake}/>
     {scores}
     {needsChildReview(c,userId)&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
-    {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{c.result.reason==='timeout_forfeit'?' · Forfeit':''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:
+    {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{timeoutLabel?' · '+timeoutLabel:''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:
      home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}

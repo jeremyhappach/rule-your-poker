@@ -1,3 +1,11 @@
+Chess timeout restoration and forfeit: migration 20261114182034 appends correction
+generations and preserves immutable earlier receipts. supabase/chess/repeated-correction-proof.sql,
+live-forfeit-proof.sql and uncorrected-receipts-proof.sql cover the financial paths.
+ChessForfeitControl owns shared confirmation; the existing useChess transport owns
+commands. src/lib/chess/result.ts owns saved-result wording. ChessFinalReview shows
+all terminal boards; ChessTurn keeps passive inspection free of command recovery
+until explicit forfeit confirmation. See CHESS_TIMEOUT_FORFEIT_20261114.md.
+
 Chess incident operations: supabase/chess/correction.sql, pause-control.sql and
 replenish-held-turns.sql; their frozen rollback proofs and installed migration
 mirrors accompany them. ChessPauseControl owns live host/guest controls; useChess

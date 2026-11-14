@@ -1,3 +1,18 @@
+# Chess timeout restoration and confirmed forfeit — November 14, 2026
+
+Jeremy's second $2 loss against mcru81 is reversed. The same 58-move position is
+active at revision 128, unopened, with no five-minute countdown until turn entry.
+Migration `20261114182034` is installed. Repeated corrections append generations
+without replacing previous settlements, reversals or review history.
+
+The release adds explicit timeout/forfeit results, the final board for every
+Chess ending, and confirmed Forfeit for either participant in live and Async.
+Passive inspection remains read-only until explicit forfeit confirmation and
+never opens a turn. The separate unpublished multiplayer lifecycle candidate is
+not included. Full build and rollback financial proofs pass; production smoke
+remains Jeremy's. See [evidence and acceptance](CHESS_TIMEOUT_FORFEIT_20261114.md).
+Checkpoint: `chess-timeout-forfeit-20261114`. Publication verification pending.
+
 # Async saved-result reader — November 14, 2026 — server correction live
 
 The shared results reader now passes the filtered event row using the original

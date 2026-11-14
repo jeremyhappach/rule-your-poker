@@ -113,7 +113,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
  const played=useRef(false),[playId]=useState(()=>crypto.randomUUID());
  const load=useCallback(async()=>{try{const [h,r]=await Promise.all([delayedRpc<Home>('delayed_home',{p_match:matchId}),delayedRpc<Reviews>('delayed_reviews',{p_child:childId})]);if(h.removedAt||!h.lineup.some(c=>c.id===childId&&c.terminal)){navigate('/delayed/'+matchId,{replace:true});return;}
   const childGame=h.lineup.find(c=>c.id===childId)?.game,words=childGame==='ptown-words';
-   let holdChess=false;if(childGame==='chess'&&!query.has('chess-reviewed')){const saved=await delayedRpc<any[]>('chess_history',{p_mode:'async',p_match:matchId,p_id:childId});if(saved[0]?.state.reason==='checkmate'){const v=saved[0].state;setChessReview({...v,id:childId,revision:0,serverAt:h.serverAt,canAct:false,paused:false,pausedAt:null,finished:true,settled:true,settlement:null,financial:{balances:{},resultId:null,batch:null}});holdChess=true;}}
+   let holdChess=false;if(childGame==='chess'&&!query.has('chess-reviewed')){const saved=await delayedRpc<any[]>('chess_history',{p_mode:'async',p_match:matchId,p_id:childId});if(saved[0]?.state.phase==='complete'){const v=saved[0].state;setChessReview({...v,id:childId,revision:0,serverAt:h.serverAt,canAct:false,paused:false,pausedAt:null,finished:true,settled:true,settlement:null,financial:{balances:{},resultId:null,batch:null}});holdChess=true;}}
   if(words){const snapshot=await delayedRpc<WordsSnapshot>('delayed_words_inspect',{p_child:childId});setWordsReview(wordsFinalReview(r.events,snapshot,childId,matchId,userId));}
   setHome(h);setState(r);setOverlay(holdChess?false:words?played.current:!r.events.some(e=>e.kind==='attempt'&&!e.seen)&&(query.has('finished')||!r.events.some(e=>e.kind==='attempt')||played.current));
  }catch{setError('Unable to restore saved results.');}},[matchId,childId,userId,navigate,query]);
@@ -130,7 +130,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
  const event=wordsReview?.event??state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
  if(!overlay&&event)return <AttemptReview key={event.id} events={state.events} home={home} {...{childId,matchId,userId,event}} acknowledgeEvents={wordsReview?.acknowledge} onDone={()=>{played.current=true;return load();}}/>;
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<>{child.game==='chess'&&<ChessHistoryButton mode="async" matchId={matchId} onOpenChange={setHistoryOpen}/>}<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link></>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
-  {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>
+  {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>{child.game==='chess'&&(final?.receipt.reason??child.result?.reason)==='timeout_forfeit'&&<p>{home.players.find(p=>p.id!==winner)?.name??'Player'} timed out</p>}
   <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+' banked the $'+child.stake+' stake':'Tie · $0'}</strong>
   {child.game==='mega-card-golf'&&<MegaCompetitionScorecard course={(child.config as any).course.name} holes={(child.config as any).course.holes} hole={(child.config as any).course.holes} players={home.players} results={child.holeResults??[]}/>}
  </div></FullscreenGameShell></div>;
@@ -153,7 +153,7 @@ export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
    </div>
   </figure><strong>{winner?home.players.find(p=>p.id===winner)?.name+' wins '+money(Math.abs(home.net)):'Draw · $0'}</strong>
   {home.realMoney&&home.receipt&&<p>Balances have been settled</p>}
-  <ol className="async-finale-breakdown">{home.lineup.map(c=><li key={c.id}>{c.ordinal}. {c.game} · {c.result?.delta?c.result.delta>0?'W':'L':'T'} {money(c.result?.delta??0)}</li>)}</ol>
+  <ol className="async-finale-breakdown">{home.lineup.map(c=><li key={c.id}>{c.ordinal}. {c.game}{c.game==='chess'&&c.result?.reason==='timeout_forfeit'?' · '+(home.players.find(p=>p.id!==c.result?.winner)?.name??'Player')+' timed out':''} · {c.result?.delta?c.result.delta>0?'W':'L':'T'} {money(c.result?.delta??0)}</li>)}</ol>
   {imageReady&&play.elapsed>=7500&&<div className="async-finale-exit">{ackError&&<p role="alert">{ackError} <button onClick={acknowledgeFinale}>Retry acknowledgement</button></p>}<div className="delayed-actions">{runbackEligible&&<RunbackLink matchId={matchId} returnTo={'/delayed/'+matchId+'?finale=1'} primary/>}<Link className={runbackEligible?'delayed-secondary':'delayed-primary'} to="/">Back to Lobby</Link></div></div>}
  </div></FullscreenGameShell></div>;
 }

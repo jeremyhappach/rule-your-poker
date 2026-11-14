@@ -2,6 +2,7 @@ import {createAuthoritativeSubscription,scheduleAuthoritativeBoundary,retireAckn
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {acceptChessSnapshot,type ChessSnapshot} from '@/lib/chess/client';
 import type {ChessIntent as Intent} from '@/lib/chess/rules';
+import {mayForfeitChess} from '@/lib/chess/rules';
 import type {Command,ChessTransport} from '@/lib/chess/client';
 /** Pending UUID/payload survives uncertain replies. No client advances a turn. */
 export function useChess(id:string,userId:string,transport:ChessTransport,storageScope='ptown:chess:1'){
@@ -35,6 +36,6 @@ export function useChess(id:string,userId:string,transport:ChessTransport,storag
   const at=clock.current.server+performance.now()-clock.current.local;
   return scheduleAuthoritativeBoundary((snapshot.terminal?.deadline??snapshot.deadline)-at,()=>recoveryRef.current?.refresh());
  },[snapshot?.identity.roundId,snapshot?.deadline,snapshot?.phase,snapshot?.terminal?.deadline,snapshot?.paused,snapshot?.finished]);
- const act=async(intent:Intent,expectedRevision?:number)=>{const v=latest.current;if(!v||(expectedRevision!==undefined&&v.revision!==expectedRevision)||(!['request_pause','cancel_pause_request'].includes(intent.type)&&!v.canAct)||v.paused||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;const requestId=crypto.randomUUID();sessionStorage.setItem(key,JSON.stringify({requestId,revision:v.revision,intent}));return resolve(requestId);};
+ const act=async(intent:Intent,expectedRevision?:number)=>{const v=latest.current;if(!v||(expectedRevision!==undefined&&v.revision!==expectedRevision)||(!['request_pause','cancel_pause_request'].includes(intent.type)&&!(intent.type==='resign'?mayForfeitChess(v,v.viewerId)&&!v.finished&&!v.settled:v.canAct))||v.paused||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;const requestId=crypto.randomUUID();sessionStorage.setItem(key,JSON.stringify({requestId,revision:v.revision,intent}));return resolve(requestId);};
  return {snapshot,error,errorVersion,pending,connected,now,act,reconnect:()=>recoveryRef.current?.recover()??Promise.resolve(false)};
 }
