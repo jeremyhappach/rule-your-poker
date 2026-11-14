@@ -1,4 +1,4 @@
-# Chess bot forfeit handoff — November 14, 2026 — production candidate
+# Chess bot forfeit handoff — November 14, 2026 — production verified
 
 The exact bot forfeit settled correctly for −5/+5 fake-money chips. Chess's
 missing canonical-shell and durable-cursor registrations admitted the generic
@@ -14,6 +14,10 @@ All 48 focused checks and four browser scenarios pass, including user-confirmed
 bot forfeit through next-game setup and Session Ended/Back to Lobby. Browser
 network responses are isolated fixtures; Jeremy's production PWA smoke remains
 pending. Checkpoint: `chess-bot-forfeit-flow-20261114`.
+Production `c594377618c007d0d1734828f525b41056e05649` is verified:
+Vercel `dpl_4UYeRZeJ4jPpZLc3YQiMd4RNnPyB` is READY; holm357.com's
+manifest and served HTML match `assets/index-YMKIXAnH.js`, published at
+22:11:28 UTC. Jeremy's PWA smoke remains pending.
 
 # Cribbage and Yahtzee sounds — November 14, 2026 — owner smoke pending
 

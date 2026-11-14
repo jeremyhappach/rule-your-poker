@@ -71,3 +71,10 @@ the server's existing UUID receipt dedupe when transport recovery retries an
 acknowledged action. No production retry/authorization code was changed.
 Final internal diff review preserves the explosion/sound, existing result labels,
 Async behavior, shell ownership and exact completion guards.
+
+Production verification: commit `c594377618c007d0d1734828f525b41056e05649`,
+Vercel deployment `dpl_4UYeRZeJ4jPpZLc3YQiMd4RNnPyB` READY. The production
+manifest at holm357.com identifies this exact commit and
+`assets/index-YMKIXAnH.js` (published 22:11:28 UTC); the served HTML references
+that same bundle. The duplicate task-branch preview was canceled to free the
+build slot for production. Owner PWA smoke is still pending.
