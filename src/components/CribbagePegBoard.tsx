@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {presentCribbageScore} from '@/lib/cribbage/sounds';
 import type { CribbagePlayerState } from '@/lib/cribbageTypes';
 import { getDisplayName } from '@/lib/botAlias';
@@ -78,7 +78,7 @@ export const CribbagePegBoard = ({
   }
 
   const prevScores = prevRenderedScoresRef.current;
-  const previousAudioScores = useRef<{scope?: string; scores: Record<string, number>} | null>(null);
+  const previousAudioScores = useRef<{scope?: string; active: boolean; scores: Record<string, number>} | null>(null);
   const soundSurface = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const reset = () => { previousAudioScores.current = null; };
@@ -87,18 +87,18 @@ export const CribbagePegBoard = ({
     return () => { document.removeEventListener('visibilitychange', hidden); window.removeEventListener('offline', reset); };
   }, []);
   const audioScoreKey = JSON.stringify(currentDisplayScores);
-  useLayoutEffect(() => {
+  useEffect(() => {
     const previous = previousAudioScores.current;
     if (audioScope && previous?.scope === audioScope) {
       for (const [playerId, score] of Object.entries(currentDisplayScores)) {
         const before = previous.scores[playerId];
         if (before !== undefined && score > before) {
           presentCribbageScore(score - before, `${audioScope}:${playerId}:${score}`,
-            audioActive ? soundSurface.current : null);
+            audioActive && previous.active ? soundSurface.current : null);
         }
       }
     }
-    previousAudioScores.current = {scope: audioScope, scores: {...currentDisplayScores}};
+    previousAudioScores.current = {scope: audioScope, active: audioActive, scores: {...currentDisplayScores}};
   }, [audioScope, audioActive, audioScoreKey]);
   const regressions: Array<{ playerId: string; prev: number; now: number; source: string }> = [];
   for (const [pid, nowScore] of Object.entries(currentDisplayScores)) {

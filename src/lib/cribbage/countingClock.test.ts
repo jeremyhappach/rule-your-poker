@@ -13,6 +13,28 @@ const frame: CountingFrame = { gameId: 'g', dealerGameId: 'dg', roundId: 'r', ha
 describe('Cribbage accepted frame clock', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
+  it('retains only uninterrupted outgoing presentation, never its command authority', () => {
+    const clock = createCountingClock(vi.fn());
+    clock.accept(clock.request(), performance.now(), iso(0), frame);
+    const outgoing = clock.getSnapshot()!;
+    clock.accept(clock.request(), performance.now(), iso(0), {...frame, roundId: 'next', handNumber: 2});
+    expect(outgoing.current()).toBe(false);
+    expect(outgoing.presentationCurrent!()).toBe(true);
+    clock.invalidate();
+    clock.accept(clock.request(), performance.now(), iso(0), {...frame, roundId: 'next', handNumber: 2});
+    expect(outgoing.presentationCurrent!()).toBe(false);
+  });
+  it.each([
+    {...frame, dealerGameId: 'another', handNumber: 2},
+    {...frame, roundId: 'replacement'},
+    {...frame, roundId: 'next', handNumber: 2, paused: true, pauseVersion: 1},
+  ])('does not retain presentation across an incompatible boundary', next => {
+    const clock = createCountingClock(vi.fn());
+    clock.accept(clock.request(), performance.now(), iso(0), frame);
+    const outgoing = clock.getSnapshot()!;
+    clock.accept(clock.request(), performance.now(), iso(0), next);
+    expect(outgoing.presentationCurrent!()).toBe(false);
+  });
   it.each([-120000, 120000])('ignores a constant %i ms device offset and bounds asymmetric release', offset => {
     vi.setSystemTime(start + offset);
     const clock = createCountingClock(vi.fn());

@@ -1092,6 +1092,12 @@ reconciliation.
 
 ### Cribbage
 
+- Scoring presentation: `src/lib/cribbage/scoringPresentation.ts` replaces and
+  retires each hand's canonical rail notice at the counting/highlight boundary.
+  `countingClock.ts` distinguishes strict command authority from uninterrupted
+  outgoing presentation; `CribbageMobileGameTable.tsx` retains that count and
+  gates the successor deal. See `CRIBBAGE_SCORING_SEQUENCE.md` for qualification.
+
 - Entry/presentation: `Game.tsx` -> `CribbageMobileGameTable.tsx`;
   `CribbageFeltContent.tsx`, `CribbageDealOrchestrator.tsx`,
   `CribbageAnchoredCribCutMount.tsx`,

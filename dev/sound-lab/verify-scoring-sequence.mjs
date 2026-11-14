@@ -1,0 +1,31 @@
+import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
+import {mkdirSync,writeFileSync} from 'node:fs';
+const origin='http://127.0.0.1:4345',out='qualification.local/cribbage-scoring-sequence';
+mkdirSync(out,{recursive:true});
+const browser=await chromium.launch({channel:'msedge'}),errors=[];
+try {
+ const context=await browser.newContext({viewport:{width:1000,height:800}});
+ await context.route('**/*',r=>new URL(r.request().url()).origin===origin?r.continue():r.abort());
+ await context.addInitScript(()=>{window.audioStarts=[];const Native=window.AudioContext;
+   window.AudioContext=class extends Native{createBufferSource(){const n=super.createBufferSource(),start=n.start.bind(n);
+     n.start=(at,...rest)=>{if(n.buffer?.length>1)window.audioStarts.push({at:performance.now()+(at-this.currentTime)*1000,duration:n.buffer.duration*1000});return start(at,...rest);};return n;}};});
+ const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(origin+'/scoring-sequence.html');await page.locator('[data-ready="true"]').waitFor();
+ await page.getByRole('button',{name:'Start',exact:true}).click();
+ await page.waitForFunction(()=>window.sequenceEvidence.cues.filter(c=>c.id.includes('old-')&&c.duration===570).length===1,{},{timeout:20000});
+ await page.screenshot({path:out+'/final-trip-sevens.png'});
+ const during=await page.evaluate(()=>({e:window.sequenceEvidence,hand:document.querySelector('[data-current-hand]')?.getAttribute('data-current-hand')}));
+ assert.equal(during.hand,'old');assert(during.e.successorAt<during.e.cues.at(-1).at);
+ await page.waitForFunction(()=>window.sequenceEvidence.completedAt!==null,{},{timeout:15000});
+ const result=await page.evaluate(()=>({e:window.sequenceEvidence,starts:window.audioStarts,hand:document.querySelector('[data-current-hand]')?.getAttribute('data-current-hand')}));
+ const awards=result.e.cues.filter(c=>c.duration);
+ assert.deepEqual(awards.map(c=>c.duration),[210,210,210,570]);
+ awards.forEach(c=>{assert(c.title.includes(c.duration===570?'6':'2'),JSON.stringify(c));assert(c.highlighted.length>=2,JSON.stringify(c));});
+ assert.equal(result.starts.length,12);assert.equal(result.hand,'next');
+ assert(result.e.completedAt>Math.max(...result.starts.map(s=>s.at+s.duration)));
+ assert(!result.e.cues.some(c=>c.id.includes('next-')&&c.duration));
+ assert.deepEqual(errors,[]);
+ writeFileSync(out+'/evidence.json',JSON.stringify({result,errors},null,2));
+ console.log('PASS: matching rail/highlights at all four audio starts; final trip-7 burst finishes with old hand visible; early successor held; no handoff audio.');
+}finally{await browser.close();}

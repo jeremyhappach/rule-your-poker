@@ -3,6 +3,12 @@ import {platformAudio} from '@/lib/audio/platformAudio';
 import {isSoundSurfaceVisible} from '@/lib/audio/presentationSound';
 import {run21FailureCueAt, RUN21_FAILURE_CUE_MS} from '@/lib/run21/failureCue';
 
+/** Includes the final sample's tail, even when audio is muted or not loaded. */
+export function cribbageScoreDurationMs(points: number) {
+  return points === 0 ? RUN21_FAILURE_CUE_MS
+    : cribbagePointsCue(points)?.durationMs ?? Math.max(0, points - 1) * 90 + 120;
+}
+
 /** Presentation only: the caller supplies the already displayed award. */
 export function presentCribbageScore(points: number, identity: string, surface: Element | null) {
   const {userId} = platformAudio.getSnapshot();

@@ -5,7 +5,7 @@ import {CribbagePegBoard} from './CribbagePegBoard';
 import {CribbageCountingPhase} from './CribbageCountingPhase';
 import type {CribbageState} from '@/lib/cribbageTypes';
 const audio=vi.hoisted(()=>({play:vi.fn()}));
-vi.mock('@/lib/cribbage/sounds',()=>({presentCribbageScore:audio.play}));
+vi.mock('@/lib/cribbage/sounds',async original=>({...await original<object>(),presentCribbageScore:audio.play}));
 vi.mock('@/lib/debugEventLogger',()=>({logDebugEvent:vi.fn()}));
 vi.mock('@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider',()=>({useCribbageGameplayGeometry:()=>({placementsById:new Map(),lastValidPlacementsById:new Map()})}));
 vi.mock('@/lib/wave4LayoutResolver/useLiveGeometryConstraints',()=>({useLiveGeometryConstraints:()=>({vminInPx:3.9})}));
@@ -19,6 +19,17 @@ const timing = { frame: {gameId:'g',dealerGameId:'d',roundId:'r',handNumber:1,pa
 beforeEach(()=>{vi.useFakeTimers();audio.play.mockReset();vi.spyOn(console,'log').mockImplementation(()=>{});vi.spyOn(console,'warn').mockImplementation(()=>{});});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
 const tick=async(ms:number)=>{for(let n=0;n<ms;n+=100)await act(async()=>{vi.advanceTimersByTime(100);});};
+
+it('silently reconciles an outgoing six-point award after successor identity arrives',()=>{
+ const props={players,winningScore:121,playerStates:{p1:{pegScore:106},p2:{pegScore:0}} as any};
+ const ui=render(<CribbagePegBoard {...props} audioScope="old" overrideScores={{p1:100,p2:0}} audioActive={false}/>);
+ ui.rerender(<CribbagePegBoard {...props} audioScope="next" overrideScores={{p1:100,p2:0}} audioActive={false}/>);
+ ui.rerender(<CribbagePegBoard {...props} audioScope="next" audioActive/>);
+ expect(audio.play.mock.calls.filter(c=>c[2]!==null)).toHaveLength(0);
+ ui.rerender(<CribbagePegBoard {...props} audioScope="next" overrideScores={{p1:108,p2:0}} audioActive/>);
+ expect(audio.play.mock.lastCall?.[0]).toBe(2);
+ expect(audio.play.mock.lastCall?.[2]).not.toBeNull();
+});
 
 it.each([1,2,4,12])('sounds exactly the %i-point displayed award for either player without relying on CSS movement',points=>{
  const props={players,winningScore:121,playerStates:state.playerStates,audioScope:'game:round:hand',audioActive:true};

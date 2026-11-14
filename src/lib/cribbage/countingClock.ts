@@ -14,6 +14,10 @@ export interface CountingFrame {
 export interface CountingTime {
   frame: CountingFrame;
   current: (overdueMs?: number) => boolean;
+  /** Presentation only: an already mounted count may finish behind a successor. */
+  presentationCurrent?: (overdueMs?: number) => boolean;
+  /** Side-effect-free admission for rendering the retained hand. */
+  presentationAvailable?: () => boolean;
   elapsed: (state: CribbageState) => number;
   releaseDelay: (deadlineMs: number) => number;
 }
@@ -97,6 +101,7 @@ export function createCountingClock(refresh: () => void) {
         sample = { server, sent: request.sent, received, wall: wall - (performance.now() - received) };
       }
       if (same && time) { time.frame = frame; return; }
+      const presentationGeneration = generation;
       const owner: CountingTime = {
         frame,
         current(overdueMs = 0) {
@@ -107,6 +112,15 @@ export function createCountingClock(refresh: () => void) {
             invalidate(); refresh(); return false;
           }
           return true;
+        },
+        presentationCurrent(overdueMs = 0) {
+          return !!owner.presentationAvailable?.() && !!time?.current(overdueMs);
+        },
+        presentationAvailable() {
+          // This never grants command authority to an outgoing hand.
+          return presentationGeneration === generation && !!time && available() && !time.frame.paused
+            && (time === owner || (time.frame.gameId === frame.gameId && time.frame.dealerGameId === frame.dealerGameId
+              && time.frame.handNumber > frame.handNumber && time.frame.pauseVersion === frame.pauseVersion));
         },
         elapsed(state) {
           if (time !== owner || !sample) return 0;

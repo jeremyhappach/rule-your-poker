@@ -124,6 +124,7 @@ import { recordSettlementIntent } from '@/lib/canonicalShell/settlement/settleme
 import { captureWinnerChipEndpoint } from '@/lib/canonicalShell/winnerChipEndpointDbg';
 import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { cribbageScoringScope, publishCribbageScoringNotice } from '@/lib/cribbage/scoringPresentation';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 import { getCribbageHandIdentity } from '@/lib/cribbage/handIdentity';
 import { applyCribbagePeggingAction, fetchCribbageState } from '@/lib/cribbageAuthority';
@@ -1916,6 +1917,9 @@ export const CribbageMobileGameTable = ({
   // Store the cribbage state snapshot used for counting animation - this prevents the animation
   // from disappearing when DB phase transitions to 'complete' during counting
   const [countingStateSnapshot, setCountingStateSnapshot] = useState<CribbageState | null>(null);
+  const retainCountingPresentation = !!countingStateSnapshot && !!presentationTime
+    && presentationTime.frame.gameId === gameId && presentationTime.frame.dealerGameId === dealerGameId
+    && !isPaused && (presentationTime.presentationAvailable?.() ?? presentationTime === countingTime);
   
   // Signal to counting phase to freeze when win is detected reactively via score subscription
   const [countingWinFrozen, setCountingWinFrozen] = useState(false);
@@ -1932,9 +1936,10 @@ export const CribbageMobileGameTable = ({
     lastRoundPropsRef.current = { roundId, handNumber };
 
     if (!prev) return;
-    const changed = prev.roundId !== roundId || prev.handNumber !== handNumber;
+    const changed = prev.roundId !== roundId || prev.handNumber !== handNumber
+      || (presentationTime?.frame.roundId !== currentRoundId && !!countingStateSnapshot);
     if (!changed) return;
-    if (!countingStateSnapshot) return;
+    if (!countingStateSnapshot || retainCountingPresentation) return;
 
     console.log('[CRIBBAGE] Round props changed during counting; cancelling counting snapshot', {
       prev,
@@ -1953,7 +1958,7 @@ export const CribbageMobileGameTable = ({
     // CRITICAL: Unfreeze presentation so the new-hand snapshot flows through.
     // Without this, the frozen client stays stuck on the old hand indefinitely.
     syncHandle.unfreezePresentation();
-  }, [roundId, handNumber, countingStateSnapshot]);
+  }, [roundId, handNumber, currentRoundId, presentationTime, countingStateSnapshot, retainCountingPresentation]);
 
   // Reset counting latches ONLY after we've truly left the counting context.
   // This prevents a multi-client prop update during counting from allowing the init effect
@@ -1965,7 +1970,7 @@ export const CribbageMobileGameTable = ({
       cribbageState.phase === 'counting' ||
       (cribbageState.phase === 'complete' && Boolean(cribbageState.lastHandCount));
 
-    if (isCountingContext) return;
+    if (isCountingContext || retainCountingPresentation) return;
 
     countingAnimationActiveRef.current = false;
     countingDelayFiredRef.current = null;
@@ -1974,7 +1979,7 @@ export const CribbageMobileGameTable = ({
     countingIdentityRef.current = null;
     countingIdentityRef.current = null;
     setPostCountingTransitionActive(false);
-  }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
+  }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count', retainCountingPresentation]);
 
   // ── Win sequence state (declared early so instrumentation can reference it) ─
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
@@ -3062,120 +3067,41 @@ export const CribbageMobileGameTable = ({
     announceNewGameStarting();
   }, [isDealerSelection, announceNewGameStarting]);
 
-  // Callback for counting phase announcements - also injects into chat
-  // Track announcement sequence to detect duplicate combo announcements (e.g., multiple 15s)
-  const lastAnnouncementRef = useRef<{ text: string; target: string; key: number } | null>(null);
-  // Tracks the last counting scoring-target index whose rail transient
-  // was emitted. Used to synchronously retire the previous target's
-  // transient scope (live + queued) before publishing the next
-  // target's first rail event, preventing prior-target bleed while
-  // preserving within-target FIFO/TTL ordering.
-  const lastCountingTargetIndexRef = useRef<number | null>(null);
-
+  // Each scoring beat owns its rail lifetime, including explicit retirement.
+  const scoringRailScopeRef = useRef<string | null>(null);
+  const lastAnnouncementRef = useRef<string | null>(null);
   const handleCountingAnnouncementChange = useCallback((
     announcement: string | null,
     targetLabel: string | null,
     announcementKey?: number,
     targetIndex?: number,
-    _category?: string,
+    category?: string,
     onRetired?: (reason: string) => void,
   ) => {
     setCountingAnnouncement(announcement);
-    // Keep helper text ("Scoring <target>...") stable across combo
-    // lower/wait/exit gaps. The child publishes null announcements at
-    // combo_lower_start (to clear the combo pill) and also passes a
-    // null targetLabel through those clears, which used to make the
-    // helper flip to the generic "Scoring hands..." between combos of
-    // the SAME scoring owner. The target only changes when the parent
-    // scoring owner (player hand → next player hand → crib) advances,
-    // so we treat null targetLabel as "no change" and let the sticky
-    // label persist until a real new target arrives. A dedicated
-    // effect below clears the label when the counting phase exits.
     if (targetLabel) setCountingTargetLabel(targetLabel);
-    
-    // Inject scoring announcements into chat as dealer messages
-    // Skip "0 points" announcements - those are just placeholders
-    // Include individual combos AND totals
-    if (announcement && targetLabel && announcement !== '0 points') {
-      // Once a win sequence has started (scheduled or fired), suppress any further counting announcements.
-      // This prevents duplicate/reordered "winning combo" lines during in_progress -> game_over transitions.
-      if (winSequenceScheduledRef.current || winSequenceFiredRef.current) return;
-
-      // Check if this is a new announcement (different text, target, or key)
-      const isNew = !lastAnnouncementRef.current || 
-        lastAnnouncementRef.current.text !== announcement ||
-        lastAnnouncementRef.current.target !== targetLabel ||
-        lastAnnouncementRef.current.key !== (announcementKey ?? 0);
-      
-      if (isNew) {
-        lastAnnouncementRef.current = { text: announcement, target: targetLabel, key: announcementKey ?? 0 };
-        injectDealerMessage(`${targetLabel}: ${announcement}`);
-
-        // Phase 3: emit each scoring event into the canonical rail as a
-        // `peg_notice` transient. The ambient "Scoring {target}..." helper
-        // remains in the content pane; the rail shows the discrete scores.
-
-        // Counting-target retirement boundary. Producer-owned identity —
-        // targetIndex is the canonical target ownership. When it
-        // advances, retire the previous target's transient scope
-        // (live + all queued) synchronously before emitting the first
-        // rail event for the next target. See CanonicalAnnouncementProvider
-        // `retireTransientScope`.
-        const effectiveTargetIndex = typeof targetIndex === 'number' ? targetIndex : null;
-        const scopeFor = (idx: number) =>
-          `cribbage-count:${gameId}:${currentRoundId ?? 'no-round'}:${idx}`;
-        if (
-          effectiveTargetIndex !== null &&
-          lastCountingTargetIndexRef.current !== null &&
-          lastCountingTargetIndexRef.current !== effectiveTargetIndex
-        ) {
-          const prevIndex = lastCountingTargetIndexRef.current;
-          const prevScope = scopeFor(prevIndex);
-          recordCribbageWartime('counting', 'counting_rail_scope_retire_requested', {
-            scope: prevScope,
-            prevTargetIndex: prevIndex,
-            nextTargetIndex: effectiveTargetIndex,
-          }, {
-            producerComponent: 'CribbageMobileGameTable',
-            producerFunction: 'handleCountingAnnouncementChange',
-            dedupeKey: `retire-req:${prevScope}->${effectiveTargetIndex}`,
-          });
-          announcements.retireTransientScope(prevScope);
-          recordCribbageWartime('counting', 'counting_rail_scope_retired', {
-            scope: prevScope,
-            prevTargetIndex: prevIndex,
-            nextTargetIndex: effectiveTargetIndex,
-          }, {
-            producerComponent: 'CribbageMobileGameTable',
-            producerFunction: 'handleCountingAnnouncementChange',
-            dedupeKey: `retire-done:${prevScope}->${effectiveTargetIndex}`,
-          });
-        }
-        if (effectiveTargetIndex !== null) {
-          lastCountingTargetIndexRef.current = effectiveTargetIndex;
-        }
-
-        const transientScope =
-          effectiveTargetIndex !== null ? scopeFor(effectiveTargetIndex) : undefined;
-
-        announcements.emit({
-          id: `${gameId}:count:${currentRoundId ?? 'no-round'}:${targetLabel}:${announcementKey ?? 0}:${announcement}`,
-          type: 'peg_notice',
-          scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
-          payload: { title: `${targetLabel}: ${announcement}` },
-          ttlMs: 2500,
-          transientScope,
-          // For the final Total publish (category='total'), the
-          // producer supplies a terminal callback. The canonical rail
-          // owns the hold duration (2500ms TTL) and invokes this
-          // exactly once at whichever terminal transition removes the
-          // event. CribbageCountingPhase then applies its identity
-          // and lifecycle checks before advancing the target.
-          ...(onRetired ? { onRetired: (_id: string, reason: string) => onRetired(reason) } : {}),
-        });
-      }
+    if (!announcement || !targetLabel) {
+      if (scoringRailScopeRef.current) announcements.retireTransientScope(scoringRailScopeRef.current);
+      scoringRailScopeRef.current = null;
+      return;
     }
-  }, [injectDealerMessage, announcements, gameId, currentRoundId]);
+    if (winSequenceScheduledRef.current || winSequenceFiredRef.current) return;
+    const ownerRound = presentationTime?.frame.roundId ?? currentRoundId;
+    const scope = cribbageScoringScope(gameId, ownerRound);
+    const id = [scope, targetIndex, announcementKey, announcement].join(':');
+    if (lastAnnouncementRef.current === id) return;
+    lastAnnouncementRef.current = id;
+    if (announcement !== '0 points') injectDealerMessage(targetLabel + ': ' + announcement);
+    if (scoringRailScopeRef.current && scoringRailScopeRef.current !== scope) {
+      announcements.retireTransientScope(scoringRailScopeRef.current);
+    }
+    scoringRailScopeRef.current = scope;
+    publishCribbageScoringNotice(announcements, {
+      gameId, roundId: ownerRound, id, title: targetLabel + ': ' + announcement,
+      ttlMs: category === 'total' ? 2500 : 0,
+      onRetired,
+    });
+  }, [injectDealerMessage, announcements, gameId, currentRoundId, presentationTime]);
 
   // Clear the sticky counting helper target label when the counting
   // presentation actually leaves: no snapshot in flight, no
@@ -3212,7 +3138,7 @@ export const CribbageMobileGameTable = ({
   // sequence trigger holds until then. Authoritative settlement is
   // untouched: this only delays local presentation.
   const [heelsPresentationConsumedId, setHeelsPresentationConsumedId] = useState<string | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const event = cribbageState?.lastEvent;
     if (!event) return;
     const isPeggingEvent =
@@ -3220,7 +3146,7 @@ export const CribbageMobileGameTable = ({
       event.type === 'go_point' ||
       event.type === 'his_heels';
     if (!isPeggingEvent) return;
-    if (!canPresentPeggingEvent) return;
+    if (!canPresentPeggingEvent || (countingStateSnapshot && !countingDelayActive)) return;
     if (emittedPegEventIdRef.current === event.id) return;
     emittedPegEventIdRef.current = event.id;
     const name = getPlayerUsername(event.playerId);
@@ -3230,11 +3156,9 @@ export const CribbageMobileGameTable = ({
         : `${name}: ${event.label} (+${event.points})`;
     const isHeels = event.type === 'his_heels';
     const heelsEventId = event.id;
-    announcements.emit({
-      id: `${gameId}:peg:${event.id}`,
-      type: 'peg_notice',
-      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
-      payload: { title },
+    publishCribbageScoringNotice(announcements, {
+      gameId, roundId: currentRoundId,
+      id: `${gameId}:peg:${event.id}`, title,
       ttlMs: 3000,
       ...(isHeels
         ? {
@@ -3387,6 +3311,10 @@ export const CribbageMobileGameTable = ({
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display.
   // A hand or recovery generation change can restart this hold. Ordinary updates cannot.
   useEffect(() => {
+    if (retainCountingPresentation && presentationTime !== countingTime) {
+      setCountingDelayActive(false);
+      return;
+    }
     if (!countingStartKey || !countingTime || !validCount(countingTime) || presentedCount.current === countScope) return;
     const frameState = countingTime.frame.state;
     const local = cribbageStateRef.current;
@@ -5020,13 +4948,15 @@ export const CribbageMobileGameTable = ({
     // NOTE: Do NOT clear countingScoreOverrides here.
     // The catch-up effect releases them once the new hand's pegScores are authoritative.
     // Clearing here causes a transient dip to the raw (lower) pegScore before rehydration.
-    setCountingStateSnapshot(null);
-    setCountingDelayActive(false);
-    countingAnimationActiveRef.current = false;
-    countingDelayFiredRef.current = null;
-    countingBaselineScoresRef.current = null;
-    countingHandKeyRef.current = null;
-    countingIdentityRef.current = null;
+    if (!retainCountingPresentation) {
+      setCountingStateSnapshot(null);
+      setCountingDelayActive(false);
+      countingAnimationActiveRef.current = false;
+      countingDelayFiredRef.current = null;
+      countingBaselineScoresRef.current = null;
+      countingHandKeyRef.current = null;
+      countingIdentityRef.current = null;
+    }
     lastPeggingScoresRef.current = null;
     // A cross-country peer can advance directly from a previous hand's
     // Go/31 presentation hold to this hand without observing the old
@@ -6660,6 +6590,21 @@ export const CribbageMobileGameTable = ({
     toast.error('Unable to finish counting. The hand is preserved; reconnect to retry.');
   });
   const handleCountingComplete = useCallback((_winDetected: boolean) => {
+    const liveFrame = countingClock.getSnapshot()?.frame;
+    if (presentationTime && retainCountingPresentation
+      && (presentationTime.presentationCurrent ?? presentationTime.current)()
+      && liveFrame?.gameId === gameId && liveFrame.dealerGameId === dealerGameId
+      && liveFrame.handNumber > presentationTime.frame.handNumber) {
+      // Authority already advanced. Retire only the outgoing local presentation.
+      setCountingStateSnapshot(null);
+      setCountingAnnouncement(null);
+      setCountingTargetLabel(null);
+      if (scoringRailScopeRef.current) announcements.retireTransientScope(scoringRailScopeRef.current);
+      scoringRailScopeRef.current = null;
+      setCountingWinFrozen(false);
+      syncHandle.unfreezePresentation();
+      return;
+    }
     if (!cribbageState || !dealerGameId || !countingTime || !validCount(countingTime)) return;
 
     const expectedIdentity = countingIdentityRef.current;
@@ -6693,7 +6638,7 @@ export const CribbageMobileGameTable = ({
 
     presentedCount.current = countScope;
     releaseCount();
-  }, [cribbageState, dealerGameId, currentRoundId, currentHandNumber, countingTime, countScope, releaseCount]);
+  }, [cribbageState, dealerGameId, currentRoundId, currentHandNumber, countingTime, countScope, releaseCount, presentationTime, retainCountingPresentation, announcements, syncHandle, countingClock, gameId]);
   submitPresentedCount.current = () => handleCountingComplete(true);
 
   /*
@@ -7487,8 +7432,8 @@ export const CribbageMobileGameTable = ({
     authoritativeState: cribbageState,
   });
   const parentAuthoritativeGameplayFallback = renderMode.parentAuthoritativeGameplayFallback;
-  const isBootstrapMode = renderMode.isBootstrapMode;
-  const isGameplayMode = renderMode.isGameplayMode;
+  const isBootstrapMode = !retainCountingPresentation && renderMode.isBootstrapMode;
+  const isGameplayMode = retainCountingPresentation || renderMode.isGameplayMode;
   const isHighCardMode = rawHighCardMode && !authoritativePostDealCardsPresent && !parentAuthoritativeGameplayFallback;
   const fallbackLocalPlayerId = currentPlayerId ?? players.find((player) => player.user_id === currentUserId && isSeatedGamePlayer(player))?.id;
   const authoritativeLocalHandCount = fallbackLocalPlayerId
@@ -7840,7 +7785,8 @@ export const CribbageMobileGameTable = ({
   // completion and the framework reset settling).
 
   // Latch pegboard data whenever we have valid gameplay state
-  const gameplayRenderState: CribbageState | null = viewState ?? (parentAuthoritativeGameplayFallback ? cribbageState : null);
+  const gameplayRenderState: CribbageState | null = retainCountingPresentation && !countingDelayActive
+    ? countingStateSnapshot : viewState ?? (parentAuthoritativeGameplayFallback ? cribbageState : null);
   const renderedCutEntryMode = resolveCribbageCutPresentationEntryMode({
     entryMode,
     handKey: cutRevealHandKey,
@@ -8640,7 +8586,7 @@ export const CribbageMobileGameTable = ({
                     dealer→opp/self intents (substrate proof, NOT full
                     Cribbage deal). Mounted only when we have a dealer +
                     viewer + at least one seated player. */}
-                {currentHandKey && durableHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
+                {!retainCountingPresentation && currentHandKey && durableHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
                   <CribbageDealOrchestrator
                     gameId={gameId}
                     handContextId={currentHandKey || durableHandKey}
@@ -8774,7 +8720,7 @@ export const CribbageMobileGameTable = ({
                 />
 
                 {/* Counting Phase Overlay */}
-                {countingStateSnapshot && presentationTime && (presentationTime === countingTime || holdPausedCount) && !countingDelayActive && (
+                {countingStateSnapshot && presentationTime && (presentationTime === countingTime || holdPausedCount || retainCountingPresentation) && !countingDelayActive && (
                   <CribbageCountingPhase
                     audioActive={activeTab === 'cards' && !sessionEndedPhase}
                     cribbageState={countingStateSnapshot}
@@ -8790,7 +8736,7 @@ export const CribbageMobileGameTable = ({
                     persistedBeatIndex={countingStateSnapshot.countingBeatIndex}
                     persistedHandKey={countingStateSnapshot.countingHandKey}
                     onProgressUpdate={handleCountingProgressUpdate}
-                    debugContext={debugCtx}
+                    debugContext={{...debugCtx, roundId: presentationTime.frame.roundId, handNumber: presentationTime.frame.handNumber}}
                   />
                 )}
 

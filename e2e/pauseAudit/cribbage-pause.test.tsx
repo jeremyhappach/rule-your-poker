@@ -11,7 +11,7 @@ vi.mock('@/components/CribbageAnchoredPeggingRowMount',()=>({CribbageAnchoredPeg
 vi.mock('@/components/CribbagePegBoard',()=>({CribbagePegBoard:()=>null}));
 vi.mock('@/components/CribbageMobileCardsTab',()=>({CribbageMobileCardsTab:(p:any)=>{f.controls=p;return null;}}));
 vi.mock('@/components/CribbagePlayingCard',()=>({CribbagePlayingCard:()=>null}));
-vi.mock('@/components/CribbageCountingPhase',()=>({CribbageCountingPhase:(p:any)=>{f.counting=p;return null;}}));
+vi.mock('@/components/CribbageCountingPhase',()=>({CribbageCountingPhase:(p:any)=>{f.counting=p;return <div data-counting-round={p.debugContext.roundId}/>;}}));
 vi.mock('@/components/CribbageTurnSpotlight',()=>({CribbageTurnSpotlight:()=>null}));
 vi.mock('@/components/CribbagePeggingGoBubble',()=>({CribbagePeggingGoBubble:()=>null}));
 vi.mock('@/lib/cribbageDealerDrawTrace',()=>({recordCribDealerDraw:()=>undefined,useCribDealerDrawSurfaceTrace:()=>undefined}));
@@ -31,7 +31,7 @@ vi.mock('@/lib/cribbageHandoffTrace',()=>({emitCribbageHandoffTrace:()=>undefine
 vi.mock('@/lib/canonicalShell/lifecycleDebug',()=>({useLifecycleMount:()=>undefined}));
 vi.mock('@/components/Wave4CribbageChromeHost',()=>({Wave4CribbageChromeHost:({children}:any)=>children}));
 vi.mock('@/components/Wave4PegboardSlot',()=>({Wave4PegboardSlot:({children}:any)=>children}));
-vi.mock('@/components/CribbageDealOrchestrator',()=>({CribbageDealOrchestrator:()=>null}));
+vi.mock('@/components/CribbageDealOrchestrator',()=>({CribbageDealOrchestrator:()=> <div data-successor-deal/>}));
 vi.mock('@/lib/cribbageSyncDiagnostics',()=>({checkStaleDealerGameRender:()=>undefined,checkCribbagePhaseRenderMismatch:()=>undefined,checkCribbageResultRenderMismatch:()=>undefined,checkRegressiveIdentity:()=>undefined,resetCribbageTracking:()=>undefined,checkCribbageHandReversion:()=>undefined,checkCribbageScoreReversion:()=>undefined,resetCribbageReversionTracking:()=>undefined,logCribbageScoringStart:()=>undefined,logCribbageResultDisplay:()=>undefined,logCribbageDealerGameStart:()=>undefined,logCribbageHandStart:()=>undefined}));
 
 vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:f.rpc,from:()=>{const q:any={select:()=>q,eq:()=>q,order:()=>q,limit:()=>q,maybeSingle:async()=>({data:null}),single:async()=>({data:{hand_number:1}}),then:(r:any)=>Promise.resolve({data:null}).then(r)};return q;},channel:()=>{const c:any={on:()=>c,subscribe:()=>c};return c;},removeChannel:vi.fn()}}));
@@ -72,9 +72,30 @@ function acceptFrame(pauseVersion = 0, paused = false, snapshot = state()) {
 }
 let resolveComplete:(v:any)=>void;
 const calls=()=>f.rpc.mock.calls.filter(([n])=>n==='cribbage_complete_counting');
-beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(1000);clock=createCountingClock(vi.fn());acceptFrame();vi.clearAllMocks();f.counting=null;f.announcements={emit:f.emit,dismiss:()=>{},clearAmbient:()=>{},waitForDismiss:async()=>{}};f.fetch.mockImplementation(async()=>state());f.rpc.mockImplementation((n:string)=>n==='cribbage_complete_counting'?new Promise(r=>{resolveComplete=r;}):Promise.resolve({data:null,error:null}));vi.spyOn(console,'log').mockImplementation(()=>{});vi.spyOn(console,'warn').mockImplementation(()=>{});vi.spyOn(console,'error').mockImplementation(()=>{});});
+beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(1000);clock=createCountingClock(vi.fn());acceptFrame();vi.clearAllMocks();f.counting=null;f.identity={dealerGameId:'dealer',roundId:'round',handNumber:1};f.announcements={emit:f.emit,retireTransientScope:()=>{},dismiss:()=>{},clearAmbient:()=>{},waitForDismiss:async()=>{}};f.fetch.mockImplementation(async()=>state());f.rpc.mockImplementation((n:string)=>n==='cribbage_complete_counting'?new Promise(r=>{resolveComplete=r;}):Promise.resolve({data:null,error:null}));vi.spyOn(console,'log').mockImplementation(()=>{});vi.spyOn(console,'warn').mockImplementation(()=>{});vi.spyOn(console,'error').mockImplementation(()=>{});});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
 const mount=()=>render(<CribbageMobileGameTable countingClock={clock} gameId="session" roundId="round" dealerGameId="dealer" handNumber={1} entryMode="historical-entry" players={players} currentUserId="u1" dealerPosition={1} anteAmount={2} pot={4} isHost={false} onGameComplete={()=>{}}/>);
+it('retains the outgoing count through early successor arrival and never acknowledges the new hand',async()=>{
+ const ui=mount();await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
+ expect(ui.container.querySelector('[data-counting-round="round"]')).not.toBeNull();
+ const outgoingTime=f.counting.countingTime;
+ const next={...state(),phase:'discarding',countingPlan:undefined,countingStartedAt:undefined,
+   playerStates:Object.fromEntries(['a','b'].map(playerId=>[playerId,{...state().playerStates[playerId],hand:cards,pegScore:16}]))};
+ f.fetch.mockResolvedValue(next);
+ await act(async()=>{
+   f.identity={dealerGameId:'dealer',roundId:'next',handNumber:2};
+   clock.accept(clock.request(),performance.now(),new Date(1000+performance.now()).toISOString(),{
+     gameId:'session',dealerGameId:'dealer',roundId:'next',handNumber:2,pauseVersion:0,paused:false,state:next as CribbageState});
+   ui.rerender(<CribbageMobileGameTable countingClock={clock} gameId="session" roundId="next" dealerGameId="dealer" handNumber={2} entryMode="historical-entry" players={players} currentUserId="u1" dealerPosition={1} anteAmount={2} pot={4} isHost={false} onGameComplete={()=>{}}/>);
+ });
+ expect(f.counting.countingTime).toBe(outgoingTime);
+ expect(outgoingTime.current()).toBe(false);
+ expect(ui.container.querySelector('[data-counting-round="round"]')).not.toBeNull();
+ expect(ui.container.querySelector('[data-successor-deal]')).toBeNull();
+ await act(async()=>{f.counting.onCountingComplete(false);});
+ expect(ui.container.querySelector('[data-counting-round]')).toBeNull();
+ expect(calls()).toHaveLength(0);
+});
 it('CONTROL Cribbage counting component callback reaches exact authority request',async()=>{
  mount();await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));expect(f.counting).not.toBeNull();
  let done:Promise<void>;act(()=>{done=f.counting.onCountingComplete(false);});await act(async()=>{});expect(calls()).toHaveLength(1);expect(calls()[0][1]).toEqual({_round_id:'round'});

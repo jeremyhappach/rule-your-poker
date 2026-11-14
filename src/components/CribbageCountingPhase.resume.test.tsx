@@ -6,7 +6,7 @@ import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
 import { createCountingClock } from '@/lib/cribbage/countingClock';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 
-vi.mock('@/lib/cribbage/sounds', () => ({ presentCribbageScore: vi.fn() }));
+vi.mock('@/lib/cribbage/sounds', async original => ({ ...await original<object>(), presentCribbageScore: vi.fn() }));
 vi.mock('@/lib/debugEventLogger', () => ({ logDebugEvent: vi.fn() }));
 vi.mock('@/lib/geometryLab/cardArtifactOverlap', () => ({ useCardOverlap: () => 0.2 }));
 vi.mock('./CribbagePlayingCard', () => ({ CribbagePlayingCard: () => null }));

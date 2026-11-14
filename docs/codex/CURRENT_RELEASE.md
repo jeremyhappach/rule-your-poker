@@ -1,3 +1,19 @@
+# Cribbage scoring sequence — November 14, 2026 — owner smoke pending
+
+Scoring callouts now follow their own highlight beat on the canonical rail.
+Counting retains the outgoing cards and scores through the complete point burst
+and presentation, including an early successor snapshot; only then may its deal
+mount. Score reconciliation cannot play old points under the new hand. A retained
+count has no old-hand command authority. Rules, settlement, server recovery,
+pause/rejoin safeguards and existing sounds remain intact. No migration.
+
+Forty-four focused checks and native Edge trip-7/early-successor audio and visual
+evidence pass. Full qualification passes typecheck, 4,243 application tests,
+241 harness tests, 46 release-tooling tests, Vite and the 90 MB static-size gate.
+Jeremy's production PWA smoke remains acceptance truth. See
+[root cause, preservation and smoke](CRIBBAGE_SCORING_SEQUENCE.md).
+Checkpoint: `cribbage-scoring-sequence-20261114`.
+
 # Chess bot forfeit handoff — November 14, 2026 — production verified
 
 The exact bot forfeit settled correctly for −5/+5 fake-money chips. Chess's
