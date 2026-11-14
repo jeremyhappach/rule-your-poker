@@ -1,3 +1,20 @@
+# Chess bot forfeit handoff — November 14, 2026 — production candidate
+
+The exact bot forfeit settled correctly for −5/+5 fake-money chips. Chess's
+missing canonical-shell and durable-cursor registrations admitted the generic
+$0 results view and stranded its retained board. Register both existing owners,
+keep the old identity through payout, and retire it before next-game setup.
+The result now uses the committed signed settlement and preserves the published
+forfeit explosion/sound timeline. Setup announcements no longer feed back into
+identical repeated emissions. No server, financial, rule or history changes.
+See [incident evidence and acceptance](CHESS_BOT_FORFEIT_FLOW.md).
+Full build passes TypeScript, 4,237 application tests, 241 harness tests,
+46 release-tooling checks, Vite and the unchanged 90 MB static-size gate.
+All 48 focused checks and four browser scenarios pass, including user-confirmed
+bot forfeit through next-game setup and Session Ended/Back to Lobby. Browser
+network responses are isolated fixtures; Jeremy's production PWA smoke remains
+pending. Checkpoint: `chess-bot-forfeit-flow-20261114`.
+
 # Cribbage and Yahtzee sounds — November 14, 2026 — owner smoke pending
 
 Cribbage now sounds its admitted cut-card face reveal, each self/opponent play

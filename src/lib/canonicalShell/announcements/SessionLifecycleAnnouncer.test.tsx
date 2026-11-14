@@ -107,3 +107,18 @@ describe('SessionLifecycleAnnouncer paused ownership', () => {
     await waitFor(() => expect(announcementMocks.clearAmbient).toHaveBeenCalledTimes(1));
   });
 });
+
+it.each(['chess','cribbage','run21','holm-game'])('dedupes %s setup context feedback but refreshes a changed dealer name',gameType=>{
+ announcementMocks.emit.mockReset();announcementMocks.ambient=null;
+ const dealer={...players[0],profiles:{username:'First'}};
+ const props={gameId:'setup',gameType,gameStatus:'game_selection',isPaused:false,sessionHostUserId:'host',sessionHostName:'Host',configComplete:false,isViewerDealer:false,allowBotDealers:false,dealerPlayer:dealer,players:[dealer],dealerSelectionCards:[],dealerSelectionWinnerPosition:null};
+ const view=render(<SessionLifecycleAnnouncer {...props}/>);
+ announcementMocks.ambient={id:'setup:session-config:player-host',type:'dealer_configuring'};
+ view.rerender(<SessionLifecycleAnnouncer {...props}/>);view.rerender(<SessionLifecycleAnnouncer {...props}/>);
+ expect(announcementMocks.emit).toHaveBeenCalledTimes(1);
+ const renamed={...dealer,profiles:{username:'Renamed'}};
+ view.rerender(<SessionLifecycleAnnouncer {...props} dealerPlayer={renamed} players={[renamed]}/>);
+ expect(announcementMocks.emit).toHaveBeenCalledTimes(2);
+ expect(announcementMocks.emit).toHaveBeenLastCalledWith(expect.objectContaining({payload:{dealerName:'Renamed'}}));
+ view.unmount();
+});

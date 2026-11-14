@@ -118,6 +118,7 @@ export function SessionLifecycleAnnouncer({
   const announcements = useAnnouncements();
   const ctx = useAnnouncementContext();
   const lastAmbientIdRef = useRef<string | null>(null);
+  const lastAmbientPlanRef = useRef<string | null>(null);
   const lastDealerSelectedTransientRef = useRef<string | null>(null);
   const hostCursor = useRef<HostCursor | null>(null);
 
@@ -234,6 +235,11 @@ export function SessionLifecycleAnnouncer({
 
 
     if (plan) {
+      // Provider emissions update context. Do not feed that update back into
+      // another identical emission; still refresh changed labels or a lost slot.
+      const planKey = JSON.stringify(plan);
+      if (ctx?.ambient?.id === plan.id && lastAmbientPlanRef.current === planKey) return;
+      lastAmbientPlanRef.current = planKey;
       // Refresh / emit the planned ambient.
       lastAmbientIdRef.current = plan.id;
       if (plan.kind === 'game_paused') {
@@ -276,6 +282,7 @@ export function SessionLifecycleAnnouncer({
       announcements.clearAmbient();
     }
     lastAmbientIdRef.current = null;
+    lastAmbientPlanRef.current = null;
   }, [
     gameId,
     isCribbage,

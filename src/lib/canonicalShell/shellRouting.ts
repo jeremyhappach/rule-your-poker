@@ -39,6 +39,7 @@ export const CANONICAL_SHELL_FAMILY = new Set<string>([
   'chucky-showdown',
   ...POKER_VARIANT_FAMILY,
   'tri-towers',
+  'chess',
   'eleven-up',
   'race-poker','battle-31','quintzee','ptown-words','boxdrop','trip-flip','take-two', 'royal-flash',
   'run21',

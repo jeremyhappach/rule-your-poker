@@ -40,6 +40,11 @@ describe('isPokerVariantFamily', () => {
  * the wiring matches.
  */
 describe('canonical seat consumer registry invariant', () => {
+  it('keeps Chess in the canonical lifecycle without routing it as poker', () => {
+    expect(isCanonicalShellFamily('chess')).toBe(true);
+    expect(isPokerVariantFamily('chess')).toBe(false);
+    expect(resolveShellKind('chess')).toBe('canonical');
+  });
   it('every CANONICAL_SEAT_CONSUMERS entry is also in CANONICAL_SHELL_FAMILY', () => {
     const missing = [...CANONICAL_SEAT_CONSUMERS].filter(
       gt => !CANONICAL_SHELL_FAMILY.has(gt),

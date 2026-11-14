@@ -344,6 +344,7 @@ export function ChipTransportProvider({
     || gameType === '3-5-7-game'
     || gameType === '357'
     || gameType === 'canasta'
+    || gameType === 'chess'
     || gameType === 'run21'
     || gameType === 'tri-towers'
     || gameType === 'eleven-up' || gameType === 'royal-flash' || gameType === 'six-card-golf' || gameType === 'race-poker' || gameType === 'battle-31' || gameType === 'quintzee' || gameType === 'ptown-words' || gameType === 'crib-lab' || gameType === 'chucky-showdown' || gameType === 'mega-card-golf' || gameType === 'boxdrop' || gameType === 'trip-flip' || gameType === 'take-two';
