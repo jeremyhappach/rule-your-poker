@@ -11,7 +11,10 @@ Passive inspection remains read-only until explicit forfeit confirmation and
 never opens a turn. The separate unpublished multiplayer lifecycle candidate is
 not included. Full build and rollback financial proofs pass; production smoke
 remains Jeremy's. See [evidence and acceptance](CHESS_TIMEOUT_FORFEIT_20261114.md).
-Checkpoint: `chess-timeout-forfeit-20261114`. Publication verification pending.
+Checkpoint: `chess-timeout-forfeit-20261114`. Production
+`3bb1fa30b48331edb934d053701747127bf602ca` is verified: Vercel
+`dpl_3iz3C3zKjoP6rAz9VgV89dv2cpUg` is READY and holm357.com's manifest
+matches, published at 18:38:17 UTC. Jeremy's PWA smoke remains pending.
 
 # Async saved-result reader — November 14, 2026 — server correction live
 

@@ -90,7 +90,16 @@ No unrelated live session or original financial receipt was mutated.
   validation used the already-installed project TypeScript compiler. No dependency
   or lockfile changes.
 
-Checkpoint: `chess-timeout-forfeit-20261114`. Production verification follows
-publication. Jeremy's production smoke remains acceptance: enter the restored
+Checkpoint: `chess-timeout-forfeit-20261114`. Production commit
+`3bb1fa30b48331edb934d053701747127bf602ca` is verified on
+Vercel `dpl_3iz3C3zKjoP6rAz9VgV89dv2cpUg` (READY). holm357.com's
+manifest matches, published at `2026-11-14T18:38:17.62Z`, bundle
+`assets/index-DAPO9G1K.js`. The redundant task-branch preview was cancelled to
+allow the production build to run. At 18:27 UTC, more than five minutes after
+restoration, the real match remained active/unopened with no started clock;
+current Chess final reviews were empty and all three TheOG Quintzee readers
+still returned saved events successfully.
+
+Jeremy's production smoke remains acceptance: enter the restored
 match once to start its five minutes, inspect timeout final-board History, and
 open/cancel Forfeit in live and Async. Confirming Forfeit ends that game.
