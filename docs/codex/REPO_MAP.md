@@ -1097,6 +1097,9 @@ reconciliation.
   `countingClock.ts` distinguishes strict command authority from uninterrupted
   outgoing presentation; `CribbageMobileGameTable.tsx` retains that count and
   gates the successor deal. See `CRIBBAGE_SCORING_SEQUENCE.md` for qualification.
+- Pegging presentation: `src/hooks/useCribbagePeggingPresentation.ts` admits
+  accepted awards after the matching card handoff and canonical notice paint;
+  the final notice and full burst gate the counting overlay, without game writes.
 
 - Entry/presentation: `Game.tsx` -> `CribbageMobileGameTable.tsx`;
   `CribbageFeltContent.tsx`, `CribbageDealOrchestrator.tsx`,

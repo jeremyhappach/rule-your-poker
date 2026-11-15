@@ -44,6 +44,8 @@ type TransitionPhase = 'scoring' | 'exiting' | 'entering';
 
 interface CribbageCountingPhaseProps {
   audioActive?: boolean;
+  /** A live final-peg hold is not elapsed counting/reconnect progress. */
+  livePeggingHandoff?: boolean;
   cribbageState: CribbageState;
   players: Player[];
   onCountingComplete: (winDetected: boolean) => void;
@@ -84,6 +86,7 @@ const ENTER_ANIMATION_MS = 800; // 0.8 seconds for cards to enter
 
 export const CribbageCountingPhase = ({
   audioActive = false,
+  livePeggingHandoff = false,
   cribbageState,
   players,
   onCountingComplete,
@@ -837,7 +840,7 @@ export const CribbageCountingPhase = ({
     const hasPersistedCursor = hasPersistedProgress || hasPersistedBeat;
     if (!(countingTime.presentationCurrent ?? countingTime.current)()) return;
     const elapsedMs = countingTime.elapsed(cribbageState);
-    const elapsedCursor = !hasPersistedCursor && countingStartedAt
+    const elapsedCursor = !livePeggingHandoff && !hasPersistedCursor && countingStartedAt
       ? getCountingResumeCursorFromElapsed(buildBeatTimeline().beats, elapsedMs - 2_000)
       : null;
 

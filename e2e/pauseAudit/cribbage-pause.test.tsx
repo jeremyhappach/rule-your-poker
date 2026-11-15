@@ -1,14 +1,14 @@
 import {act,cleanup,render} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {appendFileSync} from 'node:fs';
-const f=vi.hoisted(()=>({counting:null as any,controls:null as any,rpc:vi.fn(),fetch:vi.fn(),emit:vi.fn(),identity:{dealerGameId:'dealer',roundId:'round',handNumber:1},attention:{notifyActiveTab:()=>{},markChatRead:()=>{},attentionState:{}},announcements:null as any}));
+const f=vi.hoisted(()=>({counting:null as any,controls:null as any,play:null as any,peg:null as any,rpc:vi.fn(),fetch:vi.fn(),emit:vi.fn(),identity:{dealerGameId:'dealer',roundId:'round',handNumber:1},attention:{notifyActiveTab:()=>{},markChatRead:()=>{},attentionState:{}},announcements:null as any}));
 vi.mock('@/components/CribbageFeltContent',()=>({CribbageFeltContent:()=>null}));
 vi.mock('@/components/CribbageAnchoredCribCutMount',()=>({CribbageAnchoredCribCutMount:()=>null}));
 vi.mock('@/components/CribbageDiscardToCribAnimation',()=>({CribbageDiscardToCribAnimation:()=>null}));
-vi.mock('@/components/CribbagePlayCardAnimation',()=>({CribbagePlayCardAnimation:()=>null}));
+vi.mock('@/components/CribbagePlayCardAnimation',()=>({CribbagePlayCardAnimation:(p:any)=>{f.play=p;return null;}}));
 vi.mock('@/lib/cribbage/forensicTrace',()=>({recordCribbageActiveHand:()=>undefined,recordCribbageActiveHandContradiction:()=>undefined,recordCribbageForensicEvent:()=>undefined,setCribbageDealIdentityAmbient:()=>undefined,setCribbageForensicIdentity:()=>undefined}));
 vi.mock('@/components/CribbageAnchoredPeggingRowMount',()=>({CribbageAnchoredPeggingRowMount:()=>null}));
-vi.mock('@/components/CribbagePegBoard',()=>({CribbagePegBoard:()=>null}));
+vi.mock('@/components/CribbagePegBoard',()=>({CribbagePegBoard:(p:any)=>{f.peg=p;return null;}}));
 vi.mock('@/components/CribbageMobileCardsTab',()=>({CribbageMobileCardsTab:(p:any)=>{f.controls=p;return null;}}));
 vi.mock('@/components/CribbagePlayingCard',()=>({CribbagePlayingCard:()=>null}));
 vi.mock('@/components/CribbageCountingPhase',()=>({CribbageCountingPhase:(p:any)=>{f.counting=p;return <div data-counting-round={p.debugContext.roundId}/>;}}));
@@ -42,6 +42,7 @@ vi.mock('@/hooks/useKnockSound',()=>({useKnockSound:()=>({playKnock:()=>{}})}));
 vi.mock('@/hooks/GameChatContext',()=>({useGameChatContext:()=>({allMessages:[],hydrationBaselineIds:new Set(),isChatHydrated:true})}));
 vi.mock('@/hooks/ChatAttention',()=>({useChatAttention:()=>f.attention,useChatIconStyleGuard:()=>{},chatAttentionToShellTabProps:()=>({})}));
 vi.mock('@/lib/canonicalShell/announcements',()=>({useAnnouncements:()=>f.announcements}));
+vi.mock('@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider',async original=>({...await original<object>(),useAnnouncementContext:()=>f.announcements}));
 vi.mock('@/lib/canonicalShell/ChipTransportProvider',()=>({useChipTransferPresentationAdmission:()=>{}}));
 vi.mock('@/lib/canonicalShell/ShellOwnedFeltHost',()=>({usePublishShellFelt:()=>{}}));
 vi.mock('@/lib/canonicalShell/GameplayOpponentSeatLayer',()=>({GameplayOpponentSeatLayer:()=>null}));
@@ -75,6 +76,35 @@ const calls=()=>f.rpc.mock.calls.filter(([n])=>n==='cribbage_complete_counting')
 beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(1000);clock=createCountingClock(vi.fn());acceptFrame();vi.clearAllMocks();f.counting=null;f.identity={dealerGameId:'dealer',roundId:'round',handNumber:1};f.announcements={emit:f.emit,retireTransientScope:()=>{},dismiss:()=>{},clearAmbient:()=>{},waitForDismiss:async()=>{}};f.fetch.mockImplementation(async()=>state());f.rpc.mockImplementation((n:string)=>n==='cribbage_complete_counting'?new Promise(r=>{resolveComplete=r;}):Promise.resolve({data:null,error:null}));vi.spyOn(console,'log').mockImplementation(()=>{});vi.spyOn(console,'warn').mockImplementation(()=>{});vi.spyOn(console,'error').mockImplementation(()=>{});});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
 const mount=()=>render(<CribbageMobileGameTable countingClock={clock} gameId="session" roundId="round" dealerGameId="dealer" handNumber={1} entryMode="historical-entry" players={players} currentUserId="u1" dealerPosition={1} anteAmount={2} pot={4} isHost={false} onGameComplete={()=>{}}/>);
+it('retains final opponent transport and Last +1 when its accepted snapshot starts counting',async()=>{
+ const before={...state(),phase:'pegging',countingPlan:undefined,countingStartedAt:undefined,
+  playerStates:{...state().playerStates,a:{...state().playerStates.a,hand:[cards[3]]}},
+  pegging:{...state().pegging,playedCards:[...cards.map(card=>({playerId:'b',card})),...cards.slice(0,3).map(card=>({playerId:'a',card}))],currentTurnPlayerId:'a',sequenceStartIndex:0,eventSequence:9}};
+ f.fetch.mockResolvedValue(before);acceptFrame(0,false,before as any);const ui=mount();await act(async()=>{});
+ const final={...state(),countingStartedAt:new Date(1000+performance.now()).toISOString(),
+  playerStates:{...state().playerStates,a:{...state().playerStates.a,pegScore:11}},
+  countingPlan:{...state().countingPlan,baselineScores:{a:11,b:10}},
+  pegging:{...state().pegging,playedCards:[...before.pegging.playedCards,{playerId:'a',card:cards[3]}]},
+  lastEvent:{id:'last-point',type:'pegging_points',playerId:'a',points:1,label:'Last',createdAt:new Date().toISOString()}};
+ f.fetch.mockResolvedValue(final);
+ await act(async()=>{acceptFrame(0,false,final as any);dispatchAuthoritativeRecoverySnapshot('realtime_fallback');});
+ await act(()=>vi.advanceTimersByTimeAsync(2500));
+ expect(f.play.intent?.mode).toBe('opponent');expect(f.peg.audioAward).toBeNull();
+ expect(ui.container.querySelector('[data-counting-round]')).toBeNull();
+ await act(async()=>f.play.onSettled(f.play.intent.id));
+ const notice=f.emit.mock.calls.map(([event])=>event).find(event=>event.id==='session:peg:last-point');
+ expect(notice.payload.title).toContain('Last (+1)');
+ f.announcements.active=notice;
+ await act(()=>vi.advanceTimersByTimeAsync(100));
+ // Provider admission is explicit in this fixture, just as its real context update is in the app.
+ ui.rerender(<CribbageMobileGameTable countingClock={clock} gameId="session" roundId="round" dealerGameId="dealer" handNumber={1} entryMode="historical-entry" players={players} currentUserId="u1" dealerPosition={1} anteAmount={2} pot={4} isHost={false} onGameComplete={()=>{}}/>);
+ expect(f.peg.audioAward?.points).toBe(1);
+ await act(()=>vi.advanceTimersByTimeAsync(120));
+ expect(ui.container.querySelector('[data-counting-round]')).toBeNull();
+ await act(async()=>notice.onRetired(notice.id,'ttl'));
+ expect(ui.container.querySelector('[data-counting-round="round"]')).not.toBeNull();
+ expect(f.counting.livePeggingHandoff).toBe(true);
+});
 it('retains the outgoing count through early successor arrival and never acknowledges the new hand',async()=>{
  const ui=mount();await act(async()=>{});await act(()=>vi.advanceTimersByTimeAsync(3000));
  expect(ui.container.querySelector('[data-counting-round="round"]')).not.toBeNull();

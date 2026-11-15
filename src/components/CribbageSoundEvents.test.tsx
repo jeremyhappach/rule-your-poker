@@ -66,6 +66,13 @@ it('does not sound an already-highlighted persisted combo on reconnect',async()=
  render(<CribbageCountingPhase countingTime={timing} cribbageState={state} players={players} cardBackColors={{color:'#123',darkColor:'#012'}} onCountingComplete={()=>{}} initialScores={{p1:0,p2:0}} audioActive debugContext={{gameId:'g',roundId:'r',userId:'u1',handNumber:1}} persistedTargetIndex={0} persistedBeatIndex={0} persistedHandKey="r:1"/>);
  await tick(300);expect(audio.play).not.toHaveBeenCalled();
 });
+it('starts the first hand combo audibly after a live final-peg hold, without treating it as reconnect progress',async()=>{
+ const delayed={...state,countingStartedAt:new Date(0).toISOString()};
+ render(<CribbageCountingPhase countingTime={{...timing,elapsed:()=>5000}} cribbageState={delayed} players={players}
+  cardBackColors={{color:'#123',darkColor:'#012'}} onCountingComplete={()=>{}} initialScores={{p1:0,p2:0}}
+  audioActive livePeggingHandoff debugContext={{gameId:'g',roundId:'live',userId:'u1',handNumber:1}}/>);
+ await tick(2000);expect(audio.play.mock.calls.map(call=>call.slice(0,2))).toEqual([[2,'g:live:1:p1:0:0']]);
+});
 
 it('plays a separate zero cue for each hand and the crib, without a positive score or total ding',async()=>{
  const zeroCards=[{rank:'2',suit:'clubs'},{rank:'4',suit:'diamonds'},{rank:'6',suit:'hearts'},{rank:'8',suit:'spades'}];

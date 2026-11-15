@@ -125,6 +125,8 @@ import { captureWinnerChipEndpoint } from '@/lib/canonicalShell/winnerChipEndpoi
 import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { cribbageScoringScope, publishCribbageScoringNotice } from '@/lib/cribbage/scoringPresentation';
+import { useCribbagePeggingPresentation } from '@/hooks/useCribbagePeggingPresentation';
+import { useAnnouncementContext } from '@/lib/canonicalShell/announcements/CanonicalAnnouncementProvider';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 import { getCribbageHandIdentity } from '@/lib/cribbage/handIdentity';
 import { applyCribbagePeggingAction, fetchCribbageState } from '@/lib/cribbageAuthority';
@@ -1878,6 +1880,7 @@ export const CribbageMobileGameTable = ({
   // If the counting overlay ever remounts/re-inits, it must start from the pegging baseline
   // (not from the already-animated overrides), otherwise scores can double.
   const countingBaselineScoresRef = useRef<Record<string, number> | null>(null);
+  const countingLivePeggingHandoffRef = useRef(false);
   // Stable id for the currently-animated counting instance (latched when counting begins).
   // Used ONLY for dedupe (already-fired guards). NEVER for cross-client identity validation.
   const countingHandKeyRef = useRef<string | null>(null);
@@ -1891,7 +1894,20 @@ export const CribbageMobileGameTable = ({
   const lastPeggingScoresRef = useRef<Record<string, number> | null>(null);
   
   // Delay before showing counting phase to allow final pegging announcement to display
-  const [countingDelayActive, setCountingDelayActive] = useState(false);
+  const [countingTimerActive, setCountingDelayActive] = useState(false);
+  const peggingAudioScope = `${gameId}:${dealerGameId}:${currentRoundId}:${currentHandNumber}`;
+  const peggingPresentation = useCribbagePeggingPresentation({
+    scope: peggingAudioScope, state: cribbageState, admitted: canPresentPeggingEvent,
+    active: activeTab === 'cards' && !sessionEndedPhase && !isPaused,
+  });
+  const countingDelayActive = countingTimerActive ||
+    (cribbageState?.phase === 'counting' && peggingPresentation.pending);
+  const activePeggingNotice = useAnnouncementContext()?.active;
+  const peggingNoticeVisible = !!peggingPresentation.event &&
+    activePeggingNotice?.id === `${gameId}:peg:${peggingPresentation.event.id}`;
+  useEffect(() => {
+    if (peggingNoticeVisible && peggingPresentation.event) peggingPresentation.presented(peggingPresentation.event.id);
+  }, [peggingNoticeVisible, peggingPresentation.event?.id, peggingPresentation.presented]);
   const countingDelayFiredRef = useRef<string | null>(null);
   
   // Ref to track if counting animation is active - used by realtime handler to avoid stale closure
@@ -3139,7 +3155,7 @@ export const CribbageMobileGameTable = ({
   // untouched: this only delays local presentation.
   const [heelsPresentationConsumedId, setHeelsPresentationConsumedId] = useState<string | null>(null);
   useLayoutEffect(() => {
-    const event = cribbageState?.lastEvent;
+    const event = cribbageState?.lastEvent?.type === 'his_heels' ? cribbageState.lastEvent : peggingPresentation.event;
     if (!event) return;
     const isPeggingEvent =
       event.type === 'pegging_points' ||
@@ -3160,19 +3176,19 @@ export const CribbageMobileGameTable = ({
       gameId, roundId: currentRoundId,
       id: `${gameId}:peg:${event.id}`, title,
       ttlMs: 3000,
-      ...(isHeels
-        ? {
-            onRetired: () => setHeelsPresentationConsumedId(heelsEventId),
-          }
-        : {}),
+      onRetired: () => {
+        peggingPresentation.retired(event.id);
+        if (isHeels) setHeelsPresentationConsumedId(heelsEventId);
+      },
     });
     // Single completion owner: the canonical rail's own `onRetired` emit
     // above releases the heels terminal hold exactly once. No local
     // fallback timer / debounce / minimum-duration hold exists here.
 
   }, [
-    cribbageState?.lastEvent?.id,
-    cribbageState?.lastEvent?.type,
+    peggingPresentation.event?.id,
+    peggingPresentation.event?.type,
+    cribbageState?.lastEvent?.type === 'his_heels' ? cribbageState.lastEvent.id : null,
     gameId,
     currentRoundId,
     announcements,
@@ -3376,6 +3392,7 @@ export const CribbageMobileGameTable = ({
     // Legacy baseline reconstruction also applies when joining a count already in progress.
     const elapsedMs = countingTime.elapsed(state);
     const isReconnect = recovering || elapsedMs > 2500;
+    countingLivePeggingHandoffRef.current = !recovering && peggingPresentation.isPending();
     setPresentationTime(countingTime);
     if (recovering && !winSequenceFiredRef.current) {
       setCountingWinFrozen(false);
@@ -5750,7 +5767,8 @@ export const CribbageMobileGameTable = ({
       setGoWriterPending(false);
       return;
     }
-    if (cribbageState.phase !== 'pegging') {
+    if (cribbageState.phase !== 'pegging' && !(hasObservedPeggingForCurrentHand &&
+      (cribbageState.phase === 'counting' || cribbageState.phase === 'complete'))) {
       opponentPlayedCountRef.current =
         cribbageState.pegging.playedCards?.length ?? 0;
       return;
@@ -8722,6 +8740,7 @@ export const CribbageMobileGameTable = ({
                 {/* Counting Phase Overlay */}
                 {countingStateSnapshot && presentationTime && (presentationTime === countingTime || holdPausedCount || retainCountingPresentation) && !countingDelayActive && (
                   <CribbageCountingPhase
+                    livePeggingHandoff={countingLivePeggingHandoffRef.current}
                     audioActive={activeTab === 'cards' && !sessionEndedPhase}
                     cribbageState={countingStateSnapshot}
                     players={players}
@@ -8759,8 +8778,9 @@ export const CribbageMobileGameTable = ({
               cribVisible={true}
             >
               {!sessionEndedPhase && <CribbagePegBoard
-                audioScope={`${gameId}:${dealerGameId}:${currentRoundId}:${currentHandNumber}`}
-                audioActive={activeTab === 'cards' && !sessionEndedPhase && !effectiveCountingScoreOverrides && !countingStateSnapshot}
+                audioScope={peggingAudioScope}
+                audioAward={peggingNoticeVisible && peggingPresentation.event ? {id: `${peggingAudioScope}:${peggingPresentation.event.id}`, points: peggingPresentation.event.points} : null}
+                audioActive={activeTab === 'cards' && !sessionEndedPhase && !isPaused}
                 players={players}
                 playerStates={pegboardPlayerStates}
                 winningScore={
@@ -8859,6 +8879,7 @@ export const CribbageMobileGameTable = ({
             }}
             onSettled={(id) => {
               if (playCardIntent?.id !== id) return;
+              peggingPresentation.landed(peggingAudioScope, playCardIntent.card);
               setPlayCardIntent((prev) => (prev && prev.id === id ? null : prev));
               setWithheldPlayedCardKey(null);
               updatePegTransportEntry(id, { cleanupReason: 'settled' });

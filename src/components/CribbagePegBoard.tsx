@@ -14,6 +14,8 @@ interface Player {
 }
 
 interface CribbagePegBoardProps {
+  /** null selects event-owned audio without an admitted award; undefined is the lab delta adapter. */
+  audioAward?: {id: string; points: number} | null;
   audioScope?: string;
   audioActive?: boolean;
   players: Player[];
@@ -39,6 +41,7 @@ const INTER_ROW_GAP_PX = 4;
 const PEGBOARD_ARTIFACT_ID = 'cribbage.pegboard';
 
 export const CribbagePegBoard = ({
+  audioAward,
   audioScope,
   audioActive = false,
   players,
@@ -87,9 +90,15 @@ export const CribbagePegBoard = ({
     return () => { document.removeEventListener('visibilitychange', hidden); window.removeEventListener('offline', reset); };
   }, []);
   const audioScoreKey = JSON.stringify(currentDisplayScores);
+  const lastAudioAward = useRef<string | null>(null);
+  useEffect(() => {
+    if (!audioAward || lastAudioAward.current === audioAward.id) return;
+    lastAudioAward.current = audioAward.id;
+    presentCribbageScore(audioAward.points, audioAward.id, audioActive ? soundSurface.current : null);
+  }, [audioAward?.id, audioActive]);
   useEffect(() => {
     const previous = previousAudioScores.current;
-    if (audioScope && previous?.scope === audioScope) {
+    if (audioAward === undefined && audioScope && previous?.scope === audioScope) {
       for (const [playerId, score] of Object.entries(currentDisplayScores)) {
         const before = previous.scores[playerId];
         if (before !== undefined && score > before) {

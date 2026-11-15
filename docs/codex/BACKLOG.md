@@ -1,4 +1,8 @@
-## Queued — Cribbage pegging audio landing and final Last +1 — November 14, 2026
+## Implemented — Cribbage pegging audio landing and final Last +1 — November 14, 2026 — preview held
+
+Jeremy approved this correction and added larger 357 Drop suits to the same
+pass, with a preview required before publishing. The local candidate and native
+browser evidence are documented in `CRIBBAGE_PEGGING_DROP_PREVIEW.md`.
 
 Jeremy's production smoke after `f4a472e66` confirms hand scoring is good,
 but the pegging point sound plays before the played card lands and Last +1
@@ -16,13 +20,13 @@ counting, the committed counting-plan baseline immediately makes
 snapshot that includes the final pegging award. The score baseline then advances
 silently. These paths already exist in `da5e245de`, before the counting fix.
 
-Recommended scope, awaiting approval: coordinate pegging notices and point audio
+Approved scope: coordinate pegging notices and point audio
 by accepted event identity and the matching transport completion, retain the
 final Last/Go/31 presentation through counting entry, and retire once without
 replaying on duplicate/reconnect snapshots. Preserve accepted hand scoring,
 live authoritative scores, rules, existing sounds, mute and recovery guards.
 Validate self/opponent landing, Last +1, Go, 31, repeat/rejoin and counting handoff.
-No product edits or database changes made during this investigation.
+No database changes; product implementation is local and held for preview review.
 
 ## Qualified — P0 Chess pause/resume hotfix — November 14, 2026 — publication authorized
 
