@@ -3,7 +3,7 @@ import {afterEach,beforeAll,beforeEach,expect,it,vi} from 'vitest';
 import {audioHarness} from '@/lib/audio/audioTestHarness';
 import {loadAuditionedFixtures} from '@/lib/audio/approvedSounds.fixture';
 import {cribbagePointsCue,approvedSound} from '@/lib/audio/approvedSounds';
-import {presentCribbageScore,cribbageSlideSoundRef} from './sounds';
+import {presentCribbageScore,presentCribbageGo,cribbageSlideSoundRef} from './sounds';
 const shared=vi.hoisted(()=>({present:vi.fn(),visible:true}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{getSnapshot:()=>({userId:'user'}),present:(...a:unknown[])=>shared.present(...a)}}));
 vi.mock('@/lib/audio/presentationSound',()=>({isSoundSurfaceVisible:()=>shared.visible}));
@@ -22,6 +22,14 @@ it('reuses the existing two-note womp only for a zero award',()=>{
  presentCribbageScore(0,'zero-hand',document.body);presentCribbageScore(0,'zero-hand',document.body);
  expect(h.nodes.filter(n=>n.kind==='oscillator')).toHaveLength(2);
  expect(h.starts()).toEqual([10,10.45]);expect(h.ctx.createBufferSource).not.toHaveBeenCalled();
+});
+it('gives Go one distinct falling tone, separate from an actual last-card peg click',()=>{
+ presentCribbageGo('declaration',document.body);presentCribbageGo('declaration',document.body);
+ expect(h.nodes.filter(n=>n.kind==='oscillator')).toHaveLength(1);
+ expect(h.ctx.createBufferSource).not.toHaveBeenCalled();expect(h.starts()).toEqual([10]);
+ presentCribbageScore(1,'last-card',document.body);
+ expect(h.starts()).toEqual([10,10]);
+ expect(h.nodes.filter(n=>n.kind==='buffer')).toHaveLength(1);
 });
 it('mute cancels every scheduled point and consumes muted/hidden identities',()=>{
  presentCribbageScore(12,'long',document.body);h.manager.setPreference('user',false);

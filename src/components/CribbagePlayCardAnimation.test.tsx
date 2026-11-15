@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 vi.mock('./CribbagePlayingCard', () => ({ CribbagePlayingCard: () => <span data-testid="played-card" /> }));
 import { CribbagePlayCardAnimation, type CribbagePlayCardIntent } from './CribbagePlayCardAnimation';
 
@@ -11,6 +11,19 @@ const intent: CribbagePlayCardIntent = {
 };
 describe('pegging card transport continuity', () => {
   afterEach(() => { cleanup(); vi.useRealTimers(); });
+  it.each([true, false])('hands off at the actual transition end only with destination readiness %s', ready => {
+    vi.useFakeTimers();
+    const settled = vi.fn();
+    const view = render(<CribbagePlayCardAnimation intent={intent} destinationReady={ready} onSettled={settled} />);
+    act(() => vi.advanceTimersByTime(530));
+    const flight = document.querySelector('[data-cribbage-play-card-animation] > div')!;
+    const end = new Event('transitionend', {bubbles: true});
+    Object.defineProperty(end, 'propertyName', {value: 'top'});
+    fireEvent(flight, end);
+    expect(settled).toHaveBeenCalledTimes(ready ? 1 : 0);
+    if (!ready) view.rerender(<CribbagePlayCardAnimation intent={intent} destinationReady onSettled={settled} />);
+    expect(settled).toHaveBeenCalledExactlyOnceWith(intent.id);
+  });
   it('keeps the landed card through a slow receipt, then releases to the authoritative row once', () => {
     vi.useFakeTimers();
     const settled = vi.fn();

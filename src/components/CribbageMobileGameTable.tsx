@@ -3169,7 +3169,7 @@ export const CribbageMobileGameTable = ({
     const title =
       event.type === 'his_heels'
         ? `${name}: His Heels (+2)`
-        : `${name}: ${event.label} (+${event.points})`;
+        : `${name}: ${event.type === 'go_point' ? 'Last card' : event.label} (+${event.points})`;
     const isHeels = event.type === 'his_heels';
     const heelsEventId = event.id;
     publishCribbageScoringNotice(announcements, {
@@ -8779,6 +8779,7 @@ export const CribbageMobileGameTable = ({
             >
               {!sessionEndedPhase && <CribbagePegBoard
                 audioScope={peggingAudioScope}
+                goDeclaration={peggingPresentation.go}
                 audioAward={peggingNoticeVisible && peggingPresentation.event ? {id: `${peggingAudioScope}:${peggingPresentation.event.id}`, points: peggingPresentation.event.points} : null}
                 audioActive={activeTab === 'cards' && !sessionEndedPhase && !isPaused}
                 players={players}

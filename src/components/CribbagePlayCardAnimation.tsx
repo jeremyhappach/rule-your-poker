@@ -208,7 +208,13 @@ export const CribbagePlayCardAnimation = ({ intent, audioActive = true, destinat
   const node = (
     <div className="pointer-events-none" data-cribbage-play-card-animation="">
       <div
+        key={flight.key}
         ref={cribbageSlideSoundRef(flight.key, animating && audioActive)}
+        onTransitionEnd={event => {
+          if (animating && event.target === event.currentTarget && ['left', 'top', 'transform'].includes(event.propertyName)) {
+            setLandedId(flight.key);
+          }
+        }}
         style={{
           position: 'fixed',
           left: x,

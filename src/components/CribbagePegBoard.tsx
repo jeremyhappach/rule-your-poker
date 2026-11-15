@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import {presentCribbageScore} from '@/lib/cribbage/sounds';
+import {presentCribbageScore, presentCribbageGo} from '@/lib/cribbage/sounds';
 import type { CribbagePlayerState } from '@/lib/cribbageTypes';
 import { getDisplayName } from '@/lib/botAlias';
 import { logDebugEvent } from '@/lib/debugEventLogger';
@@ -16,6 +16,7 @@ interface Player {
 interface CribbagePegBoardProps {
   /** null selects event-owned audio without an admitted award; undefined is the lab delta adapter. */
   audioAward?: {id: string; points: number} | null;
+  goDeclaration?: {id: string} | null;
   audioScope?: string;
   audioActive?: boolean;
   players: Player[];
@@ -42,6 +43,7 @@ const PEGBOARD_ARTIFACT_ID = 'cribbage.pegboard';
 
 export const CribbagePegBoard = ({
   audioAward,
+  goDeclaration,
   audioScope,
   audioActive = false,
   players,
@@ -91,6 +93,12 @@ export const CribbagePegBoard = ({
   }, []);
   const audioScoreKey = JSON.stringify(currentDisplayScores);
   const lastAudioAward = useRef<string | null>(null);
+  const lastGoDeclaration = useRef<string | null>(null);
+  useEffect(() => {
+    if (!goDeclaration || lastGoDeclaration.current === goDeclaration.id) return;
+    lastGoDeclaration.current = goDeclaration.id;
+    presentCribbageGo(goDeclaration.id, audioActive ? soundSurface.current : null);
+  }, [goDeclaration?.id, audioActive]);
   useEffect(() => {
     if (!audioAward || lastAudioAward.current === audioAward.id) return;
     lastAudioAward.current = audioAward.id;

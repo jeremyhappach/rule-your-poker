@@ -1,12 +1,16 @@
-# Cribbage pegging / 357 Drop suits — November 14, 2026 — preview held
+# Cribbage pegging / 357 Drop suits — November 15, 2026 — revised preview held
 
 The approved pegging correction waits for card landing and canonical notice
 admission, including Last +1 before counting. 357 Drop's suits are 40% larger
 inside the existing cards. Local preview: http://127.0.0.1:4346/.
 Jeremy requested preview review before publication; no production push.
-Validation passes 33 focused checks, native Edge audio/visual checks, four
-viewport layouts, typecheck, 4,250 application tests, 241 harness tests,
-46 release-tooling tests, Vite and the unchanged 90 MB size gate.
+The revised preview retires the preceding demo's queued notice and ties card
+handoff to the visible transition end. Go has its own falling tone and awards
+no points; actual run-end awards retain their click as Last card (+1).
+Revised validation passes 31 focused checks, native Edge timing and Go checks,
+typecheck, 4,255 application tests, 241 harness tests, 46 release-tooling tests,
+Vite and the unchanged 90 MB size gate. Point audio schedules 6.1–7.9 ms after
+CSS landing. The prior four-viewport suit checks remain applicable.
 See [scope, verification and preview](CRIBBAGE_PEGGING_DROP_PREVIEW.md).
 
 # Cribbage scoring sequence — November 14, 2026 — hand scoring smoke passed

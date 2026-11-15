@@ -9,8 +9,8 @@ import {CanonicalAnnouncementProvider, useAnnouncements, useAnnouncementContext}
 import {CanonicalAnnouncementLayer} from '@/lib/canonicalShell/announcements/CanonicalAnnouncementLayer';
 import {publishCribbageScoringNotice} from '@/lib/cribbage/scoringPresentation';
 import type {CribbageState} from '@/lib/cribbageTypes';
-const audio = vi.hoisted(() => ({play: vi.fn()}));
-vi.mock('@/lib/cribbage/sounds', async original => ({...await original<object>(), presentCribbageScore: audio.play}));
+const audio = vi.hoisted(() => ({play: vi.fn(), go: vi.fn()}));
+vi.mock('@/lib/cribbage/sounds', async original => ({...await original<object>(), presentCribbageScore: audio.play, presentCribbageGo: audio.go}));
 vi.mock('@/lib/debugEventLogger', () => ({logDebugEvent: vi.fn()}));
 vi.mock('@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider', () => ({useCribbageGameplayGeometry: () => ({placementsById: new Map(), lastValidPlacementsById: new Map()})}));
 vi.mock('@/lib/wave4LayoutResolver/useLiveGeometryConstraints', () => ({useLiveGeometryConstraints: () => ({vminInPx: 3.9})}));
@@ -35,11 +35,12 @@ function Scene({state, scope='hand', active=true, mode='self'}:{state:CribbageSt
   return <><CanonicalAnnouncementLayer/><output>{presentation.pending?'held':'ready'}</output>
     <CribbagePlayCardAnimation intent={intent} onSettled={()=>presentation.landed(scope,card)}/>
     <CribbagePegBoard players={players} playerStates={state.playerStates} winningScore={121} audioActive={active}
+      goDeclaration={presentation.go}
       audioAward={visible&&presentation.event?{id:scope+':'+presentation.event.id,points:presentation.event.points}:null}/></>;
 }
 const ui = (state:CribbageState, props:Partial<Parameters<typeof Scene>[0]>={}) =>
   <CanonicalAnnouncementProvider dealerGameId="g"><Scene state={state} {...props}/></CanonicalAnnouncementProvider>;
-beforeEach(()=>{vi.useFakeTimers();audio.play.mockReset();vi.spyOn(console,'log').mockImplementation(()=>{});});
+beforeEach(()=>{vi.useFakeTimers();audio.play.mockReset();audio.go.mockReset();vi.spyOn(console,'log').mockImplementation(()=>{});});
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();});
 it.each(['self','opponent'] as const)('waits for the %s card handoff before publishing its callout and clicks', async mode=>{
   const view=render(ui(base,{mode})); view.rerender(ui(award(2),{mode}));
@@ -79,4 +80,31 @@ it('rebases the first offline recovery receipt silently, then admits the next li
   act(()=>window.dispatchEvent(new Event('offline')));
   hook.rerender({state:award(2)});expect(hook.result.current.event).toBeNull();expect(hook.result.current.pending).toBe(false);
   hook.rerender({state:award(1,'pegging','fresh-go')});expect(hook.result.current.event?.id).toBe('fresh-go');
+});
+
+it('sounds a Go declaration once without a point award, including its reset-surviving latch',()=>{
+  const view=render(ui(base));
+  const go={...base,pegging:{...base.pegging,eventSequence:2,goCalledBy:['p2']}} as CribbageState;
+  view.rerender(ui(go));
+  expect(audio.go).toHaveBeenCalledOnce();expect(audio.play).not.toHaveBeenCalled();
+  expect(go.playerStates).toEqual(base.playerStates);
+  view.rerender(ui({...go,pegging:{...go.pegging,goCalledBy:[],pendingGoBubblePlayerIds:['p2']}}));
+  expect(audio.go).toHaveBeenCalledOnce();expect(audio.play).not.toHaveBeenCalled();
+  view.rerender(ui({...base,pegging:{...base.pegging,eventSequence:3,goCalledBy:[]}}));
+  view.rerender(ui({...go,pegging:{...go.pegging,eventSequence:4}}));
+  expect(audio.go).toHaveBeenCalledTimes(2);
+  expect(audio.go.mock.calls[1][0]).not.toBe(audio.go.mock.calls[0][0]);
+});
+
+it('waits for the triggering card before sounding an automatic Go and rebases recovery silently',()=>{
+  const hook=renderHook(({state})=>useCribbagePeggingPresentation({scope:'hand',state,active:true,admitted:true}),{initialProps:{state:base}});
+  const go={...base,pegging:{playedCards:[{playerId:'p1',card}],eventSequence:2,goCalledBy:['p2']}} as CribbageState;
+  hook.rerender({state:go});expect(hook.result.current.go).toBeNull();
+  act(()=>hook.result.current.landed('old-hand',card));expect(hook.result.current.go).toBeNull();
+  act(()=>hook.result.current.landed('hand',card));expect(hook.result.current.go?.playerIds).toEqual(['p2']);
+  act(()=>window.dispatchEvent(new Event('offline')));expect(hook.result.current.go).toBeNull();
+  hook.rerender({state:{...go,pegging:{...go.pegging,eventSequence:3}}});expect(hook.result.current.go).toBeNull();
+  const point={...go,lastEvent:{id:'run-end',type:'go_point',playerId:'p1',points:1,label:'Go',createdAt:''}} as CribbageState;
+  hook.rerender({state:point});expect(hook.result.current.event?.points).toBe(1);
+  expect(hook.result.current.go).toBeNull();
 });

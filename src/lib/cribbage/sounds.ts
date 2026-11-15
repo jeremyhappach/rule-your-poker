@@ -2,6 +2,33 @@ import {approvedSound, cribbagePointsCue} from '@/lib/audio/approvedSounds';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {isSoundSurfaceVisible} from '@/lib/audio/presentationSound';
 import {run21FailureCueAt, RUN21_FAILURE_CUE_MS} from '@/lib/run21/failureCue';
+import type {AudioCue} from '@/lib/audio/audioManager';
+
+/** A short falling tone identifies a declaration, never a scored point. */
+export const cribbageGoCue: AudioCue = {
+  durationMs: 200, policy: {priority: 45, group: 'cribbage-go', intervalMs: 0},
+  schedule(context, destination, track) {
+    const start = context.currentTime, end = start + .2;
+    const oscillator = track(context.createOscillator()), gain = track(context.createGain());
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(440, start);
+    oscillator.frequency.exponentialRampToValueAtTime(280, end);
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(.14, start + .012);
+    gain.gain.exponentialRampToValueAtTime(.0001, end - .005);
+    gain.gain.linearRampToValueAtTime(0, end);
+    oscillator.connect(gain); gain.connect(destination);
+    oscillator.start(start); oscillator.stop(end);
+    return true;
+  },
+};
+
+export function presentCribbageGo(identity: string, surface: Element | null) {
+  const {userId} = platformAudio.getSnapshot();
+  if (!userId) return;
+  platformAudio.present({userId, id: 'cribbage-go:' + identity,
+    cue: isSoundSurfaceVisible(surface) ? cribbageGoCue : undefined});
+}
 
 /** Includes the final sample's tail, even when audio is muted or not loaded. */
 export function cribbageScoreDurationMs(points: number) {

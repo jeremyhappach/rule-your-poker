@@ -1,8 +1,16 @@
-## Implemented — Cribbage pegging audio landing and final Last +1 — November 14, 2026 — preview held
+## Implemented — Cribbage pegging audio landing and final Last +1 — revised November 15, 2026 — preview held
 
 Jeremy approved this correction and added larger 357 Drop suits to the same
 pass, with a preview required before publishing. The local candidate and native
 browser evidence are documented in `CRIBBAGE_PEGGING_DROP_PREVIEW.md`.
+
+November 15 preview feedback: opponent +2 sounded well after landing; Go should
+have a unique sound and must not itself award a point. The trace showed a
+2,169.9 ms stale fixture-notice delay. The revised fixture retires its outgoing
+scope; production transport uses transition completion. Live Go declarations
+have a distinct falling tone, with no score mutation. Actual run-end +1 keeps
+its peg click and a Last card label. Larger 357 Drop suits remain unchanged;
+publication is still held for Jeremy's preview review.
 
 Jeremy's production smoke after `f4a472e66` confirms hand scoring is good,
 but the pegging point sound plays before the played card lands and Last +1
