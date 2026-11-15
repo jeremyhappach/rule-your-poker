@@ -1,4 +1,12 @@
-# Cribbage pegging / 357 Drop suits — November 15, 2026 — production approved
+# Cribbage pegging / 357 Drop suits — November 15, 2026 — production verified
+
+Vercel deployment `dpl_7qc2biLNeUgB2JdDG1xSDUQmcrv6` is READY for production
+commit `9415f9d77fda5a6a56ac207bedb42aabec06bce0`. Both holm357.com and
+ptown-poker.vercel.app serve that exact manifest and `assets/index-LTxFBpK6.js`.
+HTML, app bundle, styles and /auth return 200; the served bundle contains the
+Go cue and the Arcade stylesheet contains the larger suit rule. Main was
+fast-forwarded and pushed with the unchanged approved helper. Jeremy's
+production gameplay smoke remains pending.
 
 The approved pegging correction waits for card landing and canonical notice
 admission, including Last +1 before counting. 357 Drop's suits are 40% larger

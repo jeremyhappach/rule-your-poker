@@ -1,4 +1,8 @@
-## Approved publication — Cribbage pegging audio landing and final Last +1 — November 15, 2026
+## Pending production smoke — Cribbage pegging audio landing and final Last +1 — November 15, 2026
+
+Published `9415f9d77` through the approved main push helper. Vercel production
+deployment `dpl_7qc2biLNeUgB2JdDG1xSDUQmcrv6` is READY; both production
+origins serve the exact SHA and approved assets. Owner gameplay smoke remains.
 
 Jeremy accepted the revised preview, including the additional opponent
 trip-7-to-next-deal sequence, and explicitly approved production. This lifts

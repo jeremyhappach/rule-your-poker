@@ -2,7 +2,8 @@
 
 Jeremy approved the diagnosed pegging correction, added more prominent 357 Drop
 suits to this pass, and explicitly requested a preview before publication.
-Production remains on the accepted hand-scoring release `f4a472e66`.
+Production now serves `9415f9d77fda5a6a56ac207bedb42aabec06bce0`, including
+this approved follow-up to the accepted hand-scoring release `f4a472e66`.
 
 Latest disposition: Jeremy accepted both the revised preview and the additional
 opponent trips-to-next-hand demonstration, then approved production on
@@ -10,6 +11,14 @@ November 15. This approval supersedes the historical preview holds below.
 Approved candidate: `91e5d7dda0f7b5efc432b0c2f362cfa3f1569b06`; its production
 source is unchanged from the fully qualified `a981d9453` tree. Release tag:
 `cribbage-pegging-drop-suits-20261115`. No migration or infrastructure change.
+
+Publication receipt: Vercel production deployment
+`dpl_7qc2biLNeUgB2JdDG1xSDUQmcrv6` reached READY. Both production origins
+serve the exact release SHA and `assets/index-LTxFBpK6.js`; HTML, /auth,
+JavaScript and split stylesheets return 200. The Go cue and enlarged suit rule
+are present in the served assets. The ignored evidence file is
+`qualification.local/pegging-production-receipt.json`. This verifies delivery;
+Jeremy's production gameplay smoke is still pending.
 
 ## Changes
 

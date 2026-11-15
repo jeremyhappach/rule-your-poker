@@ -1,4 +1,9 @@
-# Cribbage pegging / 357 Drop suits — November 15, 2026 — preview accepted
+# Cribbage pegging / 357 Drop suits — November 15, 2026 — production verified
+
+Production serves `9415f9d77fda5a6a56ac207bedb42aabec06bce0` on holm357.com
+and ptown-poker.vercel.app. Vercel `dpl_7qc2biLNeUgB2JdDG1xSDUQmcrv6` is
+READY; both manifests and HTML select `assets/index-LTxFBpK6.js`, with the
+approved Go cue and suit styling present. Production gameplay smoke is pending.
 
 Jeremy accepted `91e5d7dda0f7b5efc432b0c2f362cfa3f1569b06`, including the
 opponent trip-7 six-click burst and canonical next deal, then approved
