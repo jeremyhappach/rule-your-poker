@@ -1,3 +1,13 @@
+# Cribbage pegging / 357 Drop suits — November 15, 2026 — preview accepted
+
+Jeremy accepted `91e5d7dda0f7b5efc432b0c2f362cfa3f1569b06`, including the
+opponent trip-7 six-click burst and canonical next deal, then approved
+production. This is preview acceptance; production smoke is still pending.
+Checkpoint: `cribbage-pegging-drop-suits-20261115`.
+The revised pegging callouts/audio, distinct no-point Go cue, final Last +1,
+and larger 357 Drop suits are covered by the existing local qualification in
+[the preview record](CRIBBAGE_PEGGING_DROP_PREVIEW.md).
+
 # Cribbage hand-scoring sequence — November 14, 2026 — owner smoke passed
 
 Jeremy confirmed "scoring is good" after publication of

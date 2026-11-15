@@ -1,4 +1,8 @@
-## Implemented — Cribbage pegging audio landing and final Last +1 — revised November 15, 2026 — preview held
+## Approved publication — Cribbage pegging audio landing and final Last +1 — November 15, 2026
+
+Jeremy accepted the revised preview, including the additional opponent
+trip-7-to-next-deal sequence, and explicitly approved production. This lifts
+the preview holds recorded below. Approved candidate: `91e5d7dda`.
 
 Jeremy approved this correction and added larger 357 Drop suits to the same
 pass, with a preview required before publishing. The local candidate and native

@@ -4,6 +4,13 @@ Jeremy approved the diagnosed pegging correction, added more prominent 357 Drop
 suits to this pass, and explicitly requested a preview before publication.
 Production remains on the accepted hand-scoring release `f4a472e66`.
 
+Latest disposition: Jeremy accepted both the revised preview and the additional
+opponent trips-to-next-hand demonstration, then approved production on
+November 15. This approval supersedes the historical preview holds below.
+Approved candidate: `91e5d7dda0f7b5efc432b0c2f362cfa3f1569b06`; its production
+source is unchanged from the fully qualified `a981d9453` tree. Release tag:
+`cribbage-pegging-drop-suits-20261115`. No migration or infrastructure change.
+
 ## Changes
 
 Cribbage admits each accepted scoring event once under its game/dealer/round/hand
