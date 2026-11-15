@@ -1,3 +1,20 @@
+# 357 Drop Natty scoring — November 15, 2026 — qualified candidate
+
+New runs freeze 357-drop/7 and choose the highest final score from printed-card
+natural and wild-assisted interpretations. Jeremy clarified that the screenshot
+must select its queen-high natural flush: 1,320 + 264 = 1,584, over the wild
+ace-high flush's 1,350. The matrix, other multipliers and UI layout are unchanged.
+Existing runs/results remain frozen; /7 shares /6's high-score history.
+
+22,429 independent scoring comparisons, 29 fixed fixtures, eight local/hosted
+rollback proof groups, independent-connection races, five focused client checks
+and actual browser → service → SQL → Natty rendering pass. Full build passes
+TypeScript, 4,258 app tests, 241 harness tests, 46 release-tooling checks, Vite
+and the unchanged 90 MB size gate. Publication and installed proof/activation
+are the remaining release steps. Production phone
+smoke remains Jeremy's. See [evidence and acceptance](DROP357_NATTY.md).
+Checkpoint: drop357-natty-20261115.
+
 # Cribbage pegging / 357 Drop suits — November 15, 2026 — production verified
 
 Vercel deployment `dpl_7qc2biLNeUgB2JdDG1xSDUQmcrv6` is READY for production

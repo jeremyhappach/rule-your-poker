@@ -1,4 +1,14 @@
-# 357 Drop — P-Town Original
+# Current natural scoring: 357-drop/7
+
+Choose the highest final score among printed-card natural hands and wild-assisted
+hands. Apply Natty only to a candidate formed from actual printed ranks and suits,
+including a wild-eligible rank used naturally. Score ties use the existing poker
+vector, then prefer natural. Base points and other multipliers are unchanged.
+A queen-high natural flush pays 1,584 and beats a wild ace-high flush at 1,350.
+Existing high-score history stays on the same leaderboard; /1–/6 runs stay frozen.
+See [correction and qualification](DROP357_NATTY.md).
+
+# Original 357 Drop rules (historical /1)
 Build as a solo Arcade game. Reuse the shared Arcade tile, Rules dialog, start/leaderboard, gameplay sound toggle, and top-right Abandon affordance.
 
 ## Play

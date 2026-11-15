@@ -1,5 +1,5 @@
 export default function Drop357Rules({version}:{version?:string}){
- const v6=version==='357-drop/6',partial=v6||version==='357-drop/4'||version==='357-drop/5',carry=version==='357-drop/3';
+ const v7=version==='357-drop/7',v6=v7||version==='357-drop/6',partial=v6||version==='357-drop/4'||version==='357-drop/5',carry=version==='357-drop/3';
  return <div className="space-y-3">
   <h3>How to play</h3>
   <p>Place the face-up card into an open {partial||carry?'new-card slot':'row'}, or use one of your {carry?'five':'three'} passes per round to skip it. Placements are permanent.</p>
@@ -14,7 +14,7 @@ export default function Drop357Rules({version}:{version?:string}){
    <tr><td>3s</td><td>A pair or three of a kind. Straights and flushes do not score.</td></tr>
    <tr><td>5s / 7s</td><td>Two pair or better: trips, straight, flush, full house, four of a kind, straight flush, royal flush, five of a kind.</td></tr>
   </tbody></table>
-  <p>Higher poker hands earn more base points. Ranks and kickers select the strongest hand. A scoring hand made without wilds earns a <strong>20% natural bonus</strong>; an unused wild outside the best five does not remove it. {v6||version==='357-drop/5'?'Score in all three rows to earn a 500-point ALL FILLED bonus.':'Score in all three rows to earn a 200-point ALL FILLED bonus.'} Finish early for a time bonus that grows with the time left. Timeout earns no time bonus.</p>
+  <p>Higher poker hands earn more base points. {v7?'Each row chooses the highest final score, including its natural bonus. Poker rank breaks score ties. A wild-eligible card can play as its printed rank and suit: a scoring hand formed entirely from printed identities earns a':'Ranks and kickers select the strongest hand. A scoring hand made without wilds earns a'} <strong>20% natural bonus</strong>; an unused wild outside the best five does not remove it. {v7&&'A natural queen-high flush scores 1,584, beating a wild-assisted ace-high flush at 1,350. '} {v6||version==='357-drop/5'?'Score in all three rows to earn a 500-point ALL FILLED bonus.':'Score in all three rows to earn a 200-point ALL FILLED bonus.'} Finish early for a time bonus that grows with the time left. Timeout earns no time bonus.</p>
   {v6&&<><h3>3s-row base points</h3><table><thead><tr><th>Rank</th><th>Pair</th><th>Trips</th></tr></thead><tbody>{[['2',80,800],['4',100,880],['5',120,970],['6',145,1070],['7',175,1170],['8',210,1290],['9',250,1420],['10',300,1560],['J',360,1720],['Q',430,1880],['K',510,2050],['A',620,2240]].map(row=><tr key={row[0]}>{row.map((x,i)=><td key={i}>{x}</td>)}</tr>)}</tbody></table><p>A pair adds twice the kicker rank to its base. Aces use rank 15. Apply the 20% natural bonus once and round to the nearest point. Every trips hand scores above every pair.</p><p>Natural pair of 7s with an ace: 246. Natural pair of aces with a 7: 761. Natural trip 7s: 1,404; kings: 2,460; aces: 2,688. Wild-assisted trip aces: 2,240.</p></>}
   <h3>Examples</h3>
   <table><thead><tr><th>Compare</th><th>Why</th></tr></thead><tbody>
