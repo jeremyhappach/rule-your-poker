@@ -14,6 +14,7 @@ import {publishCribbageScoringNotice,cribbageScoringScope} from '@/lib/cribbage/
 import type {CribbageCard,CribbageState} from '@/lib/cribbageTypes';
 import {platformAudio,LAB_USER} from '../sound-lab/labAudio';
 import {preloadApprovedSounds} from '@/lib/audio/approvedSounds';
+import {TripSequence} from './TripSequence';
 import '@/index.css';
 platformAudio.install();platformAudio.setUser(LAB_USER);
 const evidence=(window as any).peggingEvidence={landedAt:null,transitionAt:null,cues:[],countingAt:null,scores:null};
@@ -21,8 +22,12 @@ document.addEventListener('transitionend',event=>{if((event.target as Element).c
 const present=platformAudio.present.bind(platformAudio);
 platformAudio.present=(event,...args)=>{
  if(!event.id.startsWith('cribbage-score:')&&!event.id.startsWith('cribbage-go:'))return present(event,...args);
- const record={id:event.id,at:performance.now(),scheduledAt:null as number|null,duration:event.cue?.durationMs,title:document.querySelector('[data-canonical-announcement-content]')?.textContent};evidence.cues.push(record);
- const cue=event.cue;return present({...event,cue:cue?{...cue,schedule(...parameters){record.scheduledAt=performance.now();return cue.schedule(...parameters);}}:undefined},...args);
+ const record={id:event.id,at:performance.now(),scheduledAt:null as number|null,duration:event.cue?.durationMs,title:document.querySelector('[data-canonical-announcement-content]')?.textContent,
+  hand:document.querySelector('[data-current-hand]')?.getAttribute('data-current-hand'),highlighted:[...document.querySelectorAll('[data-card-highlighted="true"]')].map(el=>el.getAttribute('data-card-id')),starts:[] as {at:number;duration:number}[]};evidence.cues.push(record);
+ const cue=event.cue;return present({...event,cue:cue?{...cue,schedule(context,destination,track){record.scheduledAt=performance.now();return cue.schedule(context,destination,node=>{
+  if(node instanceof AudioBufferSourceNode){const start=node.start.bind(node);node.start=(at=0,...rest)=>{record.starts.push({at:performance.now()+Math.max(0,at-context.currentTime)*1000,duration:(node.buffer?.duration??0)*1000});return start(at,...rest);};}
+  return track(node);
+ });}}:undefined},...args);
 };
 const players=[{id:'p1',user_id:LAB_USER,position:0,profiles:{username:'You'}},{id:'p2',user_id:'u2',position:1,profiles:{username:'Opponent'}}];
 function Pegging({id,label,points,mode}:{id:number;label:string;points:number;mode:'self'|'opponent'}){
@@ -64,7 +69,7 @@ function DropPreview(){
  },[]);
  return <SoloDrop357 runId="suit-preview" userId={LAB_USER} transport={transport}/>;
 }
-function App(){const [tab,setTab]=useState('drop'),[before,setBefore]=useState(false),[ready,setReady]=useState(false),[scenario,setScenario]=useState({id:0,label:'Pair',points:2,mode:'self' as 'self'|'opponent'});
+function App(){const [tab,setTab]=useState(new URLSearchParams(location.search).has('demo')?'crib':'drop'),[before,setBefore]=useState(false),[ready,setReady]=useState(false),[scenario,setScenario]=useState({id:0,label:'Pair',points:2,mode:'self' as 'self'|'opponent'});
  useEffect(()=>{void preloadApprovedSounds().then(()=>setReady(true));return platformAudio.acquireGameplay();},[]);
  function run(label:string,points:number,mode:'self'|'opponent'='self'){evidence.landedAt=null;evidence.transitionAt=null;evidence.cues=[];evidence.countingAt=null;evidence.scores=null;platformAudio.setPreference(LAB_USER,true);platformAudio.unlock(true);setScenario(s=>({id:s.id+1,label,points,mode}));}
  return <div className={before?'preview-before':''} data-ready={ready} style={{height:'100%',background:'#101720',color:'white',display:'flex',flexDirection:'column'}}>
@@ -73,7 +78,8 @@ function App(){const [tab,setTab]=useState('drop'),[before,setBefore]=useState(f
    {tab==='drop'&&<button aria-pressed={!before} onClick={()=>setBefore(v=>!v)}>{before?'Show larger suits':'Show original suits'}</button>}</nav>
   {tab==='drop'?<div style={{position:'relative',flex:1,minHeight:0}}><DropPreview/></div>:<>
    <div className="preview-controls"><button disabled={!ready} onClick={()=>run('Pair',2)}>Pair +2</button><button disabled={!ready} onClick={()=>run('Pair',2,'opponent')}>Opponent +2</button><button disabled={!ready} onClick={()=>run('Last',1)}>Last +1</button><button disabled={!ready} onClick={()=>run('Go',0,'opponent')}>Go</button><button disabled={!ready} onClick={()=>run('31',2)}>31 +2</button></div>
-   <CanonicalAnnouncementProvider dealerGameId="preview">{scenario.id>0?<Pegging key={scenario.id} {...scenario}/>:<p style={{padding:24}}>Choose a scoring event to hear its timing.</p>}</CanonicalAnnouncementProvider></>}
+   <div className="preview-controls"><button disabled={!ready} onClick={()=>run('Trips sequence',6,'opponent')}>Opponent trips → next hand</button></div>
+   <CanonicalAnnouncementProvider dealerGameId="preview">{scenario.id>0?scenario.label==='Trips sequence'?<TripSequence key={scenario.id} id={scenario.id}/>:<Pegging key={scenario.id} {...scenario}/>:<p style={{padding:24}}>Choose a scoring event to hear its timing.</p>}</CanonicalAnnouncementProvider></>}
  </div>;
 }
 createRoot(document.getElementById('root')!).render(<BrowserRouter><App/></BrowserRouter>);

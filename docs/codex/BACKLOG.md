@@ -11,6 +11,10 @@ scope; production transport uses transition completion. Live Go declarations
 have a distinct falling tone, with no score mutation. Actual run-end +1 keeps
 its peg click and a Last card label. Larger 357 Drop suits remain unchanged;
 publication is still held for Jeremy's preview review.
+Jeremy subsequently approved production, then immediately held it to see
+opponent trips sequence into the next hand. The additional isolated preview
+and native six-click/early-successor/canonical-deal proof pass; publication is
+still held pending that review. No additional product changes were needed.
 
 Jeremy's production smoke after `f4a472e66` confirms hand scoring is good,
 but the pegging point sound plays before the played card lands and Last +1

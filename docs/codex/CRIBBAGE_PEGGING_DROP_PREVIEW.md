@@ -83,3 +83,28 @@ Jeremy's revised-preview acceptance and production smoke remain outstanding.
 Original preview checkpoint: `cribbage-pegging-drop-suits-preview-20261114`.
 Revised local checkpoint: `cribbage-pegging-drop-suits-preview2-20261115`.
 No production push or deployment is authorized until Jeremy reviews the preview.
+
+## Opponent trips through the next deal — November 15
+
+After approving production, Jeremy immediately held publication to see opponent
+trips continue into the next hand. No integration or push had started.
+
+Open `http://127.0.0.1:4346/?demo=opponent-trips` and select **Opponent trips →
+next hand**. This isolated scenario starts at the opponent's final crib count:
+7♣, 7♦, 7♥, K♠ with Q♥ cut. It uses the production counting component, canonical
+announcement rail and point audio. An early successor frame arrives during the
+six-point burst, while the original counting clock and hand remain presented.
+The completion callback then mounts the production Cribbage deal orchestrator,
+card transport and deal runtime: six cards arrive for each player. The score
+stays at 10/26 through the transition. Fixture state does not write live games.
+
+Native Edge verification observes all six actual Web Audio sample starts and
+every rendered frame through their tails: the old hand, three highlighted 7s
+and matching opponent callout remain present. The burst finished at 9,494.6 ms;
+the old hand completed at 16,281.1 ms and next-deal dispatch began at 16,291.0 ms.
+All twelve cards settled, with no extra scoring cue. These timestamps are from
+the local verification run. Existing parent hand-retention and scoring tests
+also pass. The production implementation is unchanged by this preview addition.
+
+Publication remains held for this additional preview review. Evidence and both
+frames are in ignored `qualification.local/scoring-polish/`.

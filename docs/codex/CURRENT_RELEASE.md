@@ -12,6 +12,11 @@ typecheck, 4,255 application tests, 241 harness tests, 46 release-tooling tests,
 Vite and the unchanged 90 MB size gate. Point audio schedules 6.1–7.9 ms after
 CSS landing. The prior four-viewport suit checks remain applicable.
 See [scope, verification and preview](CRIBBAGE_PEGGING_DROP_PREVIEW.md).
+Jeremy then approved production but immediately held publication for an
+opponent trips-to-next-hand demonstration. The local preview now shows the
+final trip-7 crib count, all six clicks, retained score and actual canonical
+twelve-card next deal, including early successor receipt. Native checks pass;
+no integration or production push has started.
 
 # Cribbage scoring sequence — November 14, 2026 — hand scoring smoke passed
 
