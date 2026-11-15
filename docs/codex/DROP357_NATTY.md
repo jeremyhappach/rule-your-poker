@@ -34,8 +34,10 @@ receipt or score is recalculated. /7 shares /6's existing leaderboard group,
 personal bests, rankings and both time windows, as explicitly requested.
 
 Migration: 20261115181145_drop357_natural_identity.sql. It installs /7 closed.
-After the matching client is READY, apply it, rerun the installed rollback proof,
-then execute supabase/drop357/activate-v7.sql. Only new admissions change.
+The source migration above was applied through the hosted migration tool as
+`20261115184923_drop357_natural_identity`; the tool assigned its installation
+timestamp. After matching client publication, the installed rollback proof passed
+and supabase/drop357/activate-v7.sql enabled /7. Only new admissions change.
 Rollback is private.drop357_select_ruleset('357-drop/6'::text); retain /7
 definitions so existing /7 runs can finish and their history remains readable.
 
@@ -71,6 +73,22 @@ Commands:
     node dev/drop357/natty-browser.mjs <disposable-drop357-db>
     npm run build
 
-Release checkpoint: drop357-natty-20261115. Jeremy's remaining acceptance is a
+## Production receipt
+
+Commit `2f39f556a3621d765f72ce599bbe53e28b5648f4`, checkpoint
+`drop357-natty-20261115`, is published by READY deployment
+`dpl_4oah2QK8T1sbp3PqXARbBUEAeXTB`. Both production domains return the matching
+manifest and `assets/index-B5-_G6l-.js`; root, bundle and auth return HTTP 200.
+The client publication timestamp is 2026-11-15 18:34:46 UTC. Database installation,
+the full installed proof and /7 activation completed after Jeremy's continuation.
+
+Direct production verification: the exact row selects indices [0,2,3,5,6] with
+queen-high vector [5,12,10,7,6,2], base 1,320, Natty 264 and total 1,584. Replacing
+7♠ with 7♥ selects the wild ace-high flush at 1,350, bonus zero, natural false.
+The retained /6 scorer still returns 1,350. Only /7 admission is enabled, and
+its score group remains /6. The installed proof confirmed unchanged historical
+runs, results, receipts, both leaderboard windows and personal bests.
+
+Jeremy's remaining acceptance is a
 fresh production run: natural eligible cards award Natty, required substitutions
 do not, displayed totals reconcile, and existing high scores remain visible.

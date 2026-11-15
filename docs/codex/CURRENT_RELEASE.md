@@ -1,4 +1,11 @@
-# 357 Drop Natty scoring — November 15, 2026 — qualified candidate
+# 357 Drop Natty scoring — November 15, 2026 — production verified
+
+Production commit `2f39f556a3621d765f72ce599bbe53e28b5648f4` is live:
+Vercel `dpl_4oah2QK8T1sbp3PqXARbBUEAeXTB` is READY, and both holm357.com
+and ptown-poker.vercel.app serve that manifest and `assets/index-B5-_G6l-.js`.
+Hosted migration `20261115184923` is installed; the installed rollback proof
+passed and /7 is the sole enabled ruleset. Production directly verifies the
+1,584-point Natty and 1,350-point substituted flush. High-score history is intact.
 
 New runs freeze 357-drop/7 and choose the highest final score from printed-card
 natural and wild-assisted interpretations. Jeremy clarified that the screenshot
@@ -10,9 +17,8 @@ Existing runs/results remain frozen; /7 shares /6's high-score history.
 rollback proof groups, independent-connection races, five focused client checks
 and actual browser → service → SQL → Natty rendering pass. Full build passes
 TypeScript, 4,258 app tests, 241 harness tests, 46 release-tooling checks, Vite
-and the unchanged 90 MB size gate. Publication and installed proof/activation
-are the remaining release steps. Production phone
-smoke remains Jeremy's. See [evidence and acceptance](DROP357_NATTY.md).
+and the unchanged 90 MB size gate. Production phone smoke remains Jeremy's.
+See [evidence and acceptance](DROP357_NATTY.md).
 Checkpoint: drop357-natty-20261115.
 
 # Cribbage pegging / 357 Drop suits — November 15, 2026 — production verified
