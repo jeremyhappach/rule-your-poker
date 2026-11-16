@@ -1,59 +1,20 @@
-# Five Alive — isolated production preflight passed; installation closed
+# Five Alive — source deployed; gameplay activation held
 
-Authenticated smoke passed in a fresh isolated Edge context after programmatic
-verification of the exact production origin, manifest and backend. The rehearsed
-1,021-answer database package is installed with admission closed; post-install
-verification passed. The previous browser blocker is resolved. Publication,
-activation and Five Alive production gameplay smoke are next. All completed
-standard checks remain valid and were not repeated. See FIVE_ALIVE_QUALIFICATION.md.
+Commit `4fb956ac58a258e074a3938c66c659410e17022c` is READY in production on
+both holm357.com and ptown-poker.vercel.app. The fresh isolated-browser origin,
+real test-account login and authenticated baseline smoke passed. The deployed
+catalog shows all 16 tiles, including Five Alive, with no page errors.
 
-# Five Alive release authorized — November 16, 2026 — browser smoke blocked
-
-The worktree now includes current main `bff5bc7dd`; all three authorized conflicts
-are resolved. Current main's unrelated documentation is retained in full.
-The combined lobby guards and simultaneous-player counts pass 35 focused checks;
-three vocabulary tests verify the unchanged 1,021-answer bank. Five Alive is
-registered locally in the Arcade catalog and Async rules. Production is unchanged.
-
-All five catalog/layout failures are fixed with strict ordering/mode assertions.
-Full standard build passes: typecheck, 4,282 app tests, 241 harness tests, 46
-release-tooling tests, Vite and the unchanged size gate. All 46 focused fixture
-tests pass. The complete closed database installation passed a production
-rollback rehearsal: 17 qualified definitions, 1,021 answers and private access
-checks; no durable production changes occurred.
-
-Release stopped before installation or publication because Computer Use could
-not determine the current Chrome URL confidently enough to enforce policy, and
-disabled browser control for this turn. Authenticated production-game smoke is
-therefore blocked. No production migration, activation, commit/tag/push or
-deployment occurred. Exact evidence and resume point: FIVE_ALIVE_QUALIFICATION.md.
-
-The versioned runtime now contains 1,021 qualified answers in `esdb-five-alive/3`:
-the preserved 753 plus 268 individually reviewed and qualified additions.
-All existing words and tiers remain unchanged. The loader retains v1/v2 for
-frozen games; new configuration selects v3. The guarded
-follow-up migration is installed only on isolated project tyuxxkalhqbqkbvvkcfx,
-with all admission still closed. Two full allocation cycles and 682 replays pass,
-including cycle boundaries inside a three-word game. The 268 words passed 1,608
-solve-position checks; all three vocabulary integrity/preservation tests pass.
-A fresh cycle supports 340 complete three-word games before reuse in game 341.
-Jeremy approved launching these 1,021 answers. The roughly 10,000-answer target
-is now a post-launch growth goal, not a release blocker; the 8,979-word growth
-gap is tracked in BACKLOG.md. Resume with a policy-verifiable authenticated browser
-path, then the checked production installation, release, activation and smoke.
-Version-3 qualification is complete. Passed Auth, Realtime, financial, recovery,
-Arcade-isolation and full-App browser proofs were preserved without rerunning.
-Normal deployment and physical-device release smoke remain unperformed; browser
-qualification used the full App with real hosted services through isolated test
-transport. The immediate last-channel SDK close race is documented separately
-from the passing full-App and completed-close rejoin paths.
-No durable production data, balances, schema or deployment changed. The production
-installation rehearsal rolled back completely. Isolated admission,
-test accounts and recovery are disabled, the temporary cron job is unscheduled,
-and the RPC broker is closed. All evidence and fixtures are preserved.
-The production game stays withheld until the remaining technical release gates pass.
-Details and exact proof limits:
-[FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+Release run [43973296114](https://github.com/jeremyhappach/rule-your-poker/actions/runs/43973296114)
+passed qualification but timed out waiting for production before Vercel finished.
+The release signal was not published. Per the stop-on-gate-failure instruction,
+activation and full Five Alive gameplay smoke did not run. All Five Alive Arcade
+rulesets and both Async flags remain disabled; zero answers have been allocated.
+The 1,021-answer database installation is applied and verified, with balances and
+unrelated games unchanged. Full evidence and the first open gate are recorded in
+FIVE_ALIVE_QUALIFICATION.md. The next step is the failed release-signal job, then
+guarded activation and gameplay smoke. The roughly 10,000-word target remains
+post-launch growth work; 8,979 additional qualified answers are still needed.
 
 # 357 Drop Natty scoring — November 15, 2026 — production verified
 

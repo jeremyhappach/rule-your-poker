@@ -1,5 +1,65 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 16 final outcome — source deployed; release signal gate failed
+
+**Stopped before gameplay activation.** The fresh isolated browser-origin and
+authenticated baseline smoke passed. Candidate
+`4fb956ac58a258e074a3938c66c659410e17022c` was tagged, fast-forwarded and pushed
+through the approved helper. Vercel `dpl_HXXRqVZi56A8DoAo3meZV7AuScXk` is
+**READY / production**. Both `https://ptown-poker.vercel.app` and
+`https://holm357.com` now serve that exact commit and `assets/index-D0tiQaYo.js`.
+A fresh navigation in the isolated test-account context verified the production
+URL again, 16 Arcade tiles including Five Alive, and zero page errors. No personal
+Chrome session was used. This verifies the deployed catalog, not a completed
+Five Alive production game.
+
+**Exact blocker:** GitHub release run
+[43973296114](https://github.com/jeremyhappach/rule-your-poker/actions/runs/43973296114),
+job `133670744240`, passed qualification but failed
+`Verify production or record an intentional documentation-only skip`. At
+`2026-11-16T23:00:14.638Z`, `scripts/deployment/release-decision.mjs:29` exhausted
+its production wait and threw:
+
+> Production never served the expected commit; no release signal published
+
+The last sampled live SHA was `2f39f556a3621d765f72ce599bbe53e28b5648f4`.
+Vercel completed its approximately 15-minute build afterward. The release-signal
+publication step was skipped. The deployed candidate is now verifiable, but
+the required workflow is still failed; it was not rerun after this new gate
+failure, following Jeremy's stop instruction.
+
+The closed installation remains applied as migration
+`20261116224512_five_alive_qualified_v3_closed_release`. Final database readback:
+1,021 answers, all three Arcade rulesets disabled, `async_enabled=false`,
+`async_real_qualified=false`, and **zero allocations**. Production balances and
+unrelated games were not changed. The catalog code is visible; gameplay remains
+closed. No full Five Alive production gameplay smoke or release-readiness claim.
+
+Evidence in `qualification.local/five-alive/hosted/`: production-auth-preflight-20261116.json/PNG,
+production-installation-20261116.json, production-release-closed-20261116.json,
+production-catalog-closed-20261116.png and release-signal-failure-20261116.json.
+The prepared production-activation-20261116.sql has **not** been executed.
+
+**First open gate on resume:** rerun the failed release-signal job against this
+already-live SHA and verify successful publication; then execute the scoped
+activation and full authenticated Five Alive production-game smoke. Preserve
+the completed qualification and standard checks. The 8,979-word expansion gap
+remains post-launch work, with only individually qualified answers admitted.
+
+## November 16 publication in progress
+
+Qualified candidate `4fb956ac58a258e074a3938c66c659410e17022c` was committed,
+tagged `five-alive-qualified-release-20261116`, fast-forwarded into clean main
+and pushed with the unchanged approved helper. Vercel production deployment
+`dpl_HXXRqVZi56A8DoAo3meZV7AuScXk` is building. GitHub run `43973296114` passed
+its qualification step and is awaiting the exact production SHA before publishing
+the release signal. Admission remains closed pending READY and live verification.
+The unrelated Cribbage snapshot remains unstaged in the Five Alive worktree.
+The ESDB copyright is preserved byte-for-byte under its existing `-text` policy;
+its original CRLF/whitespace is excluded from whitespace lint. One trailing blank
+line in the qualification runner was removed; product code and tested SQL bytes
+were unchanged. All other staged whitespace checks passed.
+
 ## November 16 isolated production smoke passed; closed installation applied
 
 A fresh headless Edge process and new Playwright context verified both `page.url()`
