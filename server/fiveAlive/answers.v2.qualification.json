@@ -1,0 +1,3847 @@
+{
+  "at": "2026-11-15T20:59:32.738Z",
+  "runtimeVersionUnchanged": "esdb-five-alive/1",
+  "activeAnswers": 498,
+  "reviewedAdditions": 255,
+  "combined": 753,
+  "remainingTo10000": 9247,
+  "solvedCases": 1530,
+  "reviewSha256": "241cc52875793a67c2ed2bcf169764dadf99e7c309b2c278d1bad7de074b768b",
+  "candidateSha256": "5ee93d5a1093c90f579b9ae0c5cf1c675e8150314f14683ede07262778f8b231",
+  "qualification": "Source/editorial, shared reducers and isolated immutable pool allocation/replay passed. Inactive candidate; no version-2 runtime loader/config or production admission.",
+  "perWord": [
+    {
+      "word": "ABOUT",
+      "difficulty": 1,
+      "ordinaryMeaning": "concerning a subject",
+      "frequency": {
+        "written": 578,
+        "genres": 6,
+        "spoken": 12584
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ABOVE",
+      "difficulty": 1,
+      "ordinaryMeaning": "in a higher place",
+      "frequency": {
+        "written": 114,
+        "genres": 6,
+        "spoken": 114
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ACTOR",
+      "difficulty": 1,
+      "ordinaryMeaning": "person who performs a role",
+      "frequency": {
+        "written": 278,
+        "genres": 5,
+        "spoken": 35
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ADAPT",
+      "difficulty": 2,
+      "ordinaryMeaning": "adjust to new conditions",
+      "frequency": {
+        "written": 101,
+        "genres": 5,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ADEPT",
+      "difficulty": 3,
+      "ordinaryMeaning": "highly skilled",
+      "frequency": {
+        "written": 22,
+        "genres": 5,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ADMIT",
+      "difficulty": 2,
+      "ordinaryMeaning": "acknowledge or allow entry",
+      "frequency": {
+        "written": 474,
+        "genres": 6,
+        "spoken": 108
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ADOPT",
+      "difficulty": 2,
+      "ordinaryMeaning": "take up a practice",
+      "frequency": {
+        "written": 461,
+        "genres": 6,
+        "spoken": 19
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AGREE",
+      "difficulty": 1,
+      "ordinaryMeaning": "have the same opinion",
+      "frequency": {
+        "written": 975,
+        "genres": 6,
+        "spoken": 947
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AHEAD",
+      "difficulty": 1,
+      "ordinaryMeaning": "in front",
+      "frequency": {
+        "written": 249,
+        "genres": 6,
+        "spoken": 530
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ALIKE",
+      "difficulty": 2,
+      "ordinaryMeaning": "similar to one another",
+      "frequency": {
+        "written": 99,
+        "genres": 6,
+        "spoken": 24
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ALLEY",
+      "difficulty": 2,
+      "ordinaryMeaning": "narrow passage between buildings",
+      "frequency": {
+        "written": 58,
+        "genres": 4,
+        "spoken": 27
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ALLOT",
+      "difficulty": 3,
+      "ordinaryMeaning": "assign a portion",
+      "frequency": {
+        "written": 15,
+        "genres": 3,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ALLOW",
+      "difficulty": 1,
+      "ordinaryMeaning": "permit",
+      "frequency": {
+        "written": 1612,
+        "genres": 6,
+        "spoken": 139
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ANKLE",
+      "difficulty": 1,
+      "ordinaryMeaning": "joint above the foot",
+      "frequency": {
+        "written": 14,
+        "genres": 3,
+        "spoken": 18
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "APPLY",
+      "difficulty": 2,
+      "ordinaryMeaning": "put to use",
+      "frequency": {
+        "written": 717,
+        "genres": 6,
+        "spoken": 55
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ARENA",
+      "difficulty": 2,
+      "ordinaryMeaning": "venue for events",
+      "frequency": {
+        "written": 76,
+        "genres": 5,
+        "spoken": 15
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AUDIT",
+      "difficulty": 3,
+      "ordinaryMeaning": "formal examination of records",
+      "frequency": {
+        "written": 663,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AWARE",
+      "difficulty": 2,
+      "ordinaryMeaning": "knowing about something",
+      "frequency": {
+        "written": 276,
+        "genres": 6,
+        "spoken": 196
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BASIS",
+      "difficulty": 2,
+      "ordinaryMeaning": "foundation of an idea",
+      "frequency": {
+        "written": 583,
+        "genres": 6,
+        "spoken": 192
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BEAST",
+      "difficulty": 2,
+      "ordinaryMeaning": "large animal",
+      "frequency": {
+        "written": 61,
+        "genres": 4,
+        "spoken": 10
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BELLY",
+      "difficulty": 1,
+      "ordinaryMeaning": "stomach area",
+      "frequency": {
+        "written": 25,
+        "genres": 5,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BINGO",
+      "difficulty": 1,
+      "ordinaryMeaning": "number matching game",
+      "frequency": {
+        "written": 11,
+        "genres": 2,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BLADE",
+      "difficulty": 2,
+      "ordinaryMeaning": "flat cutting part of a tool",
+      "frequency": {
+        "written": 27,
+        "genres": 5,
+        "spoken": 26
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BLAND",
+      "difficulty": 2,
+      "ordinaryMeaning": "mild in flavor",
+      "frequency": {
+        "written": 34,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BLINK",
+      "difficulty": 1,
+      "ordinaryMeaning": "close and open the eyes",
+      "frequency": {
+        "written": 31,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BOOST",
+      "difficulty": 2,
+      "ordinaryMeaning": "increase or lift",
+      "frequency": {
+        "written": 131,
+        "genres": 4,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BRAKE",
+      "difficulty": 1,
+      "ordinaryMeaning": "device for slowing a vehicle",
+      "frequency": {
+        "written": 17,
+        "genres": 3,
+        "spoken": 38
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BRIEF",
+      "difficulty": 2,
+      "ordinaryMeaning": "short in duration",
+      "frequency": {
+        "written": 436,
+        "genres": 6,
+        "spoken": 19
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BUILD",
+      "difficulty": 1,
+      "ordinaryMeaning": "construct",
+      "frequency": {
+        "written": 1748,
+        "genres": 6,
+        "spoken": 242
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CABIN",
+      "difficulty": 1,
+      "ordinaryMeaning": "small house",
+      "frequency": {
+        "written": 61,
+        "genres": 4,
+        "spoken": 41
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CEASE",
+      "difficulty": 3,
+      "ordinaryMeaning": "stop",
+      "frequency": {
+        "written": 74,
+        "genres": 5,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHEEK",
+      "difficulty": 1,
+      "ordinaryMeaning": "side of the face",
+      "frequency": {
+        "written": 19,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHILL",
+      "difficulty": 1,
+      "ordinaryMeaning": "coolness",
+      "frequency": {
+        "written": 47,
+        "genres": 5,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CIVIL",
+      "difficulty": 3,
+      "ordinaryMeaning": "polite in manner",
+      "frequency": {
+        "written": 579,
+        "genres": 5,
+        "spoken": 156
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLAIM",
+      "difficulty": 2,
+      "ordinaryMeaning": "state that something is true",
+      "frequency": {
+        "written": 1562,
+        "genres": 6,
+        "spoken": 44
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLASS",
+      "difficulty": 1,
+      "ordinaryMeaning": "group of students",
+      "frequency": {
+        "written": 704,
+        "genres": 6,
+        "spoken": 433
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLICK",
+      "difficulty": 1,
+      "ordinaryMeaning": "short sharp sound",
+      "frequency": {
+        "written": 160,
+        "genres": 5,
+        "spoken": 20
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLOCK",
+      "difficulty": 1,
+      "ordinaryMeaning": "timekeeping device",
+      "frequency": {
+        "written": 98,
+        "genres": 5,
+        "spoken": 45
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLONE",
+      "difficulty": 2,
+      "ordinaryMeaning": "exact copy",
+      "frequency": {
+        "written": 97,
+        "genres": 2,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLOUT",
+      "difficulty": 3,
+      "ordinaryMeaning": "influence",
+      "frequency": {
+        "written": 14,
+        "genres": 2,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "COLOR",
+      "difficulty": 1,
+      "ordinaryMeaning": "visual quality such as blue",
+      "frequency": {
+        "written": 500,
+        "genres": 6,
+        "spoken": 179
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CRANK",
+      "difficulty": 2,
+      "ordinaryMeaning": "handle that turns a mechanism",
+      "frequency": {
+        "written": 17,
+        "genres": 3,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CRAWL",
+      "difficulty": 1,
+      "ordinaryMeaning": "move on hands and knees",
+      "frequency": {
+        "written": 23,
+        "genres": 4,
+        "spoken": 27
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CYCLE",
+      "difficulty": 2,
+      "ordinaryMeaning": "repeating sequence",
+      "frequency": {
+        "written": 349,
+        "genres": 5,
+        "spoken": 27
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DELAY",
+      "difficulty": 2,
+      "ordinaryMeaning": "make something happen later",
+      "frequency": {
+        "written": 207,
+        "genres": 4,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DEPOT",
+      "difficulty": 3,
+      "ordinaryMeaning": "transport or storage station",
+      "frequency": {
+        "written": 10,
+        "genres": 2,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DETER",
+      "difficulty": 3,
+      "ordinaryMeaning": "discourage an action",
+      "frequency": {
+        "written": 57,
+        "genres": 4,
+        "spoken": 14
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DINER",
+      "difficulty": 1,
+      "ordinaryMeaning": "small informal restaurant",
+      "frequency": {
+        "written": 26,
+        "genres": 3,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DITCH",
+      "difficulty": 2,
+      "ordinaryMeaning": "narrow channel in the ground",
+      "frequency": {
+        "written": 32,
+        "genres": 4,
+        "spoken": 10
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DRIVE",
+      "difficulty": 1,
+      "ordinaryMeaning": "operate a vehicle",
+      "frequency": {
+        "written": 905,
+        "genres": 6,
+        "spoken": 681
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ELBOW",
+      "difficulty": 1,
+      "ordinaryMeaning": "joint in the middle of the arm",
+      "frequency": {
+        "written": 22,
+        "genres": 2,
+        "spoken": 11
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ELECT",
+      "difficulty": 2,
+      "ordinaryMeaning": "choose by voting",
+      "frequency": {
+        "written": 199,
+        "genres": 6,
+        "spoken": 20
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "EXCEL",
+      "difficulty": 3,
+      "ordinaryMeaning": "do very well",
+      "frequency": {
+        "written": 23,
+        "genres": 4,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "EXIST",
+      "difficulty": 2,
+      "ordinaryMeaning": "be present or real",
+      "frequency": {
+        "written": 911,
+        "genres": 6,
+        "spoken": 39
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "EXTRA",
+      "difficulty": 1,
+      "ordinaryMeaning": "additional",
+      "frequency": {
+        "written": 241,
+        "genres": 6,
+        "spoken": 288
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FACET",
+      "difficulty": 3,
+      "ordinaryMeaning": "one aspect of something",
+      "frequency": {
+        "written": 18,
+        "genres": 4,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FAVOR",
+      "difficulty": 2,
+      "ordinaryMeaning": "helpful act",
+      "frequency": {
+        "written": 524,
+        "genres": 5,
+        "spoken": 129
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FIFTH",
+      "difficulty": 2,
+      "ordinaryMeaning": "position after fourth",
+      "frequency": {
+        "written": 131,
+        "genres": 6,
+        "spoken": 73
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FIFTY",
+      "difficulty": 1,
+      "ordinaryMeaning": "the number fifty",
+      "frequency": {
+        "written": 46,
+        "genres": 5,
+        "spoken": 692
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FLAKE",
+      "difficulty": 2,
+      "ordinaryMeaning": "small thin piece",
+      "frequency": {
+        "written": 17,
+        "genres": 4,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FLOAT",
+      "difficulty": 1,
+      "ordinaryMeaning": "stay on the surface of liquid",
+      "frequency": {
+        "written": 106,
+        "genres": 4,
+        "spoken": 25
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FLUTE",
+      "difficulty": 2,
+      "ordinaryMeaning": "wind instrument",
+      "frequency": {
+        "written": 26,
+        "genres": 4,
+        "spoken": 16
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FOCAL",
+      "difficulty": 3,
+      "ordinaryMeaning": "relating to a central point",
+      "frequency": {
+        "written": 25,
+        "genres": 5,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FUDGE",
+      "difficulty": 2,
+      "ordinaryMeaning": "soft confection",
+      "frequency": {
+        "written": 16,
+        "genres": 2,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FULLY",
+      "difficulty": 1,
+      "ordinaryMeaning": "completely",
+      "frequency": {
+        "written": 336,
+        "genres": 5,
+        "spoken": 37
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FUNNY",
+      "difficulty": 1,
+      "ordinaryMeaning": "amusing",
+      "frequency": {
+        "written": 170,
+        "genres": 3,
+        "spoken": 725
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GAUGE",
+      "difficulty": 3,
+      "ordinaryMeaning": "measuring instrument",
+      "frequency": {
+        "written": 28,
+        "genres": 4,
+        "spoken": 16
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GLOSS",
+      "difficulty": 3,
+      "ordinaryMeaning": "smooth shine",
+      "frequency": {
+        "written": 31,
+        "genres": 2,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GOOSE",
+      "difficulty": 1,
+      "ordinaryMeaning": "large water bird",
+      "frequency": {
+        "written": 10,
+        "genres": 4,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GRASP",
+      "difficulty": 2,
+      "ordinaryMeaning": "hold firmly",
+      "frequency": {
+        "written": 79,
+        "genres": 5,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GRILL",
+      "difficulty": 1,
+      "ordinaryMeaning": "cooking surface over heat",
+      "frequency": {
+        "written": 29,
+        "genres": 3,
+        "spoken": 52
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GRIND",
+      "difficulty": 2,
+      "ordinaryMeaning": "reduce to small particles",
+      "frequency": {
+        "written": 31,
+        "genres": 4,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HABIT",
+      "difficulty": 2,
+      "ordinaryMeaning": "regular practice",
+      "frequency": {
+        "written": 141,
+        "genres": 5,
+        "spoken": 72
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HEDGE",
+      "difficulty": 2,
+      "ordinaryMeaning": "row of closely planted shrubs",
+      "frequency": {
+        "written": 43,
+        "genres": 4,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HILLY",
+      "difficulty": 2,
+      "ordinaryMeaning": "having many hills",
+      "frequency": {
+        "written": 20,
+        "genres": 2,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HOBBY",
+      "difficulty": 1,
+      "ordinaryMeaning": "activity done for enjoyment",
+      "frequency": {
+        "written": 19,
+        "genres": 3,
+        "spoken": 140
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HOUND",
+      "difficulty": 2,
+      "ordinaryMeaning": "type of dog",
+      "frequency": {
+        "written": 30,
+        "genres": 3,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HUMOR",
+      "difficulty": 2,
+      "ordinaryMeaning": "quality of being amusing",
+      "frequency": {
+        "written": 152,
+        "genres": 3,
+        "spoken": 31
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HURRY",
+      "difficulty": 1,
+      "ordinaryMeaning": "move quickly",
+      "frequency": {
+        "written": 36,
+        "genres": 4,
+        "spoken": 34
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "INPUT",
+      "difficulty": 2,
+      "ordinaryMeaning": "information supplied to a system",
+      "frequency": {
+        "written": 148,
+        "genres": 4,
+        "spoken": 24
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "IRONY",
+      "difficulty": 3,
+      "ordinaryMeaning": "contrast between expectation and reality",
+      "frequency": {
+        "written": 116,
+        "genres": 5,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "JUICY",
+      "difficulty": 1,
+      "ordinaryMeaning": "containing much juice",
+      "frequency": {
+        "written": 21,
+        "genres": 2,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "KNACK",
+      "difficulty": 3,
+      "ordinaryMeaning": "a particular skill",
+      "frequency": {
+        "written": 13,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LABOR",
+      "difficulty": 2,
+      "ordinaryMeaning": "work",
+      "frequency": {
+        "written": 601,
+        "genres": 6,
+        "spoken": 87
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEASE",
+      "difficulty": 3,
+      "ordinaryMeaning": "agreement to rent something",
+      "frequency": {
+        "written": 32,
+        "genres": 4,
+        "spoken": 22
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEGAL",
+      "difficulty": 2,
+      "ordinaryMeaning": "permitted by law",
+      "frequency": {
+        "written": 1887,
+        "genres": 6,
+        "spoken": 134
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEVEL",
+      "difficulty": 1,
+      "ordinaryMeaning": "flat and even",
+      "frequency": {
+        "written": 1457,
+        "genres": 6,
+        "spoken": 331
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LINEN",
+      "difficulty": 2,
+      "ordinaryMeaning": "fabric made from flax",
+      "frequency": {
+        "written": 13,
+        "genres": 4,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LOBBY",
+      "difficulty": 2,
+      "ordinaryMeaning": "entrance hall",
+      "frequency": {
+        "written": 230,
+        "genres": 5,
+        "spoken": 23
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LOOSE",
+      "difficulty": 1,
+      "ordinaryMeaning": "not tightly fastened",
+      "frequency": {
+        "written": 96,
+        "genres": 4,
+        "spoken": 80
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LOYAL",
+      "difficulty": 2,
+      "ordinaryMeaning": "faithful or dependable",
+      "frequency": {
+        "written": 62,
+        "genres": 5,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MANOR",
+      "difficulty": 3,
+      "ordinaryMeaning": "large country house",
+      "frequency": {
+        "written": 16,
+        "genres": 2,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MAYOR",
+      "difficulty": 2,
+      "ordinaryMeaning": "head of a town government",
+      "frequency": {
+        "written": 123,
+        "genres": 5,
+        "spoken": 45
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MERIT",
+      "difficulty": 3,
+      "ordinaryMeaning": "deserving quality",
+      "frequency": {
+        "written": 165,
+        "genres": 5,
+        "spoken": 14
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MESSY",
+      "difficulty": 1,
+      "ordinaryMeaning": "untidy",
+      "frequency": {
+        "written": 25,
+        "genres": 3,
+        "spoken": 14
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "METER",
+      "difficulty": 2,
+      "ordinaryMeaning": "measuring instrument",
+      "frequency": {
+        "written": 54,
+        "genres": 6,
+        "spoken": 15
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MIDST",
+      "difficulty": 3,
+      "ordinaryMeaning": "middle of something",
+      "frequency": {
+        "written": 52,
+        "genres": 6,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MODEM",
+      "difficulty": 3,
+      "ordinaryMeaning": "device connecting a network",
+      "frequency": {
+        "written": 24,
+        "genres": 3,
+        "spoken": 20
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MOIST",
+      "difficulty": 2,
+      "ordinaryMeaning": "slightly wet",
+      "frequency": {
+        "written": 16,
+        "genres": 4,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MOTEL",
+      "difficulty": 2,
+      "ordinaryMeaning": "roadside lodging",
+      "frequency": {
+        "written": 35,
+        "genres": 5,
+        "spoken": 14
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MOUND",
+      "difficulty": 2,
+      "ordinaryMeaning": "small raised pile",
+      "frequency": {
+        "written": 29,
+        "genres": 3,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MOUTH",
+      "difficulty": 1,
+      "ordinaryMeaning": "opening used for eating",
+      "frequency": {
+        "written": 199,
+        "genres": 6,
+        "spoken": 70
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MUDDY",
+      "difficulty": 1,
+      "ordinaryMeaning": "covered with mud",
+      "frequency": {
+        "written": 30,
+        "genres": 3,
+        "spoken": 10
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "NANNY",
+      "difficulty": 2,
+      "ordinaryMeaning": "person employed to care for children",
+      "frequency": {
+        "written": 25,
+        "genres": 4,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "NEWLY",
+      "difficulty": 2,
+      "ordinaryMeaning": "recently",
+      "frequency": {
+        "written": 170,
+        "genres": 5,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "NICHE",
+      "difficulty": 3,
+      "ordinaryMeaning": "specialized place or role",
+      "frequency": {
+        "written": 74,
+        "genres": 6,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "NIECE",
+      "difficulty": 2,
+      "ordinaryMeaning": "daughter of a sibling",
+      "frequency": {
+        "written": 21,
+        "genres": 3,
+        "spoken": 28
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "NINTH",
+      "difficulty": 3,
+      "ordinaryMeaning": "position after eighth",
+      "frequency": {
+        "written": 38,
+        "genres": 4,
+        "spoken": 32
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "NOISY",
+      "difficulty": 1,
+      "ordinaryMeaning": "making much sound",
+      "frequency": {
+        "written": 43,
+        "genres": 4,
+        "spoken": 26
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "NOTCH",
+      "difficulty": 2,
+      "ordinaryMeaning": "small cut in an edge",
+      "frequency": {
+        "written": 16,
+        "genres": 3,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OCCUR",
+      "difficulty": 3,
+      "ordinaryMeaning": "happen",
+      "frequency": {
+        "written": 671,
+        "genres": 6,
+        "spoken": 32
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ODDLY",
+      "difficulty": 2,
+      "ordinaryMeaning": "in an unusual way",
+      "frequency": {
+        "written": 69,
+        "genres": 5,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OFTEN",
+      "difficulty": 1,
+      "ordinaryMeaning": "frequently",
+      "frequency": {
+        "written": 1960,
+        "genres": 6,
+        "spoken": 524
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OPERA",
+      "difficulty": 2,
+      "ordinaryMeaning": "dramatic work set to music",
+      "frequency": {
+        "written": 157,
+        "genres": 4,
+        "spoken": 63
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ORGAN",
+      "difficulty": 2,
+      "ordinaryMeaning": "large keyboard instrument",
+      "frequency": {
+        "written": 92,
+        "genres": 5,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OUNCE",
+      "difficulty": 2,
+      "ordinaryMeaning": "unit of weight",
+      "frequency": {
+        "written": 45,
+        "genres": 4,
+        "spoken": 22
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OUTER",
+      "difficulty": 2,
+      "ordinaryMeaning": "on the outside",
+      "frequency": {
+        "written": 64,
+        "genres": 5,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OZONE",
+      "difficulty": 3,
+      "ordinaryMeaning": "gas in the atmosphere",
+      "frequency": {
+        "written": 95,
+        "genres": 2,
+        "spoken": 46
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PANEL",
+      "difficulty": 2,
+      "ordinaryMeaning": "flat section of a surface",
+      "frequency": {
+        "written": 194,
+        "genres": 5,
+        "spoken": 18
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PASTA",
+      "difficulty": 1,
+      "ordinaryMeaning": "food such as noodles",
+      "frequency": {
+        "written": 13,
+        "genres": 3,
+        "spoken": 29
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PATCH",
+      "difficulty": 1,
+      "ordinaryMeaning": "piece used to cover a hole",
+      "frequency": {
+        "written": 48,
+        "genres": 4,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PATIO",
+      "difficulty": 2,
+      "ordinaryMeaning": "paved outdoor sitting area",
+      "frequency": {
+        "written": 29,
+        "genres": 4,
+        "spoken": 27
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PAUSE",
+      "difficulty": 1,
+      "ordinaryMeaning": "temporary stop",
+      "frequency": {
+        "written": 75,
+        "genres": 6,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PEACH",
+      "difficulty": 1,
+      "ordinaryMeaning": "soft sweet fruit",
+      "frequency": {
+        "written": 13,
+        "genres": 3,
+        "spoken": 18
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PERCH",
+      "difficulty": 2,
+      "ordinaryMeaning": "resting place for a bird",
+      "frequency": {
+        "written": 54,
+        "genres": 3,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PHASE",
+      "difficulty": 3,
+      "ordinaryMeaning": "stage in a process",
+      "frequency": {
+        "written": 318,
+        "genres": 5,
+        "spoken": 32
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PIECE",
+      "difficulty": 1,
+      "ordinaryMeaning": "part of a whole",
+      "frequency": {
+        "written": 1489,
+        "genres": 6,
+        "spoken": 189
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PLAIN",
+      "difficulty": 1,
+      "ordinaryMeaning": "simple in appearance",
+      "frequency": {
+        "written": 234,
+        "genres": 4,
+        "spoken": 34
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PORCH",
+      "difficulty": 1,
+      "ordinaryMeaning": "covered entrance area",
+      "frequency": {
+        "written": 41,
+        "genres": 3,
+        "spoken": 62
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PRIME",
+      "difficulty": 2,
+      "ordinaryMeaning": "first in importance",
+      "frequency": {
+        "written": 190,
+        "genres": 5,
+        "spoken": 65
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PRIOR",
+      "difficulty": 3,
+      "ordinaryMeaning": "earlier",
+      "frequency": {
+        "written": 333,
+        "genres": 6,
+        "spoken": 71
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PROVE",
+      "difficulty": 2,
+      "ordinaryMeaning": "show to be true",
+      "frequency": {
+        "written": 571,
+        "genres": 6,
+        "spoken": 69
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PULSE",
+      "difficulty": 2,
+      "ordinaryMeaning": "regular beat",
+      "frequency": {
+        "written": 15,
+        "genres": 4,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PUPPY",
+      "difficulty": 1,
+      "ordinaryMeaning": "young dog",
+      "frequency": {
+        "written": 15,
+        "genres": 2,
+        "spoken": 63
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PURSE",
+      "difficulty": 1,
+      "ordinaryMeaning": "small bag for personal items",
+      "frequency": {
+        "written": 30,
+        "genres": 4,
+        "spoken": 18
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "QUILT",
+      "difficulty": 2,
+      "ordinaryMeaning": "padded bed covering",
+      "frequency": {
+        "written": 12,
+        "genres": 3,
+        "spoken": 32
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "QUITE",
+      "difficulty": 2,
+      "ordinaryMeaning": "to a considerable extent",
+      "frequency": {
+        "written": 716,
+        "genres": 6,
+        "spoken": 1562
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "QUOTA",
+      "difficulty": 3,
+      "ordinaryMeaning": "assigned quantity",
+      "frequency": {
+        "written": 46,
+        "genres": 4,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "QUOTE",
+      "difficulty": 2,
+      "ordinaryMeaning": "repeat exact words",
+      "frequency": {
+        "written": 726,
+        "genres": 6,
+        "spoken": 64
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RADAR",
+      "difficulty": 2,
+      "ordinaryMeaning": "system that detects objects using radio waves",
+      "frequency": {
+        "written": 94,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RAINY",
+      "difficulty": 1,
+      "ordinaryMeaning": "having rain",
+      "frequency": {
+        "written": 16,
+        "genres": 5,
+        "spoken": 42
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RALLY",
+      "difficulty": 2,
+      "ordinaryMeaning": "gather together",
+      "frequency": {
+        "written": 103,
+        "genres": 4,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RANCH",
+      "difficulty": 1,
+      "ordinaryMeaning": "farm for raising livestock",
+      "frequency": {
+        "written": 59,
+        "genres": 4,
+        "spoken": 34
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RAPID",
+      "difficulty": 2,
+      "ordinaryMeaning": "fast",
+      "frequency": {
+        "written": 166,
+        "genres": 6,
+        "spoken": 19
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RATIO",
+      "difficulty": 3,
+      "ordinaryMeaning": "comparison of two quantities",
+      "frequency": {
+        "written": 117,
+        "genres": 6,
+        "spoken": 35
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "REACT",
+      "difficulty": 2,
+      "ordinaryMeaning": "respond to something",
+      "frequency": {
+        "written": 88,
+        "genres": 6,
+        "spoken": 17
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "REALM",
+      "difficulty": 3,
+      "ordinaryMeaning": "area of activity",
+      "frequency": {
+        "written": 86,
+        "genres": 4,
+        "spoken": 17
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "REFER",
+      "difficulty": 3,
+      "ordinaryMeaning": "direct attention to something",
+      "frequency": {
+        "written": 707,
+        "genres": 6,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RELAX",
+      "difficulty": 1,
+      "ordinaryMeaning": "become less tense",
+      "frequency": {
+        "written": 111,
+        "genres": 6,
+        "spoken": 32
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RENEW",
+      "difficulty": 2,
+      "ordinaryMeaning": "make valid again",
+      "frequency": {
+        "written": 126,
+        "genres": 6,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "REPAY",
+      "difficulty": 2,
+      "ordinaryMeaning": "pay back",
+      "frequency": {
+        "written": 20,
+        "genres": 2,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "REUSE",
+      "difficulty": 2,
+      "ordinaryMeaning": "use again",
+      "frequency": {
+        "written": 20,
+        "genres": 3,
+        "spoken": 17
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RIDGE",
+      "difficulty": 2,
+      "ordinaryMeaning": "long narrow raised area",
+      "frequency": {
+        "written": 24,
+        "genres": 3,
+        "spoken": 10
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RIGID",
+      "difficulty": 3,
+      "ordinaryMeaning": "stiff or inflexible",
+      "frequency": {
+        "written": 39,
+        "genres": 5,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RINSE",
+      "difficulty": 1,
+      "ordinaryMeaning": "wash with water",
+      "frequency": {
+        "written": 18,
+        "genres": 4,
+        "spoken": 10
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ROAST",
+      "difficulty": 1,
+      "ordinaryMeaning": "cook using dry heat",
+      "frequency": {
+        "written": 28,
+        "genres": 4,
+        "spoken": 22
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ROBOT",
+      "difficulty": 1,
+      "ordinaryMeaning": "programmable machine",
+      "frequency": {
+        "written": 22,
+        "genres": 2,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ROUGH",
+      "difficulty": 2,
+      "ordinaryMeaning": "uneven in texture",
+      "frequency": {
+        "written": 118,
+        "genres": 5,
+        "spoken": 126
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RULER",
+      "difficulty": 1,
+      "ordinaryMeaning": "tool for measuring length",
+      "frequency": {
+        "written": 143,
+        "genres": 5,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SALAD",
+      "difficulty": 1,
+      "ordinaryMeaning": "dish of mixed vegetables",
+      "frequency": {
+        "written": 36,
+        "genres": 2,
+        "spoken": 91
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SALTY",
+      "difficulty": 1,
+      "ordinaryMeaning": "tasting of salt",
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SAUCE",
+      "difficulty": 1,
+      "ordinaryMeaning": "liquid served with food",
+      "frequency": {
+        "written": 47,
+        "genres": 3,
+        "spoken": 79
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SAVVY",
+      "difficulty": 3,
+      "ordinaryMeaning": "practical knowledge",
+      "frequency": {
+        "written": 33,
+        "genres": 3,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SCOOP",
+      "difficulty": 2,
+      "ordinaryMeaning": "rounded utensil for lifting food",
+      "frequency": {
+        "written": 56,
+        "genres": 5,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SCRAP",
+      "difficulty": 2,
+      "ordinaryMeaning": "small leftover piece",
+      "frequency": {
+        "written": 50,
+        "genres": 3,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SCRUB",
+      "difficulty": 2,
+      "ordinaryMeaning": "clean by rubbing",
+      "frequency": {
+        "written": 20,
+        "genres": 5,
+        "spoken": 15
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SCUBA",
+      "difficulty": 3,
+      "ordinaryMeaning": "underwater breathing equipment",
+      "frequency": {
+        "written": 23,
+        "genres": 2,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SENSE",
+      "difficulty": 2,
+      "ordinaryMeaning": "ability to perceive",
+      "frequency": {
+        "written": 1267,
+        "genres": 6,
+        "spoken": 495
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SERVE",
+      "difficulty": 1,
+      "ordinaryMeaning": "provide something for use",
+      "frequency": {
+        "written": 1322,
+        "genres": 6,
+        "spoken": 163
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SETUP",
+      "difficulty": 2,
+      "ordinaryMeaning": "arrangement of equipment",
+      "frequency": {
+        "written": 13,
+        "genres": 2,
+        "spoken": 24
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHADE",
+      "difficulty": 1,
+      "ordinaryMeaning": "area sheltered from sunlight",
+      "frequency": {
+        "written": 87,
+        "genres": 5,
+        "spoken": 35
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHAKE",
+      "difficulty": 1,
+      "ordinaryMeaning": "move back and forth",
+      "frequency": {
+        "written": 102,
+        "genres": 5,
+        "spoken": 15
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHAKY",
+      "difficulty": 2,
+      "ordinaryMeaning": "unsteady",
+      "frequency": {
+        "written": 27,
+        "genres": 4,
+        "spoken": 11
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHARK",
+      "difficulty": 1,
+      "ordinaryMeaning": "large marine fish",
+      "frequency": {
+        "written": 58,
+        "genres": 4,
+        "spoken": 11
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHEER",
+      "difficulty": 3,
+      "ordinaryMeaning": "very thin and translucent",
+      "frequency": {
+        "written": 102,
+        "genres": 5,
+        "spoken": 10
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHINY",
+      "difficulty": 1,
+      "ordinaryMeaning": "reflecting light",
+      "frequency": {
+        "written": 21,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHRED",
+      "difficulty": 2,
+      "ordinaryMeaning": "small narrow strip",
+      "frequency": {
+        "written": 16,
+        "genres": 4,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SIXTY",
+      "difficulty": 1,
+      "ordinaryMeaning": "the number sixty",
+      "frequency": {
+        "written": 20,
+        "genres": 5,
+        "spoken": 382
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SKATE",
+      "difficulty": 1,
+      "ordinaryMeaning": "move on skates",
+      "frequency": {
+        "written": 46,
+        "genres": 4,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SKIRT",
+      "difficulty": 1,
+      "ordinaryMeaning": "garment worn from the waist",
+      "frequency": {
+        "written": 103,
+        "genres": 4,
+        "spoken": 31
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLACK",
+      "difficulty": 3,
+      "ordinaryMeaning": "not taut",
+      "frequency": {
+        "written": 24,
+        "genres": 4,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLANT",
+      "difficulty": 2,
+      "ordinaryMeaning": "sloping direction",
+      "frequency": {
+        "written": 19,
+        "genres": 4,
+        "spoken": 16
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLATE",
+      "difficulty": 2,
+      "ordinaryMeaning": "fine-grained roofing stone",
+      "frequency": {
+        "written": 99,
+        "genres": 4,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLICK",
+      "difficulty": 2,
+      "ordinaryMeaning": "smooth and slippery",
+      "frequency": {
+        "written": 33,
+        "genres": 4,
+        "spoken": 17
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLIDE",
+      "difficulty": 1,
+      "ordinaryMeaning": "move smoothly along a surface",
+      "frequency": {
+        "written": 87,
+        "genres": 6,
+        "spoken": 25
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLOPE",
+      "difficulty": 1,
+      "ordinaryMeaning": "slanting ground",
+      "frequency": {
+        "written": 153,
+        "genres": 5,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SMELL",
+      "difficulty": 1,
+      "ordinaryMeaning": "perceive an odor",
+      "frequency": {
+        "written": 110,
+        "genres": 5,
+        "spoken": 70
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SNACK",
+      "difficulty": 1,
+      "ordinaryMeaning": "small amount of food",
+      "frequency": {
+        "written": 52,
+        "genres": 4,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SNIFF",
+      "difficulty": 2,
+      "ordinaryMeaning": "draw air through the nose",
+      "frequency": {
+        "written": 21,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SOLAR",
+      "difficulty": 2,
+      "ordinaryMeaning": "relating to the sun",
+      "frequency": {
+        "written": 25,
+        "genres": 4,
+        "spoken": 27
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SOLVE",
+      "difficulty": 1,
+      "ordinaryMeaning": "find an answer",
+      "frequency": {
+        "written": 169,
+        "genres": 5,
+        "spoken": 83
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SORRY",
+      "difficulty": 1,
+      "ordinaryMeaning": "expressing regret",
+      "frequency": {
+        "written": 76,
+        "genres": 4,
+        "spoken": 323
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPARE",
+      "difficulty": 2,
+      "ordinaryMeaning": "extra for future use",
+      "frequency": {
+        "written": 98,
+        "genres": 6,
+        "spoken": 61
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPARK",
+      "difficulty": 2,
+      "ordinaryMeaning": "small glowing particle",
+      "frequency": {
+        "written": 82,
+        "genres": 5,
+        "spoken": 18
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPELL",
+      "difficulty": 1,
+      "ordinaryMeaning": "name the letters of a word",
+      "frequency": {
+        "written": 158,
+        "genres": 4,
+        "spoken": 23
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPICY",
+      "difficulty": 1,
+      "ordinaryMeaning": "having a strong seasoned flavor",
+      "frequency": {
+        "written": 18,
+        "genres": 3,
+        "spoken": 22
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPILL",
+      "difficulty": 1,
+      "ordinaryMeaning": "accidentally let liquid escape",
+      "frequency": {
+        "written": 64,
+        "genres": 5,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPINE",
+      "difficulty": 2,
+      "ordinaryMeaning": "backbone",
+      "frequency": {
+        "written": 16,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPOOF",
+      "difficulty": 3,
+      "ordinaryMeaning": "humorous imitation",
+      "frequency": {
+        "written": 12,
+        "genres": 2,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPRAY",
+      "difficulty": 1,
+      "ordinaryMeaning": "liquid dispersed in droplets",
+      "frequency": {
+        "written": 47,
+        "genres": 4,
+        "spoken": 34
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPREE",
+      "difficulty": 3,
+      "ordinaryMeaning": "brief period of enthusiastic activity",
+      "frequency": {
+        "written": 18,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STACK",
+      "difficulty": 1,
+      "ordinaryMeaning": "neatly arranged pile",
+      "frequency": {
+        "written": 74,
+        "genres": 4,
+        "spoken": 38
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STAIN",
+      "difficulty": 2,
+      "ordinaryMeaning": "colored mark",
+      "frequency": {
+        "written": 43,
+        "genres": 3,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STAKE",
+      "difficulty": 2,
+      "ordinaryMeaning": "post driven into the ground",
+      "frequency": {
+        "written": 144,
+        "genres": 6,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STARE",
+      "difficulty": 2,
+      "ordinaryMeaning": "look steadily",
+      "frequency": {
+        "written": 28,
+        "genres": 4,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STATE",
+      "difficulty": 1,
+      "ordinaryMeaning": "condition of something",
+      "frequency": {
+        "written": 3993,
+        "genres": 6,
+        "spoken": 1124
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STEAK",
+      "difficulty": 1,
+      "ordinaryMeaning": "thick slice of meat",
+      "frequency": {
+        "written": 19,
+        "genres": 3,
+        "spoken": 87
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STEEP",
+      "difficulty": 2,
+      "ordinaryMeaning": "rising sharply",
+      "frequency": {
+        "written": 146,
+        "genres": 4,
+        "spoken": 15
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STIFF",
+      "difficulty": 2,
+      "ordinaryMeaning": "not easily bent",
+      "frequency": {
+        "written": 64,
+        "genres": 5,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STOCK",
+      "difficulty": 2,
+      "ordinaryMeaning": "supply kept for use",
+      "frequency": {
+        "written": 928,
+        "genres": 6,
+        "spoken": 57
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STORE",
+      "difficulty": 1,
+      "ordinaryMeaning": "place where goods are sold",
+      "frequency": {
+        "written": 675,
+        "genres": 6,
+        "spoken": 369
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STRAP",
+      "difficulty": 2,
+      "ordinaryMeaning": "narrow fastening band",
+      "frequency": {
+        "written": 25,
+        "genres": 3,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STRAW",
+      "difficulty": 1,
+      "ordinaryMeaning": "dried grain stalk",
+      "frequency": {
+        "written": 70,
+        "genres": 5,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STRAY",
+      "difficulty": 2,
+      "ordinaryMeaning": "wander from a path",
+      "frequency": {
+        "written": 29,
+        "genres": 5,
+        "spoken": 14
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STUFF",
+      "difficulty": 1,
+      "ordinaryMeaning": "material or belongings",
+      "frequency": {
+        "written": 258,
+        "genres": 6,
+        "spoken": 3159
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STUMP",
+      "difficulty": 2,
+      "ordinaryMeaning": "base left after a tree is cut",
+      "frequency": {
+        "written": 31,
+        "genres": 4,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SWAMP",
+      "difficulty": 2,
+      "ordinaryMeaning": "area of wet ground",
+      "frequency": {
+        "written": 81,
+        "genres": 4,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SWEAT",
+      "difficulty": 1,
+      "ordinaryMeaning": "moisture produced by the skin",
+      "frequency": {
+        "written": 44,
+        "genres": 5,
+        "spoken": 35
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SWEEP",
+      "difficulty": 1,
+      "ordinaryMeaning": "clean using a broom",
+      "frequency": {
+        "written": 158,
+        "genres": 4,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TASTY",
+      "difficulty": 1,
+      "ordinaryMeaning": "having a pleasant flavor",
+      "frequency": {
+        "written": 23,
+        "genres": 3,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TENSE",
+      "difficulty": 2,
+      "ordinaryMeaning": "tightly stretched",
+      "frequency": {
+        "written": 39,
+        "genres": 4,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TENTH",
+      "difficulty": 2,
+      "ordinaryMeaning": "position after ninth",
+      "frequency": {
+        "written": 38,
+        "genres": 4,
+        "spoken": 35
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "THUMP",
+      "difficulty": 2,
+      "ordinaryMeaning": "dull heavy sound",
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TIGHT",
+      "difficulty": 1,
+      "ordinaryMeaning": "firmly fastened",
+      "frequency": {
+        "written": 97,
+        "genres": 4,
+        "spoken": 59
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TIMID",
+      "difficulty": 2,
+      "ordinaryMeaning": "shy",
+      "frequency": {
+        "written": 19,
+        "genres": 3,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TOKEN",
+      "difficulty": 2,
+      "ordinaryMeaning": "small object representing value",
+      "frequency": {
+        "written": 38,
+        "genres": 4,
+        "spoken": 23
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TOPIC",
+      "difficulty": 1,
+      "ordinaryMeaning": "subject of discussion",
+      "frequency": {
+        "written": 242,
+        "genres": 6,
+        "spoken": 368
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TOWEL",
+      "difficulty": 1,
+      "ordinaryMeaning": "cloth used for drying",
+      "frequency": {
+        "written": 29,
+        "genres": 4,
+        "spoken": 10
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TRACE",
+      "difficulty": 2,
+      "ordinaryMeaning": "follow an outline",
+      "frequency": {
+        "written": 210,
+        "genres": 5,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TRACT",
+      "difficulty": 3,
+      "ordinaryMeaning": "area of land",
+      "frequency": {
+        "written": 31,
+        "genres": 5,
+        "spoken": 10
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TREAD",
+      "difficulty": 3,
+      "ordinaryMeaning": "step or walk",
+      "frequency": {
+        "written": 16,
+        "genres": 3,
+        "spoken": 7
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TROUT",
+      "difficulty": 2,
+      "ordinaryMeaning": "freshwater fish",
+      "frequency": {
+        "written": 33,
+        "genres": 4,
+        "spoken": 26
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TRULY",
+      "difficulty": 2,
+      "ordinaryMeaning": "in a truthful manner",
+      "frequency": {
+        "written": 310,
+        "genres": 6,
+        "spoken": 80
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TRUNK",
+      "difficulty": 1,
+      "ordinaryMeaning": "main stem of a tree",
+      "frequency": {
+        "written": 31,
+        "genres": 4,
+        "spoken": 32
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TUTOR",
+      "difficulty": 2,
+      "ordinaryMeaning": "person who provides individual instruction",
+      "frequency": {
+        "written": 26,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TWIST",
+      "difficulty": 1,
+      "ordinaryMeaning": "turn into a curved shape",
+      "frequency": {
+        "written": 97,
+        "genres": 4,
+        "spoken": 19
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "USAGE",
+      "difficulty": 3,
+      "ordinaryMeaning": "way something is used",
+      "frequency": {
+        "written": 182,
+        "genres": 4,
+        "spoken": 14
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VALVE",
+      "difficulty": 3,
+      "ordinaryMeaning": "device controlling fluid flow",
+      "frequency": {
+        "written": 32,
+        "genres": 3,
+        "spoken": 12
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VERGE",
+      "difficulty": 3,
+      "ordinaryMeaning": "edge or border",
+      "frequency": {
+        "written": 41,
+        "genres": 4,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VERSE",
+      "difficulty": 2,
+      "ordinaryMeaning": "line of poetry",
+      "frequency": {
+        "written": 52,
+        "genres": 4,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VITAL",
+      "difficulty": 2,
+      "ordinaryMeaning": "essential",
+      "frequency": {
+        "written": 172,
+        "genres": 6,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VOCAL",
+      "difficulty": 3,
+      "ordinaryMeaning": "relating to the voice",
+      "frequency": {
+        "written": 21,
+        "genres": 4,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VOTER",
+      "difficulty": 2,
+      "ordinaryMeaning": "person who casts a vote",
+      "frequency": {
+        "written": 439,
+        "genres": 4,
+        "spoken": 28
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WAGON",
+      "difficulty": 1,
+      "ordinaryMeaning": "four-wheeled cart",
+      "frequency": {
+        "written": 20,
+        "genres": 3,
+        "spoken": 47
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WAIST",
+      "difficulty": 1,
+      "ordinaryMeaning": "middle part of the body",
+      "frequency": {
+        "written": 30,
+        "genres": 4,
+        "spoken": 13
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WAIVE",
+      "difficulty": 3,
+      "ordinaryMeaning": "choose not to enforce a requirement",
+      "frequency": {
+        "written": 16,
+        "genres": 3,
+        "spoken": 5
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WEAVE",
+      "difficulty": 2,
+      "ordinaryMeaning": "interlace threads",
+      "frequency": {
+        "written": 43,
+        "genres": 3,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WEIGH",
+      "difficulty": 2,
+      "ordinaryMeaning": "measure weight",
+      "frequency": {
+        "written": 136,
+        "genres": 6,
+        "spoken": 35
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WEIRD",
+      "difficulty": 2,
+      "ordinaryMeaning": "unusual",
+      "frequency": {
+        "written": 76,
+        "genres": 4,
+        "spoken": 195
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WHEAT",
+      "difficulty": 2,
+      "ordinaryMeaning": "grain used to make flour",
+      "frequency": {
+        "written": 34,
+        "genres": 4,
+        "spoken": 8
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WIDTH",
+      "difficulty": 2,
+      "ordinaryMeaning": "distance from side to side",
+      "frequency": {
+        "written": 26,
+        "genres": 4,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WINDY",
+      "difficulty": 1,
+      "ordinaryMeaning": "having much wind",
+      "frequency": {
+        "written": 16,
+        "genres": 2,
+        "spoken": 25
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WRIST",
+      "difficulty": 1,
+      "ordinaryMeaning": "joint between hand and arm",
+      "frequency": {
+        "written": 24,
+        "genres": 4,
+        "spoken": 9
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WRONG",
+      "difficulty": 1,
+      "ordinaryMeaning": "incorrect",
+      "frequency": {
+        "written": 676,
+        "genres": 6,
+        "spoken": 510
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "YACHT",
+      "difficulty": 3,
+      "ordinaryMeaning": "sailing vessel",
+      "frequency": {
+        "written": 62,
+        "genres": 3,
+        "spoken": 6
+      },
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    }
+  ],
+  "poolProof": [
+    {
+      "covered_answers": 753,
+      "allocations": 251,
+      "exact_replays": 251,
+      "frozen": true
+    }
+  ]
+}

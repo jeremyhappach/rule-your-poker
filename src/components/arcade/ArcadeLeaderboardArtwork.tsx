@@ -4,6 +4,7 @@ import tower from '@/assets/cartoon/tower.webp';
 
 /** Decorative only; no gameplay state or interactions. Hidden by the containing art layer. */
 export function ArcadeLeaderboardArtwork({game}:{game:string}){
+ if(game==='five-alive')return <div className="five-alive-leaderboard-tiles" aria-hidden="true">{'FIVE'.split('').map((letter,index)=><span key={index}>{letter}</span>)}<span>★</span></div>;
 if(game==='357-drop')return <div className="drop-meld" aria-label="Decorative 3, 5, 7 card fan">{[{rank:3,suit:'♠'},{rank:5,suit:'♥'},{rank:7,suit:'♣'}].map((card,i)=><div className="meld-card" data-red={i===1} key={i}><span>{card.rank}<small>{card.suit}</small></span><b>{card.suit}</b></div>)}</div>;
  if(game==='run21')return <Run21SpaceScene/>;
  if(game==='tri-towers')return <div className="castle" aria-hidden="true">{[0,1,2].map(i=><img key={i} src={tower} alt=""/>)}</div>;

@@ -1,0 +1,7231 @@
+{
+  "at": "2026-11-15T22:00:13.499Z",
+  "version": "esdb-five-alive/3",
+  "previousAnswers": 753,
+  "reviewedAdditions": 268,
+  "combined": 1021,
+  "remainingTo10000": 8979,
+  "solvedCases": 1608,
+  "sourceRevision": "1e5b7d3a72f47a71da5d28686c1dd4b397178485",
+  "sourceScreen": "lowercase neutral American base lemmas, ESDB <=50; existing 753 excluded; frequencies are evidence, not approval",
+  "frequencyCaveat": "Corpus counts are contextual evidence only; zero means absent from these samples. This batch uses individually reviewed ordinary meanings, not the prior batch frequency threshold. Tiers are editorial, not player calibrated.",
+  "sourceEvidenceSha256": "82013778707d22e6191a059618e0a08babe9a9519ae9439f4f436b9506883ab1",
+  "reviewSha256": "784a393b1d4e3c5b6dc9fa8b1f8c2236b298528cd881bf4f20dcba3fc411017a",
+  "previousSha256": "5ee93d5a1093c90f579b9ae0c5cf1c675e8150314f14683ede07262778f8b231",
+  "candidateSha256": "56b3054ae90f96d725c542c19d4803ebfe3b07be6517aba1f0ecf18b866b38ed",
+  "qualification": "per-word checks and isolated rollback allocator proof passed; eligible for versioned integration",
+  "perWord": [
+    {
+      "word": "ACORN",
+      "difficulty": 1,
+      "ordinaryMeaning": "nut produced by an oak tree",
+      "esdb": [
+        {
+          "word": "acorn",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AGILE",
+      "difficulty": 2,
+      "ordinaryMeaning": "able to move quickly and easily",
+      "esdb": [
+        {
+          "word": "agile",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AISLE",
+      "difficulty": 2,
+      "ordinaryMeaning": "passage between rows of seats",
+      "esdb": [
+        {
+          "word": "aisle",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 36,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ALIGN",
+      "difficulty": 2,
+      "ordinaryMeaning": "arrange in a straight line",
+      "esdb": [
+        {
+          "word": "align",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": "A:0"
+        }
+      ],
+      "frequency": {
+        "written": 59,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ALLOY",
+      "difficulty": 3,
+      "ordinaryMeaning": "metal made by combining metals",
+      "esdb": [
+        {
+          "word": "alloy",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ALOUD",
+      "difficulty": 1,
+      "ordinaryMeaning": "in a voice that can be heard",
+      "esdb": [
+        {
+          "word": "aloud",
+          "pos": "av0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 22,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ALTER",
+      "difficulty": 2,
+      "ordinaryMeaning": "change something",
+      "esdb": [
+        {
+          "word": "alter",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 162,
+        "genres": 6,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AMPLE",
+      "difficulty": 2,
+      "ordinaryMeaning": "more than enough",
+      "esdb": [
+        {
+          "word": "ample",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 46,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AMUSE",
+      "difficulty": 2,
+      "ordinaryMeaning": "entertain someone",
+      "esdb": [
+        {
+          "word": "amuse",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 81,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ANVIL",
+      "difficulty": 3,
+      "ordinaryMeaning": "heavy block used to shape metal",
+      "esdb": [
+        {
+          "word": "anvil",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 1,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AROMA",
+      "difficulty": 2,
+      "ordinaryMeaning": "pleasant smell",
+      "esdb": [
+        {
+          "word": "aroma",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ATTIC",
+      "difficulty": 1,
+      "ordinaryMeaning": "room beneath a roof",
+      "esdb": [
+        {
+          "word": "attic",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 3,
+        "spoken": 17
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "AWAIT",
+      "difficulty": 2,
+      "ordinaryMeaning": "wait for something",
+      "esdb": [
+        {
+          "word": "await",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 91,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BAGEL",
+      "difficulty": 1,
+      "ordinaryMeaning": "ring shaped bread roll",
+      "esdb": [
+        {
+          "word": "bagel",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BAGGY",
+      "difficulty": 1,
+      "ordinaryMeaning": "fitting loosely",
+      "esdb": [
+        {
+          "word": "baggy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BASIL",
+      "difficulty": 2,
+      "ordinaryMeaning": "herb used in cooking",
+      "esdb": [
+        {
+          "word": "basil",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 6
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BATON",
+      "difficulty": 2,
+      "ordinaryMeaning": "stick passed between relay runners",
+      "esdb": [
+        {
+          "word": "baton",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BEIGE",
+      "difficulty": 2,
+      "ordinaryMeaning": "pale brown color",
+      "esdb": [
+        {
+          "word": "beige",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "beige",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 3,
+        "spoken": 8
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BERET",
+      "difficulty": 3,
+      "ordinaryMeaning": "soft round hat",
+      "esdb": [
+        {
+          "word": "beret",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BIKER",
+      "difficulty": 1,
+      "ordinaryMeaning": "person riding a bicycle",
+      "esdb": [
+        {
+          "word": "biker",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BIRCH",
+      "difficulty": 2,
+      "ordinaryMeaning": "tree often having pale bark",
+      "esdb": [
+        {
+          "word": "birch",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "birch",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BISON",
+      "difficulty": 2,
+      "ordinaryMeaning": "large shaggy grazing animal",
+      "esdb": [
+        {
+          "word": "bison",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 7,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BLIMP",
+      "difficulty": 2,
+      "ordinaryMeaning": "large airship",
+      "esdb": [
+        {
+          "word": "blimp",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BRAID",
+      "difficulty": 2,
+      "ordinaryMeaning": "interwoven strands of hair",
+      "esdb": [
+        {
+          "word": "braid",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 13,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BRINE",
+      "difficulty": 3,
+      "ordinaryMeaning": "water containing dissolved salt",
+      "esdb": [
+        {
+          "word": "brine",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 31,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BROIL",
+      "difficulty": 2,
+      "ordinaryMeaning": "cook under direct heat",
+      "esdb": [
+        {
+          "word": "broil",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BROOK",
+      "difficulty": 2,
+      "ordinaryMeaning": "small stream",
+      "esdb": [
+        {
+          "word": "brook",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BROOM",
+      "difficulty": 1,
+      "ordinaryMeaning": "tool for sweeping",
+      "esdb": [
+        {
+          "word": "broom",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BROTH",
+      "difficulty": 2,
+      "ordinaryMeaning": "liquid used as a soup base",
+      "esdb": [
+        {
+          "word": "broth",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BUGLE",
+      "difficulty": 3,
+      "ordinaryMeaning": "brass instrument used for signals",
+      "esdb": [
+        {
+          "word": "bugle",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BULKY",
+      "difficulty": 2,
+      "ordinaryMeaning": "large and awkward to carry",
+      "esdb": [
+        {
+          "word": "bulky",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BUMPY",
+      "difficulty": 1,
+      "ordinaryMeaning": "covered with uneven raised places",
+      "esdb": [
+        {
+          "word": "bumpy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BUNNY",
+      "difficulty": 1,
+      "ordinaryMeaning": "informal word for a rabbit",
+      "esdb": [
+        {
+          "word": "bunny",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "bunny",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 1,
+        "spoken": 17
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "BUSHY",
+      "difficulty": 2,
+      "ordinaryMeaning": "growing thickly",
+      "esdb": [
+        {
+          "word": "bushy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CARGO",
+      "difficulty": 2,
+      "ordinaryMeaning": "goods carried by a vehicle",
+      "esdb": [
+        {
+          "word": "cargo",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 45,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CATER",
+      "difficulty": 2,
+      "ordinaryMeaning": "provide food for an event",
+      "esdb": [
+        {
+          "word": "cater",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 71,
+        "genres": 4,
+        "spoken": 11
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CELLO",
+      "difficulty": 3,
+      "ordinaryMeaning": "large bowed string instrument",
+      "esdb": [
+        {
+          "word": "cello",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 7
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHARM",
+      "difficulty": 2,
+      "ordinaryMeaning": "small decorative pendant",
+      "esdb": [
+        {
+          "word": "charm",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 217,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHEWY",
+      "difficulty": 1,
+      "ordinaryMeaning": "requiring repeated chewing",
+      "esdb": [
+        {
+          "word": "chewy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHILI",
+      "difficulty": 1,
+      "ordinaryMeaning": "stew commonly made with beans and spices",
+      "esdb": [
+        {
+          "word": "chili",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": "A:0"
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 1,
+        "spoken": 24
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHIME",
+      "difficulty": 2,
+      "ordinaryMeaning": "ringing sound of a bell",
+      "esdb": [
+        {
+          "word": "chime",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 13,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHIRP",
+      "difficulty": 1,
+      "ordinaryMeaning": "short high sound made by a bird",
+      "esdb": [
+        {
+          "word": "chirp",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHIVE",
+      "difficulty": 3,
+      "ordinaryMeaning": "herb with slender edible leaves",
+      "esdb": [
+        {
+          "word": "chive",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHORD",
+      "difficulty": 3,
+      "ordinaryMeaning": "group of musical notes played together",
+      "esdb": [
+        {
+          "word": "chord",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 17,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CHUTE",
+      "difficulty": 2,
+      "ordinaryMeaning": "sloping channel for sliding things down",
+      "esdb": [
+        {
+          "word": "chute",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLAMP",
+      "difficulty": 2,
+      "ordinaryMeaning": "device that holds things tightly together",
+      "esdb": [
+        {
+          "word": "clamp",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLASP",
+      "difficulty": 2,
+      "ordinaryMeaning": "fastener on a necklace or bag",
+      "esdb": [
+        {
+          "word": "clasp",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 1,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLEAT",
+      "difficulty": 3,
+      "ordinaryMeaning": "projection on a sports shoe sole",
+      "esdb": [
+        {
+          "word": "cleat",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLIFF",
+      "difficulty": 1,
+      "ordinaryMeaning": "steep rock face",
+      "esdb": [
+        {
+          "word": "cliff",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 153,
+        "genres": 4,
+        "spoken": 30
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLOVE",
+      "difficulty": 3,
+      "ordinaryMeaning": "dried aromatic spice bud",
+      "esdb": [
+        {
+          "word": "clove",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLOWN",
+      "difficulty": 1,
+      "ordinaryMeaning": "comic circus performer",
+      "esdb": [
+        {
+          "word": "clown",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 17,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CLUMP",
+      "difficulty": 2,
+      "ordinaryMeaning": "small close group of things",
+      "esdb": [
+        {
+          "word": "clump",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 1,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "COMET",
+      "difficulty": 2,
+      "ordinaryMeaning": "icy space object that can form a tail",
+      "esdb": [
+        {
+          "word": "comet",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "COMFY",
+      "difficulty": 1,
+      "ordinaryMeaning": "comfortable",
+      "esdb": [
+        {
+          "word": "comfy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "COMMA",
+      "difficulty": 1,
+      "ordinaryMeaning": "punctuation mark separating parts of a sentence",
+      "esdb": [
+        {
+          "word": "comma",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CRAFT",
+      "difficulty": 1,
+      "ordinaryMeaning": "activity making things by hand",
+      "esdb": [
+        {
+          "word": "craft",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "craft",
+          "pos": "n0",
+          "defn_note": "vehicle",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 236,
+        "genres": 5,
+        "spoken": 39
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CRATE",
+      "difficulty": 1,
+      "ordinaryMeaning": "large box used for carrying goods",
+      "esdb": [
+        {
+          "word": "crate",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 2,
+        "spoken": 8
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CREAK",
+      "difficulty": 2,
+      "ordinaryMeaning": "high sound made by a moving hinge",
+      "esdb": [
+        {
+          "word": "creak",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CREPE",
+      "difficulty": 3,
+      "ordinaryMeaning": "thin pancake",
+      "esdb": [
+        {
+          "word": "crepe",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 10
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CRUST",
+      "difficulty": 1,
+      "ordinaryMeaning": "outer layer of bread",
+      "esdb": [
+        {
+          "word": "crust",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 3,
+        "spoken": 15
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CUBIC",
+      "difficulty": 3,
+      "ordinaryMeaning": "relating to a cube",
+      "esdb": [
+        {
+          "word": "cubic",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 3,
+        "spoken": 6
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CUMIN",
+      "difficulty": 3,
+      "ordinaryMeaning": "spice made from aromatic seeds",
+      "esdb": [
+        {
+          "word": "cumin",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CURLY",
+      "difficulty": 1,
+      "ordinaryMeaning": "having curls",
+      "esdb": [
+        {
+          "word": "curly",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 5
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "CURRY",
+      "difficulty": 2,
+      "ordinaryMeaning": "seasoned dish served with sauce",
+      "esdb": [
+        {
+          "word": "curry",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 7,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DAISY",
+      "difficulty": 1,
+      "ordinaryMeaning": "flower with petals around a central disk",
+      "esdb": [
+        {
+          "word": "daisy",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 5
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DEBUG",
+      "difficulty": 3,
+      "ordinaryMeaning": "find and remove errors in software",
+      "esdb": [
+        {
+          "word": "debug",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DECAF",
+      "difficulty": 2,
+      "ordinaryMeaning": "coffee with most caffeine removed",
+      "esdb": [
+        {
+          "word": "decaf",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DECOR",
+      "difficulty": 2,
+      "ordinaryMeaning": "decoration of a room",
+      "esdb": [
+        {
+          "word": "decor",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 11,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DENIM",
+      "difficulty": 2,
+      "ordinaryMeaning": "sturdy fabric used for jeans",
+      "esdb": [
+        {
+          "word": "denim",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DENSE",
+      "difficulty": 2,
+      "ordinaryMeaning": "closely packed",
+      "esdb": [
+        {
+          "word": "dense",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 47,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DIGIT",
+      "difficulty": 2,
+      "ordinaryMeaning": "one symbol in a number",
+      "esdb": [
+        {
+          "word": "digit",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 14,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DIVER",
+      "difficulty": 1,
+      "ordinaryMeaning": "person who swims underwater",
+      "esdb": [
+        {
+          "word": "diver",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 50,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DONUT",
+      "difficulty": 1,
+      "ordinaryMeaning": "ring shaped fried pastry",
+      "esdb": [
+        {
+          "word": "donut",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": "A:1"
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DOWEL",
+      "difficulty": 3,
+      "ordinaryMeaning": "wooden pin used to join pieces",
+      "esdb": [
+        {
+          "word": "dowel",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DRAPE",
+      "difficulty": 2,
+      "ordinaryMeaning": "hang fabric loosely over something",
+      "esdb": [
+        {
+          "word": "drape",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 42,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DRIFT",
+      "difficulty": 2,
+      "ordinaryMeaning": "move slowly with a current",
+      "esdb": [
+        {
+          "word": "drift",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 61,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DRYER",
+      "difficulty": 1,
+      "ordinaryMeaning": "machine that dries clothes",
+      "esdb": [
+        {
+          "word": "dryer",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": "_:0"
+        }
+      ],
+      "frequency": {
+        "written": 17,
+        "genres": 5,
+        "spoken": 20
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "DUSTY",
+      "difficulty": 1,
+      "ordinaryMeaning": "covered with dust",
+      "esdb": [
+        {
+          "word": "dusty",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 35,
+        "genres": 3,
+        "spoken": 8
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "EASEL",
+      "difficulty": 3,
+      "ordinaryMeaning": "stand that supports a painting",
+      "esdb": [
+        {
+          "word": "easel",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "EMBER",
+      "difficulty": 3,
+      "ordinaryMeaning": "glowing piece left from a fire",
+      "esdb": [
+        {
+          "word": "ember",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "EQUIP",
+      "difficulty": 2,
+      "ordinaryMeaning": "provide necessary tools",
+      "esdb": [
+        {
+          "word": "equip",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 95,
+        "genres": 6,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ERASE",
+      "difficulty": 1,
+      "ordinaryMeaning": "remove a mark",
+      "esdb": [
+        {
+          "word": "erase",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ESSAY",
+      "difficulty": 2,
+      "ordinaryMeaning": "short piece of writing about a subject",
+      "esdb": [
+        {
+          "word": "essay",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 249,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FETCH",
+      "difficulty": 2,
+      "ordinaryMeaning": "go and bring something back",
+      "esdb": [
+        {
+          "word": "fetch",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 31,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FINCH",
+      "difficulty": 3,
+      "ordinaryMeaning": "small seed eating songbird",
+      "esdb": [
+        {
+          "word": "finch",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FLASK",
+      "difficulty": 2,
+      "ordinaryMeaning": "container for holding liquid",
+      "esdb": [
+        {
+          "word": "flask",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 14,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FLOCK",
+      "difficulty": 2,
+      "ordinaryMeaning": "group of birds",
+      "esdb": [
+        {
+          "word": "flock",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 68,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FLOSS",
+      "difficulty": 1,
+      "ordinaryMeaning": "thin thread used to clean between teeth",
+      "esdb": [
+        {
+          "word": "floss",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "floss",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FLUFF",
+      "difficulty": 1,
+      "ordinaryMeaning": "soft loose fibers",
+      "esdb": [
+        {
+          "word": "fluff",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 2,
+        "spoken": 7
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FOAMY",
+      "difficulty": 2,
+      "ordinaryMeaning": "covered with bubbles",
+      "esdb": [
+        {
+          "word": "foamy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FOGGY",
+      "difficulty": 1,
+      "ordinaryMeaning": "filled with fog",
+      "esdb": [
+        {
+          "word": "foggy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 3,
+        "spoken": 16
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FOYER",
+      "difficulty": 3,
+      "ordinaryMeaning": "entrance hall",
+      "esdb": [
+        {
+          "word": "foyer",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FURRY",
+      "difficulty": 1,
+      "ordinaryMeaning": "covered with fur",
+      "esdb": [
+        {
+          "word": "furry",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 2,
+        "spoken": 5
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "FUTON",
+      "difficulty": 3,
+      "ordinaryMeaning": "padded mattress used for sleeping",
+      "esdb": [
+        {
+          "word": "futon",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GECKO",
+      "difficulty": 2,
+      "ordinaryMeaning": "small lizard with gripping toe pads",
+      "esdb": [
+        {
+          "word": "gecko",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GLIDE",
+      "difficulty": 2,
+      "ordinaryMeaning": "move smoothly",
+      "esdb": [
+        {
+          "word": "glide",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 21,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GLOVE",
+      "difficulty": 1,
+      "ordinaryMeaning": "covering for a hand",
+      "esdb": [
+        {
+          "word": "glove",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 33,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GNOME",
+      "difficulty": 3,
+      "ordinaryMeaning": "small imaginary figure used as a garden ornament",
+      "esdb": [
+        {
+          "word": "gnome",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 1,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GOOEY",
+      "difficulty": 2,
+      "ordinaryMeaning": "soft and sticky",
+      "esdb": [
+        {
+          "word": "gooey",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GOURD",
+      "difficulty": 3,
+      "ordinaryMeaning": "hard shelled fruit used for decoration",
+      "esdb": [
+        {
+          "word": "gourd",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GRAPH",
+      "difficulty": 2,
+      "ordinaryMeaning": "diagram showing relationships between quantities",
+      "esdb": [
+        {
+          "word": "graph",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 31,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GRATE",
+      "difficulty": 2,
+      "ordinaryMeaning": "shred food into small pieces",
+      "esdb": [
+        {
+          "word": "grate",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 11,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GRAVY",
+      "difficulty": 1,
+      "ordinaryMeaning": "sauce made from cooking juices",
+      "esdb": [
+        {
+          "word": "gravy",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 23
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GRAZE",
+      "difficulty": 2,
+      "ordinaryMeaning": "feed on growing grass",
+      "esdb": [
+        {
+          "word": "graze",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 23,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GREET",
+      "difficulty": 1,
+      "ordinaryMeaning": "welcome someone",
+      "esdb": [
+        {
+          "word": "greet",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 86,
+        "genres": 6,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GROVE",
+      "difficulty": 3,
+      "ordinaryMeaning": "small group of trees",
+      "esdb": [
+        {
+          "word": "grove",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 61,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GUAVA",
+      "difficulty": 3,
+      "ordinaryMeaning": "tropical fruit with fragrant flesh",
+      "esdb": [
+        {
+          "word": "guava",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GUMMY",
+      "difficulty": 2,
+      "ordinaryMeaning": "soft and chewy",
+      "esdb": [
+        {
+          "word": "gummy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GUPPY",
+      "difficulty": 3,
+      "ordinaryMeaning": "small freshwater aquarium fish",
+      "esdb": [
+        {
+          "word": "guppy",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "GUSTY",
+      "difficulty": 2,
+      "ordinaryMeaning": "blowing in sudden bursts",
+      "esdb": [
+        {
+          "word": "gusty",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HANDY",
+      "difficulty": 1,
+      "ordinaryMeaning": "useful and convenient",
+      "esdb": [
+        {
+          "word": "handy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 24,
+        "genres": 3,
+        "spoken": 90
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HATCH",
+      "difficulty": 2,
+      "ordinaryMeaning": "emerge from an egg",
+      "esdb": [
+        {
+          "word": "hatch",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 24,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HAZEL",
+      "difficulty": 3,
+      "ordinaryMeaning": "yellowish brown eye color",
+      "esdb": [
+        {
+          "word": "hazel",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "hazel",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HERON",
+      "difficulty": 3,
+      "ordinaryMeaning": "long legged wading bird",
+      "esdb": [
+        {
+          "word": "heron",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 13,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HIKER",
+      "difficulty": 1,
+      "ordinaryMeaning": "person who walks on trails",
+      "esdb": [
+        {
+          "word": "hiker",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 40,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HINGE",
+      "difficulty": 2,
+      "ordinaryMeaning": "joint that allows a door to swing",
+      "esdb": [
+        {
+          "word": "hinge",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 19,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HIPPO",
+      "difficulty": 1,
+      "ordinaryMeaning": "large river dwelling mammal",
+      "esdb": [
+        {
+          "word": "hippo",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HOVER",
+      "difficulty": 2,
+      "ordinaryMeaning": "remain suspended in one place",
+      "esdb": [
+        {
+          "word": "hover",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 30,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "HUMID",
+      "difficulty": 2,
+      "ordinaryMeaning": "having much moisture in the air",
+      "esdb": [
+        {
+          "word": "humid",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 11,
+        "genres": 1,
+        "spoken": 52
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ICING",
+      "difficulty": 1,
+      "ordinaryMeaning": "sweet coating on a cake",
+      "esdb": [
+        {
+          "word": "icing",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "IGLOO",
+      "difficulty": 2,
+      "ordinaryMeaning": "dome shaped shelter made from snow blocks",
+      "esdb": [
+        {
+          "word": "igloo",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "INLAY",
+      "difficulty": 3,
+      "ordinaryMeaning": "decorative material set into a surface",
+      "esdb": [
+        {
+          "word": "inlay",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "INLET",
+      "difficulty": 3,
+      "ordinaryMeaning": "small arm of the sea",
+      "esdb": [
+        {
+          "word": "inlet",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 32,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ITCHY",
+      "difficulty": 1,
+      "ordinaryMeaning": "causing a desire to scratch",
+      "esdb": [
+        {
+          "word": "itchy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "JUMBO",
+      "difficulty": 2,
+      "ordinaryMeaning": "very large",
+      "esdb": [
+        {
+          "word": "jumbo",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "jumbo",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 15,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "KAYAK",
+      "difficulty": 2,
+      "ordinaryMeaning": "narrow paddle powered boat",
+      "esdb": [
+        {
+          "word": "kayak",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 11,
+        "genres": 1,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "KAZOO",
+      "difficulty": 2,
+      "ordinaryMeaning": "small musical instrument played by humming",
+      "esdb": [
+        {
+          "word": "kazoo",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "KIOSK",
+      "difficulty": 3,
+      "ordinaryMeaning": "small booth selling goods or information",
+      "esdb": [
+        {
+          "word": "kiosk",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 41,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "KNEAD",
+      "difficulty": 3,
+      "ordinaryMeaning": "work dough by pressing and folding",
+      "esdb": [
+        {
+          "word": "knead",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "KNEEL",
+      "difficulty": 2,
+      "ordinaryMeaning": "rest on the knees",
+      "esdb": [
+        {
+          "word": "kneel",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "KOALA",
+      "difficulty": 2,
+      "ordinaryMeaning": "tree dwelling Australian mammal",
+      "esdb": [
+        {
+          "word": "koala",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LADLE",
+      "difficulty": 2,
+      "ordinaryMeaning": "deep spoon used for serving soup",
+      "esdb": [
+        {
+          "word": "ladle",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LAPEL",
+      "difficulty": 3,
+      "ordinaryMeaning": "folded part of a jacket collar",
+      "esdb": [
+        {
+          "word": "lapel",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LASSO",
+      "difficulty": 3,
+      "ordinaryMeaning": "rope with a loop used for catching animals",
+      "esdb": [
+        {
+          "word": "lasso",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LATCH",
+      "difficulty": 2,
+      "ordinaryMeaning": "fastener that holds a door shut",
+      "esdb": [
+        {
+          "word": "latch",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 7
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEAFY",
+      "difficulty": 2,
+      "ordinaryMeaning": "covered with leaves",
+      "esdb": [
+        {
+          "word": "leafy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 21,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEAKY",
+      "difficulty": 1,
+      "ordinaryMeaning": "allowing liquid to escape",
+      "esdb": [
+        {
+          "word": "leaky",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEASH",
+      "difficulty": 1,
+      "ordinaryMeaning": "strap used to guide a dog",
+      "esdb": [
+        {
+          "word": "leash",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEDGE",
+      "difficulty": 2,
+      "ordinaryMeaning": "narrow shelf projecting from a wall",
+      "esdb": [
+        {
+          "word": "ledge",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEMUR",
+      "difficulty": 3,
+      "ordinaryMeaning": "primate with a long tail",
+      "esdb": [
+        {
+          "word": "lemur",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LEVER",
+      "difficulty": 2,
+      "ordinaryMeaning": "bar used to lift or move something",
+      "esdb": [
+        {
+          "word": "lever",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LILAC",
+      "difficulty": 3,
+      "ordinaryMeaning": "shrub with fragrant purple or white flowers",
+      "esdb": [
+        {
+          "word": "lilac",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "lilac",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LITER",
+      "difficulty": 2,
+      "ordinaryMeaning": "metric unit of volume",
+      "esdb": [
+        {
+          "word": "liter",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": "A:0"
+        }
+      ],
+      "frequency": {
+        "written": 21,
+        "genres": 4,
+        "spoken": 27
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LLAMA",
+      "difficulty": 2,
+      "ordinaryMeaning": "South American animal with woolly hair",
+      "esdb": [
+        {
+          "word": "llama",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LUNAR",
+      "difficulty": 2,
+      "ordinaryMeaning": "relating to the moon",
+      "esdb": [
+        {
+          "word": "lunar",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 16,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "LYRIC",
+      "difficulty": 2,
+      "ordinaryMeaning": "word or words of a song",
+      "esdb": [
+        {
+          "word": "lyric",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        },
+        {
+          "word": "lyric",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 59,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MAGMA",
+      "difficulty": 3,
+      "ordinaryMeaning": "molten rock beneath the ground",
+      "esdb": [
+        {
+          "word": "magma",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MAKER",
+      "difficulty": 2,
+      "ordinaryMeaning": "person or thing that makes something",
+      "esdb": [
+        {
+          "word": "maker",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 154,
+        "genres": 4,
+        "spoken": 13
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MANGO",
+      "difficulty": 1,
+      "ordinaryMeaning": "sweet tropical fruit with a large pit",
+      "esdb": [
+        {
+          "word": "mango",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MARSH",
+      "difficulty": 2,
+      "ordinaryMeaning": "wetland with grasses",
+      "esdb": [
+        {
+          "word": "marsh",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 17,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MEDAL",
+      "difficulty": 1,
+      "ordinaryMeaning": "metal award for an achievement",
+      "esdb": [
+        {
+          "word": "medal",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 18,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MELON",
+      "difficulty": 1,
+      "ordinaryMeaning": "large fruit with juicy flesh",
+      "esdb": [
+        {
+          "word": "melon",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 13,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MERGE",
+      "difficulty": 2,
+      "ordinaryMeaning": "combine into one",
+      "esdb": [
+        {
+          "word": "merge",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 95,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MERRY",
+      "difficulty": 2,
+      "ordinaryMeaning": "cheerful",
+      "esdb": [
+        {
+          "word": "merry",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 3,
+        "spoken": 6
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MILKY",
+      "difficulty": 1,
+      "ordinaryMeaning": "resembling or containing milk",
+      "esdb": [
+        {
+          "word": "milky",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MINCE",
+      "difficulty": 3,
+      "ordinaryMeaning": "cut food into tiny pieces",
+      "esdb": [
+        {
+          "word": "mince",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "mince",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MINTY",
+      "difficulty": 1,
+      "ordinaryMeaning": "tasting or smelling of mint",
+      "esdb": [
+        {
+          "word": "minty",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MINUS",
+      "difficulty": 1,
+      "ordinaryMeaning": "indicating subtraction",
+      "esdb": [
+        {
+          "word": "minus",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "minus",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "minus",
+          "pos": "pp",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 15,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MISTY",
+      "difficulty": 1,
+      "ordinaryMeaning": "filled with fine water droplets",
+      "esdb": [
+        {
+          "word": "misty",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MIXER",
+      "difficulty": 1,
+      "ordinaryMeaning": "appliance used to combine ingredients",
+      "esdb": [
+        {
+          "word": "mixer",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 5
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MOOSE",
+      "difficulty": 2,
+      "ordinaryMeaning": "large deer with broad antlers",
+      "esdb": [
+        {
+          "word": "moose",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MOSSY",
+      "difficulty": 2,
+      "ordinaryMeaning": "covered with moss",
+      "esdb": [
+        {
+          "word": "mossy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MOTTO",
+      "difficulty": 3,
+      "ordinaryMeaning": "short phrase expressing a guiding idea",
+      "esdb": [
+        {
+          "word": "motto",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 17,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MOWER",
+      "difficulty": 1,
+      "ordinaryMeaning": "machine used to cut grass",
+      "esdb": [
+        {
+          "word": "mower",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 49
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MULCH",
+      "difficulty": 3,
+      "ordinaryMeaning": "material spread over soil to protect plants",
+      "esdb": [
+        {
+          "word": "mulch",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 17
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "MURAL",
+      "difficulty": 3,
+      "ordinaryMeaning": "large painting on a wall",
+      "esdb": [
+        {
+          "word": "mural",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "mural",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 62,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "NYLON",
+      "difficulty": 2,
+      "ordinaryMeaning": "strong synthetic fiber",
+      "esdb": [
+        {
+          "word": "nylon",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OASIS",
+      "difficulty": 3,
+      "ordinaryMeaning": "fertile place with water in a desert",
+      "esdb": [
+        {
+          "word": "oasis",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 19,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ORBIT",
+      "difficulty": 2,
+      "ordinaryMeaning": "path around a planet or star",
+      "esdb": [
+        {
+          "word": "orbit",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 26,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OTTER",
+      "difficulty": 2,
+      "ordinaryMeaning": "water dwelling mammal with dense fur",
+      "esdb": [
+        {
+          "word": "otter",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "OWNER",
+      "difficulty": 1,
+      "ordinaryMeaning": "person to whom something belongs",
+      "esdb": [
+        {
+          "word": "owner",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 381,
+        "genres": 5,
+        "spoken": 43
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PANDA",
+      "difficulty": 1,
+      "ordinaryMeaning": "black and white bamboo eating bear",
+      "esdb": [
+        {
+          "word": "panda",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 20,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PARKA",
+      "difficulty": 2,
+      "ordinaryMeaning": "warm hooded coat",
+      "esdb": [
+        {
+          "word": "parka",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PASTE",
+      "difficulty": 1,
+      "ordinaryMeaning": "thick adhesive used to stick things together",
+      "esdb": [
+        {
+          "word": "paste",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 18,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PATTY",
+      "difficulty": 2,
+      "ordinaryMeaning": "small flat portion of ground food",
+      "esdb": [
+        {
+          "word": "patty",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 6
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PECAN",
+      "difficulty": 2,
+      "ordinaryMeaning": "edible nut with a smooth shell",
+      "esdb": [
+        {
+          "word": "pecan",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 11
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PEDAL",
+      "difficulty": 1,
+      "ordinaryMeaning": "foot operated lever on a bicycle",
+      "esdb": [
+        {
+          "word": "pedal",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "pedal",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PENNY",
+      "difficulty": 1,
+      "ordinaryMeaning": "coin worth one cent",
+      "esdb": [
+        {
+          "word": "penny",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "penny",
+          "pos": "n0",
+          "defn_note": "British",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 35,
+        "genres": 5,
+        "spoken": 45
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PETAL",
+      "difficulty": 1,
+      "ordinaryMeaning": "one of the colored parts of a flower",
+      "esdb": [
+        {
+          "word": "petal",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 15,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PIXEL",
+      "difficulty": 3,
+      "ordinaryMeaning": "tiny picture element on a screen",
+      "esdb": [
+        {
+          "word": "pixel",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PLAID",
+      "difficulty": 2,
+      "ordinaryMeaning": "pattern of crossing colored stripes",
+      "esdb": [
+        {
+          "word": "plaid",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "plaid",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PLANK",
+      "difficulty": 2,
+      "ordinaryMeaning": "long flat piece of wood",
+      "esdb": [
+        {
+          "word": "plank",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PLEAT",
+      "difficulty": 3,
+      "ordinaryMeaning": "fold sewn into fabric",
+      "esdb": [
+        {
+          "word": "pleat",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PLUSH",
+      "difficulty": 2,
+      "ordinaryMeaning": "soft fabric with a deep pile",
+      "esdb": [
+        {
+          "word": "plush",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "plush",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 16,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "POUCH",
+      "difficulty": 2,
+      "ordinaryMeaning": "small flexible bag",
+      "esdb": [
+        {
+          "word": "pouch",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PRAWN",
+      "difficulty": 3,
+      "ordinaryMeaning": "shellfish similar to a shrimp",
+      "esdb": [
+        {
+          "word": "prawn",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PRISM",
+      "difficulty": 3,
+      "ordinaryMeaning": "transparent solid that separates light into colors",
+      "esdb": [
+        {
+          "word": "prism",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 7,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PRUNE",
+      "difficulty": 2,
+      "ordinaryMeaning": "trim unwanted branches from a plant",
+      "esdb": [
+        {
+          "word": "prune",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PUREE",
+      "difficulty": 3,
+      "ordinaryMeaning": "food blended into a smooth paste",
+      "esdb": [
+        {
+          "word": "puree",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "PUTTY",
+      "difficulty": 3,
+      "ordinaryMeaning": "soft material used to fill gaps",
+      "esdb": [
+        {
+          "word": "putty",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "putty",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "QUAIL",
+      "difficulty": 3,
+      "ordinaryMeaning": "small ground dwelling bird",
+      "esdb": [
+        {
+          "word": "quail",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "quail",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 3,
+        "spoken": 9
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "QUART",
+      "difficulty": 2,
+      "ordinaryMeaning": "unit of liquid volume",
+      "esdb": [
+        {
+          "word": "quart",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 12
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "QUEUE",
+      "difficulty": 3,
+      "ordinaryMeaning": "line of people waiting",
+      "esdb": [
+        {
+          "word": "queue",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 16,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "QUILL",
+      "difficulty": 3,
+      "ordinaryMeaning": "large feather used as a pen",
+      "esdb": [
+        {
+          "word": "quill",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 7,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RACER",
+      "difficulty": 1,
+      "ordinaryMeaning": "participant in a race",
+      "esdb": [
+        {
+          "word": "racer",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RECAP",
+      "difficulty": 2,
+      "ordinaryMeaning": "brief summary",
+      "esdb": [
+        {
+          "word": "recap",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 14,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RELAY",
+      "difficulty": 2,
+      "ordinaryMeaning": "race in which teammates take turns",
+      "esdb": [
+        {
+          "word": "relay",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "relay",
+          "pos": "v0",
+          "defn_note": "lay again",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "relay",
+          "pos": "v0",
+          "defn_note": "pass along",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 33,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "REPLY",
+      "difficulty": 1,
+      "ordinaryMeaning": "answer to a message",
+      "esdb": [
+        {
+          "word": "reply",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 281,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RERUN",
+      "difficulty": 2,
+      "ordinaryMeaning": "show or perform something again",
+      "esdb": [
+        {
+          "word": "rerun",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 1,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RESET",
+      "difficulty": 2,
+      "ordinaryMeaning": "return something to its initial setting",
+      "esdb": [
+        {
+          "word": "reset",
+          "pos": "a0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        },
+        {
+          "word": "reset",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RHYME",
+      "difficulty": 2,
+      "ordinaryMeaning": "matching ending sound in words",
+      "esdb": [
+        {
+          "word": "rhyme",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 53,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RIPEN",
+      "difficulty": 2,
+      "ordinaryMeaning": "become ready to eat",
+      "esdb": [
+        {
+          "word": "ripen",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "RIVET",
+      "difficulty": 3,
+      "ordinaryMeaning": "metal fastener with a head at each end",
+      "esdb": [
+        {
+          "word": "rivet",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ROBIN",
+      "difficulty": 2,
+      "ordinaryMeaning": "small songbird with a reddish breast",
+      "esdb": [
+        {
+          "word": "robin",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 58
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ROCKY",
+      "difficulty": 1,
+      "ordinaryMeaning": "covered with rocks",
+      "esdb": [
+        {
+          "word": "rocky",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 124,
+        "genres": 4,
+        "spoken": 12
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ROOMY",
+      "difficulty": 1,
+      "ordinaryMeaning": "having plenty of space",
+      "esdb": [
+        {
+          "word": "roomy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ROTOR",
+      "difficulty": 3,
+      "ordinaryMeaning": "rotating part of a machine",
+      "esdb": [
+        {
+          "word": "rotor",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SALON",
+      "difficulty": 2,
+      "ordinaryMeaning": "business that styles hair",
+      "esdb": [
+        {
+          "word": "salon",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 21,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SALSA",
+      "difficulty": 2,
+      "ordinaryMeaning": "sauce made with tomatoes and peppers",
+      "esdb": [
+        {
+          "word": "salsa",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 3,
+        "spoken": 8
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SANDY",
+      "difficulty": 1,
+      "ordinaryMeaning": "covered with sand",
+      "esdb": [
+        {
+          "word": "sandy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 140,
+        "genres": 3,
+        "spoken": 22
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SATIN",
+      "difficulty": 3,
+      "ordinaryMeaning": "smooth glossy fabric",
+      "esdb": [
+        {
+          "word": "satin",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "satin",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SCARF",
+      "difficulty": 1,
+      "ordinaryMeaning": "cloth worn around the neck",
+      "esdb": [
+        {
+          "word": "scarf",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "scarf",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 17,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SCENT",
+      "difficulty": 2,
+      "ordinaryMeaning": "particular smell",
+      "esdb": [
+        {
+          "word": "scent",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 41,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SCONE",
+      "difficulty": 3,
+      "ordinaryMeaning": "small baked bread often served with tea",
+      "esdb": [
+        {
+          "word": "scone",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SEDAN",
+      "difficulty": 2,
+      "ordinaryMeaning": "car with an enclosed passenger area and trunk",
+      "esdb": [
+        {
+          "word": "sedan",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 2,
+        "spoken": 13
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHELL",
+      "difficulty": 1,
+      "ordinaryMeaning": "hard outer covering of an animal",
+      "esdb": [
+        {
+          "word": "shell",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 94,
+        "genres": 5,
+        "spoken": 33
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SHRUB",
+      "difficulty": 2,
+      "ordinaryMeaning": "small woody plant",
+      "esdb": [
+        {
+          "word": "shrub",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 18,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SIEVE",
+      "difficulty": 3,
+      "ordinaryMeaning": "utensil that separates small particles from large ones",
+      "esdb": [
+        {
+          "word": "sieve",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 4,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SILKY",
+      "difficulty": 2,
+      "ordinaryMeaning": "smooth like silk",
+      "esdb": [
+        {
+          "word": "silky",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SKIER",
+      "difficulty": 2,
+      "ordinaryMeaning": "person who travels on skis",
+      "esdb": [
+        {
+          "word": "skier",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLEEK",
+      "difficulty": 3,
+      "ordinaryMeaning": "smooth and streamlined",
+      "esdb": [
+        {
+          "word": "sleek",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "sleek",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 18,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLEET",
+      "difficulty": 3,
+      "ordinaryMeaning": "small frozen pellets of precipitation",
+      "esdb": [
+        {
+          "word": "sleet",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "sleet",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 6
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLOTH",
+      "difficulty": 2,
+      "ordinaryMeaning": "slow moving tree dwelling mammal",
+      "esdb": [
+        {
+          "word": "sloth",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SLUSH",
+      "difficulty": 2,
+      "ordinaryMeaning": "partly melted snow",
+      "esdb": [
+        {
+          "word": "slush",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SNAIL",
+      "difficulty": 1,
+      "ordinaryMeaning": "slow moving animal with a spiral shell",
+      "esdb": [
+        {
+          "word": "snail",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 11,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SNOUT",
+      "difficulty": 2,
+      "ordinaryMeaning": "projecting nose of an animal",
+      "esdb": [
+        {
+          "word": "snout",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 7,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SNOWY",
+      "difficulty": 1,
+      "ordinaryMeaning": "covered with snow",
+      "esdb": [
+        {
+          "word": "snowy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SOAPY",
+      "difficulty": 1,
+      "ordinaryMeaning": "containing soap",
+      "esdb": [
+        {
+          "word": "soapy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SONAR",
+      "difficulty": 3,
+      "ordinaryMeaning": "system that locates underwater objects using sound",
+      "esdb": [
+        {
+          "word": "sonar",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 50,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPOOL",
+      "difficulty": 3,
+      "ordinaryMeaning": "cylinder around which thread is wound",
+      "esdb": [
+        {
+          "word": "spool",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SPOUT",
+      "difficulty": 2,
+      "ordinaryMeaning": "projecting outlet used to pour liquid",
+      "esdb": [
+        {
+          "word": "spout",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 19,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SQUID",
+      "difficulty": 2,
+      "ordinaryMeaning": "sea animal with eight arms and two longer tentacles",
+      "esdb": [
+        {
+          "word": "squid",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STOOL",
+      "difficulty": 1,
+      "ordinaryMeaning": "seat without a back",
+      "esdb": [
+        {
+          "word": "stool",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 10,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STORK",
+      "difficulty": 3,
+      "ordinaryMeaning": "large long legged wading bird",
+      "esdb": [
+        {
+          "word": "stork",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "STRUM",
+      "difficulty": 2,
+      "ordinaryMeaning": "play strings by brushing across them",
+      "esdb": [
+        {
+          "word": "strum",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SUEDE",
+      "difficulty": 3,
+      "ordinaryMeaning": "leather with a soft brushed surface",
+      "esdb": [
+        {
+          "word": "suede",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SWIRL",
+      "difficulty": 2,
+      "ordinaryMeaning": "move in a curling pattern",
+      "esdb": [
+        {
+          "word": "swirl",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 27,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "SYRUP",
+      "difficulty": 1,
+      "ordinaryMeaning": "thick sweet liquid",
+      "esdb": [
+        {
+          "word": "syrup",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": "A:0"
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TABBY",
+      "difficulty": 2,
+      "ordinaryMeaning": "cat with a striped coat",
+      "esdb": [
+        {
+          "word": "tabby",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "tabby",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 8
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TAFFY",
+      "difficulty": 2,
+      "ordinaryMeaning": "chewy pulled candy",
+      "esdb": [
+        {
+          "word": "taffy",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TALLY",
+      "difficulty": 2,
+      "ordinaryMeaning": "count or record a total",
+      "esdb": [
+        {
+          "word": "tally",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 14,
+        "genres": 1,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TANGY",
+      "difficulty": 2,
+      "ordinaryMeaning": "having a sharp pleasant flavor",
+      "esdb": [
+        {
+          "word": "tangy",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 3,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TEMPO",
+      "difficulty": 3,
+      "ordinaryMeaning": "speed of a piece of music",
+      "esdb": [
+        {
+          "word": "tempo",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "THYME",
+      "difficulty": 3,
+      "ordinaryMeaning": "herb with small aromatic leaves",
+      "esdb": [
+        {
+          "word": "thyme",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TIARA",
+      "difficulty": 3,
+      "ordinaryMeaning": "decorative jeweled headpiece",
+      "esdb": [
+        {
+          "word": "tiara",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 1,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TIDAL",
+      "difficulty": 3,
+      "ordinaryMeaning": "relating to the rise and fall of sea levels",
+      "esdb": [
+        {
+          "word": "tidal",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 45,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TIMER",
+      "difficulty": 1,
+      "ordinaryMeaning": "device that measures a time interval",
+      "esdb": [
+        {
+          "word": "timer",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 4,
+        "spoken": 11
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TULIP",
+      "difficulty": 2,
+      "ordinaryMeaning": "flower with a cup shaped bloom",
+      "esdb": [
+        {
+          "word": "tulip",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 11,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TUNER",
+      "difficulty": 2,
+      "ordinaryMeaning": "device used to adjust musical pitch",
+      "esdb": [
+        {
+          "word": "tuner",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TWINE",
+      "difficulty": 2,
+      "ordinaryMeaning": "strong string made of twisted strands",
+      "esdb": [
+        {
+          "word": "twine",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "twine",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "TWIRL",
+      "difficulty": 2,
+      "ordinaryMeaning": "spin around",
+      "esdb": [
+        {
+          "word": "twirl",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "UNTIE",
+      "difficulty": 1,
+      "ordinaryMeaning": "undo a knot",
+      "esdb": [
+        {
+          "word": "untie",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "UNZIP",
+      "difficulty": 1,
+      "ordinaryMeaning": "open a zipper",
+      "esdb": [
+        {
+          "word": "unzip",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VAPOR",
+      "difficulty": 3,
+      "ordinaryMeaning": "substance in its gaseous form",
+      "esdb": [
+        {
+          "word": "vapor",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": "A:0"
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VENUE",
+      "difficulty": 3,
+      "ordinaryMeaning": "place where an event happens",
+      "esdb": [
+        {
+          "word": "venue",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 40,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 110,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VINYL",
+      "difficulty": 3,
+      "ordinaryMeaning": "plastic material used for records and flooring",
+      "esdb": [
+        {
+          "word": "vinyl",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 9,
+        "genres": 2,
+        "spoken": 6
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VISOR",
+      "difficulty": 3,
+      "ordinaryMeaning": "shield that protects the eyes from sunlight",
+      "esdb": [
+        {
+          "word": "visor",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": "A:0"
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VIVID",
+      "difficulty": 3,
+      "ordinaryMeaning": "bright and clear",
+      "esdb": [
+        {
+          "word": "vivid",
+          "pos": "aj0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 64,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "VOWEL",
+      "difficulty": 2,
+      "ordinaryMeaning": "speech sound represented by letters such as a or e",
+      "esdb": [
+        {
+          "word": "vowel",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 34,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WAFER",
+      "difficulty": 2,
+      "ordinaryMeaning": "thin crisp biscuit",
+      "esdb": [
+        {
+          "word": "wafer",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WEDGE",
+      "difficulty": 2,
+      "ordinaryMeaning": "tapered piece used to hold something in place",
+      "esdb": [
+        {
+          "word": "wedge",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 24,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WHALE",
+      "difficulty": 1,
+      "ordinaryMeaning": "large marine mammal",
+      "esdb": [
+        {
+          "word": "whale",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        },
+        {
+          "word": "whale",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 71,
+        "genres": 4,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WHIRL",
+      "difficulty": 2,
+      "ordinaryMeaning": "spin rapidly",
+      "esdb": [
+        {
+          "word": "whirl",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 5,
+        "genres": 2,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WHISK",
+      "difficulty": 2,
+      "ordinaryMeaning": "utensil used to beat or stir ingredients",
+      "esdb": [
+        {
+          "word": "whisk",
+          "pos": "m0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 8,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WIDEN",
+      "difficulty": 2,
+      "ordinaryMeaning": "make broader",
+      "esdb": [
+        {
+          "word": "widen",
+          "pos": "v0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 44,
+        "genres": 5,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "WIPER",
+      "difficulty": 2,
+      "ordinaryMeaning": "device that clears rain from a windshield",
+      "esdb": [
+        {
+          "word": "wiper",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 0,
+        "genres": 0,
+        "spoken": 8
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "YEAST",
+      "difficulty": 2,
+      "ordinaryMeaning": "organism used to make bread rise",
+      "esdb": [
+        {
+          "word": "yeast",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 12,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    },
+    {
+      "word": "ZEBRA",
+      "difficulty": 1,
+      "ordinaryMeaning": "striped African mammal",
+      "esdb": [
+        {
+          "word": "zebra",
+          "pos": "n0",
+          "defn_note": "",
+          "usage_note": "",
+          "size": 35,
+          "variants": null
+        }
+      ],
+      "frequency": {
+        "written": 6,
+        "genres": 3,
+        "spoken": 0
+      },
+      "editorialReview": "familiar ordinary meaning; neutral use; standard American spelling; initial editorial tier",
+      "legalGuess": true,
+      "solvePositions": 6,
+      "duplicateLetterConservation": true,
+      "soloAsyncParity": true,
+      "privateUntilReveal": true
+    }
+  ],
+  "poolProof": [
+    {
+      "answers": 1021,
+      "three_word_games_before_repeat": 340,
+      "first_repeating_game": 341,
+      "cycles_checked": 2,
+      "allocations": 681,
+      "replays": 682,
+      "boundary_safe": true,
+      "prior_versions_preserved": true
+    }
+  ]
+}

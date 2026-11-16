@@ -18,12 +18,13 @@ it('stages section changes and keyboard-button moves until one explicit save',as
  fireEvent.click(screen.getByRole('button',{name:'Move Run21 up'}));
  expect(mocks.save).not.toHaveBeenCalled();
  const games=within(screen.getByRole('list',{name:'P-Town Originals'})).getAllByRole('listitem');
- expect(games.map(row=>row.getAttribute('data-arcade-order-game'))).toEqual(['horses-blitz','357-drop','crib-lab','chucky-showdown','river-city-run','run21','ship-cap-voyage']);
+ const originals=['horses-blitz','357-drop','crib-lab','chucky-showdown','five-alive','river-city-run','run21','ship-cap-voyage'];
+ expect(games.map(row=>row.getAttribute('data-arcade-order-game'))).toEqual(originals);
  fireEvent.click(screen.getByRole('button',{name:'Save Arcade order'}));
  await screen.findByText('Arcade order saved.');
  expect(mocks.save).toHaveBeenCalledTimes(1);
  expect(mocks.save.mock.calls[0][1]).toBe(4);
- expect(mocks.save.mock.calls[0][0].other).toContain('hidden-game');
+ expect(mocks.save.mock.calls[0][0]).toEqual({originals,other:initial.layout.other.filter(game=>game!=='run21')});
  expect(screen.queryByText('hidden-game')).toBeNull();
 });
 it('retains the draft after a failed save and requires a reload before retry',async()=>{

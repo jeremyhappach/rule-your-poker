@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {describe,it,expect} from 'vitest';
-import {matchGameMix,matchLobbyStatus} from './lobbyPresentation';
+import {lobbyGameGroup,matchGameMix,matchLobbyStatus} from './lobbyPresentation';
 import type {ChildSummary,Home} from './client';
 const now=1800000000000;
 const child=(game:ChildSummary['game'],patch:Partial<ChildSummary>={}):ChildSummary=>({
@@ -26,6 +26,27 @@ describe('viewer-specific playability versus turn ownership',()=>{
  });
  it.each([{status:'invited'},{status:'settled'},{status:'declined'},{held:true},{removedAt:'removed'}])('excludes inactive matches %j',patch=>{
   expect(matchLobbyStatus(home([child('chess')],patch),'a',now)).toMatchObject({own:0,other:0});
+ });
+});
+describe('Five Alive simultaneous obligations with current lobby guards',()=>{
+ it.each([null,'a','b'] as const)('counts both players independently of actor %s in a mixed lineup',actor=>{
+  const five=child('five-alive',{actor,playable:true,opponentPlayable:true});
+  const match=home([five,child('chess'),child('run21',{actor:'a',playable:true})]);
+  expect(matchLobbyStatus(match,'a',now)).toMatchObject({own:2,other:2,actionable:true});
+  expect(lobbyGameGroup(five,match,'a',now)).toBe(0);
+  five.playable=false;
+  expect(matchLobbyStatus(match,'a',now)).toMatchObject({own:1,other:2});
+  expect(lobbyGameGroup(five,match,'a',now)).toBe(2);
+  five.opponentPlayable=false;
+  expect(matchLobbyStatus(home([five]),'a',now)).toMatchObject({own:0,other:0,actionable:false,nextDeadline:Infinity});
+ });
+ it.each([{status:'invited'},{status:'settled'},{status:'declined'},{held:true},{removedAt:'removed'}])('does not revive either player in an inactive match %j',patch=>{
+  const five=child('five-alive',{playable:true,opponentPlayable:true}),match=home([five,child('chess')],patch);
+  expect(matchLobbyStatus(match,'a',now)).toMatchObject({own:0,other:0,nextDeadline:Infinity});
+  expect(lobbyGameGroup(five,match,'a',now)).toBe(2);
+ });
+ it.each([{terminal:true},{playableDeadline:new Date(now).toISOString()}])('excludes completed or expired simultaneous obligations %j',patch=>{
+  expect(matchLobbyStatus(home([child('five-alive',{playable:true,opponentPlayable:true,...patch}),child('chess')]),'a',now)).toMatchObject({own:0,other:1});
  });
 });
 it('summarizes the complete current lineup in ordinal order, including completed games',()=>{

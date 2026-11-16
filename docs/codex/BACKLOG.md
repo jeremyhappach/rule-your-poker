@@ -1,3 +1,22 @@
+## Queued — Five Alive post-launch vocabulary growth — November 15, 2026
+
+Jeremy approved launch with the current 1,021 qualified answers in
+`esdb-five-alive/3`; roughly 10,000 is now a post-launch growth goal rather than
+a release blocker. Remaining growth gap: 8,979. Continue in bounded reviewed
+batches of familiar and fair answers; do not pad with obscure or sensitive words.
+Preserve existing words, tiers and review records. Complete source/per-word and
+versioned allocation/replay/no-repeat qualification before integration. Provenance:
+explicit launch decision in the Five Alive continuation request. Evidence and
+resume state: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
+## Queued — Standardize gameplay headers — November 12, 2026
+
+Jeremy requested a future full-app gameplay-header polish pass. Review Back to
+Match, Rules/Info, and mode-appropriate abandon behavior across games while
+preserving each game's lifecycle and navigation. Five Alive follows its own
+approved header in the current task; the broad pass is deferred. Provenance:
+Five Alive continuation request and approved gameplay package, November 12.
+
 ## Pending production smoke — Cribbage pegging audio landing and final Last +1 — November 15, 2026
 
 Published `9415f9d77` through the approved main push helper. Vercel production

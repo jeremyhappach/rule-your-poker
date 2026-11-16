@@ -4,9 +4,12 @@ import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {readFileSync} from 'node:fs';
 import {GAME_CATALOG,ARCADE_GAMES} from '@/lib/gameCatalog';
 import {ASYNC_RULES_GAMES,rulesModes} from '@/lib/gameCatalog/rulesModes';
+import fiveAliveCandidate from '@/lib/gameCatalog/games/five-alive';
+import FiveAliveRules from '@/components/rules/FiveAliveRules';
 import audit from '../../../dev/lobby-catalog/rules-audit-20261104.json';
 // Preserve the historical audit and enumerate additions separately.
 const candidates=vi.hoisted(()=>[
+ {game:'five-alive',id:'five-alive/3',config:{version:'five-alive/1',poolVersion:'esdb-five-alive/3'}},
  {game:'river-city-run',id:'river-city-run/1',config:{version:'river-city-run/1'}},
  {game:'crib-lab',id:'crib-lab/1',config:{version:'crib-lab/1',durationMs:240000}},
  {game:'chucky-showdown',id:'chucky-showdown/1',config:{version:'chucky-showdown/1',durationMs:30000}},
@@ -34,10 +37,20 @@ it('covers the audited registry and current solo additions exactly',()=>{
 it('covers every Async adapter and every explicit Arcade service dispatch',()=>{
  const adapter=readFileSync('server/delayed/adapter.ts','utf8');
  const asyncIds=[...adapter.match(/export type Game=([^;]+)/)![1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
- expect(Object.keys(ASYNC_RULES_GAMES).sort()).toEqual([...asyncIds,'ptown-words','chess'].sort());
+ expect(Object.keys(ASYNC_RULES_GAMES).sort()).toEqual([...asyncIds,'ptown-words','chess','five-alive'].sort());
  const arcade=readFileSync('server/arcade/service.ts','utf8');
  const dispatched=[...arcade.matchAll(/(?:body|row|input)\.game\s*===\s*'([^']+)'/g)].map(m=>m[1]);
  for(const id of [...asyncIds,...dispatched,'run21'])expect(GAME_CATALOG.find(g=>g.id===id)?.rules.load,id).toBeTypeOf('function');
+ expect(readFileSync('server/delayed/service.ts','utf8')).toMatch(/body\.game\s*===\s*'five-alive'/);
+ expect(GAME_CATALOG.find(game=>game.id===fiveAliveCandidate.id)).toEqual(fiveAliveCandidate);
+});
+it('publishes complete Five Alive rules with Arcade and Async help',()=>{
+ expect(rulesModes(fiveAliveCandidate)).toEqual(['arcade','async']);
+ expect(fiveAliveCandidate.rules.fixedVersion).toBe('five-alive/1');
+ render(<FiveAliveRules/>);
+ expect(screen.getByRole('heading',{name:'How to play'})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'What scores'})).toBeTruthy();
+ expect(screen.getByText(/1,000, 700, 490, 343, 240 and 168/)).toBeTruthy();
 });
 it.each(GAME_CATALOG.flatMap(game=>rulesModes(game).map(mode=>({game:game.id,mode}))))('$game / $mode has real accessible rules',async({game,mode})=>{
  const ui=render(<RulesContent game={game} mode={mode}/>);

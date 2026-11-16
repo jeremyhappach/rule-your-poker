@@ -10,7 +10,7 @@ export const isReviewedGame=(child:ChildSummary,userId:string)=>
 export function lobbyGameGroup(child:ChildSummary,home:Home,userId:string,now:number){
  if(isReviewedGame(child,userId))return 3;
  if(child.terminal)return 1;
- if(home.status==='active'&&!home.held&&!home.removedAt&&child.actor===userId&&Date.parse(child.expiresAt??'')>now)return 0;
+ if(home.status==='active'&&!home.held&&!home.removedAt&&(child.game==='five-alive'?child.playable===true:child.actor===userId)&&Date.parse(child.expiresAt??'')>now)return 0;
  return 2;
 }
 
@@ -23,10 +23,10 @@ export function matchLobbyStatus(home:Home,userId:string,now:number){
  const results=home.lineup.filter(child=>needsChildReview(child,userId)).length;
  // playable is viewer-specific; an opponent-owned turn deliberately has false.
  const turns=home.status==='active'&&!home.held&&!home.removedAt
-  ?home.lineup.filter(child=>!child.terminal&&turnDeadline(child)>now)
+  ?home.lineup.filter(child=>!child.terminal&&turnDeadline(child)>now&&(child.game!=='five-alive'||child.playable===true||child.opponentPlayable===true))
   :[];
- const own=turns.filter(child=>child.actor===userId&&isAvailableTurn(child,now)).length;
- const other=opponent?turns.filter(child=>child.actor===opponent.id).length:0;
+ const own=turns.filter(child=>child.game==='five-alive'?child.playable===true:child.actor===userId&&isAvailableTurn(child,now)).length;
+ const other=opponent?turns.filter(child=>child.game==='five-alive'?child.opponentPlayable===true:child.actor===opponent.id).length:0;
  const invitation=home.status==='invited';
  const accepts=invitation&&home.opponent===userId;
  return {home,opponent:opponent?.name??'Opponent',own,other,results,invitation,accepts,

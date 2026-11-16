@@ -1,4 +1,5 @@
 import {RulesContent} from '@/components/rules/RulesContent';
+import FiveAliveRules from '@/components/rules/FiveAliveRules';
 import '@/components/catalog/catalog.css';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Info} from 'lucide-react';
@@ -23,7 +24,7 @@ export function ArcadeInfo({game,name,ruleset,children,onOpen,banner=false,trigg
     </button></DialogTrigger>
     <DialogContent className="arcade-info"><DialogTitle>{name} · Rules &amp; info</DialogTitle>
       <DialogDescription>{game!=='yahtzee'?'How to play and compare your scores.':'Coming Soon'}</DialogDescription>
-      {open&&(game==='yahtzee'?<p>Arcade rules will be available when this game launches.</p>:<RulesContent game={game} version={ruleset} mode="arcade"/>)}
+      {open&&(game==='yahtzee'?<p>Arcade rules will be available when this game launches.</p>:game==='five-alive'?<FiveAliveRules/>:<RulesContent game={game} version={ruleset} mode="arcade"/>)}
       {children}
     </DialogContent>
   </Dialog>;

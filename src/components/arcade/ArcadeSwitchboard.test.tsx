@@ -13,10 +13,11 @@ it('removes the cancelled Yahtzee placeholder while retaining every existing Arc
  const {container}=render(<MemoryRouter><ArcadeSwitchboard userId="fixture"/></MemoryRouter>);
  const links=await screen.findAllByRole('link',{name:/ leaderboard$/});
  expect(links.map(link=>link.getAttribute('href')).sort()).toEqual([
-  'horses-blitz','357-drop','crib-lab','chucky-showdown','quintzee','boxdrop','eleven-up','mega-card-golf','royal-flash','run21','take-two','tri-towers','trip-flip','river-city-run','ship-cap-voyage',
+  'horses-blitz','357-drop','crib-lab','chucky-showdown','five-alive','quintzee','boxdrop','eleven-up','mega-card-golf','royal-flash','run21','take-two','tri-towers','trip-flip','river-city-run','ship-cap-voyage',
  ].map(id=>'/arcade/'+id).sort());
- expect(container.querySelectorAll('.arcade-tile')).toHaveLength(15);
- expect(within(screen.getByRole('region',{name:'P-Town Originals'})).getAllByRole('link').map(link=>link.getAttribute('href'))).toEqual(['horses-blitz','357-drop','crib-lab','chucky-showdown','river-city-run','ship-cap-voyage'].map(id=>'/arcade/'+id));
+ expect(container.querySelectorAll('.arcade-tile')).toHaveLength(16);
+ expect(within(screen.getByRole('region',{name:'P-Town Originals'})).getAllByRole('link').map(link=>link.getAttribute('href'))).toEqual(['horses-blitz','357-drop','crib-lab','chucky-showdown','five-alive','river-city-run','ship-cap-voyage'].map(id=>'/arcade/'+id));
+ expect(within(screen.getByRole('region',{name:'Other Games'})).getAllByRole('link').map(link=>link.getAttribute('href'))).toEqual(['run21','tri-towers','eleven-up','boxdrop','trip-flip','take-two','royal-flash','mega-card-golf','quintzee'].map(id=>'/arcade/'+id));
  expect(screen.getAllByRole('region').map(region=>region.getAttribute('aria-labelledby'))).toEqual(['arcade-section-originals','arcade-section-other']);
  expect(screen.queryByText('Yahtzee')).toBeNull();
  expect(screen.queryByText('Coming Soon')).toBeNull();

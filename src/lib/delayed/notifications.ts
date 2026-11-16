@@ -5,7 +5,7 @@ export const turnDeadline=(child:ChildSummary)=>Date.parse(child.playableDeadlin
 export const isAvailableTurn=(child:ChildSummary,now:number)=>!child.terminal&&child.playable!==false&&turnDeadline(child)>now;
 
 export function turnDestination(home:Home,userId:string){
- const turns=home.status==='active'&&!home.held?home.lineup.filter(c=>c.actor===userId&&isAvailableTurn(c,home.serverAt)):[];
+ const turns=home.status==='active'&&!home.held?home.lineup.filter(c=>(c.game==='five-alive'?c.playable===true:c.actor===userId)&&isAvailableTurn(c,home.serverAt)):[];
  return turns.length===1?`/delayed/${home.id}/play/${turns[0].id}`:`/delayed/${home.id}`;
 }
 

@@ -937,3 +937,7 @@
   text-shadow:0 1px #fff6b766;
 }
 .arcade-board.theme-run21 .arcade-score-table [data-self=true] .leaderboard-player { box-shadow:inset 2px 0 #f2d17e,inset 0 1px var(--row-light),inset 0 -2px #0004; }
+.arcade-board.theme-five-alive{--theme-accent:#e8bf57;background:radial-gradient(ellipse at 50% 0%,#07543c,#001b21 55%,#000d19);color:#fff2cc}
+.arcade-board.theme-five-alive .arcade-primary,.arcade-board.theme-five-alive .arcade-tabs [aria-selected=true]{background:#096c3d;color:#fff3c7;border-color:#e5bc4f}
+.arcade-board.theme-five-alive .five-alive-leaderboard-tiles{display:flex;justify-content:center;gap:.4rem;opacity:.22;transform:rotate(-8deg);padding-top:4rem}
+.arcade-board.theme-five-alive .five-alive-leaderboard-tiles span{display:grid;place-items:center;width:3.4rem;aspect-ratio:1;border:2px solid #dfbd5f;border-radius:.4rem;background:#08733f;color:white;font-size:2rem;font-weight:900}

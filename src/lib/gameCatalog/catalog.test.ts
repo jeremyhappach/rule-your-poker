@@ -1,15 +1,24 @@
 // @vitest-environment jsdom
 import {describe,it,expect} from 'vitest';
 import {GAME_CATALOG,ARCADE_GAMES,findGame,eligibility,isDiscovered} from './index';
+import {rulesModes} from './rulesModes';
 import {GAME_KEYS,enumerateAnchoredArtifacts,type GameKey} from '@/lib/geometryLab/descriptorIndex';
 import fixture from '../../../dev/lobby-catalog/production-fixture.json';
 import evidence from '../../../dev/lobby-catalog/admission-evidence.json';
 describe('integrated catalog parity',()=>{
  it('covers exactly deployed defaults and enabled Arcade games without activating placeholders',()=>{
- expect(GAME_CATALOG.filter(g=>!['chess','river-city-run','ship-cap-voyage','horses-blitz','357-drop','crib-lab','chucky-showdown','ptown-words','quintzee','canasta','six-card-golf','battle-31','race-poker','mega-card-golf'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual(fixture.defaults.map(g=>g.game_type).sort());
- expect(ARCADE_GAMES.filter(g=>!['river-city-run','ship-cap-voyage','horses-blitz','357-drop','crib-lab','chucky-showdown','mega-card-golf','quintzee'].includes(g.id)).map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game))].sort());
+ expect(GAME_CATALOG.filter(g=>!['chess','river-city-run','ship-cap-voyage','horses-blitz','357-drop','crib-lab','chucky-showdown','ptown-words','quintzee','canasta','six-card-golf','battle-31','race-poker','mega-card-golf'].includes(g.id)).map(g=>g.defaultsKey).sort()).toEqual([...fixture.defaults.map(g=>g.game_type),'five-alive'].sort());
+ expect(ARCADE_GAMES.filter(g=>!['river-city-run','ship-cap-voyage','horses-blitz','357-drop','crib-lab','chucky-showdown','mega-card-golf','quintzee'].includes(g.id)).map(g=>g.id).sort()).toEqual([...new Set(fixture.arcadeRules.filter(r=>r.enabled).map(r=>r.game)),'five-alive'].sort());
  expect(new Set(GAME_CATALOG.map(g=>g.id)).size).toBe(GAME_CATALOG.length);
  expect(findGame('holm')?.id).toBe('holm-game');expect(findGame('357')?.defaultsKey).toBe('3-5-7');expect(findGame('six-card-golf')).toMatchObject({availability:'six-card-golf',modes:['multiplayer'],players:{min:2,max:4}});expect(isDiscovered(findGame('six-card-golf')!,{})).toBe(false);
+ });
+ it('registers Five Alive as one solo Arcade entry with Async help and no live-table admission',()=>{
+ const game=findGame('five-alive')!;
+ expect(GAME_CATALOG.filter(g=>g.id==='five-alive')).toHaveLength(1);
+ expect(game).toMatchObject({defaultsKey:'five-alive',category:'other',order:26,arcadeSection:'originals',modes:['arcade'],players:{min:1,max:1,selection:'solo'},bots:'unsupported',availability:'five-alive',rules:{fixedVersion:'five-alive/1'}});
+ expect(rulesModes(game)).toEqual(['arcade','async']);
+ expect(isDiscovered(game,{})).toBe(false);
+ expect(eligibility(game,{players:1,humans:1},{'five-alive':true})).toBe('Arcade only');
  });
  it('gates Quintzee to approved fake-money rosters and separate Arcade admission',()=>{
  const game=findGame('quintzee')!;expect(game.modes).toEqual(['multiplayer','arcade']);expect(isDiscovered(game,{})).toBe(false);
@@ -26,7 +35,7 @@ describe('integrated catalog parity',()=>{
  it('retains only existing geometry keys with real descriptors',()=>{const keys=GAME_CATALOG.flatMap(g=>g.geometry?[g.geometry]:[]);expect(keys.sort()).toEqual([...GAME_KEYS].sort());for(const key of keys)expect(enumerateAnchoredArtifacts(key as GameKey).length).toBeGreaterThan(0);});
  it.each(GAME_CATALOG)('$id fails closed on invalid roster and unavailable capability',game=>{
  const access=Object.fromEntries(GAME_CATALOG.map(g=>[g.availability,true]));
- if(!game.modes.includes('multiplayer')){expect(['river-city-run','ship-cap-voyage','horses-blitz','357-drop','mega-card-golf','chucky-showdown','crib-lab']).toContain(game.id);expect(eligibility(game,{players:1,humans:1},access)).toBe('Arcade only');expect(isDiscovered(game,{})).toBe(false);return;}
+ if(!game.modes.includes('multiplayer')){expect(['river-city-run','ship-cap-voyage','horses-blitz','357-drop','mega-card-golf','chucky-showdown','crib-lab','five-alive']).toContain(game.id);expect(eligibility(game,{players:1,humans:1},access)).toBe('Arcade only');expect(isDiscovered(game,{})).toBe(false);return;}
  expect(eligibility(game,{players:0,humans:0},access)).not.toBeNull();
  expect(eligibility(game,{players:game.players.max+1,humans:2},access)).not.toBeNull();
  expect(eligibility(game,{players:game.players.min,humans:game.players.min,realMoney:false},access)).toBeNull();

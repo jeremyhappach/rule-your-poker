@@ -1,6 +1,7 @@
 import {ChessHistoryButton} from '@/components/chess/ChessHistory';
 import {ChessTurn} from '@/components/delayed/ChessTurn';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
+import {FiveAliveSession} from '@/components/fiveAlive/FiveAliveSession';
 import {PlayingNow} from '@/components/delayed/PlayingNow';
 import {AsyncSessionName} from '@/components/delayed/AsyncSessionName';
 import {RealMoneyWarningDialog} from '@/components/RealMoneyWarningDialog';
@@ -107,7 +108,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
   {home.correction?.reversed&&<p role="status">The previous timeout result was reversed. Chess was restored with its prior time banks. The five-minute clock starts when the player opens the restored turn. Earlier results remain in the audit history.</p>}
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
-  <ul className="delayed-lineup" aria-label="Match games">{orderedLobbyGames(home,userId,now).map(c=>{const ours=c.actor===userId,remaining=Date.parse(c.expiresAt??'')-now;
+  <ul className="delayed-lineup" aria-label="Match games">{orderedLobbyGames(home,userId,now).map(c=>{const ours=c.game==='five-alive'?c.playable===true:c.actor===userId,remaining=Date.parse(c.expiresAt??'')-now;
    const reviewed=isReviewedGame(c,userId),expanded=expandedGame===c.id,panelId='completed-game-'+c.id;
    const timeoutLabel=c.result?.reason==='timeout_forfeit'?(c.game==='chess'?(home.players.find(p=>p.id!==c.result?.winner)?.name??'Player')+' timed out':'Forfeit'):'';
    const scores=home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">Pending</em>}</div></div>)}</div>;
@@ -155,5 +156,6 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const child=home?.lineup.find(c=>c.id===childId);
  useUpdates(userId,refresh,child?.game!=='ptown-words');
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
+ if(child.game==='five-alive')return <FiveAliveSession key={userId+':'+childId} mode="async" id={childId} userId={userId} matchId={matchId}/>;
  return child.game==='chess'?<ChessTurn childId={childId} matchId={matchId} userId={userId}/>:child.game==='ptown-words'?<WordsTurn key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

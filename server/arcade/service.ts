@@ -1,4 +1,5 @@
 import {createSoloRun,advanceSolo,applySolo,nextDue,soloProjection} from '../../src/lib/arcade/run21.js';
+import {fiveAliveArcadeOperation} from '../fiveAlive/arcade.js';
 import {riverOperation,synchronizeRiver} from '../riverCityRun/service.mjs';
 import {megaOperation,synchronizeMega,type MegaRecord} from '../megaCardGolf/service.js';
 import {isUuid} from '../../src/lib/run21/model.js';
@@ -110,6 +111,7 @@ export async function synchronize(rpc:Rpc,input:RunRecord,actor:string|null,toke
  throw Error('arcade:concurrent_action');
 }
 export async function arcadeOperation(rpc:Rpc,userId:string,name:string|Promise<string>,body:Record<string,any>){
+ if(body.game==='five-alive'&&body.op!=='leaderboard')return fiveAliveArcadeOperation(rpc,userId,body);
  if(body.game==='river-city-run')return riverOperation(rpc,userId,body);
  if(body.game==='mega-card-golf')return megaOperation(rpc,userId,body);
  if(body.game==='chucky-showdown'&&body.op==='start'&&body.presentationVersion!==3)throw Error('arcade:refresh_required');

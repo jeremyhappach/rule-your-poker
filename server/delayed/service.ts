@@ -1,4 +1,5 @@
 import {isUuid} from '../../src/lib/run21/model.js';
+import {fiveAliveAsyncOperation} from '../fiveAlive/async.js';
 import {transition,project,gameplayDue,type Child,type Rpc,type Intent} from './adapter.js';
 type RecordRow=Child&{held:boolean;receipt?:{child_id:string;fingerprint:unknown}|null};
 const due=(row:Child)=>Math.min(Date.parse(row.expires_at),row.state?gameplayDue(row.state)??Infinity:Infinity);
@@ -14,6 +15,7 @@ export async function synchronize(rpc:Rpc,input:RecordRow,actor:string|null):Pro
  throw Error('delayed:recovery_incomplete');
 }
 export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,any>){
+ if(body.game==='five-alive')return fiveAliveAsyncOperation(rpc,userId,body);
  if(!['state','action'].includes(body.op)||!isUuid(body.childId??''))throw Error('delayed:invalid_request');
  if(body.op==='action'&&(!isUuid(body.requestId??'')||!Number.isSafeInteger(body.revision)||!Number.isSafeInteger(body.segment)))throw Error('delayed:invalid_command');
  const intent=body.intent as Intent;

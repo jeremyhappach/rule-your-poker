@@ -1,0 +1,3 @@
+guesses.esdb.txt text eol=lf
+answers.* text eol=lf
+ESDB-Copyright.txt -text

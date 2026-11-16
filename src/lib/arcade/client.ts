@@ -12,6 +12,7 @@ const messages:Record<string,string>={
  'arcade:concurrent_action':'The run changed. Review the current board and try again.',
  'arcade:run_ended':'This run has ended.',
  'arcade:round_intro':'The round is starting.',
+ 'arcade:invalid_guess':'That word is not in the guess dictionary.',
  'arcade:result_presentation':'The round result is still being shown.',
  'arcade:column_locked':'Choose an available column.',
  'arcade:pass_used':'Your pass has already been used this round.',

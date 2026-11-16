@@ -1,4 +1,5 @@
 import {RiverCityRunPage} from '@/components/riverCityRun/RiverCityRunPage';
+import {FiveAliveSession} from '@/components/fiveAlive/FiveAliveSession';
 import {SoloShipCapVoyage} from '@/components/arcade/SoloShipCapVoyage';
 import {SoloHorsesBlitz} from '@/components/arcade/SoloHorsesBlitz';
 import {SoloDrop357} from '@/components/arcade/SoloDrop357';
@@ -55,6 +56,7 @@ export default function Arcade(){
  const {user,isReady}=useAuthGuard({pageLabel:'Arcade'}),{game,runId}=useParams();
  if(!isReady||!user)return <main className="arcade-page"><p role="status">Connecting…</p></main>;
  if(!game)return <ArcadeSwitchboard userId={user.id}/>;
+ if(game==='five-alive')return runId?<FiveAliveSession key={user.id+runId} mode="arcade" id={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
  if(game==='chucky-showdown')return runId?<SoloChuckyShowdown key={user.id+runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
  if(game==='ship-cap-voyage')return runId?<SoloShipCapVoyage key={user.id+runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
  if(game==='horses-blitz')return runId?<SoloHorsesBlitz key={user.id+runId} runId={runId} userId={user.id}/>:<GameBoard key={game+user.id} game={game} userId={user.id}/>;
@@ -65,7 +67,7 @@ export default function Arcade(){
  if(game!=='run21'&&game!=='tri-towers'&&game!=='eleven-up'&&game!=='royal-flash'&&game!=='quintzee'&&game!=='boxdrop'&&game!=='trip-flip'&&game!=='take-two')return <main className="arcade-page"><Link to="/arcade">Back to Arcade</Link><h1>Coming Soon</h1></main>;
  return runId?(game==='quintzee'?<SoloQuintzee key={runId} runId={runId} userId={user.id}/>:game==='boxdrop'?<SoloBoxdrop key={runId} runId={runId} userId={user.id}/>:game==='trip-flip'?<SoloTripFlip key={runId} runId={runId} userId={user.id}/>:game==='take-two'?<SoloTakeTwo key={runId} runId={runId} userId={user.id}/>:game==='royal-flash'?<SoloRoyalFlash key={runId} runId={runId} userId={user.id}/>:game==='eleven-up'?<SoloElevenUp key={runId} runId={runId} userId={user.id}/>:game==='tri-towers'?<SoloTriTowers key={runId} runId={runId} userId={user.id}/>:<SoloRun key={runId} runId={runId} userId={user.id}/>):<GameBoard key={game+user.id} game={game} userId={user.id}/>;
 }
-export function GameBoard({game,userId}:{userId:string;game:'ship-cap-voyage'|'horses-blitz'|'357-drop'|'crib-lab'|'chucky-showdown'|'run21'|'tri-towers'|'eleven-up'|'royal-flash'|'quintzee'|'boxdrop'|'trip-flip'|'take-two'}){
+export function GameBoard({game,userId}:{userId:string;game:'five-alive'|'ship-cap-voyage'|'horses-blitz'|'357-drop'|'crib-lab'|'chucky-showdown'|'run21'|'tri-towers'|'eleven-up'|'royal-flash'|'quintzee'|'boxdrop'|'trip-flip'|'take-two'}){
  const descriptor=findGame(game),name=descriptor?.name??game;
  const [classic,setClassic]=useQuintzeeTheme(userId);
  const navigate=useNavigate(),[search]=useSearchParams(),result=search.get('result');
