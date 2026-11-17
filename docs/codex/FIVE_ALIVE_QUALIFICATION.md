@@ -1,6 +1,58 @@
 # Five Alive local qualification — November 12, 2026
 
-## November 16 phone keyboard / five-second award follow-up — approved candidate
+## November 16 phone keyboard / five-second award follow-up — production smoke passed
+
+Released commit **`f5f8b10ae36d51812e62ae209ab9e48581fc18df`**, tag
+`five-alive-phone-award-20261116`. Vercel `dpl_A4vRbxuKivyy7mPz1dFAArVdV7Vb`
+is READY / production. GitHub run `44021178472`, job `133830767201`, succeeded
+on attempt 1. Production verification and release publication both passed;
+`public.system_settings.release_publication` independently matches the exact
+SHA, deployment ID `44021178472-1`, and `2026-11-17T05:12:47.146Z`. No retry or
+second deployment was needed. Both production manifests serve the exact SHA.
+
+**All four production acceptance items passed**, runner exit 0. Two fresh
+isolated Edge contexts verified `page.url()` and `location.href` as exactly
+`https://ptown-poker.vercel.app/auth`, the expected build manifest, and the
+production Supabase backend before using the approved test accounts. Personal
+Chrome was not used. There were zero browser page errors and no error/fatal
+groups in the deployment's runtime scan since `2026-11-17T05:13:00Z`.
+
+- **Sequential feedback:** 39 real submitted guesses recorded CSS start/end
+  events proving left-to-right close/open order, the actual server feedback
+  before the next tile, 220 ms half-flips and the horizontal rotation axis.
+- **Persistent history/privacy:** multiple submitted words and feedback remained
+  through row advancement, reload and reconnect in both modes. Async restored
+  only the owner's waiting rows; the opponent's guesses remained sealed until
+  both completed the word, then appeared in shared results.
+- **Phone keyboard:** the production 390×844 layout measured **5.59375 px**
+  between grid and keyboard, retaining **40 px** key height and **34.53125 px**
+  minimum key width. The screenshots were visually checked. Local phone proof
+  also passed 320/390/430 px widths with a 24 px simulated bottom safe area.
+- **Five-second score reveal:** six solved production words across Arcade and
+  Async retained the explicit base × difficulty calculation for at least
+  **5,709.9 ms**. Earliest score change: **5,009.1 ms**; earliest awarded-total
+  flight: **5,006.3 ms**. No early count or dismissal. Independent scoring from
+  the final disclosed results matched the authoritative totals.
+- **Arcade:** run `3236727a-aa92-4223-b0ac-ac66c2a9aade` completed all three
+  words for **1,176**, showed Game Over and returned to its leaderboard. Scoped
+  database readback confirmed completed, exactly one result and zero multiplayer
+  sessions, transfer batches or financial postings.
+- **Fake-money Async:** match `f1d9def8-a63c-44fc-94fc-989788569fc5`, child
+  `73e13110-dc44-4a09-b3f7-c3b99a347c25`, completed **1,225–0**; both players
+  reached Match complete and returned to the match. Invitation guards enforced
+  the approved opponent, one Five Alive child, stake 1 and `real_money=false`.
+  SQL readback confirmed settled/session_ended, one outcome, one settlement,
+  one game result (`90093314-6e6f-4476-ab33-da46582a273b`), two matching final
+  snapshots and one balanced transfer. Actual fake chips **+1/−1**, unmatched
+  transfers empty, real-money postings **zero**. This is a scoped smoke receipt
+  check, not a repeat of the earlier financial qualification matrix.
+
+Evidence in `qualification.local/five-alive/phone-award/`:
+`publication-success.json`, `production-smoke.json`, `production-smoke.log`,
+`settlement-proof.json`, `runtime-errors.json`, `production-release-complete.json`,
+and the Arcade/Async history and completion screenshots. No schema, catalog,
+release-flag or unrelated-game changes were made. This is automated production
+acceptance, not a claim of Jeremy's physical-device smoke.
 
 Jeremy authorized all four presentation acceptance items and normal production
 delivery. Baseline: `b803f0f543d27667ef71f08daf46eecfaaaa0879`, with the previously
@@ -35,8 +87,8 @@ movement was **5,003.6 ms** after the calculation appeared.
 Final `npm run build` **passed, exit 0**: full TypeScript, **4,292 application
 tests / 585 files**, **241 harness tests / 12 files**, **46 release-tooling tests**,
 Vite and the unchanged 90 MB size gate (**89,994,371 bytes**). Internal diff review
-and `git diff --check` passed. All local gates are complete; normal publication
-and authenticated production smoke remain pending at this checkpoint.
+and `git diff --check` passed. All local gates, publication and authenticated
+production smoke are complete. No product code changed after qualification.
 
 Evidence: `qualification.local/five-alive/phone-award-release-build.log`,
 `phone-award-browser.log`, `presentation/proof.json`, and the new

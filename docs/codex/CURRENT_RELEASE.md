@@ -1,4 +1,19 @@
-# Five Alive phone keyboard / award hold — November 16, 2026 — approved candidate
+# Five Alive phone keyboard / award hold — November 16, 2026 — production smoke passed
+
+Commit `f5f8b10ae36d51812e62ae209ab9e48581fc18df` is READY in production on
+Vercel `dpl_A4vRbxuKivyy7mPz1dFAArVdV7Vb`. Run `44021178472` attempt 1
+succeeded and published that exact SHA at `2026-11-17T05:12:47.146Z`.
+Both production domains serve the exact commit. Isolated authenticated
+production smoke passed all four items: 39 sequential guess reveals, retained
+history through recovery, a 5.6 px keyboard gap with unchanged 40 px keys, and
+six solved awards held over five seconds before either flight or score movement.
+Async opponent privacy passed before and after mutual word completion.
+
+Arcade finished at **1,176** with one result and no financial writes. Fake-money
+Async finished **1,225–0**, with exactly one balanced settlement, fake chips
+**+1/−1**, matching snapshots and zero real-money postings. Both terminal returns
+passed; browser errors and the scoped runtime-error scan were clear.
+Checkpoint: `five-alive-phone-award-20261116`. Personal Chrome was not used.
 
 Jeremy approved the four-item production-fix pass. The candidate preserves the
 released sequential tile feedback and persistent rows, closes the large
@@ -11,8 +26,7 @@ Eighteen focused tests and the final native browser pass passed, including
 320/390/430 px layouts with 24 px bottom safe area and reconnect during the hold.
 Full release qualification passed: TypeScript, 4,292 app / 241 harness / 46
 release-tooling tests, Vite and the unchanged 90 MB gate (89,994,371 bytes).
-Publication and authenticated production smoke are pending; production remains
-on `2a80321ca` at this checkpoint. Details and evidence:
+Publication and authenticated production smoke passed. Details and evidence:
 [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
 
 # Five Alive feedback/history correction — November 16, 2026 — production smoke passed

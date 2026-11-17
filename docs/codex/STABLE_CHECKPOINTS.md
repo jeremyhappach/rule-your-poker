@@ -1,3 +1,21 @@
+# Five Alive phone keyboard / award hold — November 16, 2026 — production smoke passed
+
+Commit `f5f8b10ae36d51812e62ae209ab9e48581fc18df`, checkpoint
+`five-alive-phone-award-20261116`, Vercel `dpl_A4vRbxuKivyy7mPz1dFAArVdV7Vb`
+READY / production. Both production manifests match. Run `44021178472` attempt 1
+published the exact commit at `2026-11-17T05:12:47.146Z`; no retry was needed.
+
+Full local checks passed TypeScript, 4,292 app / 241 harness / 46 release-tooling
+tests, Vite and the unchanged size gate. Fresh isolated authenticated production
+smoke passed all four items: 39 sequential reveals, saved rows/recovery/privacy,
+5.6 px grid-keyboard spacing with unchanged 40 px key height, and six base ×
+difficulty reveals held over five seconds before flight/counting. Arcade scored
+1,176; fake-money Async scored 1,225–0 with one balanced +1/−1 settlement,
+matching final snapshots and zero real-money postings. Terminal returns and
+browser/runtime error checks passed. The 1,021-answer bank is unchanged.
+This is automated smoke, not physical-device owner acceptance. Evidence:
+[FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
 # Five Alive feedback/history — November 16, 2026 — production smoke passed
 
 Commit `2a80321ca167371a1bac42c475190e23e4604f54`, Vercel
