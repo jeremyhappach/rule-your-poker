@@ -1,5 +1,11 @@
 # Five Alive — source deployed; gameplay activation held
 
+The November 16 local Actions retry is blocked before authentication:
+`gh auth status` exits 1 because `gh` is not recognized, and no executable was
+found in the standard install locations checked. Actions write access remains
+unverified. No retry, redeployment, activation or gameplay smoke occurred in
+this pass. The exact CLI error and resume point are in FIVE_ALIVE_QUALIFICATION.md.
+
 Commit `4fb956ac58a258e074a3938c66c659410e17022c` is READY in production on
 both holm357.com and ptown-poker.vercel.app. The fresh isolated-browser origin,
 real test-account login and authenticated baseline smoke passed. The deployed

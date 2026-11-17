@@ -1,5 +1,41 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 16 local Actions retry blocked — GitHub CLI unavailable
+
+At `2026-11-17T00:22:04Z` (November 16 local time), the authorized local retry
+stopped at its first prerequisite. `gh auth status` exited **1**:
+
+> The term 'gh' is not recognized as a name of a cmdlet, function, script file, or executable program.
+
+No `gh.exe` was found in the checked Program Files (both architectures), per-user
+Programs, WinGet Links, Codex bin, Scoop or Chocolatey install locations. The
+release-workflow search found no alternate CLI path. This establishes an unavailable
+CLI, **not** a GitHub authentication rejection or a determination of Actions scope.
+Local Actions write access could not be verified, and the requested
+`gh run rerun 43973296114 --failed --repo jeremyhappach/rule-your-poker`
+was not executed. No tool installation or credential/verification-code flow was
+attempted. The reported connector 403 was not retried.
+
+The existing worktree is `codex/five-alive`; its remote is
+`https://github.com/jeremyhappach/rule-your-poker.git`. Local main and origin/main
+both identify deployed candidate `4fb956ac58a258e074a3938c66c659410e17022c`;
+the worktree's initial HEAD was the preserved checkpoint commit `04409f9c5`.
+The unrelated Cribbage snapshot change remains untouched.
+
+**Actual outcome:** no Actions retry, release-signal publication, deployment,
+activation or gameplay smoke was performed in this pass. The last verified
+production state remains the READY candidate with Five Alive admission closed
+and zero allocations, as recorded below; it was not re-queried in this pass.
+The approved Arcade and fake-money Async smoke checks remain pending.
+Evidence: `qualification.local/five-alive/hosted/local-actions-cli-blocker-20261116.json`.
+
+**First open gate:** make the `gh` command available to this local session,
+verify its existing authentication with `gh auth status`, and retry only failed run `43973296114`.
+Successful publication for the exact deployed SHA remains mandatory before the
+existing guarded activation and gameplay smoke procedure. No qualification,
+standard checks or production installation rehearsal needs repeating for this
+documentation-only pass.
+
 ## November 16 final outcome — source deployed; release signal gate failed
 
 **Stopped before gameplay activation.** The fresh isolated browser-origin and
