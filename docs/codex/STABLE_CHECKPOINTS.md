@@ -1,3 +1,22 @@
+# Five Alive feedback/history — November 16, 2026 — production smoke passed
+
+Commit `2a80321ca167371a1bac42c475190e23e4604f54`, Vercel
+`dpl_FC8AKhNq3cUokkfXWbWrGPaNLC9D`, checkpoint `five-alive-feedback-20261116`.
+Both production domains serve the exact commit. Release-signal run 43998810924
+attempt 2 published it at `2026-11-17T02:14:48.559Z`; the initial wait timeout
+is superseded. No redeployment or catalog/flag changes were required.
+
+The approved 220 ms horizontal half-flips reveal tiles left-to-right, and saved
+guess rows remain visible. Fresh isolated authenticated production smoke passed
+40 guess animations, history, refresh/reconnect, correct-guess transitions and
+Async opponent privacy through mutual completion. Arcade finished at **1,052**
+with one result and zero financial writes. Fake-money Async finished **1,107–0**
+with one balanced settlement, actual fake chips **+1/−1**, matching snapshots
+and zero real-money postings. Terminal returns, browser errors and the scoped
+runtime error scan passed. Personal Chrome was not used. This is automated
+smoke, not physical-device owner acceptance. The qualified bank remains 1,021.
+Full proof: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
 # Five Alive — November 16, 2026 — authenticated production smoke passed
 
 Commit `4fb956ac58a258e074a3938c66c659410e17022c`, Vercel

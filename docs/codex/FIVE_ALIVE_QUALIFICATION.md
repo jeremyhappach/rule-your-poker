@@ -1,11 +1,129 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 16 feedback/history release complete — publication and production smoke passed
+
+**Both approved presentation fixes are live and production-smoked.** Runtime
+commit: `2a80321ca167371a1bac42c475190e23e4604f54`; checkpoint tag:
+`five-alive-feedback-20261116`. Vercel `dpl_FC8AKhNq3cUokkfXWbWrGPaNLC9D`
+is READY / production. Both ptown-poker.vercel.app and holm357.com serve this
+exact build and `assets/index-f_u1epJX.js`. No additional deployment was requested.
+
+Release-signal [run 43998810924](https://github.com/jeremyhappach/rule-your-poker/actions/runs/43998810924),
+attempt **2**, [job 133765086708](https://github.com/jeremyhappach/rule-your-poker/actions/runs/43998810924/job/133765086708),
+succeeded. The endpoint returned `accepted:true` for this exact SHA and
+deployment ID `43998810924-2` at **2026-11-17T02:14:48.559Z** (November 16,
+8:14:48 PM Chicago). `public.system_settings.release_publication` independently
+matches. This supersedes the initial production-wait timeout preserved below;
+there is no failed latest attempt to rerun.
+
+### Authenticated production acceptance
+
+Two fresh isolated headless Edge contexts used the approved E2E accounts.
+Before either login, `page.url()` and `location.href` both matched exactly
+`https://ptown-poker.vercel.app/auth`; the build manifest matched the approved
+SHA and the served bundle used production `xvhmbuppghwmwpwrkzao`, not isolated
+`tyuxxkalhqbqkbvvkcfx`. Personal Chrome and its sessions were not used.
+
+- **Arcade passed:** run `0ed40195-9294-4f75-826a-16d4b3358218` completed all
+  three words for **1,052**, matching an independent calculation from the final
+  disclosed results. Submitted STARE/AMPLE rows and feedback remained visible;
+  refresh/reconnect restored saved rows without replay. Game Over and return to
+  the leaderboard passed. SQL readback: completed, exactly one result, zero
+  multiplayer sessions, transfer batches or financial postings.
+- **Async passed:** fake-money match `a486b620-0c34-48e1-81e9-397f49cfd3bf`,
+  child `45b7fe15-4fcc-4121-87b0-190bab20b8b1`, completed all three words for
+  both players at **1,107–0**, matching independent scoring and both projections.
+  The invitation was addressed to the other approved test account and server
+  state confirmed fake money before acceptance. Own completed rows persisted
+  through waiting and refresh; opponent guesses stayed sealed until both
+  finished the word, then appeared in the shared Word results. Both clients
+  reached Match complete and returned to the match.
+- **Presentation passed:** 40 accepted guess animations recorded actual CSS
+  start/end events. Every row revealed columns 0 through 4; each tile completed
+  its 220 ms close/open `rotateY` phases before the next started, with exact
+  server feedback colors. Multiple completed rows, correct guesses and their
+  final reveal/award/advance order passed. Zero browser page errors.
+- **Canonical settlement passed:** the Async match is settled and the game is
+  session_ended, both `real_money=false`. Exactly one outcome, one settlement,
+  one game result (`7509bb34-834d-4157-ab4c-c38eb43003f7`), two matching final
+  snapshots and one balanced transfer batch. Actual test-player chips are
+  **+1/−1**, matching the single transfer; unmatched transfers are empty and
+  real-money transaction postings are **zero**. This was a scoped readback of
+  normal fake-money smoke actions, not a new financial qualification run.
+- The deployment's error/fatal log scan scoped from `2026-11-17T02:40:00Z`
+  returned no error groups. No schema, catalog, flag or unrelated-game changes
+  were made. The only balance changes were the approved fake-money test chips.
+
+Final standard checks and accepted preview evidence remain recorded below:
+full TypeScript, **4,290 app / 241 harness / 46 release-tooling tests**, Vite and
+the unchanged 90 MB gate (**89,993,957 bytes**). No product code changed after
+that qualification. The unrelated Cribbage snapshot worktree change is preserved.
+
+Evidence in `qualification.local/five-alive/presentation/`:
+`publication-success.json`, `production-origins.json`, `production-smoke.json`,
+`production-async-smoke.log`, `settlement-proof.json`,
+`production-release-complete.json`, and Arcade/Async history, waiting and
+completion screenshots. The earlier runner-only Async route typo was corrected
+to the registered `/delayed/:matchId/play/:childId`; smoke resumed the same
+accepted match and preserved the completed Arcade evidence. Its earlier log
+is retained; the completed runner exited 0. No product patch was needed.
+
+**Release gates complete.** This is automated authenticated production smoke,
+not a claim of Jeremy's physical-device smoke. The runtime bank remains
+**1,021 qualified answers**; **8,979** toward roughly 10,000 remains qualified
+post-launch growth in BACKLOG.md. Do not add unreviewed words.
+
+## November 16 initial publication attempt — superseded verification timeout
+
+Approved correction commit **`2a80321ca167371a1bac42c475190e23e4604f54`**
+was committed on `codex/five-alive`, tagged `five-alive-feedback-20261116`,
+fast-forwarded into the clean release `main` worktree, and pushed with the
+unchanged `.codex/scripts/push-origin-main.cmd` helper. The unrelated Cribbage
+snapshot working change remains untouched in the Five Alive worktree.
+
+Final local standard checks passed: full TypeScript, **4,290 application tests,
+241 harness tests, 46 release-tooling tests**, Vite and the unchanged 90 MB gate
+(89,993,957 bytes). GitHub's independent qualification step also passed.
+
+Release-signal [run 43998810924](https://github.com/jeremyhappach/rule-your-poker/actions/runs/43998810924),
+job [133757439809](https://github.com/jeremyhappach/rule-your-poker/actions/runs/43998810924/job/133757439809),
+failed its production verification at **November 16, 8:05:44 PM Chicago time**
+(`2026-11-17T02:05:44Z`). Exact error:
+`Production never served the expected commit; no release signal published`.
+The publish step was skipped. This is a production-readiness wait timeout,
+not a failing application test.
+
+At the failure check, Vercel deployment `dpl_FC8AKhNq3cUokkfXWbWrGPaNLC9D`
+for the exact approved SHA remained **BUILDING**. Both
+`https://ptown-poker.vercel.app/build-manifest.json` and
+`https://holm357.com/build-manifest.json` returned the previous runtime
+`4fb956ac58a258e074a3938c66c659410e17022c` / `assets/index-D0tiQaYo.js`.
+The automatic Vercel build was not canceled or rerun and may finish afterward;
+that does not itself publish the failed release signal.
+
+No authenticated production action or gameplay smoke was performed in this
+attempt. No database, release flag, balance, schema or catalog mutation was
+made. Readback confirmed only Arcade `five-alive/3` enabled, rules
+`five-alive/1`, pool `esdb-five-alive/3`, and the already-qualified Async flags.
+
+Evidence: `qualification.local/five-alive/presentation/release-candidate.json`,
+`release-failure.json`, `release-failure.log`, and
+`qualification.local/five-alive/presentation-release-build.log`.
+The local `gh auth status` command failed because `gh` is not installed/on PATH;
+the connected GitHub tools supplied the run, job, and failure logs. No new auth
+flow or verification code was attempted.
+
+The original resume gate was to verify READY/exact SHA, retry publication and
+complete isolated authenticated smoke. **All three are now complete**, as
+recorded above. This historical failure is preserved for diagnosis; it is not
+an active blocker. No redeployment or catalog reactivation was necessary.
+
 ## November 16 follow-up — sequential reveal and retained guesses; production approved
 
 Jeremy approved both revised previews and production publication. The approved
 candidate preserves guesses and uses sequential horizontal flips at 220 ms per
-half-flip. Final standard checks passed; normal release/publication is in
-progress. Production smoke of this correction is not yet claimed.
+half-flip. Final standard checks passed; publication and production smoke are
+now complete as recorded above. The following records the preceding local pass.
 
 Preview revision requested by Jeremy: slow the reveal slightly and flip
 side-to-side rather than top-to-bottom. The CSS now rotates around the Y axis
@@ -67,9 +185,8 @@ parent Five Alive evidence directory. The final approved build is recorded in
 `qualification.local/five-alive/presentation-release-build.log`. Reproduce with
 `dev/five-alive/presentation/README.md`. Fresh visible Edge tabs were opened at
 the local Arcade and Async preview URLs; Arcade has STARE ready to submit and
-Async shows retained STARE/AMPLE rows. **Preview approval received. Next:
-normal release/publication and authenticated
-production smoke of both corrections. No production-fix claim yet.**
+Async shows retained STARE/AMPLE rows. **Preview approval received; the subsequent
+normal publication and authenticated production smoke passed as recorded above.**
 
 ## November 16 release complete — published, activated and production-smoked
 

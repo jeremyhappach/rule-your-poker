@@ -1,24 +1,33 @@
-# Five Alive feedback/history correction — production approved
+# Five Alive feedback/history correction — November 16, 2026 — production smoke passed
 
-The smoke report identified simultaneous tile feedback and disappearing guess
-rows. The local candidate now reveals each tile in order, retains authoritative
-guess history, and completes final-row feedback before the existing award/word
-transition. Async waiting retains only the owner's guesses. Rules, scoring,
-the 1,021-answer bank, production data and balances are unchanged.
+Production serves approved commit `2a80321ca167371a1bac42c475190e23e4604f54`
+on both ptown-poker.vercel.app and holm357.com. Vercel
+`dpl_FC8AKhNq3cUokkfXWbWrGPaNLC9D` is READY / production. Release-signal run
+**43998810924**, attempt **2**, job **133765086708**, succeeded and published
+that exact commit at `2026-11-17T02:14:48.559Z` (November 16, 8:14 PM Chicago).
+The publication receipt independently matches in Supabase. Attempt 1's build
+wait timeout is superseded; no redeployment or flag reactivation was needed.
 
-Jeremy then requested a slower side-to-side flip. The preview now uses 220 ms
-per half-flip around the Y axis, retaining left-to-right tile order. The updated
-browser proof passes the axis, timing and existing behavior checks. Jeremy
-approved both revised previews and production publication. Final build
-verification passed for the approved candidate.
+The approved slower side-to-side flips reveal tiles left-to-right, with 220 ms
+per half-flip. Completed rows retain their saved letters and actual feedback.
+The final row finishes before the existing award/word transition; Async waiting
+retains the owner's guesses while the opponent's remain sealed until mutual
+completion. Rules, scoring, the 1,021-answer bank, schema and catalog are unchanged.
 
-Sixteen focused presentation tests, nine shared-rule tests and the isolated
-real-browser preview proof passed. The final standard build passed full TypeScript,
-4,290 app / 241 harness / 46 release-tooling tests, Vite and the unchanged 90 MB
-size gate (89,993,957 bytes). Jeremy requested previews before prod;
-the revised local Arcade and Async previews were accepted. **Publication
-and production smoke of these corrections remain pending.** Evidence and resume
-steps: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+Local checks passed full TypeScript, 4,290 app / 241 harness / 46 release-tooling
+tests, Vite and the unchanged 90 MB gate (89,993,957 bytes), plus the focused
+presentation/rules checks and approved browser previews. GitHub qualification passed.
+Fresh isolated authenticated production contexts verified the exact origin and
+production backend before login. Arcade completed at **1,052** with one result
+and no financial writes. Fake-money Async completed **1,107–0**, with exactly one
+balanced settlement, fake chips **+1/−1**, matching final snapshots and zero
+real-money postings. All 40 observed guess animations, retained rows, recovery,
+correct guesses, Async privacy and terminal returns passed; browser errors and
+the scoped runtime error scan were clear. Personal Chrome was not used.
+
+Checkpoint: `five-alive-feedback-20261116`. Evidence:
+[FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md). Vocabulary growth
+remains post-launch work: 1,021 qualified answers, **8,979** remaining toward 10,000.
 
 # Five Alive — initial production release and authenticated smoke passed
 
