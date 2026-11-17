@@ -70,6 +70,12 @@ it('reveals a correct row completely before its score flight or server-advanced 
  finishTiles(container);
  expect(screen.getByTestId('score-flight').textContent).toBe('APPLE +800');
  expect(container.querySelector('.five-alive-grid')?.textContent).toBe('APPLE');
+ await act(async()=>updates[0]());
+ fireEvent(window,new Event('online'));
+ await waitFor(()=>expect(request).toHaveBeenCalledTimes(4));
+ expect(screen.getByTestId('score-flight').textContent).toBe('APPLE +800');
+ expect(screen.getByText('Word 1 of 3')).toBeTruthy();
+ expect(container.querySelector('.five-alive-score strong')?.textContent).toBe('0');
  fireEvent.click(screen.getByTestId('score-flight'));
  expect(screen.getByText('Word 2 of 3')).toBeTruthy();expect(screen.getByLabelText('Guess board').textContent).toBe('+1000');
 });

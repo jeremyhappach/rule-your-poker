@@ -66,7 +66,7 @@ export function FiveAliveSession({mode,id,userId,matchId}:Props){
   const channel=supabase.channel('five-alive:'+mode+':'+id+':'+crypto.randomUUID())
    .on('postgres_changes',{event:'*',schema:'public',table:mode==='arcade'?'arcade_revisions':'delayed_match_updates',filter:mode==='arcade'?'run_id=eq.'+id:'user_id=eq.'+userId},()=>{if(generation.current===ticket)void refresh();})
    .subscribe(status=>{if(status==='SUBSCRIBED'&&generation.current===ticket)void refresh();});
-  const recover=()=>{clearPresentation();if(!document.hidden)void refresh();};
+  const recover=()=>{if(presenting.current?.phase!=='award')clearPresentation();if(!document.hidden)void refresh();};
   window.addEventListener('online',recover);document.addEventListener('visibilitychange',recover);
   return()=>{if(generation.current===ticket)generation.current=ticket+1;void supabase.removeChannel(channel);window.removeEventListener('online',recover);document.removeEventListener('visibilitychange',recover);};
  },[mode,id,userId,refresh,clearPresentation]);
@@ -86,8 +86,8 @@ export function FiveAliveSession({mode,id,userId,matchId}:Props){
      :item&&'own'in item?item.own:item) as (Reveal&FiveAliveRoundView)|undefined;
     const prior=current.view.current?.guesses??[],guesses=result?.guesses;
     if(result&&guesses?.length===prior.length+1&&guesses.at(-1)?.word===intent.word&&JSON.stringify(guesses.slice(0,-1))===JSON.stringify(prior)){
-     const award=result.solved&&result.answer&&result.difficulty&&result.score
-      ?{id:`five-alive:${id}:${command.requestId}`,word:result.answer,difficulty:result.difficulty,points:result.score,from:current.view.ownScore??current.view.score??current.score??0}:null;
+     const award=result.solved&&result.answer&&result.difficulty&&result.score&&current.view.current?.nextBase!=null
+      ?{id:`five-alive:${id}:${command.requestId}`,word:result.answer,difficulty:result.difficulty,base:current.view.current.nextBase,points:result.score,from:current.view.ownScore??current.view.score??current.score??0}:null;
      showPresentation({id:command.requestId,row:guesses.length-1,phase:'reveal',award,
       snapshot:{...current,view:{...current.view,current:{...result,waiting:false},ownResult:undefined}}});
     }

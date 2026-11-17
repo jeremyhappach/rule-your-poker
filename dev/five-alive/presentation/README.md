@@ -8,7 +8,8 @@ From the repository root, run `node dev/five-alive/presentation/server.mjs`.
 
 Submit STARE, then AMPLE to see sequential feedback and retained rows. Refresh
 or Reconnect retains those guesses. APPLE solves the first word: all five tiles
-finish before the existing award and word progression. In Async, each player
+finish before the base × difficulty calculation, its full five-second reading
+interval, and the awarded total's flight/count into the score. In Async, each player
 has their own guesses; Word results admits the opponent only after both finish.
 The other fixture answers are BREAD and CRANE. Reset preview starts over.
 
@@ -21,5 +22,7 @@ With the preview server running, execute
 `node dev/five-alive/presentation/proof.mjs`. The fresh headless Edge context
 blocks every nonlocal request and checks actual CSS animation events, all
 three feedback statuses, two retained rows, refresh/reconnect, correct-guess
-award ordering, Async privacy/mutual disclosure, and reduced motion. Evidence
+award ordering and five-second timing (including reconnect during the hold),
+phone keyboard spacing/tap targets at 320, 390 and 430 px with a nonzero safe
+area, Async privacy/mutual disclosure, and reduced motion. Evidence
 and screenshots go to `qualification.local/five-alive/presentation/`.

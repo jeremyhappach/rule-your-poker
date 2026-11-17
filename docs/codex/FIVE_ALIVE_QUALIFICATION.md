@@ -1,5 +1,50 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 16 phone keyboard / five-second award follow-up — approved candidate
+
+Jeremy authorized all four presentation acceptance items and normal production
+delivery. Baseline: `b803f0f543d27667ef71f08daf46eecfaaaa0879`, with the previously
+smoked sequential reveal/history runtime `2a80321ca`. Preserve that implementation
+and its regression coverage; no new rule, scoring, vocabulary, schema or flag change.
+
+The saved production `presentation/arcade-history.png` shows the large empty
+space between grid and keyboard. The board's bottom auto-margin owned that gap.
+The scoped CSS moves that spare space below the keyboard, preserving the grid,
+existing 40 px key height, widths and canonical shell safe-area padding. There
+are no phone-specific breakpoints, viewport measurements or smaller keys in product code.
+
+The award previously flew after 350 ms and counted after 600 ms. It now displays
+the authoritative pre-guess base and disclosed difficulty multiplier for at
+least 5,000 ms after mount, then flies the awarded total to the score and counts
+the unchanged server points. The multiplier/base display does not recompute
+scoring (including rounded awards). Realtime/online recovery retains an active
+award until its presentation completes; refresh still restores authoritative
+saved state. No second gameplay or settlement owner is introduced.
+
+Focused board/session/award checks: **18 passed**, covering all five tiles'
+feedback/order, multiple retained rows and reconnect, Async privacy, exact
+4,999/5,000 ms boundaries, reduced motion, unmount cleanup, rounded score
+preservation and retention across recovery/server advancement. Actual-browser
+proof covers Arcade, Async, reduced motion and 320/390/430 px phone layouts.
+The first browser pass measured a **5.59375 px** grid-keyboard gap and retained
+**40 px** minimum key heights; score movement began after 5,000 ms in all modes.
+The final browser pass **passed, exit 0**, additionally checking a 24 px bottom
+safe area and reconnect during the reading interval. Earliest observed score
+movement was **5,003.6 ms** after the calculation appeared.
+
+Final `npm run build` **passed, exit 0**: full TypeScript, **4,292 application
+tests / 585 files**, **241 harness tests / 12 files**, **46 release-tooling tests**,
+Vite and the unchanged 90 MB size gate (**89,994,371 bytes**). Internal diff review
+and `git diff --check` passed. All local gates are complete; normal publication
+and authenticated production smoke remain pending at this checkpoint.
+
+Evidence: `qualification.local/five-alive/phone-award-release-build.log`,
+`phone-award-browser.log`, `presentation/proof.json`, and the new
+`phone-award/` acceptance directory. Reproduction:
+`node dev/five-alive/presentation/proof.mjs`. The 1,021 qualified answers and
+8,979-word post-launch growth gap are unchanged. The unrelated Cribbage snapshot
+working change remains preserved and excluded from this release.
+
 ## November 16 feedback/history release complete — publication and production smoke passed
 
 **Both approved presentation fixes are live and production-smoked.** Runtime

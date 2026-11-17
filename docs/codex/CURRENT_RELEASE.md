@@ -1,3 +1,20 @@
+# Five Alive phone keyboard / award hold — November 16, 2026 — approved candidate
+
+Jeremy approved the four-item production-fix pass. The candidate preserves the
+released sequential tile feedback and persistent rows, closes the large
+grid-keyboard gap without shrinking keys, and holds the explicit base ×
+difficulty calculation for five full seconds before the awarded total flies
+and counts into the score. An online/realtime refresh cannot retire an active
+award early. Scoring, Async privacy, rules, pool, schema and flags are unchanged.
+
+Eighteen focused tests and the final native browser pass passed, including
+320/390/430 px layouts with 24 px bottom safe area and reconnect during the hold.
+Full release qualification passed: TypeScript, 4,292 app / 241 harness / 46
+release-tooling tests, Vite and the unchanged 90 MB gate (89,994,371 bytes).
+Publication and authenticated production smoke are pending; production remains
+on `2a80321ca` at this checkpoint. Details and evidence:
+[FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
 # Five Alive feedback/history correction — November 16, 2026 — production smoke passed
 
 Production serves approved commit `2a80321ca167371a1bac42c475190e23e4604f54`
