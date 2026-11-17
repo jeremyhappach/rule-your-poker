@@ -1,6 +1,10 @@
-# Five Alive keyboard and word results — November 17, 2026 — release in progress
+# Five Alive keyboard and word results — November 17, 2026 — deployed; Async smoke failed
 
-Jeremy approved all five previews for production. Final checks passed: TypeScript, 4,297 app / 241 harness / 46 release-tooling tests and Vite; static output is 89,999,447 bytes under the unchanged 90 MB limit. The additive review RPC is installed and catalog-verified in production as migration 20261117204258. Existing authority, scoring, vocabulary, balances and flags are unchanged. Commit publication and authenticated production smoke are pending. See [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md) for exact evidence.
+Approved product commit 11aef9610cb373ae216780d6028b1427cdc9e0c2 is READY in production on Vercel dpl_9gHNE4KAAyowXLaxrYzqQKREi4fg. Release-signal run 44172407670 attempt 1 succeeded at 2026-11-17T20:55:53.121Z; both production origins and the database publication receipt match the exact SHA. Migration 20261117204258 is installed and verified.
+
+Arcade smoke passed at 1,911 with one matching result and no financial writes. Sequential feedback, retained rows, all four keyboard colors, phone geometry, five-second own awards and the waiting scorecard passed. **Async acceptance failed:** after both players finished word 1, the first finisher did not display the opponent review within 35 seconds. Both receipts exist; the second viewer ACK succeeded and the first remains pending. The frozen fake-money match is active with no settlement or financial postings. No browser/runtime errors were observed. Do not claim complete release acceptance.
+
+Next: establish the first-viewer delivery/admission/visibility boundary before patching or resuming the incomplete Async smoke. Exact IDs, evidence and completed checks are in [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md). No unrelated game, scoring, vocabulary or flag changes were made.
 
 # Five Alive phone keyboard / award hold — November 16, 2026 — production smoke passed
 

@@ -1,5 +1,76 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 17 actual release outcome — deployed; Async smoke acceptance failed
+
+Jeremy approved all five previews. Released product commit
+11aef9610cb373ae216780d6028b1427cdc9e0c2, tag five-alive-word-results-20261117,
+was fast-forwarded to main and pushed with the unchanged approved helper.
+Vercel dpl_9gHNE4KAAyowXLaxrYzqQKREi4fg is READY / production. Both
+https://ptown-poker.vercel.app and https://holm357.com serve that exact SHA.
+Release-signal run 44172407670, job 134354715440, attempt 1 succeeded; the
+publication receipt independently matches SHA, deployment ID 44172407670-1
+and 2026-11-17T20:55:53.121Z. No retry or second deployment was needed.
+
+The additive production migration 20261117204258 is installed and catalog-verified
+(wrapper MD5 84a22fb01af273c0de7846bcb494669f; original owner unchanged at
+39b3f82999c239579a017d6c923c19e5; wrapper execute only postgres/service_role).
+Existing flags, vocabulary, unrelated games and production financial authority
+were preserved. Local qualification remains passed: TypeScript, 4,297 app /
+241 harness / 46 release-tooling tests, Vite and 89,999,447 / 90,000,000 bytes.
+
+**Production smoke: FAILED, exit 1. Do not claim complete acceptance.**
+Fresh isolated Edge contexts checked page.url(), location.href, exact production
+manifest and production Supabase origin before authenticating both approved
+test accounts. Personal Chrome was not used.
+
+Passed production evidence:
+- Arcade run 45a8e73f-7280-41bb-a1f8-835602de0c80 completed at 1,911 and
+  returned to the leaderboard. Database readback: one matching immutable result,
+  zero sessions, transfer batches and financial postings for that run.
+- 16 submitted guesses across Arcade and partial Async passed actual sequential
+  CSS reveal/feedback checks. Own rows survived row advancement, reload and reconnect.
+- All four keyboard colors matched; phone gap 5.59375 px, key height 40 px,
+  minimum width 34.53125 px. The production history screenshot was inspected.
+- Five own solved-word awards retained their calculation at least 5,712.2 ms;
+  earliest score movement 5,011.5 ms, earliest flight 5,009.9 ms.
+- The first finisher opened Word Results while waiting; own history restored
+  and opponent answer/strategy remained sealed before mutual completion.
+
+Exact failing gate:
+- Fake-money match f12f83a8-13b1-4ac9-9a2d-28109b634967, child
+  2def676a-f8c6-4067-a341-1bdbbfc81285. The first viewer did not display
+  "Opponent completed in 3" within 35 seconds after the second player solved
+  the first word. Failure: production-smoke.mjs:116:90 (the initial live-presentation
+  wait, before the intended pending-review reload).
+- Readback: parent active / revision 9 / real_money=false; child revision 8,
+  segment 2, current word index 1, shared scores 343–490, not terminal.
+- Both immutable round-1 review receipts exist. Event f21a7d5c-8f44-407d-b87f-c6eb9c1fd950
+  (first player actor) was acknowledged by the second player at
+  2026-11-17T20:58:25.585171Z. Event c9f0ca8e-53a1-4ed2-9b34-e8bf8c2a6a7c
+  (second player actor) remains unseen by the first player. No additional
+  gameplay, review ACK, cancellation, cleanup or historical mutation was performed
+  after the failure. The unfinished match has zero settlements, game results,
+  transfer batches and financial postings.
+- Browser page errors were empty, and the deployment-scoped error/fatal runtime
+  log scan since 20:56 UTC was empty. The runner did not capture first-viewer
+  visibility/subscription state at failure; delivery, snapshot admission and
+  visibility remain possible boundaries, not established causes.
+
+**First open gate:** investigate this first-finisher presentation using the frozen
+match and targeted visibility, Realtime and state-response evidence. Preserve the
+repro until the exact boundary is known; do not patch from a theory. Then complete
+the interrupted pending-review reload, paired-score timing, sixth-miss replay and
+full Async settlement smoke. The live deployment and release signal succeeded;
+the overall smoke did not. No further publication or rollback was performed.
+
+Evidence: qualification.local/five-alive/results/{publication-run.json,
+publication-success.json,production-manifests.json,deployment-ready.json,
+production-migration-catalog.json,production-smoke.json,production-smoke.log,
+async-smoke-failure-state.json,partial-smoke-readback.json,runtime-errors.json}.
+The unrelated Cribbage snapshot formatting remains unstaged. Runtime bank remains
+1,021 qualified answers; 8,979 remains post-launch growth.
+
+
 ## November 17 approved previews — production release in progress
 
 Jeremy approved all five previews for production. This supersedes the preview
