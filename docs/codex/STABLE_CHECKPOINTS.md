@@ -1,3 +1,17 @@
+# Five Alive — November 16, 2026 — authenticated production smoke passed
+
+Commit `4fb956ac58a258e074a3938c66c659410e17022c`, Vercel
+`dpl_HXXRqVZi56A8DoAo3meZV7AuScXk`, checkpoint `five-alive-production-20261116`.
+Release-signal run 43973296114 attempt 2 succeeded; production activation used the
+preserved guarded procedure after closed flags and zero prior allocations.
+Arcade completed three words for 1,470 and returned to its leaderboard. Two real
+Auth test sessions completed fake-money Async at 1,435–0, reached the finale and
+returned to the lobby. Canonical settlement/result were singular, the fake +1/−1
+transfer balanced, snapshots matched, and no real-money transaction was created.
+The production runtime bank is 1,021 qualified answers. Automated browser and
+runtime-error checks passed; this is not a claim of physical-device owner smoke.
+Full proof: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
 # Cribbage pegging / 357 Drop suits — November 15, 2026 — production verified
 
 Production serves `9415f9d77fda5a6a56ac207bedb42aabec06bce0` on holm357.com

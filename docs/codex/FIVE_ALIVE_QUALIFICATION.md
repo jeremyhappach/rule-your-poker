@@ -1,5 +1,75 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 16 release complete — published, activated and production-smoked
+
+**Five Alive is active in production with 1,021 qualified answers.** Deployed
+commit: `4fb956ac58a258e074a3938c66c659410e17022c`; Vercel
+`dpl_HXXRqVZi56A8DoAo3meZV7AuScXk` remains READY / production. No redeployment
+was requested. The earlier CLI/browser/publication blockers are superseded by
+this verified outcome. Production checkpoint: `five-alive-production-20261116`.
+
+Jeremy started attempt 2 from the visible GitHub run window. Run
+[43973296114](https://github.com/jeremyhappach/rule-your-poker/actions/runs/43973296114),
+job `133735484502`, completed successfully. Both production verification and
+release publication passed. The endpoint returned `accepted:true`, and
+`public.system_settings.release_publication` independently confirms the exact
+commit, deployment ID `43973296114-2`, and publication time
+`2026-11-17T01:04:52.565Z`.
+
+### Guarded production activation
+
+Verified project `xvhmbuppghwmwpwrkzao` is `ptown-poker-prod`, ACTIVE_HEALTHY.
+Immediately before activation, every Five Alive flag was closed and allocations
+were **zero**. Executed the preserved `production-activation-20261116.sql`
+without modification (SHA-256
+`59c4c7e4a999eb7219e9f19f4eb08cbdb7af29e571c5c483161a4e79623f239e`).
+Its transaction verified the bank and frozen rules/pool configuration and
+preserved unrelated Arcade rules exactly. Readback confirms only
+`five-alive/3` enabled; v1/v2 remain disabled. Both `async_enabled` and
+`async_real_qualified` are true, as authorized after the prior two-mode financial
+qualification. This pass used **fake-money Async play only**.
+
+### Authenticated production gameplay smoke passed
+
+Two fresh, independent headless Edge contexts used the approved E2E accounts.
+Before either login, both `page.url()` and `location.href` were verified against
+`https://ptown-poker.vercel.app`, the manifest matched the deployed commit, and
+the loaded bundle pointed only to production Supabase. No personal Chrome
+session, GitHub verification code, production credential setup or SSL change
+was used. Game inputs used the actual browser UI; solve choices used only each
+player's public feedback and the reviewed bank, never private unrevealed answers.
+
+- Arcade run `db23f26a-d915-4340-8f7d-4474695b3c64`: rules/info, three words,
+  nine accepted guesses, score **1,470**, Game Over, and leaderboard return passed.
+  Recomputed score matches the server. The leaderboard identifies this run;
+  database confirms one result and zero multiplayer sessions, financial
+  transactions or transfer batches for the run.
+- Async match `fb275572-2068-4aa3-af4d-ad54b50a975f`, child
+  `d237a447-91d8-41ff-882f-1fd3c2498def`: invitation guarded to exactly the
+  other approved account, one Five Alive game, stake 1 and `p_real_money=false`.
+  Database confirmed fake mode before acceptance. Both players completed all
+  three words, including waiting/shared progression. Final scores **1,435–0**
+  match independent recomputation and both server projections.
+- Settlement: one outcome, one settlement, one canonical game result; winner +1
+  and loser −1 fake chips, matching final snapshots. Exactly one balanced transfer
+  batch with one transfer of 1 and no unmatched deltas. **Zero real-money
+  transactions.** Match status `settled`; canonical session `session_ended`.
+- Both players viewed the correct win/loss finale and returned to the lobby.
+  Zero browser page errors. Vercel error/fatal log scan for this deployment from
+  01:05 UTC returned no groups.
+
+Evidence under `qualification.local/five-alive/hosted/`:
+`release-signal-success-20261117.json`, `production-smoke-origin-20261117.json`,
+`production-arcade-smoke-20261117.json`, `production-async-smoke-20261117.json`,
+`production-release-success-20261117.json`, plus Arcade completion and both
+Async completion/finale screenshots. Completed qualification and local standard
+checks were preserved; no product code or vocabulary changed in this pass.
+
+**Remaining work:** vocabulary growth is post-launch only: 1,021 qualified
+runtime answers, 8,979 below the roughly 10,000 goal. Continue individually
+reviewed, qualified batches while preserving existing words, tiers and records.
+No release gate remains open for the authorized automated production smoke.
+
 ## November 16 local Actions retry blocked — GitHub CLI unavailable
 
 At `2026-11-17T00:22:04Z` (November 16 local time), the authorized local retry

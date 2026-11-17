@@ -1,26 +1,22 @@
-# Five Alive — source deployed; gameplay activation held
+# Five Alive — production release and authenticated smoke passed
 
-The November 16 local Actions retry is blocked before authentication:
-`gh auth status` exits 1 because `gh` is not recognized, and no executable was
-found in the standard install locations checked. Actions write access remains
-unverified. No retry, redeployment, activation or gameplay smoke occurred in
-this pass. The exact CLI error and resume point are in FIVE_ALIVE_QUALIFICATION.md.
+Production serves `4fb956ac58a258e074a3938c66c659410e17022c`; Vercel
+`dpl_HXXRqVZi56A8DoAo3meZV7AuScXk` remains READY. GitHub run `43973296114`
+attempt 2 succeeded and published the exact commit at 2026-11-17 01:04:52 UTC.
+No redeployment was needed. The preserved guarded activation enabled only
+Five Alive Arcade /3 and its qualified Async flags after zero-allocation checks.
 
-Commit `4fb956ac58a258e074a3938c66c659410e17022c` is READY in production on
-both holm357.com and ptown-poker.vercel.app. The fresh isolated-browser origin,
-real test-account login and authenticated baseline smoke passed. The deployed
-catalog shows all 16 tiles, including Five Alive, with no page errors.
+Authenticated production smoke passed in fresh isolated test-account contexts:
+Arcade score 1,470 with one result and leaderboard return; fake-money Async score
+1,435–0 with exactly one balanced settlement, fake chips +1/−1, matching final
+snapshots and zero real-money transactions. Both players reached the correct
+finale and returned to the lobby. Browser errors and the scoped runtime error
+scan were clear. Personal Chrome sessions and unrelated games were untouched.
 
-Release run [43973296114](https://github.com/jeremyhappach/rule-your-poker/actions/runs/43973296114)
-passed qualification but timed out waiting for production before Vercel finished.
-The release signal was not published. Per the stop-on-gate-failure instruction,
-activation and full Five Alive gameplay smoke did not run. All Five Alive Arcade
-rulesets and both Async flags remain disabled; zero answers have been allocated.
-The 1,021-answer database installation is applied and verified, with balances and
-unrelated games unchanged. Full evidence and the first open gate are recorded in
-FIVE_ALIVE_QUALIFICATION.md. The next step is the failed release-signal job, then
-guarded activation and gameplay smoke. The roughly 10,000-word target remains
-post-launch growth work; 8,979 additional qualified answers are still needed.
+Checkpoint: `five-alive-production-20261116`. Detailed identifiers and evidence:
+[FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md). The runtime bank remains
+1,021; the 8,979-word gap toward roughly 10,000 is qualified post-launch growth
+tracked in BACKLOG.md. All prior technical gates remain passed.
 
 # 357 Drop Natty scoring — November 15, 2026 — production verified
 
