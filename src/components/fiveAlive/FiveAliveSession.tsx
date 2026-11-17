@@ -7,25 +7,21 @@ import {Dialog,DialogContent,DialogDescription,DialogTitle} from '@/components/u
 import {AlertDialog,AlertDialogAction,AlertDialogCancel,AlertDialogContent,AlertDialogDescription,AlertDialogFooter,AlertDialogTitle} from '@/components/ui/alert-dialog';
 import {FiveAliveBoard,type FiveAliveGuess,type FiveAliveRoundView} from './FiveAliveBoard';
 import {FiveAliveAward,type FiveAliveAwardEvent} from './FiveAliveAward';
+import {FiveAliveResults,type FiveAliveWordResult,type FiveAliveRevealedWord} from './FiveAliveResults';
+import {FiveAliveOpponentReview,type FiveAliveWordReview} from './FiveAliveOpponentReview';
 import {fiveAlivePoof} from './fiveAliveAudio';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import '@/lib/canonicalShell/fullscreenGameShell.css';
 
-interface Reveal {answer?:string;difficulty?:number;score?:number;solved?:boolean;guesses?:FiveAliveGuess[]}
-type RevealedWord=Reveal|{own:Reveal;opponent:Reveal};
-interface Snapshot {id:string;revision:number;segment?:number;status:string;terminal?:boolean;held?:boolean;score?:number;outcome?:{reason?:string;winner?:string|null}|null;
+type Reveal=FiveAliveWordResult;
+type RevealedWord=FiveAliveRevealedWord;
+interface Snapshot {id:string;revision:number;reviewRevision?:number;wordReviews?:FiveAliveWordReview[];segment?:number;status:string;terminal?:boolean;held?:boolean;score?:number;outcome?:{reason?:string;winner?:string|null}|null;
  view:{round:number;roundId?:string;score?:number;ownScore?:number;opponentScore?:number;completed:boolean;current:FiveAliveRoundView|null;ownResult?:Reveal;revealed:RevealedWord[]}}
-interface Props {mode:'arcade'|'async';id:string;userId:string;matchId?:string}
+interface Props {mode:'arcade'|'async';id:string;userId:string;matchId?:string;reviewOnly?:boolean;onReviewsComplete?:()=>Promise<unknown>}
 interface Presentation {id:string;snapshot:Snapshot;row:number;phase:'reveal'|'award';award:FiveAliveAwardEvent|null}
-const tiers=['','Very Easy','Easy','Medium','Hard','Very Hard'],multipliers=['','0.8','1.0','1.2','1.4','1.6'];
-function RoundHistory({rounds}:{rounds:RevealedWord[]}){
- return <>{rounds.map((item,index)=>{const own='own'in item?item.own:item,opponent='opponent'in item?item.opponent:undefined;
-  const base=(result:Reveal)=>result.solved?[1000,700,490,343,240,168][(result.guesses?.length??1)-1]:0;
-  return <div className="five-alive-history-word" key={index}><strong>Word {index+1}: {own.answer} · {tiers[own.difficulty??0]} ({multipliers[own.difficulty??0]}×)</strong><span>You: {own.guesses?.map(guess=>guess.word).join(', ')} · {base(own)} base · {own.score??0} total</span>{opponent&&<span>Opponent: {opponent.guesses?.map(guess=>guess.word).join(', ')} · {base(opponent)} base · {opponent.score??0} total</span>}</div>;})}</>;
-}
 
 /** Adapter to the existing Arcade / Async API, revision and realtime owners. */
-export function FiveAliveSession({mode,id,userId,matchId}:Props){
+export function FiveAliveSession({mode,id,userId,matchId,reviewOnly,onReviewsComplete}:Props){
  const navigate=useNavigate(),[snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState('');
  const [pending,setPending]=useState(false),[connectionBlocked,setConnectionBlocked]=useState(false),[rules,setRules]=useState(false),[abandon,setAbandon]=useState(false),[history,setHistory]=useState(false);
  const [award,setAward]=useState<FiveAliveAwardEvent|null>(null),[animatedScore,setAnimatedScore]=useState<number|null>(null);
@@ -49,7 +45,7 @@ export function FiveAliveSession({mode,id,userId,matchId}:Props){
  const accept=useCallback((value:Snapshot)=>{
   if(value.id!==id)return false;
   const previous=latest.current;
-  if(previous&&value.revision<previous.revision)return false;
+  if(previous&&(value.revision<previous.revision||(value.reviewRevision??0)<(previous.reviewRevision??0)))return false;
   if(previous&&value.revision===previous.revision&&JSON.stringify(value.view)!==JSON.stringify(previous.view)){
    setError('State changed unexpectedly. Reconnect to restore your game.');return false;
   }
@@ -71,7 +67,7 @@ export function FiveAliveSession({mode,id,userId,matchId}:Props){
   return()=>{if(generation.current===ticket)generation.current=ticket+1;void supabase.removeChannel(channel);window.removeEventListener('online',recover);document.removeEventListener('visibilitychange',recover);};
  },[mode,id,userId,refresh,clearPresentation]);
  const act=useCallback(async(intent:{type:'guess';word:string}|{type:'abandon'})=>{
-  const current=latest.current;if(!current||busy.current||presenting.current||connectionBlocked||current.held||current.terminal||current.status!=='active')return false;
+  const current=latest.current;if(!current||busy.current||presenting.current||connectionBlocked||current.held||current.terminal||current.status!=='active'||current.wordReviews?.some(item=>!item.seen))return false;
   busy.current=true;setPending(true);setSubmission(current);const ticket=generation.current,epoch=presentationEpoch.current;
   const command=mode==='arcade'?{op:'action',requestId:crypto.randomUUID(),revision:current.revision,roundId:current.view.roundId,intent}
    :{op:'action',requestId:crypto.randomUUID(),revision:current.revision,segment:current.segment,intent};
@@ -87,7 +83,7 @@ export function FiveAliveSession({mode,id,userId,matchId}:Props){
     const prior=current.view.current?.guesses??[],guesses=result?.guesses;
     if(result&&guesses?.length===prior.length+1&&guesses.at(-1)?.word===intent.word&&JSON.stringify(guesses.slice(0,-1))===JSON.stringify(prior)){
      const award=result.solved&&result.answer&&result.difficulty&&result.score&&current.view.current?.nextBase!=null
-      ?{id:`five-alive:${id}:${command.requestId}`,word:result.answer,difficulty:result.difficulty,base:current.view.current.nextBase,points:result.score,from:current.view.ownScore??current.view.score??current.score??0}:null;
+      ?{id:`five-alive:${id}:${command.requestId}`,word:result.answer,difficulty:result.difficulty,base:current.view.current.nextBase,points:result.score,guessCount:guesses.length,from:current.view.ownScore??current.view.score??current.score??0}:null;
      showPresentation({id:command.requestId,row:guesses.length-1,phase:'reveal',award,
       snapshot:{...current,view:{...current.view,current:{...result,waiting:false},ownResult:undefined}}});
     }
@@ -103,18 +99,20 @@ export function FiveAliveSession({mode,id,userId,matchId}:Props){
  },[mode,id,request,accept,refresh,connectionBlocked,showPresentation]);
  const back=()=>navigate(mode==='arcade'?'/arcade/five-alive'+(snapshot?.status==='completed'?'?result='+id:''):'/delayed/'+matchId);
  const display=presentation?.snapshot??submission??snapshot;
- const latestReveal=display?.view.revealed.at(-1);
- const ownReveal:Reveal|undefined=display?.view.ownResult??(latestReveal?('own'in latestReveal?latestReveal.own:latestReveal as Reveal):undefined);
- const opponentReveal:Reveal|undefined=!display?.view.ownResult&&latestReveal&&'opponent'in latestReveal?latestReveal.opponent:undefined;
+ const review=mode==='async'?snapshot?.wordReviews?.find(item=>!item.seen):undefined;
+ const reviewWord=review?snapshot?.view.revealed[review.round-1]:undefined;
+ const reviewDone=useCallback(async()=>{await refresh();},[refresh]);
+ useEffect(()=>{if(reviewOnly&&snapshot&&!review&&!presentation&&!submission)void onReviewsComplete?.();},[reviewOnly,snapshot,review,presentation,submission,onReviewsComplete]);
+ const prior:[number,number]=[0,0];
+ if(review)for(const word of snapshot?.view.revealed.slice(0,review.round-1)??[]){if('own'in word){prior[0]+=word.own.score??0;prior[1]+=word.opponent.score??0;}}
  const current=display?.view.current?.waiting?{...display.view.current,guesses:display.view.ownResult?.guesses}:display?.view.current;
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen">
-  {display?<><FiveAliveBoard key={`${mode}:${id}:${userId}:${display.view.round}`} mode={mode} round={display.view.round} score={animatedScore??((display.view.ownScore??display.view.score??display.score??0)+(display.view.ownResult?.score??0))}
-   scoreRef={scoreRef} opponentScore={display.view.opponentScore} current={current??null} pending={pending||connectionBlocked||!!display.held||!!presentation||!!award||rules||history||abandon} error={error}
+  {review&&reviewWord&&'own'in reviewWord&&!presentation&&!submission&&!history&&!rules?<FiveAliveOpponentReview key={review.id} event={review} own={reviewWord.own} opponent={reviewWord.opponent} prior={prior} userId={userId} onDone={reviewDone} onBack={back} onRules={()=>setRules(true)}/>:display?<><FiveAliveBoard key={`${mode}:${id}:${userId}:${display.view.round}`} mode={mode} round={display.view.round} score={animatedScore??((display.view.ownScore??display.view.score??display.score??0)+(display.view.ownResult?.score??0))}
+   scoreRef={scoreRef} opponentScore={display.view.opponentScore} current={current??null} pending={pending||connectionBlocked||!!display.held||!!presentation||!!award||!!review||reviewOnly||rules||history||abandon} error={error}
    reveal={presentation?.phase==='reveal'?{id:presentation.id,row:presentation.row}:undefined} onRevealComplete={finishReveal}
-   notice={ownReveal?.answer&&<div className="five-alive-last-result" role="status">{ownReveal.answer} · {tiers[ownReveal.difficulty??0]} · {multipliers[ownReveal.difficulty??0]}× · {ownReveal.score?.toLocaleString()??0} points{opponentReveal?` · Opponent ${opponentReveal.score?.toLocaleString()??0}`:''}{display.view.revealed.length>0&&<button type="button" onClick={()=>setHistory(true)}>Word results</button>}</div>}
+   notice={(display.view.ownResult||display.view.revealed.length>0)&&<button type="button" className="five-alive-word-results" onClick={()=>setHistory(true)}>Word Results</button>}
    summary={(display.view.completed||display.terminal)&&<div className="five-alive-summary" role="status"><h2>{mode==='arcade'?'Game Over':'Match complete'}</h2>
     {mode==='async'&&display.outcome&&<p>{display.outcome.reason==='draw'?'Draw':display.outcome.winner===userId?'You won':'Opponent won'}{display.outcome.reason==='timeout_forfeit'?' · Deadline missed':''}</p>}
-    <RoundHistory rounds={display.view.revealed}/>
     <button type="button" onClick={back}>{mode==='arcade'?'View Leaderboard':'Back to Match'}</button></div>}
    award={award?<FiveAliveAward key={award.id} event={award} userId={userId} target={scoreRef} onDone={finishAward} onScore={setAnimatedScore}/>:undefined}
    onReconnect={connectionBlocked?()=>{clearPresentation();void refresh();}:undefined} onWrongGuess={wrongGuess} onSubmit={word=>void act({type:'guess',word})} onBack={back} onRules={()=>setRules(true)} onAbandon={mode==='arcade'?()=>setAbandon(true):undefined}/>
@@ -123,7 +121,7 @@ export function FiveAliveSession({mode,id,userId,matchId}:Props){
    <p>Guess each five-letter word in six valid tries. Green marks the right letter and place; yellow marks a letter in another place; gray means that copy is absent.</p>
    <p>Base scores are 1,000, 700, 490, 343, 240 and 168. A hidden difficulty multiplier is revealed after each completed word. Three word scores make your total.</p>
   </DialogContent></Dialog>
-  <Dialog open={history} onOpenChange={setHistory}><DialogContent><DialogTitle>Word results</DialogTitle><DialogDescription>Words both players have completed.</DialogDescription><RoundHistory rounds={snapshot?.view.revealed??[]}/></DialogContent></Dialog>
+  <Dialog open={history} onOpenChange={setHistory}><DialogContent><DialogTitle>Word Results</DialogTitle><DialogDescription>Completed words and scores. Opponent results remain sealed until both finish.</DialogDescription><FiveAliveResults rounds={snapshot?.view.revealed??[]} waiting={snapshot?.view.ownResult}/></DialogContent></Dialog>
   <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon this game?</AlertDialogTitle><AlertDialogDescription>Your score will not enter the leaderboard.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending} onClick={()=>{setAbandon(false);void act({type:'abandon'}).then(ok=>{if(ok)navigate('/arcade/five-alive');});}}>Abandon Game</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </div>;
 }

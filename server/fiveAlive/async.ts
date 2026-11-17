@@ -8,6 +8,7 @@ interface Child {
  organizer:string;opponent:string;config:{poolVersion:string};state:{fiveAlive:SealedGame};outcome:unknown;
  receipt?:{child_id:string;fingerprint:unknown}|null;
  actor_revision?:number;
+ reviewRevision?:number;wordReviews?:{id:string;round:number;seen:boolean}[];
 }
 const canonical=(value:unknown):unknown=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'
  ?Object.fromEntries(Object.entries(value).sort(([a],[b])=>a<b?-1:a>b?1:0).map(([key,item])=>[key,canonical(item)])):value;
@@ -15,7 +16,7 @@ function projection(child:Child,actor:string){
  if(child.game_type!=='five-alive'||!child.state?.fiveAlive)throw Error('delayed:invalid_state');
  return {id:child.id,game:'five-alive',revision:child.revision,segment:child.segment,
   terminal:child.terminal,held:child.held,status:child.status,outcome:child.outcome??null,
-  view:sealedProjection(child.state.fiveAlive,actor)};
+  reviewRevision:child.reviewRevision??0,wordReviews:child.wordReviews??[],view:sealedProjection(child.state.fiveAlive,actor)};
 }
 
 /** The database adapter owns row locking, revision CAS, expiry and settlement. */
@@ -24,8 +25,9 @@ export async function fiveAliveAsyncOperation(rpc:Rpc,actor:string,body:Record<s
  const intent=body.intent&&typeof body.intent==='object'?body.intent as Record<string,unknown>:null;
  if(body.op==='action'&&(typeof body.requestId!=='string'||!isUuid(body.requestId)||!Number.isSafeInteger(body.revision)||!Number.isSafeInteger(body.segment)||
    intent?.type!=='guess'||typeof intent.word!=='string'||!/^[A-Z]{5}$/.test(intent.word)))throw Error('delayed:invalid_command');
- let row=await rpc('delayed_five_alive_load',{p_child:body.childId,p_actor:actor,p_request:body.op==='action'?body.requestId:null}) as Child;
+ let row=await rpc('delayed_five_alive_review_load',{p_child:body.childId,p_actor:actor,p_request:body.op==='action'?body.requestId:null}) as Child;
  if(row.game_type!=='five-alive'||![row.organizer,row.opponent].includes(actor))throw Error('delayed:not_authorized');
+ if(!Array.isArray(row.wordReviews)||!Number.isSafeInteger(row.reviewRevision))throw Error('five_alive:review_unavailable');
  if(body.op==='state')return projection(row,actor);
  if(!intent||typeof intent.word!=='string')throw Error('delayed:invalid_command');
  const fingerprint={child:body.childId,revision:body.revision,segment:body.segment,intent:body.intent};
@@ -46,7 +48,7 @@ export async function fiveAliveAsyncOperation(rpc:Rpc,actor:string,body:Record<s
   const winner=game.current===3?completedMatchOutcome(game).winner:null;
   const result=await rpc('delayed_five_alive_commit',{p_child:row.id,p_actor:actor,p_request:body.requestId,
    p_revision:row.revision,p_segment:row.segment,p_fingerprint:fingerprint,p_game:game,p_winner:winner}) as {outcome:string;record:Child};
-  if(result.outcome==='committed'||result.outcome==='duplicate')return projection(result.record,actor);
+  if(result.outcome==='committed'||result.outcome==='duplicate')return projection(await rpc('delayed_five_alive_review_load',{p_child:row.id,p_actor:actor,p_request:null}) as Child,actor);
   if(result.outcome==='deadline')throw Error('delayed:deadline');
   const next=result.record;
   const index=previous.players.indexOf(actor);

@@ -5,7 +5,7 @@ export function observeAwards(){
  window.fiveAliveAwards=[];
  let active=null;
  const observe=()=>{
-  const element=document.querySelector('.five-alive-award'),now=performance.now();
+  const element=document.querySelector('.five-alive-award:has(.five-alive-award-calculation)'),now=performance.now();
   if(element&&!active){active={shownAt:now,score:document.querySelector('.five-alive-score strong')?.textContent,calculation:element.querySelector('.five-alive-award-calculation')?.textContent,firstCountAt:null,firstFlightAt:null};window.fiveAliveAwards.push(active);}
   if(active){
    if(!active.firstCountAt&&document.querySelector('.five-alive-score strong')?.textContent!==active.score)active.firstCountAt=now;

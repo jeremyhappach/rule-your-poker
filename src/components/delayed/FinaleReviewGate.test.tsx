@@ -4,7 +4,8 @@ import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {MemoryRouter,Routes,Route,useLocation} from 'react-router-dom';
 import {TooltipProvider} from '@/components/ui/tooltip';
 import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
-const mock=vi.hoisted(()=>({rpc:vi.fn(),events:{} as Record<string,any[]>,finaleSeen:false,failAck:'',failRefresh:false,revision:1}));
+const mock=vi.hoisted(()=>({rpc:vi.fn(),events:{} as Record<string,any[]>,finaleSeen:false,failAck:'',failRefresh:false,revision:1,fiveAlive:false}));
+vi.mock('@/components/fiveAlive/FiveAliveSession',()=>({FiveAliveSession:({onReviewsComplete}:{onReviewsComplete:()=>void})=><button onClick={onReviewsComplete}>Finish saved Five Alive words</button>}));
 vi.mock('@/hooks/useAuthGuard',()=>({useAuthGuard:()=>({user:{id:'me'},isReady:true})}));
 vi.mock('@/components/GameplaySoundButton',()=>({GameplaySoundButton:()=>null}));
 vi.mock('@/components/delayed/NotificationBell',()=>({NotificationBell:()=>null}));
@@ -20,7 +21,7 @@ function home(){
   players:[{id:'me',name:'Owner'},{id:'other',name:'Opponent'}],net:-3,receipt:{match_id:'match'},completed:3,exposure:7,unsettled:0,
   serverAt:Date.now(),createdAt:new Date().toISOString(),acceptedAt:new Date().toISOString(),finaleViewed:mock.finaleSeen,
   reviewsComplete:Object.values(mock.events).flat().every(e=>e.seen),
-  lineup:['run','tri','quint'].map((id,i)=>({id,ordinal:i+1,game:['run21','tri-towers','quintzee'][i],stake:[1,5,1][i],terminal:true,
+  lineup:['run','tri','quint'].map((id,i)=>({id,ordinal:i+1,game:mock.fiveAlive&&i===0?'five-alive':['run21','tri-towers','quintzee'][i],stake:[1,5,1][i],terminal:true,
    viewed:mock.events[id].find(e=>e.kind==='child').seen,pendingResults:{other:mock.events[id].filter(e=>e.kind==='attempt'&&!e.seen).length},
    scores:{me:100,other:mock.events[id].every(e=>e.seen)?90:null},result:mock.events[id].find(e=>e.kind==='child').seen?{winner:i===1?'other':'me',delta:i===1?-5:1}:null}))};
 }
@@ -32,7 +33,7 @@ const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve
 const advance=async(ms:number)=>act(async()=>{await vi.advanceTimersByTimeAsync(ms);});
 const acks=()=>mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event);
 beforeEach(()=>{
- vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-30T19:05:00Z'));mock.finaleSeen=false;mock.failAck='';mock.failRefresh=false;mock.revision=1;
+ vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-30T19:05:00Z'));mock.finaleSeen=false;mock.failAck='';mock.failRefresh=false;mock.revision=1;mock.fiveAlive=false;
  Object.defineProperty(document,'hidden',{configurable:true,value:false});Object.defineProperty(navigator,'onLine',{configurable:true,value:true});
  window.matchMedia=vi.fn().mockReturnValue({matches:false,addEventListener(){},removeEventListener(){}});global.ResizeObserver=class{observe(){}disconnect(){}unobserve(){}} as any;
  mock.events=Object.fromEntries(['run','tri','quint'].map((id,i)=>[id,[
@@ -99,4 +100,11 @@ it('refresh after ACK observes another tab completing the remaining child',async
 it('missing server qualification fails closed',async()=>{
  const rpc=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_history_detail'?Promise.resolve({...home(),reviewsComplete:undefined}):rpc(name,args));
  mount('/delayed/match?finale=1');await flush();expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(mock.finaleSeen).toBe(false);
+});
+
+it('restores Five Alive word reviews before the generic child result, even before load materializes attempt receipts',async()=>{
+ mock.fiveAlive=true;mock.events.run=mock.events.run.filter(e=>e.kind==='child');
+ mount('/delayed/match?review=run&finished=1');await flush();
+ expect(screen.getByRole('button',{name:'Finish saved Five Alive words'})).toBeTruthy();await advance(12000);expect(acks()).toEqual([]);expect(screen.queryByText('Game Complete')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Finish saved Five Alive words'}));await flush();expect(screen.getByText('Game Complete')).toBeTruthy();await advance(6100);expect(acks()).toEqual(['run-child']);
 });

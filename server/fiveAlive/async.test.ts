@@ -5,11 +5,11 @@ import {createSealedGame,submitSealedGuess} from './rules.js';
 
 it('projects only the viewer and seals a submitted word until both finish',async()=>{
  const organizer=randomUUID(),opponent=randomUUID(),id=randomUUID();
- let row={id,game_type:'five-alive',revision:1,segment:1,terminal:false,held:false,status:'active',organizer,opponent,
+ let row={id,game_type:'five-alive',wordReviews:[],reviewRevision:1,revision:1,segment:1,terminal:false,held:false,status:'active',organizer,opponent,
   config:{poolVersion:'esdb-five-alive/1'},outcome:null,state:{fiveAlive:createSealedGame([organizer,opponent],[{word:'APPLE',difficulty:1},{word:'BREAD',difficulty:2},{word:'CLOUD',difficulty:3}])}};
  let writes=0;
  const rpc=async(name:string,args:Record<string,unknown>)=>{
-  if(name==='delayed_five_alive_load')return {...row,receipt:null};
+  if(name==='delayed_five_alive_review_load')return {...row,receipt:null};
   if(name==='delayed_five_alive_commit'){const game=args.p_game as typeof row.state.fiveAlive;writes++;row={...row,revision:row.revision+1,segment:row.segment+(game.current-row.state.fiveAlive.current),state:{fiveAlive:game}};return {outcome:'committed',record:row};}
   throw Error(name);
  };
@@ -27,11 +27,11 @@ it('projects only the viewer and seals a submitted word until both finish',async
 it('retries only an opponent-only same-round conflict with the original receipt identity',async()=>{
  const organizer=randomUUID(),opponent=randomUUID(),id=randomUUID(),requestId=randomUUID();
  const original=createSealedGame([organizer,opponent],[{word:'APPLE',difficulty:1},{word:'BREAD',difficulty:2},{word:'CLOUD',difficulty:3}]);
- const row={id,game_type:'five-alive',revision:1,segment:1,terminal:false,held:false,status:'active',organizer,opponent,config:{poolVersion:'esdb-five-alive/1'},outcome:null,state:{fiveAlive:original}};
+ let row={id,game_type:'five-alive',wordReviews:[],reviewRevision:1,revision:1,segment:1,terminal:false,held:false,status:'active',organizer,opponent,config:{poolVersion:'esdb-five-alive/1'},outcome:null,state:{fiveAlive:original}};
  const concurrent=submitSealedGuess(original,opponent,'APPLE',()=>true);
  let calls=0;
  const rpc=async(name:string,args:Record<string,unknown>)=>{
-  if(name==='delayed_five_alive_load')return row;
+  if(name==='delayed_five_alive_review_load')return row;
   calls++;
   expect(args.p_request).toBe(requestId);
   expect((args.p_fingerprint as {revision:number}).revision).toBe(1);
@@ -41,7 +41,7 @@ it('retries only an opponent-only same-round conflict with the original receipt 
   expect(game.current).toBe(1);
   expect(game.rounds[0][0].completed).toBe(true);
   expect(game.rounds[1][0].completed).toBe(true);
-  return {outcome:'committed',record:{...row,revision:3,segment:2,state:{fiveAlive:game}}};
+  row={...row,revision:3,segment:2,state:{fiveAlive:game}};return {outcome:'committed',record:row};
  };
  const result=await fiveAliveAsyncOperation(rpc,organizer,{op:'action',childId:id,requestId,revision:1,segment:1,intent:{type:'guess',word:'APPLE'}});
  expect(calls).toBe(2);expect(result.view.round).toBe(2);
@@ -50,10 +50,10 @@ it('retries only an opponent-only same-round conflict with the original receipt 
 it('does not retry a conflict that changed the requesting player',async()=>{
  const organizer=randomUUID(),opponent=randomUUID(),id=randomUUID();
  const game=createSealedGame([organizer,opponent],[{word:'APPLE',difficulty:1},{word:'BREAD',difficulty:2},{word:'CLOUD',difficulty:3}]);
- const row={id,game_type:'five-alive',revision:1,segment:1,terminal:false,held:false,status:'active',organizer,opponent,config:{poolVersion:'esdb-five-alive/1'},outcome:null,state:{fiveAlive:game}};
+ let row={id,game_type:'five-alive',wordReviews:[],reviewRevision:1,revision:1,segment:1,terminal:false,held:false,status:'active',organizer,opponent,config:{poolVersion:'esdb-five-alive/1'},outcome:null,state:{fiveAlive:game}};
  let calls=0;
  const rpc=async(name:string)=>{
-  if(name==='delayed_five_alive_load')return row;
+  if(name==='delayed_five_alive_review_load')return row;
   calls++;
   return {outcome:'conflict',record:{...row,revision:2,state:{fiveAlive:submitSealedGuess(game,organizer,'BREAD',()=>true)}}};
  };
@@ -65,13 +65,13 @@ it('admits a pre-load peer update but rejects own progress, future and unproven 
  const organizer=randomUUID(),opponent=randomUUID(),id=randomUUID();
  const original=createSealedGame([organizer,opponent],[{word:'APPLE',difficulty:1},{word:'BREAD',difficulty:2},{word:'CLOUD',difficulty:3}]);
  const game=submitSealedGuess(original,opponent,'APPLE',()=>true);
- const row={id,game_type:'five-alive',revision:2,segment:1,terminal:false,held:false,status:'active',organizer,opponent,config:{poolVersion:'esdb-five-alive/1'},outcome:null,state:{fiveAlive:game},actor_revision:0};
+ let row={id,game_type:'five-alive',wordReviews:[],reviewRevision:1,revision:2,segment:1,terminal:false,held:false,status:'active',organizer,opponent,config:{poolVersion:'esdb-five-alive/1'},outcome:null,state:{fiveAlive:game},actor_revision:0};
  const body={op:'action',childId:id,requestId:randomUUID(),revision:1,segment:1,intent:{type:'guess',word:'APPLE'}};
  let writes=0;
  const rpc=async(name:string,args:Record<string,unknown>)=>{
-  if(name==='delayed_five_alive_load')return row;
+  if(name==='delayed_five_alive_review_load')return row;
   writes++;expect(args.p_revision).toBe(2);expect((args.p_fingerprint as {revision:number}).revision).toBe(1);
-  return {outcome:'committed',record:{...row,revision:3,segment:2,state:{fiveAlive:args.p_game}}};
+  row={...row,revision:3,segment:2,state:{fiveAlive:args.p_game as typeof game}};return {outcome:'committed',record:row};
  };
  expect((await fiveAliveAsyncOperation(rpc,organizer,body)).view.round).toBe(2);
  expect(writes).toBe(1);

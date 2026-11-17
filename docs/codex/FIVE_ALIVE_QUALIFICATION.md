@@ -1,5 +1,28 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 17 approved previews — production release in progress
+
+Jeremy approved all five previews for production. This supersedes the preview
+hold below. Product code is unchanged from the final passing qualification:
+TypeScript, 4,297 app / 241 harness / 46 release-tooling tests, Vite and
+89,999,447 / 90,000,000 bytes. The preview-only controls also passed all five
+native browser scenarios. The unrelated Cribbage snapshot formatting is excluded.
+
+Production project xvhmbuppghwmwpwrkzao was independently verified as
+ptown-poker-prod / ACTIVE_HEALTHY. Additive migration 20261117204258,
+five_alive_word_reviews, applied successfully. Post-install catalog verification:
+new wrapper MD5 84a22fb01af273c0de7846bcb494669f; old load remains
+39b3f82999c239579a017d6c923c19e5. Only postgres/service_role can execute the
+new wrapper; anon and authenticated cannot. No application rows, balances,
+catalog activation or existing release flags were changed by this installation.
+The exact management migration version is preserved in supabase/migrations.
+
+Next: commit/tag, normal fast-forward main integration and approved push helper,
+verify the exact deployment and release publication, then authenticated Arcade
+and fake-money Async smoke in fresh isolated contexts. Do not mark release
+complete until the production smoke and scoped authoritative readback pass.
+
+
 ## November 16 phone keyboard / five-second award follow-up — production smoke passed
 
 Released commit **`f5f8b10ae36d51812e62ae209ab9e48581fc18df`**, tag
@@ -286,6 +309,50 @@ Async shows retained STARE/AMPLE rows. **Preview approval received; the subseque
 normal publication and authenticated production smoke passed as recorded above.**
 
 ## November 16 release complete — published, activated and production-smoked
+
+## November 17 preview review — publication held for Jeremy
+
+Jeremy requested a preview of each change before publication. Five independent
+local previews are running with the actual product components and disposable
+fixture state only. The native browser checked all five action controls and
+reset every scenario after passing. The preview-only typing shortcut was
+corrected to commit entered letters before Enter; product code is unchanged.
+
+1. Keyboard / sequential feedback / persistent rows: http://127.0.0.1:5191/dev/five-alive/presentation/index.html?mode=arcade&demo=keyboard
+2. Waiting Word Results / word-by-word scorecard: http://127.0.0.1:5192/dev/five-alive/presentation/index.html?mode=async&player=a&demo=results
+3. Masked opponent turns / solved final guess / paired scores: http://127.0.0.1:5193/dev/five-alive/presentation/index.html?mode=async&player=a&demo=opponent
+4. Masked opponent turns / sixth-miss final guess: http://127.0.0.1:5194/dev/five-alive/presentation/index.html?mode=async&player=a&demo=sixth
+5. Five-second own-award calculation before score count: http://127.0.0.1:5195/dev/five-alive/presentation/index.html?mode=arcade&demo=award
+
+Launcher: dev/five-alive/presentation/previews.mjs. Each tab has an action
+button, Reset preview, Refresh and Reconnect. Evidence runner:
+qualification.local/five-alive/results/verify-previews.mjs (exit 0, all five).
+**First open step is now Jeremy's preview review**, superseding the release
+resume instruction below. Production remains untouched; no publication is
+authorized until this newly requested review has concluded.
+
+## November 17 keyboard, word scorecard and opponent review pass — candidate qualified; release pending
+
+Approved scope: preserve the released horizontal, left-to-right 220 ms half-flips, retained own rows, compact phone keyboard and full five-second own-award hold. Available keys are light gray (#d3d6da), misses dark gray (#3a3a3c), with existing yellow/green feedback preserved. The referenced attachment was not available in this session; the explicit requested colors and saved production phone evidence were used.
+
+Word Results is available while waiting after own completion. The felt no longer prints the previous-word helper. The scorecard lists each answer in five green tiles, its tier, opponent then viewer guess count and base × difficulty = authoritative award; it does not list guesses. Earlier opponent guess letters/feedback are removed by the shared server projection. Only the final correct/sixth-miss guess is disclosed in the sequenced review after mutual completion. Both score counts and audio share one start time after final-tile reveal and a five-second reading interval.
+
+Durability uses the existing immutable Async review events and per-viewer begin/ACK RPCs. The additive service-only delayed_five_alive_review_load delegates authorization, expiry and locking to the unchanged delayed_five_alive_load, then materializes deterministic per-word review identities. The old RPC remains available unchanged for the currently deployed client. No table, trigger, index, policy, RLS, financial owner, scoring rule, answer bank or release flag changes. Final-result entry must drain pending word reviews before the canonical child result. A missing review projection fails closed in the new service.
+
+Evidence:
+- 38 focused component/adapter/terminal-entry tests passed; 10 native shared-rule tests passed. Coverage includes sequential actual feedback, multiple retained rows/reconnect, private waiting scorecard, masked turns, final sixth miss, shared score/audio timing, interrupted remount, already-seen receipts, and the terminal-entry gate.
+- Fresh isolated Edge presentation acceptance passed: real CSS events, native reload/reconnect, pending opponent review after reload, waiting scorecard, no earlier opponent strategy, reduced motion, and 320/390/430 px phone layouts with 24 px safe area. Keys remain at least 40 px high; grid gap remains within 8 px. Screenshots were inspected.
+- Isolated project tyuxxkalhqbqkbvvkcfx: 22 rollback assertions passed both before and after additive installation, including sealed first finisher, stable receipt on replay, per-viewer/duplicate ACK, outsider denial, three-word win/tie and canonical exactly-once settlement. SQL fixtures needed the existing enabled-account and fresh-heartbeat preconditions; all fixture changes rolled back. Zero residual fixtures and zero enabled disposable accounts verified.
+- Original load MD5 remains 39b3f82999c239579a017d6c923c19e5. New wrapper MD5 84a22fb01af273c0de7846bcb494669f; execute grants only postgres/service_role, anon/authenticated denied. Existing schema objects and grants unchanged.
+- Initial full standard build passed TypeScript, 4,296 app / 241 harness / 46 release-tooling tests, Vite and unchanged static budget: 89,999,447 / 90,000,000 bytes. The final additive-adapter run also passed (exit 0): TypeScript, 4,297 app tests / 586 files, 241 harness tests / 12 files, 46 release-tooling tests, Vite (11.59 s), and 89,999,447 / 90,000,000 bytes.
+
+Artifacts: qualification.local/five-alive/results/{review-proof.sql,rollback-proof-result.json,focused-additive.log,terminal-gate.log,standard-additive.log}; native browser evidence in qualification.local/five-alive/presentation/{proof.json,word-scorecard.png,phone-keyboard.png}. Production smoke runner is prepared in results/production-smoke.mjs and verifies page.url(), location.href, exact production build and Supabase project before authentication.
+
+Production outcome: unchanged at f5f8b10ae36d51812e62ae209ab9e48581fc18df at this checkpoint. No production DDL, push, deployment or smoke has yet occurred for this pass. Release remains pending additive production installation, normal main push/publication and authenticated fake-money smoke. This pass ended at the repository tool-call budget; no release gate failed. The product changes and this checkpoint are still uncommitted.
+
+**First open step for the next bounded pass:** review the final diff/status, apply the qualified additive SQL via the Supabase management migration tool to the verified ptown-poker-prod project xvhmbuppghwmwpwrkzao, record the actual migration version in supabase/migrations, then commit/tag and fast-forward the clean main worktree at C:/Users/jerem/Documents/Codex/2026-10-27/task/incident-release-main. Use the unchanged .codex/scripts/push-origin-main.cmd. HEAD and origin/main were synchronized at 2a9c1b1aa12b3dc248dfa8e386b1d8da3e857485; fetch again before integration. Existing catalog/flags are already active and must not be reactivated. Do not rerun completed financial/Auth/Realtime qualification.
+
+Before smoke, populate results/smoke-resume.json with the actual deployed SHA and verify release publication. The prepared production runner passed syntax checking only; record actual paired score starts, masked final reveal, durable review ACKs, and scoped settlement readback in the live smoke. Use fresh isolated Edge contexts and approved fake-money accounts only. Local gh was not found in PATH; do not retry browser verification codes. Connected workflow read tools remain available. Existing unrelated Cribbage snapshot formatting is preserved. Runtime vocabulary remains 1,021; 8,979 qualified additions remain as post-launch growth.
 
 **Five Alive is active in production with 1,021 qualified answers.** Deployed
 commit: `4fb956ac58a258e074a3938c66c659410e17022c`; Vercel

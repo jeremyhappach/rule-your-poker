@@ -7,7 +7,7 @@ import {endAnimation} from './animationTestEvent';
 const {request,navigate,updates}=vi.hoisted(()=>({request:vi.fn(),navigate:vi.fn(),updates:[] as (()=>void)[]}));
 vi.mock('react-router-dom',()=>({useNavigate:()=>navigate}));
 vi.mock('@/lib/arcade/client',()=>({arcadeRequest:request}));
-vi.mock('@/lib/delayed/client',()=>({delayedRequest:request}));
+vi.mock('@/lib/delayed/client',()=>({delayedRequest:request,delayedRpc:vi.fn()}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{acquireGameplay:()=>()=>{},request:vi.fn()}}));
 vi.mock('./FiveAliveAward',()=>({FiveAliveAward:({event,onDone}:{event:{word:string;points:number};onDone:()=>void})=><button data-testid="score-flight" onClick={onDone}>{event.word} +{event.points}</button>}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:()=>({on(_event:unknown,_filter:unknown,callback:()=>void){updates.push(callback);return this;},subscribe(){return this;}}),removeChannel:vi.fn()}}));
@@ -37,16 +37,19 @@ it('shows a completed run and returns to its leaderboard receipt',async()=>{
  request.mockResolvedValue({...initial,revision:4,status:'completed',score:800,view:{...initial.view,round:3,score:800,completed:true,current:null,revealed:[{answer:'APPLE',difficulty:1,score:800,solved:true,guesses:[{word:'APPLE',feedback:['correct','correct','correct','correct','correct']}]}]}});
  render(<FiveAliveSession mode="arcade" id="run" userId="user"/>);
  expect(await screen.findByText('Game Over')).toBeTruthy();
- expect(screen.getByText(/1,?000 base/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Word Results'}));
+ expect(screen.getByText(/You: 1 guesses · 1,000 × 0.8 = 800/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'Close'}));
  fireEvent.click(screen.getByRole('button',{name:'View Leaderboard'}));
  expect(navigate).toHaveBeenCalledWith('/arcade/five-alive?result=run');
 });
 
 it('shows the player their private completed word while waiting',async()=>{
- request.mockResolvedValue({...initial,segment:2,view:{...initial.view,round:2,ownScore:800,opponentScore:800,current:{completed:true,waiting:true},ownResult:{answer:'APPLE',difficulty:1,score:800,solved:true,guesses:[]},revealed:[{own:{answer:'BREAD',score:800},opponent:{answer:'BREAD',score:800}}]}});
+ request.mockResolvedValue({...initial,segment:2,view:{...initial.view,round:2,ownScore:800,opponentScore:800,current:{completed:true,waiting:true},ownResult:{answer:'APPLE',difficulty:1,score:800,solved:true,guesses:[apple]},revealed:[{own:{answer:'BREAD',score:800},opponent:{answer:'BREAD',score:800}}]}});
  render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
  expect(await screen.findByText(/Waiting for the other player/)).toBeTruthy();
- const notice=screen.getByText(/APPLE · Very Easy/);expect(notice).toBeTruthy();expect(notice.textContent).not.toContain('Opponent');
+ expect(screen.queryByText(/APPLE · Very Easy/)).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Word Results'}));expect(screen.getByLabelText('Answer APPLE')).toBeTruthy();expect(screen.getByText('Opponent: Waiting')).toBeTruthy();
  expect(screen.queryByLabelText('Keyboard')).toBeNull();
 });
 
@@ -141,9 +144,9 @@ it('restores only own completed guesses while the opponent is sealed, then admit
  const {container}=render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
  await screen.findByText(/Waiting for the other player/);
  expect(screen.getByLabelText('Guess board').textContent).toBe('APPLE');expect(container.querySelector('[data-reveal]')).toBeNull();
- expect(screen.queryByText(/Opponent:/)).toBeNull();expect(screen.queryByRole('button',{name:'Word results'})).toBeNull();
+ expect(screen.queryByText(/Opponent:/)).toBeNull();expect(screen.getByRole('button',{name:'Word Results'})).toBeTruthy();
  request.mockResolvedValue({...solved,revision:3,segment:2,view:{...solved.view,ownScore:800,opponentScore:0,revealed:[{own:result,opponent:{...result,solved:false,score:0,guesses:[{word:'STONE',feedback:['absent','absent','present','absent','correct']}]}}]}});
  await act(async()=>updates[0]());
- fireEvent.click(await screen.findByRole('button',{name:'Word results'}));
- expect(screen.getByText(/Opponent: STONE/)).toBeTruthy();
+ fireEvent.click(await screen.findByRole('button',{name:'Word Results'}));
+ expect(screen.getByText(/Opponent: 1 guesses · 0 × 0.8 = 0/)).toBeTruthy();expect(screen.queryByText(/STONE/)).toBeNull();
 });

@@ -26,3 +26,11 @@ award ordering and five-second timing (including reconnect during the hold),
 phone keyboard spacing/tap targets at 320, 390 and 430 px with a nonzero safe
 area, Async privacy/mutual disclosure, and reduced motion. Evidence
 and screenshots go to `qualification.local/five-alive/presentation/`.
+
+## Separate review previews
+
+Run `node dev/five-alive/presentation/previews.mjs` for five independent local
+fixtures on ports 5191–5195. Each tab has a descriptive action button and Reset
+preview. They show keyboard/history, the waiting scorecard, a solved opponent
+review, a sixth-miss opponent review, and the five-second own-score reveal.
+These controls are development-only and mount the unchanged product components.

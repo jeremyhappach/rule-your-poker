@@ -181,7 +181,11 @@ export function sealedProjection(game: SealedGame, player: string) {
   if (index < 0) throw new Error('five_alive:forbidden');
   const other = 1 - index;
   const revealed = game.rounds[index].slice(0, game.current).map((round, i) => ({
-    own: ownRoundProjection(round), opponent: ownRoundProjection(game.rounds[other][i]),
+    own: ownRoundProjection(round), opponent: {
+      ...ownRoundProjection(game.rounds[other][i]),
+      // Mutual completion permits the result, never the opponent's earlier strategy.
+      guesses: game.rounds[other][i].guesses.map((guess,j,all)=>j===all.length-1?guess:{word:'',feedback:[] as LetterFeedback[]}),
+    },
   }));
   return {
     completed: game.current === FIVE_ALIVE_RULES.rounds,

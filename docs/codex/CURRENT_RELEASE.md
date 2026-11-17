@@ -1,3 +1,7 @@
+# Five Alive keyboard and word results — November 17, 2026 — release in progress
+
+Jeremy approved all five previews for production. Final checks passed: TypeScript, 4,297 app / 241 harness / 46 release-tooling tests and Vite; static output is 89,999,447 bytes under the unchanged 90 MB limit. The additive review RPC is installed and catalog-verified in production as migration 20261117204258. Existing authority, scoring, vocabulary, balances and flags are unchanged. Commit publication and authenticated production smoke are pending. See [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md) for exact evidence.
+
 # Five Alive phone keyboard / award hold — November 16, 2026 — production smoke passed
 
 Commit `f5f8b10ae36d51812e62ae209ab9e48581fc18df` is READY in production on

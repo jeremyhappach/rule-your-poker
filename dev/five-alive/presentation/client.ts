@@ -6,6 +6,7 @@ async function request<T>(mode:string,body:Record<string,unknown>):Promise<T>{
 }
 export const arcadeRequest=<T,>(body:Record<string,unknown>)=>request<T>('arcade',body);
 export const delayedRequest=<T,>(body:Record<string,unknown>)=>request<T>('async',body);
+export const delayedRpc=<T,>(name:string,args:Record<string,unknown>)=>request<T>('async',{op:name,...args});
 export const supabase={channel:()=>{
  let stream:EventSource|undefined,update=()=>{};
  return {on(_event:unknown,_filter:unknown,callback:()=>void){update=callback;return this;},

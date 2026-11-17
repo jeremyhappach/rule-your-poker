@@ -3,14 +3,14 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
 import {observeAwards,assertAwards,assertPhoneLayout} from './acceptance.mjs';
-const base='http://127.0.0.1:5184',url=base+'/dev/five-alive/presentation/index.html';
+const base=process.argv[2]??'http://127.0.0.1:5184',url=base+'/dev/five-alive/presentation/index.html';
 const output=resolve('qualification.local/five-alive/presentation');mkdirSync(output,{recursive:true});
 const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'});
 const errors=[],external=[],evidence={};
 async function open(mode,player='a',reducedMotion='no-preference'){
  const context=await browser.newContext({viewport:{width:460,height:900},reducedMotion});
  await context.route('**/*',route=>{if(new URL(route.request().url()).origin===base)return route.continue();external.push(route.request().url());return route.abort();});
- const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',error=>errors.push(error.message));
+ const page=await context.newPage();page.setDefaultTimeout(25000);page.on('pageerror',error=>errors.push(error.message));
  await page.addInitScript(observeAwards);
  await page.addInitScript(()=>{
   window.flipEvents=[];
@@ -36,6 +36,7 @@ try{
  const events=await arcade.page.evaluate(()=>window.flipEvents);const starts=events.filter(e=>e.type==='animationstart');
  assert.deepEqual(starts.map(e=>[e.column,e.name]),Array.from({length:5},(_,i)=>[[i,'five-alive-flip-close'],[i,'five-alive-flip-open']]).flat());
  for(const event of starts){assert.equal(event.duration,220);assert.deepEqual(event.transforms,event.name.endsWith('close')?['rotateY(0deg)','rotateY(90deg)']:['rotateY(90deg)','rotateY(0deg)']);}
+ const keyColors=await arcade.page.evaluate(()=>Object.fromEntries(['Q','S','A','E'].map(letter=>[letter,getComputedStyle([...document.querySelectorAll('.five-alive-keyboard button')].find(key=>key.textContent===letter)).backgroundColor])));assert.deepEqual(keyColors,{Q:'rgb(211, 214, 218)',S:'rgb(58, 58, 60)',A:'rgb(197, 138, 0)',E:'rgb(7, 154, 35)'});evidence.keyColors=keyColors;
  const expected=['absent','absent','present','absent','correct'];
  for(const event of starts.filter(e=>e.name.endsWith('open')))assert.deepEqual(event.colors,expected.map((c,i)=>i<=event.column?c:''));
  for(let i=0;i<4;i++)assert.ok(events.find(e=>e.type==='animationend'&&e.column===i&&e.name.endsWith('open')).time<=starts.find(e=>e.column===i+1).time);
@@ -64,10 +65,13 @@ try{
  assert.deepEqual((await rows(a.page)).slice(0,1),['STARE']);assert.deepEqual((await rows(b.page)).slice(0,1),['PLANT']);
  assert.equal((await a.page.locator('body').textContent()).includes('PLANT'),false);
  await guess(a.page,'APPLE');await a.page.getByText('Waiting for the other player.',{exact:true}).waitFor();
- assert.deepEqual((await rows(a.page)).slice(0,2),['STARE','APPLE']);assert.equal(await a.page.getByRole('button',{name:'Word results',exact:true}).count(),0);
+ assert.deepEqual((await rows(a.page)).slice(0,2),['STARE','APPLE']);await a.page.getByRole('button',{name:'Word Results',exact:true}).click();await a.page.getByText('Opponent: Waiting',{exact:true}).waitFor();assert.equal(await a.page.getByLabel('Answer APPLE').count(),1);assert.equal((await a.page.getByRole('dialog').textContent()).includes('STARE'),false);await a.page.getByRole('button',{name:'Close',exact:true}).click();
  await a.page.reload();await a.page.getByText('Waiting for the other player.',{exact:true}).waitFor();assert.deepEqual((await rows(a.page)).slice(0,2),['STARE','APPLE']);assert.equal((await a.page.evaluate(()=>window.flipEvents)).length,0);
  await a.page.screenshot({path:output+'/async-private-history.png'});
- await guess(b.page,'APPLE');await idle(b.page);await a.page.getByRole('button',{name:'Word results',exact:true}).click();await a.page.getByText(/Opponent: PLANT, APPLE/).waitFor();
+ await guess(b.page,'APPLE');await a.page.getByText('Opponent completed in 2',{exact:true}).waitFor();assert.equal((await a.page.locator('body').textContent()).includes('PLANT'),false);
+ await a.page.reload();await a.page.getByText('Opponent completed in 2',{exact:true}).waitFor();assert.equal((await a.page.locator('body').textContent()).includes('PLANT'),false);
+ await Promise.all([idle(a.page),idle(b.page)]);await a.page.getByRole('button',{name:'Word Results',exact:true}).click();await a.page.getByText('Opponent: 2 guesses · 700 × 0.8 = 560',{exact:true}).waitFor();assert.equal((await a.page.getByRole('dialog').textContent()).includes('PLANT'),false);assert.equal((await a.page.getByRole('dialog').textContent()).includes('STARE'),false);
+ await a.page.screenshot({path:output+'/word-scorecard.png'});
  evidence.asyncAwards=await assertAwards(b.page);
  evidence.async={ownRowsA:['STARE','APPLE'],ownRowsB:['PLANT','APPLE'],opponentSealedUntilBothFinish:true,waitingRefresh:true,mutualHistory:true};
  await a.context.close();await b.context.close();

@@ -1,6 +1,7 @@
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {nonWordTurn,turnLabel} from '@/lib/ptownWords/turnPresentation';
 import {ChessFinalReview} from '@/components/chess/ChessFinalReview';
+import {FiveAliveSession} from '@/components/fiveAlive/FiveAliveSession';
 import {ChessHistoryButton} from '@/components/chess/ChessHistory';
 import type {ChessSnapshot} from '@/lib/chess/client';
 import {useVisible,usePlayback} from '@/lib/delayed/usePlayback';
@@ -110,6 +111,8 @@ export function ChildResults({childId,matchId,userId}:Identity){
  const [home,setHome]=useState<Home|null>(null),[state,setState]=useState<Reviews|null>(null),[error,setError]=useState(''),[overlay,setOverlay]=useState(false),[query]=useSearchParams(),navigate=useNavigate();
  const [wordsReview,setWordsReview]=useState<ReturnType<typeof wordsFinalReview>|null>(null);
  const [chessReview,setChessReview]=useState<ChessSnapshot|null>(null),[chessContinued,setChessContinued]=useState(query.has('chess-reviewed')),[historyOpen,setHistoryOpen]=useState(false);
+ const [fiveAliveReviewed,setFiveAliveReviewed]=useState(false);
+ useEffect(()=>setFiveAliveReviewed(false),[childId]);
  const played=useRef(false),[playId]=useState(()=>crypto.randomUUID());
  const load=useCallback(async()=>{try{const [h,r]=await Promise.all([delayedRpc<Home>('delayed_home',{p_match:matchId}),delayedRpc<Reviews>('delayed_reviews',{p_child:childId})]);if(h.removedAt||!h.lineup.some(c=>c.id===childId&&c.terminal)){navigate('/delayed/'+matchId,{replace:true});return;}
   const childGame=h.lineup.find(c=>c.id===childId)?.game,words=childGame==='ptown-words';
@@ -119,13 +122,16 @@ export function ChildResults({childId,matchId,userId}:Identity){
  }catch{setError('Unable to restore saved results.');}},[matchId,childId,userId,navigate,query]);
  useEffect(()=>{setChessReview(null);setChessContinued(query.has('chess-reviewed'));setHistoryOpen(false);void load();},[load]);
  const final=state?.events.find(e=>e.kind==='child'),child=home?.lineup.find(c=>c.id===childId),winner=final?.receipt.winner??child?.result?.winner,won=winner===userId;
- const reduced=useReduced(),play=usePlayback(reduced?1200:6000,overlay?'overlay:'+childId:'waiting'),busy=useRef(false);
- useEffect(()=>{if(historyOpen||!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
+ const reviewingFiveAlive=child?.game==='five-alive'&&!fiveAliveReviewed;
+ const finishFiveAlive=useCallback(async()=>{played.current=true;await load();setFiveAliveReviewed(true);},[load]);
+ const reduced=useReduced(),play=usePlayback(reduced?1200:6000,overlay&&!reviewingFiveAlive?'overlay:'+childId:'waiting'),busy=useRef(false);
+ useEffect(()=>{if(reviewingFiveAlive||historyOpen||!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
   .then(()=>delayedRpc<Home>('delayed_home',{p_match:matchId}))
   .then(fresh=>navigate('/delayed/'+matchId+(mayViewFinale(fresh)?'?finale=1':''),{replace:true}))
-  .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[historyOpen,overlay,play.done,final,home,matchId,navigate]);
+  .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[reviewingFiveAlive,historyOpen,overlay,play.done,final,home,matchId,navigate]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
+ if(reviewingFiveAlive)return <FiveAliveSession mode="async" id={childId} matchId={matchId} userId={userId} reviewOnly onReviewsComplete={finishFiveAlive}/>;
  if(chessReview&&!chessContinued)return <ChessFinalReview view={chessReview} matchId={matchId} onContinue={()=>{setChessContinued(true);setOverlay(true);}}/>;
  const event=wordsReview?.event??state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
  if(!overlay&&event)return <AttemptReview key={event.id} events={state.events} home={home} {...{childId,matchId,userId,event}} acknowledgeEvents={wordsReview?.acknowledge} onDone={()=>{played.current=true;return load();}}/>;
