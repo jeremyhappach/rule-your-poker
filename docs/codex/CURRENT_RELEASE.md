@@ -1,4 +1,26 @@
-# Five Alive — production release and authenticated smoke passed
+# Five Alive feedback/history correction — production approved
+
+The smoke report identified simultaneous tile feedback and disappearing guess
+rows. The local candidate now reveals each tile in order, retains authoritative
+guess history, and completes final-row feedback before the existing award/word
+transition. Async waiting retains only the owner's guesses. Rules, scoring,
+the 1,021-answer bank, production data and balances are unchanged.
+
+Jeremy then requested a slower side-to-side flip. The preview now uses 220 ms
+per half-flip around the Y axis, retaining left-to-right tile order. The updated
+browser proof passes the axis, timing and existing behavior checks. Jeremy
+approved both revised previews and production publication. Final build
+verification passed for the approved candidate.
+
+Sixteen focused presentation tests, nine shared-rule tests and the isolated
+real-browser preview proof passed. The final standard build passed full TypeScript,
+4,290 app / 241 harness / 46 release-tooling tests, Vite and the unchanged 90 MB
+size gate (89,993,957 bytes). Jeremy requested previews before prod;
+the revised local Arcade and Async previews were accepted. **Publication
+and production smoke of these corrections remain pending.** Evidence and resume
+steps: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
+# Five Alive — initial production release and authenticated smoke passed
 
 Production serves `4fb956ac58a258e074a3938c66c659410e17022c`; Vercel
 `dpl_HXXRqVZi56A8DoAo3meZV7AuScXk` remains READY. GitHub run `43973296114`

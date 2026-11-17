@@ -1,5 +1,76 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 16 follow-up — sequential reveal and retained guesses; production approved
+
+Jeremy approved both revised previews and production publication. The approved
+candidate preserves guesses and uses sequential horizontal flips at 220 ms per
+half-flip. Final standard checks passed; normal release/publication is in
+progress. Production smoke of this correction is not yet claimed.
+
+Preview revision requested by Jeremy: slow the reveal slightly and flip
+side-to-side rather than top-to-bottom. The CSS now rotates around the Y axis
+with 220 ms per half-flip (440 ms per tile, nominally 2.2 seconds for the row),
+up from 160 ms per half-flip. Tile order remains left-to-right. This revision
+changes only presentation CSS. The approved timing/axis candidate passed the
+full final standard build, recorded below.
+The revised browser proof passed: computed keyframes use `rotateY`, both
+half-flips are 220 ms, every prior tile completes before the next starts, and
+history, recovery, correct awards, Async privacy and reduced motion still pass.
+Both visible preview tabs were reset for review. Production remains unchanged.
+
+Jeremy reported simultaneous feedback reveal and disappearing submitted guesses
+during production smoke, and requested previews of both corrections **before
+production**. Candidate starts from `cda168eaec7646a20b957dbbe30c28558d257149`
+in the existing `codex/five-alive` worktree. Production has not changed in this
+pass. The report's screenshot was not available in the conversation; diagnosis
+and preview evidence below come from the actual source and rendered behavior.
+
+Root cause: the board drew submitted letters only from a temporary whole-row
+fade receipt, then cleared them; all feedback colors were applied together.
+Correct/sixth guesses could advance the server word before that row rendered.
+The board now always draws saved guesses from the owner's admitted snapshot.
+A local presentation receipt closes/opens one tile at a time, applies its actual
+feedback at the flip midpoint, and waits for its animation end before the next.
+The old word remains through its final reveal and existing score award before
+showing the already-authoritative next snapshot. No rule, score, pool, API,
+database, financial or catalog change is part of this correction.
+
+Submission holds presentation across an earlier Realtime response. Only a
+snapshot admitted by the existing identity/revision guards may start a reveal.
+Refresh, visibility recovery and reconnect cancel interrupted local animation
+and restore saved guesses without replay. Async waiting uses only `ownResult`
+for the owner's grid; opponent history still comes exclusively from mutually
+disclosed `revealed` results.
+
+- Focused board/session/award tests: **16 passed**, including per-tile order,
+  exact colors, duplicate event handling, multiple saved rows, correct award
+  ordering, sixth miss, early Realtime, lost response, conflicting revision,
+  refresh/reconnect and Async waiting/privacy.
+- Shared rule tests: **9 passed**, including duplicate-letter feedback, scoring
+  and sealed opponent projections. Rules and the 1,021-answer pool are unchanged.
+- Fresh isolated Edge browser proof: **passed** actual CSS start/end ordering,
+  miss/misplaced/correct feedback, retained STARE/AMPLE rows, reload/reconnect,
+  APPLE award of 392 after all five flips, Async owner-only rows before mutual
+  completion, shared history afterward, and reduced motion. Zero page errors
+  and zero nonlocal requests. This uses disposable local transport and the
+  shared rules; it does not rerun or replace the prior hosted financial proofs.
+- Final approved candidate `npm run build`: **passed, exit 0**, including the
+  220 ms horizontal flip and snapshot-admission guard: full TypeScript,
+  **4,290 app tests,
+  241 harness tests, 46 release-tooling tests**, Vite, and the unchanged 90 MB
+  size gate (**89,993,957 bytes**). `git diff --check` passed. The existing
+  unrelated Cribbage snapshot worktree change was preserved.
+
+Evidence: `qualification.local/five-alive/presentation/proof.json`, its three
+screenshots, `presentation-browser.log` and `presentation-build.log` in the
+parent Five Alive evidence directory. The final approved build is recorded in
+`qualification.local/five-alive/presentation-release-build.log`. Reproduce with
+`dev/five-alive/presentation/README.md`. Fresh visible Edge tabs were opened at
+the local Arcade and Async preview URLs; Arcade has STARE ready to submit and
+Async shows retained STARE/AMPLE rows. **Preview approval received. Next:
+normal release/publication and authenticated
+production smoke of both corrections. No production-fix claim yet.**
+
 ## November 16 release complete — published, activated and production-smoked
 
 **Five Alive is active in production with 1,021 qualified answers.** Deployed
