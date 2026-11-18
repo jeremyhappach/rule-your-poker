@@ -1774,3 +1774,11 @@ and `supabase/functions/chess-recovery/index.ts`; lease/admission/shared commit:
 `supabase/chess/bot-recovery.sql` and migration 20261114024027. Game Defaults
 freezes Easy/Medium/Expert via `src/lib/chess/botConfig.ts`; qualification and
 release record: `CHESS_BOTS.md`. Human Chess settlement remains unchanged.
+# Completed Async records
+
+`src/components/delayed/CompletedMatchRecord.tsx` owns passive completed match
+cards and all eleven game details; `src/lib/delayed/matchRecord.ts` owns identity
+checks and record URLs. `public.delayed_match_record` is defined in
+`supabase/delayed/match-record.sql` and migration `20261118023945`.
+History bypasses the live owners in `ResultReview.tsx` and `DelayedTurn.tsx`.
+Qualification: `docs/codex/ASYNC_COMPLETED_RECORDS.md`.

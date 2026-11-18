@@ -1,3 +1,20 @@
+# Completed Async match records — November 17, 2026 — qualified; owner smoke pending
+
+Approved history entry now opens static completed game cards and read-only game
+details. Chess retains its final board; Five Alive shows each word's scoring;
+Run21, TriTowers and Quintzee show both players by round, with Quintzee category
+and bonus breakdowns. All eleven Async games have historical detail. History
+mounts no play, review ACK, animation or settlement owner; active flow is preserved.
+
+Migration `20261118023945` is installed. Candidate rollback and installed
+READ ONLY proofs pass, as do 47 focused tests and eleven-game/four-layout native
+browser checks. Final qualification passes TypeScript, 4,342 application tests,
+241 harness tests, 46 release-tooling tests, Vite and the unchanged 90 MB cap
+(89,704,498 bytes). Two application-test workers avoided unrelated timeout
+failures without weakening assertions or timeouts. Production owner smoke is
+pending. Checkpoint: `async-completed-records-20261117`.
+See [implementation and evidence](ASYNC_COMPLETED_RECORDS.md).
+
 # Five Alive production approval resumed — November 17, 2026
 
 Jeremy reaffirmed approval of all previews and authorized completion of the Async gate and production push. The preview hold below is superseded. The unchanged candidate has passed TypeScript, all 4,603 tests, Vite and the 90 MB cap. The corrected production Async smoke passed in fresh browser contexts: live first-viewer review, pending reload, both ACKs, privacy and terminal return. Final scores 1,568–490; database readback confirms exactly one balanced fake-money settlement, +1/−1 chips, matching snapshots and zero real-money postings. The frozen historical failure is preserved. Candidate publication and post-deployment smoke are next.

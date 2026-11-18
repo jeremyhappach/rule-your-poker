@@ -1,4 +1,5 @@
 import {ChessHistoryButton} from '@/components/chess/ChessHistory';
+import {CompletedMatchRecord} from '@/components/delayed/CompletedMatchRecord';
 import {ChessTurn} from '@/components/delayed/ChessTurn';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {FiveAliveSession} from '@/components/fiveAlive/FiveAliveSession';
@@ -29,6 +30,7 @@ import '@/components/delayed/matchLobby.css';
 export default function Delayed(){
  const {user,isReady}=useAuthGuard({pageLabel:'Delayed matches'}),{matchId,childId}=useParams(),[query]=useSearchParams();
  if(!isReady||!user)return <AsyncTurnEntry/>;
+ if(matchId&&matchId!=='new'&&query.has('history'))return <CompletedMatchRecord key={user.id+':'+matchId+':'+(childId??query.get('game')??'')} matchId={matchId} userId={user.id} childId={childId??query.get('game')??undefined}/>;
  if(childId&&matchId)return <ChildTurn key={childId} childId={childId} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('review'))return <ChildResults key={matchId+':'+query.get('review')} childId={query.get('review')!} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('finale'))return <MatchFinale key={user.id+':'+matchId} matchId={matchId} userId={user.id}/>;

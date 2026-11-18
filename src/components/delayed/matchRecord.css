@@ -1,0 +1,24 @@
+.async-match-record { max-width: 58rem; margin-inline: auto; }
+.async-match-record h2 { font-size: 1.4rem; margin-block: 1rem .5rem; }
+.async-match-record h3 { font-size: 1.2rem; margin-block: 1.25rem .6rem; }
+.async-match-record h4,.async-match-record h5 { font-weight: 700; margin-block: .8rem .4rem; }
+.async-match-record p { margin-block: .6rem; }
+.record-table-wrap { overflow-x: auto; margin-block: 1rem; }
+.async-match-record table { width: 100%; border-collapse: collapse; text-align: left; }
+.async-match-record caption { text-align: left; font-weight: 700; padding-block: .5rem; }
+.async-match-record th,.async-match-record td { padding: .65rem; border-bottom: 1px solid #ffffff24; }
+.record-attempt,.record-word { border: 1px solid #ffffff24; border-radius: .8rem; margin-block: .8rem; padding: .85rem; }
+.record-attempt summary { cursor: pointer; min-height: 2rem; font-weight: 600; }
+.record-breakdown { display: grid; grid-template-columns: repeat(auto-fit,minmax(10rem,1fr)); gap: .6rem; margin-block: 1rem; }
+.record-breakdown dt { color: #c5d2df; font-size: .85rem; }
+.record-breakdown dd { font-weight: 700; }
+.record-guesses { display: flex; flex-direction: column; gap: .3rem; }
+.record-guesses li { display: flex; gap: .3rem; }
+.record-guesses span { display: grid; place-items: center; width: 2rem; aspect-ratio: 1; background: #384450; font-weight: 700; }
+.record-guesses [data-feedback=correct] { background: #326948; }
+.record-guesses [data-feedback=present] { background: #79651e; }
+.record-word-board { container-type: inline-size; display: grid; grid-template-columns: repeat(15,minmax(0,1fr)); max-width: 36rem; gap: 1px; }
+.record-word-board span { aspect-ratio: 1; display: grid; place-items: center; background: #314a47; font-size: clamp(.5rem,2cqi,1rem); }
+.record-card-row { margin-block: .7rem; }
+.record-card-row>div { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .3rem; }
+.record-card { display: grid; place-items: center; padding: .3rem; min-width: 2rem; min-height: 2.6rem; border-radius: .3rem; background: #f5efe0; color: #182229; }

@@ -46,6 +46,7 @@ beforeEach(()=>{
   if(name==='delayed_review_ack'){if(mock.failAck===args.p_event)throw Error('ACK failed');Object.values(mock.events).flat().find(e=>e.id===args.p_event)!.seen=true;mock.revision++;return;}
   if(name==='delayed_finale_ack'){if(!home().reviewsComplete)throw Error('delayed:reviews_pending');mock.finaleSeen=true;return;}
   if(name==='delayed_history')return [{id:'match',opponent:'Opponent',count:3,net:-3,completedAt:new Date().toISOString()}];
+  if(name==='delayed_match_record')return {home:{...home(),organizer:'me',opponent:'other',status:'settled'},detail:null};
   throw Error('Unexpected RPC '+name);
  });
 });
@@ -71,9 +72,12 @@ it.each([false,true])('direct finale/reload blocks outstanding reviews despite o
  mount('/delayed/match?finale=1');await flush();await advance(15000);expect(screen.queryByRole('img',{name:/wins the match/})).toBeNull();expect(acks()).toEqual([]);
  expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_finale_ack')).toBe(false);
 });
-it('archive See Results routes through the same guard',async()=>{
+it('archive See Results opens a passive record without acknowledging pending live reviews',async()=>{
  mount('/archive');await flush();fireEvent.click(screen.getByRole('link',{name:'See Results'}));await flush();
- expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(screen.getAllByRole('link',{name:'View Results'})).toHaveLength(2);
+ expect(screen.getByTestId('path').textContent).toBe('/delayed/match?history=1');
+ expect(screen.getByRole('list',{name:'Completed match games'})).toBeTruthy();
+ expect(screen.queryByRole('link',{name:'View Results'})).toBeNull();
+ await advance(20000);expect(acks()).toEqual([]);expect(mock.finaleSeen).toBe(false);
 });
 it('finished query cannot skip unseen attempts even if the child and finale were previously acknowledged',async()=>{
  mock.finaleSeen=true;mock.events.run[1].seen=true;mount('/delayed/match?review=run&finished=1');await flush();

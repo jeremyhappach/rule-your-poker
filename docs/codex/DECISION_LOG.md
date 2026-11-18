@@ -1,3 +1,14 @@
+# 2026-11-17 — Completed Async history is a passive record
+
+Jeremy approved a dedicated history route, static match/game records and
+participant-authorized STABLE reader gated on the parent's completed settlement.
+History reads retained canonical attempts and final states through existing
+privacy projections. It never mounts gameplay, playback, celebration or review
+acknowledgement owners. Opening history does not mark live results as reviewed.
+Frozen scoring rules remain shared; no historical scores are rewritten.
+Active result review and finale behavior stay unchanged.
+See ASYNC_COMPLETED_RECORDS.md for implementation and qualification.
+
 # 2026-11-14 — Forfeit presentation precedes existing settlement presentation
 
 The database stamps live Chess forfeit presentation origin and admits canonical
