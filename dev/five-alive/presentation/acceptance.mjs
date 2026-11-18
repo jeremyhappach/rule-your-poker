@@ -42,3 +42,11 @@ export async function assertPhoneLayout(page){
  assert.ok(geometry.keyboard.bottom<=(await page.evaluate(()=>innerHeight))-geometry.safeBottom,'keyboard stays within phone screen');
  return {...geometry,gap};
 }
+// Dismissal is a smoke precondition, not an assumption about an Escape key event.
+// Waiting for the actual panel to leave also prevents a queued review being
+// mistaken for a delivery failure while the user is still reading results.
+export async function closeWordResults(page){
+ const dialog=page.getByRole('dialog',{name:'Word Results',exact:true});
+ await dialog.getByRole('button',{name:'Close',exact:true}).click();
+ await dialog.waitFor({state:'hidden'});
+}

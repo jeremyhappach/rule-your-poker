@@ -1,5 +1,7 @@
 import {useEffect,useRef,useState,type RefObject} from 'react';
-import {usePresentedScoreAudio} from '@/hooks/usePresentedScoreAudio';
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {fiveAliveSuccess} from './fiveAliveAudio';
+import {useFiveAliveScoreAudio} from './useFiveAliveScoreAudio';
 
 export interface FiveAliveAwardEvent {id:string;word:string;difficulty:number;base:number;points:number;from:number;guessCount?:number}
 const tiers=['','Very Easy','Easy','Medium','Hard','Very Hard'];
@@ -15,7 +17,8 @@ export function FiveAliveAward({event,userId,target,onDone,onScore}:{event:FiveA
  useEffect(()=>{const startedAt=performance.now()+FIVE_ALIVE_AWARD_HOLD_MS;
   setPhase({startedAt,endsAt:startedAt+700,from:event.from,to:event.from+event.points});
  },[event.id,event.from,event.points]);
- usePresentedScoreAudio(userId,phase?event.id:null,phase,performance.now());
+ useEffect(()=>platformAudio.request({userId,id:`five-alive-success:${event.id}`,expiresAt:performance.now()+2500,cue:fiveAliveSuccess[event.guessCount??3]??fiveAliveSuccess[3]}),[userId,event.id,event.guessCount]);
+ useFiveAliveScoreAudio(userId,phase?event.id:null,phase,performance.now());
  useEffect(()=>{
   if(!phase)return;
   const element=total.current,destination=target.current;
@@ -36,7 +39,7 @@ export function FiveAliveAward({event,userId,target,onDone,onScore}:{event:FiveA
   frame=requestAnimationFrame(tick);
   return()=>{cancelAnimationFrame(frame);onScore(null);};
  },[phase,onDone,onScore]);
- return <div className="five-alive-award" role="status"><div className="five-alive-award-tiles">{[...event.word].map((letter,i)=><span key={i}>{letter}</span>)}</div>
+ return <div className="five-alive-award" data-solve={event.guessCount??3} role="status"><div className="five-alive-award-tiles">{[...event.word].map((letter,i)=><span key={i}>{letter}</span>)}</div>
   {event.guessCount!=null&&<strong>You completed in {event.guessCount}</strong>}
   <div className="five-alive-award-calculation">{event.base.toLocaleString()} base × {multipliers[event.difficulty]} · {tiers[event.difficulty]}</div>
   <strong className="five-alive-award-total" ref={total}>+{event.points.toLocaleString()}</strong></div>;

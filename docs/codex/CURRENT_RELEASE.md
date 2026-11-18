@@ -1,3 +1,39 @@
+# Five Alive production approval resumed — November 17, 2026
+
+Jeremy reaffirmed approval of all previews and authorized completion of the Async gate and production push. The preview hold below is superseded. The unchanged candidate has passed TypeScript, all 4,603 tests, Vite and the 90 MB cap. The corrected production Async smoke passed in fresh browser contexts: live first-viewer review, pending reload, both ACKs, privacy and terminal return. Final scores 1,568–490; database readback confirms exactly one balanced fake-money settlement, +1/−1 chips, matching snapshots and zero real-money postings. The frozen historical failure is preserved. Candidate publication and post-deployment smoke are next.
+
+# Five Alive Async smoke traced — November 17, 2026 — isolated pass; preview approval pending
+
+The deployed-code replay exposed a smoke-runner failure: Escape left Word Results open. Real Realtime and the API delivered the pending review, but the open scorecard correctly deferred its presentation. Explicitly closing the panel released the review. The runner now clicks Close and verifies dismissal; a focused regression preserves queued review, closure and reload behavior. No gameplay or scoring logic changed in this pass.
+
+The corrected full-App isolated smoke passed with real Auth/Realtime, pending review across reload, both ACKs and correct 548–784 totals. Test fixtures and bridge are closed again; production and the original frozen match are untouched. Final standard checks passed: TypeScript, 4,603 tests, Vite and the unchanged 90 MB limit (89,688,520 bytes; 311,480 bytes of headroom). An intervening unchanged Farkle test failure, its passing focused rerun and the passing full rerun are preserved in the qualification evidence. Details: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
+**No production release until Jeremy approves the sound, animation and layout previews:** http://127.0.0.1:5196/dev/five-alive/presentation/polish.html. Production acceptance awaits that approval and a future authorized smoke; the earlier unresolved-status entries below are historical.
+
+# Five Alive blocker pass — November 17, 2026 — local size gate passed; publication held
+
+Jeremy has restored the preview-review hold: no push, deployment, gameplay activation or production settings changes. Two app icons were losslessly recompressed, preserving exact pixels and dimensions and saving 316,982 bytes. Full `npm run build` passed TypeScript, all 4,602 standard tests, Vite and the unchanged 90 MB limit. Static output is **89,688,520 bytes**, with **311,480 bytes of headroom**.
+
+The first-viewer Async production failure remains unresolved. A fresh-browser replay of the recorded EXIST word and both players' guesses passed waiting history, privacy, opponent review, reload/reconnect, ACK and 343–490 scores locally. Production notification catalogs showed the expected trigger, publication, grants and policies. This does not prove the missing hosted delivery/admission boundary. Smoke-only tracing now captures the evidence absent from the old failing run; no speculative runtime fix or production smoke was performed.
+
+Preview: http://127.0.0.1:5196/dev/five-alive/presentation/polish.html. First open technical gate is an instrumented hosted reproduction; preview approval is also pending. Production and the frozen match are untouched. Exact evidence, local runner and preserved prior checks: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md). Prior approval/status entries below are historical and superseded by this hold.
+
+# Five Alive approved polish and input sounds — November 17, 2026 — release blocked
+
+Jeremy approved production publication, including the existing Ptown Words placement recording and shared card flip. Both are implemented and native-browser verified; mute, restored history, per-tile ordering and existing gameplay timing are preserved. This supersedes the preview-approval hold below.
+
+Final release run passed full TypeScript, 4,315 app / 241 harness / 46 release-tooling tests and Vite compilation. Publication is blocked by the unchanged 90 MB static-size gate: **90,005,502 bytes, 5,502 over budget**. No threshold was raised and no unrelated assets were changed. No commit, push, deployment, flag, schema or production-data change occurred in this pass.
+
+First open gate: reduce static output within approved scope, preserve behavior, and requalify. The earlier first-viewer Async smoke failure remains unresolved and its frozen reproduction is untouched; production acceptance is not claimed. Exact evidence and runner commands: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md). The last verified production product commit remains 11aef9610cb373ae216780d6028b1427cdc9e0c2.
+
+# Five Alive responsive feedback polish — November 17, 2026 — local preview review required
+
+Local candidate adds square responsive tiles, 44px keyboard targets, ordered helper explosion/drop, invalid-word correction feedback and original Five Alive sounds for solves one through six. The five-second score hold, retained guesses, sealed Async results and Word Results remain preserved. No production changes, push, deployment or flag activation are authorized until Jeremy reviews these new previews.
+
+Focused qualification passed: 68 tests, full TypeScript, four native browser layout checks, six measured score holds above five seconds, original cue playback/mute, and local Async privacy/history/reconnect preservation. Preview: http://127.0.0.1:5196/dev/five-alive/presentation/polish.html (Enable sounds, then use the scenario and layout controls). Full evidence and restart commands are in [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
+The deployed first-viewer Async smoke failure below is still open; this local polish pass does not claim to resolve that production delivery/admission boundary. Production remains at 11aef9610cb373ae216780d6028b1427cdc9e0c2; the frozen reproduction and the 1,021-answer bank are unchanged.
+
 # Five Alive keyboard and word results — November 17, 2026 — deployed; Async smoke failed
 
 Approved product commit 11aef9610cb373ae216780d6028b1427cdc9e0c2 is READY in production on Vercel dpl_9gHNE4KAAyowXLaxrYzqQKREi4fg. Release-signal run 44172407670 attempt 1 succeeded at 2026-11-17T20:55:53.121Z; both production origins and the database publication receipt match the exact SHA. Migration 20261117204258 is installed and verified.

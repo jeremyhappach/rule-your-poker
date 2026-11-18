@@ -3,13 +3,17 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {FiveAliveSession} from './FiveAliveSession';
 import {endAnimation} from './animationTestEvent';
+import {platformAudio} from '@/lib/audio/platformAudio';
+import {fiveAliveInvalid} from './fiveAliveAudio';
 
 const {request,navigate,updates}=vi.hoisted(()=>({request:vi.fn(),navigate:vi.fn(),updates:[] as (()=>void)[]}));
+vi.mock('@/lib/audio/presentationSound',()=>({presentSound:vi.fn()}));
 vi.mock('react-router-dom',()=>({useNavigate:()=>navigate}));
 vi.mock('@/lib/arcade/client',()=>({arcadeRequest:request}));
 vi.mock('@/lib/delayed/client',()=>({delayedRequest:request,delayedRpc:vi.fn()}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{acquireGameplay:()=>()=>{},request:vi.fn()}}));
 vi.mock('./FiveAliveAward',()=>({FiveAliveAward:({event,onDone}:{event:{word:string;points:number};onDone:()=>void})=><button data-testid="score-flight" onClick={onDone}>{event.word} +{event.points}</button>}));
+vi.mock('./FiveAliveOpponentReview',()=>({FiveAliveOpponentReview:({event}:{event:{id:string}})=><div data-testid="opponent-review">{event.id}</div>}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:()=>({on(_event:unknown,_filter:unknown,callback:()=>void){updates.push(callback);return this;},subscribe(){return this;}}),removeChannel:vi.fn()}}));
 afterEach(()=>{cleanup();request.mockReset();vi.clearAllMocks();updates.length=0;});
 
@@ -134,8 +138,8 @@ it('keeps the sixth miss visible through all five flips before changing words',a
  const {container}=render(<FiveAliveSession mode="arcade" id="run" userId="user"/>);
  await screen.findByText('+168');for(const letter of 'STONE')fireEvent.keyDown(window,{key:letter});fireEvent.keyDown(window,{key:'Enter'});
  await waitFor(()=>expect(container.querySelector('[data-reveal]')).toBeTruthy());
- expect(screen.getByLabelText('Guess board').textContent).toBe('STONE'.repeat(6));expect(screen.getByText('Word 1 of 3')).toBeTruthy();
- finishTiles(container);expect(screen.getByText('Word 2 of 3')).toBeTruthy();expect(screen.queryByTestId('score-flight')).toBeNull();
+ expect([...container.querySelectorAll('.five-alive-tile')].map(tile=>tile.textContent).join('')).toBe('STONE'.repeat(6));expect(screen.getByText('+168')).toBeTruthy();expect(screen.getByText('Word 1 of 3')).toBeTruthy();
+ finishTiles(container);expect(screen.getByText('Word 1 of 3')).toBeTruthy();endAnimation(container.querySelector('[data-helper=burst]')!,'five-alive-helper-burst');expect(screen.getByText('Word 2 of 3')).toBeTruthy();expect(screen.queryByTestId('score-flight')).toBeNull();
 });
 
 it('restores only own completed guesses while the opponent is sealed, then admits shared history',async()=>{
@@ -149,4 +153,35 @@ it('restores only own completed guesses while the opponent is sealed, then admit
  await act(async()=>updates[0]());
  fireEvent.click(await screen.findByRole('button',{name:'Word Results'}));
  expect(screen.getByText(/Opponent: 1 guesses · 0 × 0.8 = 0/)).toBeTruthy();expect(screen.queryByText(/STONE/)).toBeNull();
+});
+
+it.each(['arcade','async'] as const)('shakes a rejected %s word, plays its original cue and retains the editable draft',async mode=>{
+ request.mockResolvedValueOnce(initial).mockRejectedValueOnce(new Error(mode==='arcade'?'That word is not in the guess dictionary.':'delayed:invalid_guess')).mockResolvedValue(initial);
+ const {container}=render(<FiveAliveSession mode={mode} id="run" userId="user"/>);
+ await screen.findByLabelText('Keyboard');for(const key of 'ZZZZZ')fireEvent.keyDown(window,{key});fireEvent.keyDown(window,{key:'Enter'});
+ await screen.findByText('Not in the word list. Try another word.');
+ expect(container.querySelector('.five-alive-row:first-child.five-alive-invalid')).toBeTruthy();
+ expect([...container.querySelectorAll('.five-alive-row:first-child .five-alive-tile')].map(tile=>tile.textContent).join('')).toBe('ZZZZZ');
+ expect(screen.getByText('+1000')).toBeTruthy();expect(container.querySelector('[data-reveal]')).toBeNull();
+ expect(platformAudio.request).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({userId:'user',cue:fiveAliveInvalid}));
+ fireEvent.keyDown(window,{key:'Backspace'});fireEvent.keyDown(window,{key:'A'});
+ expect([...container.querySelectorAll('.five-alive-row:first-child .five-alive-tile')].map(tile=>tile.textContent).join('')).toBe('ZZZZA');
+});
+
+it('queues a delivered opponent review while Word Results is open, then releases it on confirmed close and restores it on reload',async()=>{
+ const waiting={...initial,revision:2,segment:1,view:{...initial.view,current:{completed:true,waiting:true},ownResult:result,ownScore:0,opponentScore:0}};
+ const shared={...solved,revision:3,segment:2,reviewRevision:3,wordReviews:[{id:'saved-word-review',round:1,seen:false}],view:{...solved.view,ownScore:800,opponentScore:392,revealed:[{own:result,opponent:{...result,score:392,guesses:[{word:'',feedback:[]},{word:'',feedback:[]},apple]}}]}};
+ request.mockResolvedValue(waiting);
+ const mounted=render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
+ await screen.findByText(/Waiting for the other player/);
+ fireEvent.click(screen.getByRole('button',{name:/^Word Results$/}));
+ expect(screen.getByText('Opponent: Waiting')).toBeTruthy();
+ request.mockResolvedValue(shared);await act(async()=>updates[0]());
+ expect(screen.getByText(/Opponent: 3 guesses/)).toBeTruthy();
+ expect(screen.queryByTestId('opponent-review')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:/^Close$/}));
+ expect((await screen.findByTestId('opponent-review')).textContent).toBe('saved-word-review');
+ mounted.unmount();
+ render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
+ expect((await screen.findByTestId('opponent-review')).textContent).toBe('saved-word-review');
 });

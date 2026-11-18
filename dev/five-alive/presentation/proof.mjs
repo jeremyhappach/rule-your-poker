@@ -18,7 +18,7 @@ async function open(mode,player='a',reducedMotion='no-preference'){
    if(!event.animationName.startsWith('five-alive-flip-'))return;
    const tile=event.target,row=tile.parentElement;
    const animation=tile.getAnimations().find(animation=>animation.animationName===event.animationName);
-   window.flipEvents.push({type,name:event.animationName,column:[...row.children].indexOf(tile),word:row.textContent,colors:[...row.children].map(x=>x.dataset.color),time:performance.now(),duration:animation?.effect.getTiming().duration,transforms:animation?.effect.getKeyframes().map(frame=>frame.transform)});
+   window.flipEvents.push({type,name:event.animationName,column:[...row.querySelectorAll('.five-alive-tile')].indexOf(tile),word:row.textContent,colors:[...row.querySelectorAll('.five-alive-tile')].map(x=>x.dataset.color),time:performance.now(),duration:animation?.effect.getTiming().duration,transforms:animation?.effect.getKeyframes().map(frame=>frame.transform)});
   });
  });
  await page.goto(url+'?mode='+mode+'&player='+player);assert.equal(new URL(page.url()).origin,base);

@@ -1,5 +1,112 @@
 # Five Alive local qualification — November 12, 2026
 
+## November 17 production approval resumed — production Async gate passed
+
+Jeremy confirmed the existing preview approval and explicitly authorized resolving the Async gate and pushing this candidate to production. This supersedes the preview hold below; no further preview approval is required. The current candidate retains the passing 4,603-test/full-build qualification and 89,688,520-byte output. No product code changed after those checks. The fresh production fake-money Async smoke passed with the corrected, traced runner and approved test accounts on deployed commit `11aef9610cb373ae216780d6028b1427cdc9e0c2`. Match `8a89f74f-4643-43b9-9e46-98dd6f7c167e`, child `9a64cc86-0471-42fc-a403-0e658927a9f7`, finished 1,568–490. The first viewer received the review live, pending review survived reload, both ACKs and terminal returns passed, earlier strategy stayed sealed/redacted, and 24 submissions passed exact per-tile timing/feedback. Both score count-ups preserved the five-second hold. Database readback verified one settlement, one result, one balanced fake-money transfer (+1/−1), two matching snapshots, session_ended, and zero real-money postings. The historical failed match remains untouched. Evidence: `qualification.local/five-alive/async-gate/{production-smoke.json,review-delivery-trace.json,settlement-readback.json}`. The Async blocker is closed; candidate publication and post-deployment smoke are next.
+
+## November 17 traced Async smoke correction — isolated pass; preview hold remains
+
+**Outcome:** reproduced a smoke-runner dismissal failure using the deployed Five Alive modules from `11aef9610cb373ae216780d6028b1427cdc9e0c2`, the actual App entry/router and production WebSocket transport, against isolated project `tyuxxkalhqbqkbvvkcfx`. An immediate Escape did not close Word Results. The old production runner assumed dismissal and continued waiting for an opponent review that the still-open scorecard intentionally deferred. No gameplay correction is justified by this evidence.
+
+The trace separates all three boundaries: the first viewer received `postgres_changes` revision 8 on both the match and Five Alive channels; `/api/delayed` returned HTTP 200, child/review revision 8 and an unseen word-review receipt; the viewer was visible and online, with `dialog: open` and no active reveal/award. Replaying that observed open-panel condition against the deployed code deferred the review. Clicking its real Close button released “Opponent completed in 3” without a reload or new game action. This establishes the reproduced failure mechanism; the original frozen production run lacks a retrospective trace and has not been changed or re-smoked.
+
+**Correction:** `closeWordResults(page)` in `dev/five-alive/presentation/acceptance.mjs` clicks the accessible Close control scoped to Word Results and waits until that panel is hidden. Both assumed Escape dismissals in the preserved production smoke runner now use this helper. Existing opponent-review, privacy, timing and score assertions remain strict; no timeout was increased. The helper is also exercised by the hosted proof. A new Session regression proves that an already-delivered review stays queued while Word Results is open, releases on confirmed closure and restores after remount. Existing review presentation and privacy owners are unchanged.
+
+**Hosted verification:** `dev/five-alive/hosted-review.proof.mjs --full-app --round=2` passed on the current candidate with the corrected runner. It used fresh Edge contexts, actual `src/main.tsx`/App routing, real disposable Auth sessions, real PostgREST review begin/ACK, real Realtime and unchanged Five Alive API handlers through the isolated bridge. Both participants received 20 recorded revision events; the first viewer presented the opponent result, its pending review survived reload, both viewers acknowledged, both next-word keyboards became usable, and authoritative displayed totals matched **548–784**. No browser errors or forbidden/production requests occurred. The isolated email-verification reminder was dismissed with Continue playing; no email was sent.
+
+Evidence under `qualification.local/five-alive/hosted/`:
+- `review-trace-escape-failure.json`: deployed-code Escape left Word Results open; strict dismissal check timed out after 35 seconds.
+- `review-trace-confirmed-modal-cause.json`: delivered revision/receipt, open-panel hold, then immediate release on Close.
+- `review-trace-round-2.json`, `review-trace-candidate-fixed-runner.log`: corrected full-App hosted pass, pending reload and both ACKs.
+- `review-trace-summary.json`: compact cause and verification evidence.
+- `review-trace-cleanup.json`: canonical removal of both disposable fake-money matches; zero settlements, results and transfer batches; accounts disabled; admission/recovery flags closed; health restored; zero open incidents.
+
+The two disposable matches were `5ff41366-5446-475d-a134-455923fa5e7d` and `992ef792-82f0-4199-8aaa-bd9478cb1bb5`. Setup admitted only these fixtures inside isolated transactions and restored admission flags before commit. The temporary bridge was restricted to those children, the two test users and the two Five Alive service RPCs; it was restored to its original HTTP 410 implementation (version 7, JWT verification retained), then read back to verify closure. Both local hosted servers were stopped and local broker configuration restored. No production project was queried or changed in this pass. Completed financial/race/vocabulary qualification was not repeated.
+
+Validation: the focused Session file passes all 14 tests, including the added regression. Final standard `npm run build` passed with exit 0: full TypeScript, **4,316 app tests / 588 files, 241 harness tests / 12 files, 46 release-tooling tests (4,603 total)**, Vite and the unchanged **90,000,000-byte** size gate. Output is **89,688,520 bytes / 185 files**, leaving **311,480 bytes** of headroom. Evidence: `qualification.local/five-alive/polish/async-review-release-checks-verified.log` and `async-review-build-size.json`.
+
+The initial check caught an unsupported Testing Library `exact` option in the new test; anchored accessible-name expressions corrected it without weakening the assertion. The next full run stopped on the unchanged Farkle defaults test (`DefaultsAndRules.test.tsx:99`, missing `Default stake` label). Its 17 tests then passed unchanged in isolation; one unchanged full rerun passed all standard gates above. The failed run and focused rerun remain in `async-review-release-checks-final.log` and `async-review-farkle-check.log`. No unrelated test or product logic was modified to obtain that pass.
+
+Final diff/status review preserved the pre-existing polish changes and unrelated Cribbage snapshot. `git diff --check` passes after removing one extra EOF blank line from the smoke helper. The local preview server was restarted; a fresh isolated browser verified the exact localhost URL, rendered sound/animation/game controls and zero page errors.
+
+**Release remains held for Jeremy's preview approval and a future authorized production smoke using the corrected runner.** The isolated reproduction/correction is verified; production acceptance is not claimed. Existing sound, animation and responsive-layout preview remains http://127.0.0.1:5196/dev/five-alive/presentation/polish.html. Prior source changes, lossless size remediation and unrelated Cribbage changes are preserved. No commit or push was made. Vocabulary remains 1,021 qualified answers; growth by 8,979 remains post-launch work.
+
+## November 17 bounded blocker pass — size fixed; Async unresolved; preview hold restored
+
+**Current authorization:** Jeremy explicitly restored preview review before publication. Do not push, deploy, activate gameplay, or change production settings. This supersedes the direct-production approval recorded below. Work remains uncommitted on `codex/five-alive` at `a324799c0e91179e5e690ffbd4499b950814d1a0`; production remains at `11aef9610cb373ae216780d6028b1427cdc9e0c2`. The unrelated Cribbage snapshot working-tree change is preserved.
+
+### Static-size gate — passed
+
+Recompressed only `public/icons/ptown-poker-v2-512.png` and `public/icons/ptown-poker-v2-maskable-512.png` using the existing `scripts/storage/png-lossless.mjs` encoder. Each file shrank from 491,436 to 332,945 bytes: **316,982 bytes saved**. Both remain 512 × 512, with byte-identical decoded RGBA pixels, transparency and metadata preserved. Decoded-pixel SHA-256: `00c05e407ac2e3c790a04306a7b601dc484edcffb601251b8722812d0ffb2f4e`. No artwork, recording, game rule, dependency, or size threshold changed.
+
+`npm run build` completed with **exit 0** after these asset changes: full TypeScript; **4,315 app tests / 588 files**, **241 harness tests / 12 files**, **46 release-tooling tests**; Vite compilation; and the unchanged size gate. Total: **4,602 passing tests**. Static output is **89,688,520 bytes / 185 files**, leaving **311,480 bytes** below the 90,000,000-byte ceiling. Evidence: `qualification.local/five-alive/polish/{size-remediation.json,release-checks-size-remediation.log,build-size-remediated.json}`. The final measurement command was `node scripts/build-size-report.mjs dist --max-bytes 90000000 --json qualification.local/five-alive/polish/build-size-remediated.json` (exit 0).
+
+### Async first-viewer gate — still open, no speculative runtime patch
+
+Inspected the frozen failure, actual Session/review ownership, API projection, deployed review wrapper and notification catalog. Production access in this pass was **catalog-only**: the parent revision trigger writes both participant notification rows; `delayed_match_updates` is in `supabase_realtime`, authenticated SELECT is granted, and policies require the row's viewer identity plus enabled-account access. No production application rows or game/financial functions were queried or invoked; the frozen match and receipts remain untouched.
+
+Added `dev/five-alive/presentation/async-waiting-proof.mjs`, a fresh-browser local replay using the real components and shared rules. It repeats the recorded first word EXIST (tier 2): first player STARE / AMPLE / CHEST / EXIST; second player PLANT / PLANT / EXIST. It checks retained four-row waiting history, Word Results followed by Escape, sealed opponent strategy, first-viewer “Opponent completed in 3”, masked prior turns, pending review through reload and reconnect, review ACK, next word, and **343–490** scores. **Passed**, including the instrumented repeat; no page errors or external requests. Evidence: `qualification.local/five-alive/polish/{async-waiting-evidence.json,async-waiting-proof.log,async-first-viewer-review.png}`. This is a local presentation replay and **does not establish hosted delivery or resolve the production failure**.
+
+Exact unresolved evidence remains the production runner's 35-second timeout at `results/production-smoke.mjs:116` after child revision 8 / segment 2. Both review identities were saved; second viewer ACK succeeded; first viewer remained unseen. The old run did not retain the first viewer's WebSocket subscription/delivery, state-response admission, or visibility at that point. The recorded sequence does not fail locally, so a correction has not yet been justified.
+
+Added smoke-only `dev/five-alive/presentation/review-trace.mjs` to record sanitized channel events, API revisions/review receipts and visibility/dialog/reveal phases (no tokens, headers or guess words). It is exercised by the local replay. The preserved, ignored production runner now imports it and will save `review-delivery-trace.json` before closing its contexts on a future explicitly permitted run; syntax check passed, **runner not executed against production**. No permanent product instrumentation was added. Existing isolated Auth credentials were checked without changing account access or release flags; this was not a rerun of completed Auth qualification.
+
+### Preview and next resume point
+
+Existing sounds, left-to-right reveals, retained history, five-second awards and responsive layouts are unchanged by this blocker pass. Interactive preview: http://127.0.0.1:5196/dev/five-alive/presentation/polish.html — Enable sounds, then use Invalid word, Wrong guess, Solve 1–6 and the layout selector. Restart with `node dev/five-alive/presentation/polish-server.mjs`. Existing screenshots: `qualification.local/five-alive/polish/{narrow,phone,tablet,laptop}.png`.
+
+**First open technical gate:** obtain an instrumented hosted first-viewer reproduction separating subscription/delivery, returned state and presentation admission, then implement only the proven correction and repeat the relevant smoke. Keep the frozen production reproduction untouched during qualification. The size gate is complete; do not repeat completed unrelated qualification. Preview approval is also pending. No commit, push, deployment, schema migration, production mutation or flag activation occurred. Release readiness and production acceptance are **not claimed**. Runtime vocabulary remains 1,021 qualified answers; 8,979 qualified additions remain post-launch growth.
+
+## November 17 approved placement and flip sounds — release blocked by static-size gate
+
+Jeremy authorized production publication after adding the approved Ptown Words placement sound and shared card-flip sound. This supersedes the preview-approval hold below; no additional audition approval is needed. It does not waive release checks.
+
+Implemented in FiveAliveBoard: committed editable letters use the existing approved peg-wood.wav cue through presentSound, exactly as PtownWordsView does. Backspace, ignored input, restored history and unrelated rerenders are silent. Each tile uses flip-soft.wav once, keyed by reveal receipt/row/column, at the feedback-opening animation edge. A native test caught the last placement cue masking the first close-edge flip because peg has higher shared mixer priority. Using the existing opening edge lets its 120ms tail finish before the 220ms close half ends; no timing, sound samples, shared mixer policy or other game was changed.
+
+Final qualification:
+- Native browser PCM proof PASSED: six accepted placement sources (five letters plus one corrected letter), five correctly ordered flip sources, fingerprints matching the approved 32kHz WAV samples. Zero sample sources under mute or reload; STARE/AMPLE history retained; no page errors or external requests. Evidence: qualification.local/five-alive/polish/placement-flip-evidence.json. Reproducible runner: node dev/five-alive/presentation/placement-flip-proof.mjs (self-contained disposable server on 5198, closed afterward).
+- Final npm run build: full TypeScript passed; 4,315 application tests / 588 files passed; 241 harness tests / 12 files passed; 46 release-tooling tests passed; Vite compilation passed. Overall command exited 1 at report:build-size.
+- Exact blocking gate: 90,005,502 uncompressed static bytes / 185 files versus the unchanged 90,000,000-byte maximum — 5,502 bytes over. The command reports “Static build size budget exceeded or invalid.” Log: qualification.local/five-alive/polish/release-checks-final.log. Structured measurement: qualification.local/five-alive/polish/final-build-size.json (measurement command also exited 1). The preceding run measured 90,005,504 bytes; the final opening-edge candidate above is authoritative.
+- Existing recordings are reused; no new audio asset files were added. There is no dedicated Five Alive raster asset in public or src/assets to compress. Broader asset optimization and changing the budget were not silently included.
+
+Release STOPPED before commit/integration/push/deployment. Production flags, schema, rows, balances and the frozen Async reproduction remain untouched. The previously recorded first-viewer Async smoke gate also remains open; no production smoke or readiness claim is made for this candidate. The local preview at http://127.0.0.1:5196/dev/five-alive/presentation/polish.html includes the two sounds (Enable sounds, then type and submit a guess).
+
+First open gate: recover at least 5,502 bytes of production build headroom without changing approved visuals/behavior or lowering the limit, then rerun the changed gates. Preserve the passed evidence above and the unrelated Cribbage snapshot formatting. The prior Async delivery/admission failure still needs its bounded investigation before complete production acceptance. Vocabulary remains 1,021; 8,979 is post-launch growth.
+
+
+## November 17 local responsiveness and feedback polish — preview hold superseded above
+
+This pass is LOCAL ONLY. Jeremy explicitly requires review of these new previews before any flags, push, deployment or production changes. No production state, schema, balances, vocabulary, shared audio engine or unrelated game rules were changed. No release commit was created. Preserve the existing unrelated Cribbage snapshot working-tree change.
+
+Implemented in the actual Five Alive presentation components:
+
+- Container-relative layout with square tiles, helper anchored to the actual tile group, bounded keyboard width, 44px-high keys and existing safe-area spacing. Invalid-word guidance sits above the grid so correction does not separate the keyboard from the tiles.
+- All five actual feedback flips complete left to right before the old authoritative base-score helper bursts (420ms). Its original Five Alive sound starts at that completion edge. The next authoritative helper drops in (420ms) with a separate bink, then input unlocks. A sixth miss bursts without inventing a seventh row. Reconnect restores committed rows without replaying the transient helper sequence.
+- Invalid-word rejection shakes the editable draft and plays a distinct soft cue without advancing. Covers Arcade's actual translated error and Async's raw error code; stale rejection feedback is not applied to a newer revision. Presentation transients clear across recovery/identity changes.
+- Original synthesized Five Alive cues for explosion, bink, invalid word, solves 1–6 and score counting. First solve is a full fanfare, second substantial, later solves lighter, sixth a descending relieved glide. All playback uses the existing platformAudio owner, preference, receipts and mute/disconnect behavior; no other game's sound assets are used.
+- Solve animation and sound begin after the last tile reveal. The committed five-second calculation hold remains unchanged. Five Alive wakes its registered audio timeline at the existing score deadline; it does not advance gameplay. Both own and paired score presentations use the new original counting cue.
+
+Preview (local server bound to 127.0.0.1, port 5196):
+
+http://127.0.0.1:5196/dev/five-alive/presentation/polish.html
+
+Run again with: node dev/five-alive/presentation/polish-server.mjs
+
+The harness starts muted. Select Enable sounds, then Invalid word, Wrong guess or Solve 1–6 to play the real session component and matching cue. Separate listening buttons audition every cue. Scenario buttons bring the game into view; Reset board, Refresh and Reconnect are available. The layout selector provides narrow 320×568, phone 390×844, tablet 768×1024 and laptop 1366×768 game containers. The reported attachment was not present in the chat attachment inventory; these explicit dimensions are the reproducible reference, not a claim of matching an unseen screenshot's dimensions.
+
+Focused evidence:
+
+- bunx vitest run src/components/fiveAlive src/lib/audio/audioManager.test.ts: 68/68 tests, seven files, passed. Includes exact flip/helper ordering, immutable own history, invalid correction in both modes, sixth miss, score hold/reduced motion, sealed review and mute/dedupe for every new cue.
+- bun run typecheck: full intended TypeScript project passed (exit 0). The default bunx tsgo --noEmit command was unavailable (registry 404); no replacement tool/dependency was installed.
+- node dev/five-alive/presentation/proof.mjs http://127.0.0.1:5197: passed real CSS flip order, persistent rows through reload/reconnect, correct award timing, private Async owner history, waiting Word Results, mutual result disclosure and reduced motion. This is a disposable local presentation fixture, not a repeat of hosted Auth/Realtime/financial qualification.
+- node dev/five-alive/presentation/polish-proof.mjs: PASSED, exit 0 (2026-11-17 22:43 UTC); see the final evidence.json in qualification.local/five-alive/polish. Measured first score changes on guesses 1–6 at 5010.1 / 5012.5 / 5011.2 / 5012.6 / 5013.9 / 5012.1ms after the calculation appeared. Zero oscillator starts for muted wrong/helper/success/count sequences; no page errors or external requests. Captures real native oscillator starts, animation edges, four responsive screenshots, all six score holds, invalid correction, helper order, muted playback and reduced motion. No external requests are allowed by the runner.
+- Responsive geometry: square tiles approximately 40.61 / 55.61 / 77.34 / 69.05px respectively; all key heights 44px; grid-to-keyboard gap 5.59px; no horizontal overflow or clipping in the tested containers. Bottom spacing remains at least 8px and the prior local proof also covers 24px shell safe-area padding.
+
+Artifacts: qualification.local/five-alive/polish/{narrow,phone,tablet,laptop,helper-burst}.png and evidence.json; existing preservation proof at qualification.local/five-alive/presentation/proof.json. These local evidence files are intentionally ignored, not production assets. The native-audio observer tracks the current context created by unmute, including one born running, rather than an already-retired context.
+
+Release remains withheld for review of this polish pass. The earlier deployed first-viewer Async smoke failure below is still unresolved and its frozen match is untouched. This local presentation proof does not claim that production delivery/admission issue is fixed. After preview approval, complete the standard release checks and resolve that recorded gate before claiming production acceptance. Vocabulary remains 1,021 qualified answers; growth toward roughly 10,000 remains post-launch work.
+
+
 ## November 17 actual release outcome — deployed; Async smoke acceptance failed
 
 Jeremy approved all five previews. Released product commit

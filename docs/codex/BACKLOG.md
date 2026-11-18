@@ -1,3 +1,7 @@
+## Resolved locally — Five Alive static-size headroom — November 17, 2026
+
+Lossless recompression of the two 512 px v2 app icons saved 316,982 bytes with identical decoded pixels. The size-remediation build passed at 89,688,520 bytes, 311,480 below the unchanged 90 MB cap, with 4,602 tests and TypeScript passing. The next traced pass reproduced an unclosed Word Results panel after the smoke runner's assumed Escape dismissal. Confirmed Close now replaces that assumption; the corrected full-App hosted smoke passed with real Auth/Realtime, pending reload, both ACKs and correct scores. Jeremy reaffirmed approval. The corrected production Async gate now passed with live first-viewer review, reload, both ACKs and exactly one balanced fake-money settlement; the new polish candidate awaits publication and post-deployment smoke. Final check results and evidence: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).
+
 ## Queued — Five Alive post-launch vocabulary growth — November 15, 2026
 
 Jeremy approved launch with the current 1,021 qualified answers in

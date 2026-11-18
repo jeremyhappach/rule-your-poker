@@ -5,7 +5,7 @@ import {FiveAliveOpponentReview} from './FiveAliveOpponentReview';
 import {endAnimation} from './animationTestEvent';
 const {rpc,audio}=vi.hoisted(()=>({rpc:vi.fn(),audio:vi.fn()}));
 vi.mock('@/lib/delayed/client',()=>({delayedRpc:rpc}));
-vi.mock('@/hooks/usePresentedScoreAudio',()=>({usePresentedScoreAudio:audio}));
+vi.mock('./useFiveAliveScoreAudio',()=>({useFiveAliveScoreAudio:audio}));
 afterEach(()=>{cleanup();vi.useRealTimers();vi.restoreAllMocks();rpc.mockReset();audio.mockReset();});
 const final={word:'APPLE',feedback:['correct','correct','correct','correct','correct'] as const};
 const props={event:{id:'review',round:1,seen:false},own:{answer:'APPLE',difficulty:1,solved:true,score:800,guesses:[{...final,feedback:[...final.feedback]}]},opponent:{answer:'APPLE',difficulty:1,solved:true,score:392,guesses:[{word:'',feedback:[]},{word:'',feedback:[]},{...final,feedback:[...final.feedback]}]},prior:[0,0] as [number,number],userId:'me',onDone:vi.fn(async()=>{}),onBack:vi.fn(),onRules:vi.fn()};

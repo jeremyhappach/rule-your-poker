@@ -5,12 +5,13 @@ import {fileURLToPath} from 'node:url';
 import {createServer} from 'vite';
 import react from '@vitejs/plugin-react-swc';
 
-export async function startPreview(port=0){
+export async function startPreview(port=0,options={}){
  let rules,solo,sealed,revisions={arcade:1,async:1};const streams=new Set(),seen=new Set();let reviewRevision=1;
- const answers=[{word:'APPLE',difficulty:1},{word:'BREAD',difficulty:2},{word:'CRANE',difficulty:2}];
- const valid=word=>['STARE','STONE','AMPLE','APPLE','BREAD','CRANE','PLANT','TRACE'].includes(word);
+ const answers=options.answers??[{word:'APPLE',difficulty:1},{word:'BREAD',difficulty:2},{word:'CRANE',difficulty:2}];
+ const valid=word=>['STARE','STONE','AMPLE','APPLE','BREAD','CRANE','PLANT','TRACE',...(options.valid??[])].includes(word);
  const reset=mode=>{if(mode==='arcade')solo=rules.createSoloGame(answers);else {sealed=rules.createSealedGame(['a','b'],answers);seen.clear();reviewRevision++;}revisions[mode]++;};
  const demo=kind=>{
+  if(/^solve[1-6]$/.test(kind)){reset('arcade');for(let i=1;i<Number(kind.at(-1));i++)solo=rules.submitSoloGuess(solo,'STARE',valid);revisions.arcade++;return;}
   if(!['keyboard','award','results','opponent','sixth'].includes(kind))throw Error('Unknown preview');
   if(kind==='keyboard'||kind==='award'){reset('arcade');solo=rules.submitSoloGuess(solo,'STARE',valid);if(kind==='award')solo=rules.submitSoloGuess(solo,'AMPLE',valid);revisions.arcade++;return;}
   reset('async');for(const word of ['STARE','APPLE'])sealed=rules.submitSealedGuess(sealed,'a',word,valid);

@@ -1,8 +1,10 @@
+import {preloadApprovedSounds} from '@/lib/audio/approvedSounds';
 import {flushSync} from 'react-dom';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router-dom';
 import {FiveAliveSession} from '@/components/fiveAlive/FiveAliveSession';
 import '@/index.css';
+void preloadApprovedSounds();
 const params=new URLSearchParams(location.search),mode=params.get('mode')==='async'?'async':'arcade',player=params.get('player')??'a';
 const demo=params.get('demo'),labels:Record<string,string>={keyboard:'1 · Keyboard, tile reveal and guess history',results:'2 · Word Results while waiting',opponent:'3 · Opponent solved result and paired scores',sixth:'4 · Opponent sixth-miss result',award:'5 · Five-second score reveal'};
 const resetPreview=()=>void fetch(demo?'/fixture/demo?case='+demo:'/fixture/reset?mode='+mode,{method:'POST'}).then(()=>location.reload());

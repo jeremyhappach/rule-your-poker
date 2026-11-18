@@ -4,7 +4,8 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {act,cleanup,render,screen} from '@testing-library/react';
 import {FiveAliveAward} from './FiveAliveAward';
 const {scoreAudio}=vi.hoisted(()=>({scoreAudio:vi.fn()}));
-vi.mock('@/hooks/usePresentedScoreAudio',()=>({usePresentedScoreAudio:scoreAudio}));
+vi.mock('./useFiveAliveScoreAudio',()=>({useFiveAliveScoreAudio:scoreAudio}));
+vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{request:vi.fn(()=>()=>{})}}));
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();scoreAudio.mockClear();});
 
 it.each([false,true])('holds the calculation for five seconds before flight/counting (reduced motion: %s)',reduced=>{

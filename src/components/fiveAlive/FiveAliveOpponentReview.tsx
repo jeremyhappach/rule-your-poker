@@ -1,7 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {delayedRpc} from '@/lib/delayed/client';
 import {usePlayback,useVisible} from '@/lib/delayed/usePlayback';
-import {usePresentedScoreAudio} from '@/hooks/usePresentedScoreAudio';
+import {useFiveAliveScoreAudio} from './useFiveAliveScoreAudio';
 import {FiveAliveBoard,type FiveAliveGuess} from './FiveAliveBoard';
 import {FiveAliveScoreLine,type FiveAliveWordResult} from './FiveAliveResults';
 
@@ -43,8 +43,8 @@ function PairScores({id,own,opponent,prior,userId,onScores,onDone}:{id:string;ow
  const [phase,setPhase]=useState<{startedAt:number;endsAt:number}|null>(null),done=useRef(false);
  useEffect(()=>{const startedAt=performance.now()+5000;setPhase({startedAt,endsAt:startedAt+700});},[id]);
  const now=performance.now();
- usePresentedScoreAudio(userId,phase?id+':own':null,phase?{...phase,from:prior[0],to:prior[0]+(own.score??0)}:null,now);
- usePresentedScoreAudio(userId,phase?id+':opponent':null,phase?{...phase,from:prior[1],to:prior[1]+(opponent.score??0)}:null,now);
+ useFiveAliveScoreAudio(userId,phase?id+':own':null,phase?{...phase,from:prior[0],to:prior[0]+(own.score??0)}:null,now);
+ useFiveAliveScoreAudio(userId,phase?id+':opponent':null,phase?{...phase,from:prior[1],to:prior[1]+(opponent.score??0)}:null,now);
  useEffect(()=>{if(!phase)return;let frame=0;const tick=(at:number)=>{
   const progress=Math.max(0,Math.min(1,(at-phase.startedAt)/700));
   onScores([prior[0]+Math.round((own.score??0)*progress),prior[1]+Math.round((opponent.score??0)*progress)]);

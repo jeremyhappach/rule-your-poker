@@ -4,7 +4,9 @@ import {cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {FiveAliveBoard,type FiveAliveBoardProps,type FiveAliveGuess} from './FiveAliveBoard';
 import {endAnimation} from './animationTestEvent';
 
-afterEach(cleanup);
+const {presentSound}=vi.hoisted(()=>({presentSound:vi.fn()}));
+vi.mock('@/lib/audio/presentationSound',()=>({presentSound}));
+afterEach(()=>{cleanup();presentSound.mockClear();});
 const props=():FiveAliveBoardProps=>({mode:'arcade',round:1,score:0,
   current:{completed:false,guesses:[],nextBase:1000},pending:false,
   onSubmit:vi.fn(),onBack:vi.fn(),onRules:vi.fn(),onAbandon:vi.fn()});
@@ -71,4 +73,54 @@ it('retains the owner’s completed guesses while waiting in Async without admit
   expect(screen.getByRole('status').textContent).toContain('Waiting');
   expect(screen.getByLabelText('Guess board').textContent).toBe('STONEAMPLE');
   expect(screen.queryByLabelText('Keyboard')).toBeNull();
+});
+
+it('finishes all feedback before exploding the old helper, then drops the next helper before admitting input',()=>{
+ const wrong=vi.fn(),bink=vi.fn(),done=vi.fn();
+ const {container,rerender}=render(<FiveAliveBoard {...props()} onWrongGuess={wrong} onHelperDrop={bink} onRevealComplete={done}
+  reveal={{id:'row',row:0,helper:{base:1000,nextBase:700}}} current={{completed:false,nextBase:700,guesses:[stone]}}/>);
+ expect(screen.getByText('+1000')).toBeTruthy();expect(screen.queryByText('+700')).toBeNull();
+ for(let i=0;i<5;i++){
+  const tile=container.querySelector('[data-reveal=close]')!;
+  expect(container.querySelector('[data-helper=burst]')).toBeNull();expect(wrong).not.toHaveBeenCalled();
+  endAnimation(tile,'five-alive-flip-close');endAnimation(tile,'five-alive-flip-open');
+ }
+ expect(wrong).toHaveBeenCalledTimes(1);expect(bink).not.toHaveBeenCalled();expect(done).not.toHaveBeenCalled();
+ const burst=container.querySelector('[data-helper=burst]')!;expect(burst).toBeTruthy();
+ endAnimation(burst,'unrelated');expect(bink).not.toHaveBeenCalled();
+ endAnimation(burst,'five-alive-helper-burst');expect(bink).toHaveBeenCalledTimes(1);expect(done).not.toHaveBeenCalled();
+ expect(screen.queryByText('+1000')).toBeNull();expect(screen.getByText('+700')).toBeTruthy();
+ expect((screen.getByRole('button',{name:'A'}) as HTMLButtonElement).disabled).toBe(true);
+ endAnimation(container.querySelector('[data-helper=drop]')!,'five-alive-helper-drop');expect(done).toHaveBeenCalledExactlyOnceWith('row');
+ rerender(<FiveAliveBoard {...props()} current={{completed:false,nextBase:700,guesses:[stone]}}/>);
+ expect((screen.getByRole('button',{name:'A'}) as HTMLButtonElement).disabled).toBe(false);
+ expect([...container.querySelectorAll('.five-alive-row:first-child .five-alive-tile')].map(tile=>tile.textContent).join('')).toBe('STONE');
+});
+
+it('uses the approved Words placement cue only for letters committed into an editable tile',()=>{
+ const p=props(),{container,rerender}=render(<FiveAliveBoard {...p}/>);
+ expect(presentSound).not.toHaveBeenCalled();
+ for(const key of 'APPLE')fireEvent.keyDown(window,{key});
+ expect(presentSound).toHaveBeenCalledTimes(5);
+ expect(presentSound.mock.calls.map(call=>[call[0],call[2].textContent])).toEqual([... 'APPLE'].map(letter=>['peg',letter]));
+ expect(new Set(presentSound.mock.calls.map(call=>call[1])).size).toBe(5);
+ fireEvent.keyDown(window,{key:'X'});fireEvent.keyDown(window,{key:'Backspace'});expect(presentSound).toHaveBeenCalledTimes(5);
+ fireEvent.click(screen.getByRole('button',{name:'E'}));expect(presentSound).toHaveBeenCalledTimes(6);
+ rerender(<FiveAliveBoard {...p} pending/>);fireEvent.keyDown(window,{key:'A'});expect(presentSound).toHaveBeenCalledTimes(6);
+ rerender(<FiveAliveBoard {...p} round={2} current={{completed:false,nextBase:490,guesses:[stone,ample]}}/>);
+ expect(presentSound).toHaveBeenCalledTimes(6);expect(container.querySelector('[data-reveal]')).toBeNull();
+});
+
+it('uses the approved card flip once per tile at the feedback opening edge, with a stable reveal identity',()=>{
+ const {container,rerender}=render(<FiveAliveBoard {...props()} reveal={{id:'receipt',row:0}} current={{completed:false,nextBase:700,guesses:[stone]}}/>);
+ const start=(element:Element,name:string)=>{const event=new Event('webkitAnimationStart',{bubbles:true});Object.defineProperty(event,'animationName',{value:name});fireEvent(element,event);};
+ for(let column=0;column<5;column++){
+  const tile=container.querySelector('[data-reveal=close]')!;
+  start(tile,'unrelated');expect(presentSound).toHaveBeenCalledTimes(column);
+  start(tile,'five-alive-flip-close');expect(presentSound).toHaveBeenCalledTimes(column);
+  endAnimation(tile,'five-alive-flip-close');start(tile,'five-alive-flip-open');expect(presentSound).toHaveBeenLastCalledWith('flip',`five-alive:flip:receipt:0:${column}`,tile);expect(presentSound).toHaveBeenCalledTimes(column+1);
+  endAnimation(tile,'five-alive-flip-open');
+ }
+ rerender(<FiveAliveBoard {...props()} current={{completed:false,nextBase:700,guesses:[stone]}}/>);
+ expect(presentSound).toHaveBeenCalledTimes(5);
 });

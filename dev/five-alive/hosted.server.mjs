@@ -18,12 +18,14 @@ const transport={name:'isolated-five-alive-transport',enforce:'pre',resolveId(so
  const chunks=[];for await(const chunk of req)chunks.push(chunk);req.body=JSON.parse(Buffer.concat(chunks).toString());
  return (req.url==='/api/arcade'?arcade:delayed)(req,res);
 });}};
+const port=Number(process.env.FIVE_ALIVE_TEST_PORT??5196);
 const server=await createServer({configFile:false,plugins:[transport,react()],ssr:{noExternal:['@supabase/supabase-js']},resolve:{alias:[
+ ...(process.env.FIVE_ALIVE_DEPLOYED_REPRO==='true'?[{find:'@/components/fiveAlive',replacement:resolve('qualification.local/five-alive/deployed-source')}]:[]),
  {find:'@/integrations/supabase/client',replacement:resolve('dev/five-alive/hosted-client.ts')},
  {find:'@',replacement:resolve('src')},
-]},server:{host:'127.0.0.1',port:5196,strictPort:true},optimizeDeps:{entries:['dev/five-alive/browser/index.html']},appType:'spa'});
+]},server:{host:'127.0.0.1',port,strictPort:true},optimizeDeps:{entries:['dev/five-alive/browser/index.html']},appType:'spa'});
 arcade=(await server.ssrLoadModule('/api/arcade.ts')).default;
 delayed=(await server.ssrLoadModule('/api/delayed.ts')).default;
 await server.listen();
-writeFileSync('qualification.local/five-alive/hosted/server.json',JSON.stringify({url:'http://127.0.0.1:5196'}));
-console.log('Five Alive isolated qualification server: http://127.0.0.1:5196');
+writeFileSync('qualification.local/five-alive/hosted/server.json',JSON.stringify({url:`http://127.0.0.1:${port}`}));
+console.log(`Five Alive isolated qualification server: http://127.0.0.1:${port}`);
