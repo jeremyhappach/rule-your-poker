@@ -1,4 +1,4 @@
-# Async 72-hour availability and timeout recovery — November 18, 2026
+# Async 72-hour availability and timeout recovery — November 18, 2026 — production deployed
 
 Jeremy approved 72-hour availability, Last Call at 48 hours, Words timeout
 passes and zero-score missed unopened Quintzee rounds. The five exact old
@@ -9,10 +9,16 @@ Candidate and installed rollback proofs pass, including atomic reversal,
 restoration, replay and future canonical resettlement. All five games are now
 restored; the two prior settlements have four balanced account reversals.
 Concurrent replay produced no duplicate correction or notification. Three
-renewed-turn alerts are queued for TheOG. Fresh availability expires November 21
-at 7:15 PM Central, with Last Call November 20 at 7:15 PM.
+renewed-turn alerts were sent successfully to TheOG. Fresh availability expires
+November 21 at 7:15 PM Central, with Last Call November 20 at 7:15 PM.
 TypeScript, 4,342 app tests, 241 harness tests, 46 release-tooling tests, 12
 focused adapter tests, Vite and the unchanged 90 MB cap pass (89,704,807 bytes).
+Vercel `dpl_EYEueUyNSzkA82kzA6LYXQrMQSRw` is READY / production; both public
+origins serve exact product commit `66be1ce1c977e94f89f5c81f1bca516d6e851de0`.
+Release-signal run `44435634810` attempt 2 succeeded; the database publication
+receipt matches that SHA at `2026-11-19T01:40:21.061Z`. Attempt 1 passed tests
+but timed out waiting for the production build. Public HTML and manifests now
+agree on the new bundle.
 Owner smoke remains pending. Checkpoint: `async-timeout72-20261118`.
 See [scope and evidence](ASYNC_TIMEOUT72.md).
 

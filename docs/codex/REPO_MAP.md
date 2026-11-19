@@ -1,3 +1,10 @@
+Async availability: private.delayed_turn_window normalizes live child windows to
+48-hour Last Call / 72-hour expiry; existing per-game reducers still own playable
+clocks and outcomes. Migration 20261119011153 and supabase/delayed/timeout72*.sql
+own Words expiry passes, Quintzee missed-round continuation and the audited
+multi-child restoration boundary. server/delayed/{adapter,service}.ts are shared
+by the API and delayed-recovery worker. See ASYNC_TIMEOUT72.md for proof/repair.
+
 Chess forfeit sequence: ChessForfeitEffect/forfeit.css own the board-relative
 explosion; lib/chess/forfeitSound.ts supplies the platform audio timeline.
 lib/chess/forfeitPresentation.ts mirrors migration 20261114192644's live timing.

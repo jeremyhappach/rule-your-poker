@@ -1,3 +1,18 @@
+# 2026-11-18 — Async availability passes through the existing game owner
+
+Jeremy approved a shared 72-hour availability window with 48-hour Last Call.
+Availability is orchestration: frozen playable clocks and scoring/dealing rules
+remain shared and unchanged. Words expiry invokes its ordinary pass reducer;
+an unstarted Quintzee round invokes the shared empty-round scoring core and
+normal participant/round continuation. Entered Quintzee rounds retain their
+playable deadline. Other games retain their established timeout outcomes.
+
+The five explicitly authorized old 36-hour forfeits were restored using exact
+receipt hashes and immutable per-child correction audits. Multi-child correction
+reuses canonical account reversals, chip transfers and settlement generations;
+it preserves original history and completed siblings. Fresh timers and three
+renewed-turn pushes were verified. See ASYNC_TIMEOUT72.md.
+
 # 2026-11-17 — Completed Async history is a passive record
 
 Jeremy approved a dedicated history route, static match/game records and

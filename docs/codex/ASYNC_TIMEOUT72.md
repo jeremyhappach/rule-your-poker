@@ -58,9 +58,23 @@ under ignored `qualification.local/async-timeout72/` by
 
 ## Owner smoke
 
+Production verification: Vercel `dpl_EYEueUyNSzkA82kzA6LYXQrMQSRw` is READY;
+`holm357.com` and `ptown-poker.vercel.app` both serve product commit
+`66be1ce1c977e94f89f5c81f1bca516d6e851de0`, built at
+`2026-11-19T01:32:50.406Z`, with `assets/index-o9THboVf.js`.
+The duplicate branch preview was canceled to release the production build slot.
+Release-signal run `44435634810` attempt 1 passed qualification but exhausted its
+production-wait window at 01:30:14 UTC, before the new build became available.
+Attempt 2 succeeded. The database release publication receipt is
+`44435634810-2`, published at `2026-11-19T01:40:21.061Z`, and matches the exact
+product commit. Both public HTML pages reference the same new bundle as their
+manifests. The connector lacked Actions write permission; the authorized retry
+used the existing local GitHub credentials without printing or persisting them.
+
 Actual repair committed at 2026-11-19 01:15:31 UTC: five active restored children,
 three active parents, four account reversal entries for the two prior
-settlements, and three renewed-turn pushes queued to one enabled device.
+settlements, and three renewed-turn pushes sent to one enabled device. All three
+delivery receipts show `sent`, with one attempt each.
 Two concurrent identical repair calls returned `restored` / `already_restored`,
 with exactly five child audits, three parent corrections and three alerts.
 Fresh expiry is November 21, 7:15 PM Central; Last Call is November 20, 7:15 PM.
