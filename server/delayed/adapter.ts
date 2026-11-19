@@ -92,7 +92,7 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
  if(s.child!==row.id||s.game!==row.game_type||actor(s)!==row.actor||s.completed)throw Error('delayed:identity');
  if(s.game==='run21')assertSharedRules(row.config as Config);
  const due=gameplayDue(s);
- if(now>=expiry&&(due===null||expiry<=due))return {state:s,advanced:false,at:expiry,forfeit:true};
+ if(now>=expiry&&(due===null||expiry<=due)&&!(s.game==='quintzee'&&due!==null))return {state:s,advanced:false,at:expiry,forfeit:s.game!=='quintzee'};
  let advanced=false,at=now;
  if(due!==null&&now>=due){
   at=due;

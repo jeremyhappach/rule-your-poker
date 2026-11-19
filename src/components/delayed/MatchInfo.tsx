@@ -21,14 +21,14 @@ export function MatchInfo({home,userId,historical}:{home:Home;userId:string;hist
       <div><dt>Progress</dt><dd>{home.completed}/{home.lineup.length} Complete</dd></div>
       <div><dt>Maximum loss per player</dt><dd>{home.realMoney?'$':''}{home.exposure.toLocaleString()}</dd></div>
      </dl>
-     <p>A missed deadline forfeits this game only.</p>
+     <p>Words passes a missed turn. Quintzee scores zero for a missed, unstarted round and continues. Other games retain their timeout rules.</p>
      <p>{home.realMoney?'One net settlement after all games finish.':'Play money settles once at the end; real balances are unaffected.'}</p>
      <DialogClose asChild><button type="button" className="async-match-info-close">Done</button></DialogClose>
     </DialogContent>
    </Dialog>
   </div>
   {home.acceptedAt&&<CurrentNet home={home} userId={userId}/>}
-  <p className="async-match-timing"><strong>36h</strong> per turn · Last Call <strong>24h</strong></p>
+  {!historical&&<p className="async-match-timing"><strong>72h</strong> per turn · Last Call <strong>48h</strong></p>}
   {!historical&&<PushPreferences key={userId+home.id} userId={userId} matchId={home.id}/>}
  </section>;
 }

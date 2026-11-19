@@ -1,3 +1,21 @@
+# Async 72-hour availability and timeout recovery — November 18, 2026
+
+Jeremy approved 72-hour availability, Last Call at 48 hours, Words timeout
+passes and zero-score missed unopened Quintzee rounds. The five exact old
+36-hour forfeits across three matches are authorized for restoration, fresh
+timers, reversal of two prior settlements and renewed-turn push alerts.
+Migration `20261119011153` and recovery worker version 5 are installed.
+Candidate and installed rollback proofs pass, including atomic reversal,
+restoration, replay and future canonical resettlement. All five games are now
+restored; the two prior settlements have four balanced account reversals.
+Concurrent replay produced no duplicate correction or notification. Three
+renewed-turn alerts are queued for TheOG. Fresh availability expires November 21
+at 7:15 PM Central, with Last Call November 20 at 7:15 PM.
+TypeScript, 4,342 app tests, 241 harness tests, 46 release-tooling tests, 12
+focused adapter tests, Vite and the unchanged 90 MB cap pass (89,704,807 bytes).
+Owner smoke remains pending. Checkpoint: `async-timeout72-20261118`.
+See [scope and evidence](ASYNC_TIMEOUT72.md).
+
 # Completed Async match records — November 17, 2026 — qualified; owner smoke pending
 
 Approved history entry now opens static completed game cards and read-only game

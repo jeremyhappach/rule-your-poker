@@ -90,13 +90,13 @@ export function AsyncInvite({userId=''}:{userId?:string}){
  }
  if(source&&!loaded)return <section className="delayed-invite"><Link className="delayed-back" to={returnTo}>← Back</Link><p role={error?'alert':'status'}>{error||'Restoring completed match…'}</p></section>;
  return <section className="delayed-invite"><Link className="delayed-back" to={returnTo}>{source?'← Cancel Run It Back':'← All matches'}</Link>
-  <div className="delayed-match-heading"><small>PLAY ON YOUR SCHEDULE</small><h2>{source?'Run It Back':'New Async Match'}</h2><p className="delayed-match-meta">Two humans · {realMoney?'Real Money':'Fake Money'} · 36-hour turns</p></div>
+  <div className="delayed-match-heading"><small>PLAY ON YOUR SCHEDULE</small><h2>{source?'Run It Back':'New Async Match'}</h2><p className="delayed-match-meta">Two humans · {realMoney?'Real Money':'Fake Money'} · 72-hour turns</p></div>
   {source&&<p>Copied from <Link to={'/delayed/'+source+'?history=1'}>your completed match</Link>. Edit this invitation before sending.</p>}
   {!enabled&&<p role="status">New async matches are unavailable.</p>}
   <fieldset className="delayed-form-card" disabled={locked}><legend>Match settings</legend><p>Every game has its own stake. Play any available turn after acceptance.</p>
    <label className="delayed-money-toggle"><span>Fake Money</span><span className="delayed-money-switch"><input type="checkbox" role="switch" aria-label="Real Money" checked={realMoney} disabled={!realAvailable&&!realMoney} onChange={e=>changeMoney(e.target.checked)}/><span aria-hidden="true"/></span><span>Real Money</span></label>
    {!realAvailable&&<small>Real-money matches are currently unavailable.</small>}
-   {source&&<><p className="delayed-terms">The first player in each game is selected randomly.</p><p className="delayed-terms">Last Call at 24 hours. A missed 36-hour deadline forfeits that game. No funds are reserved; {realMoney?'one net amount is posted to both players’ balances after all games finish.':'real balances are unaffected.'} Invitations expire in 72 hours.</p></>}
+   {source&&<><p className="delayed-terms">The first player in each game is selected randomly.</p><p className="delayed-terms">Last Call at 48 hours; turns expire at 72 hours. Words passes a missed turn. Quintzee scores zero for a missed, unstarted round and continues. Other games retain their timeout rules. No funds are reserved; {realMoney?'one net amount is posted to both players’ balances after all games finish.':'real balances are unaffected.'} Invitations expire in 72 hours.</p></>}
    {policyIssue&&<p role="alert">This match used an unsupported invitation policy. <button onClick={()=>setDraft(old=>old?{...old,policyVersion:'delayed/1'}:old)}>Use the current terms shown above</button></p>}
   </fieldset>
   <fieldset className="delayed-form-card" disabled={locked}><legend>Your lineup</legend>
@@ -119,7 +119,7 @@ export function AsyncInvite({userId=''}:{userId?:string}){
    {peopleError&&<p role="alert">{peopleError}</p>}
   </fieldset>
   <div className="delayed-offer-summary"><span>Maximum loss per player</span><strong>{realMoney?'$':''}{stake}</strong></div>
-  {!source&&<><p className="delayed-terms">The first player in each game is selected randomly.</p><p className="delayed-terms">Last Call at 24 hours. A missed 36-hour deadline forfeits that game. No funds are reserved; {realMoney?'one net amount is posted to both players’ balances after all games finish.':'real balances are unaffected.'} Invitations expire in 72 hours.</p></>}
+  {!source&&<><p className="delayed-terms">The first player in each game is selected randomly.</p><p className="delayed-terms">Last Call at 48 hours; turns expire at 72 hours. Words passes a missed turn. Quintzee scores zero for a missed, unstarted round and continues. Other games retain their timeout rules. No funds are reserved; {realMoney?'one net amount is posted to both players’ balances after all games finish.':'real balances are unaffected.'} Invitations expire in 72 hours.</p></>}
   {!opponent&&<p>Choose a human opponent to send your invitation.</p>}
   {draft?.submission&&!pending&&<p role="status">A send was attempted. Retry the same invitation to confirm its outcome before starting another draft.</p>}
   <button ref={sendButton} className="delayed-primary" disabled={pending||!!storageError||(!draft?.submission&&(!opponent?.isHuman||!enabled||!valid))} onClick={()=>void invite()}>{pending?'Sending…':'Send Invitation'}</button>

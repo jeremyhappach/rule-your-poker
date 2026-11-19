@@ -1,0 +1,14 @@
+import {build} from 'esbuild';
+import {writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const result=await build({entryPoints:['supabase/functions/delayed-recovery/index.ts'],bundle:true,platform:'node',format:'esm',target:'es2022',alias:{crypto:'node:crypto'},minify:true,write:false});
+const source=result.outputFiles[0].text.replaceAll('from"crypto"','from"node:crypto"');
+const imports=[...source.matchAll(/from["']([^"']+)["']/g)].map(m=>m[1]);
+if(imports.some(m=>!['node:crypto','node:fs'].includes(m)))throw Error('Unexpected worker dependency '+imports.join(','));
+writeFileSync('qualification.local/async-timeout72/recovery-worker.js',source);
+console.log(JSON.stringify({sha256:createHash('sha256').update(source).digest('hex'),bytes:source.length,verify_jwt:false}));
+let handler;
+globalThis.Deno={env:{get:()=>undefined},serve:fn=>{handler=fn;}};
+await import('../../qualification.local/async-timeout72/recovery-worker.js');
+if((await handler(new Request('https://test.invalid',{method:'POST'}))).status!==403)throw Error('Dispatcher authentication failed');
+console.log('Worker startup and unauthenticated rejection passed');

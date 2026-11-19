@@ -2,7 +2,10 @@ import {isUuid} from '../../src/lib/run21/model.js';
 import {fiveAliveAsyncOperation} from '../fiveAlive/async.js';
 import {transition,project,gameplayDue,type Child,type Rpc,type Intent} from './adapter.js';
 type RecordRow=Child&{held:boolean;receipt?:{child_id:string;fingerprint:unknown}|null};
-const due=(row:Child)=>Math.min(Date.parse(row.expires_at),row.state?gameplayDue(row.state)??Infinity:Infinity);
+const due=(row:Child)=>{
+ const playing=row.state?gameplayDue(row.state):null;
+ return row.game_type==='quintzee'&&playing!==null?playing:Math.min(Date.parse(row.expires_at),playing??Infinity);
+};
 export async function synchronize(rpc:Rpc,input:RecordRow,actor:string|null):Promise<RecordRow>{
  let row=input;
  for(let guard=0;guard<(input.game_type==='crib-lab'||input.game_type==='chucky-showdown'?128:8);guard++){

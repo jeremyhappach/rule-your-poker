@@ -42,8 +42,8 @@ beforeEach(()=>{vi.useFakeTimers({toFake:['setInterval','clearInterval','setTime
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();});
 for(const game of ['ptown-words','quintzee','boxdrop'])for(const realMoney of [false,true])it(`${game} labels the authoritative ${realMoney?'real':'play'} money mode`,async()=>{
  mock.snapshot=game==='ptown-words'?words():initial(game);mount(game==='ptown-words',false,realMoney);await flush();
- expect(screen.getByText(`${realMoney?'Real money':'Play money'} · 36-hour turns`)).toBeTruthy();
- expect(screen.queryByText(`${realMoney?'Play money':'Real money'} · 36-hour turns`)).toBeNull();
+ expect(screen.getByText(`${realMoney?'Real money':'Play money'} · 72-hour turns`)).toBeTruthy();
+ expect(screen.queryByText(`${realMoney?'Play money':'Real money'} · 72-hour turns`)).toBeNull();
  expect(screen.queryByLabelText('Real money')!==null).toBe(realMoney);
 });
 it('Quintzee presence waits for explicit Start and the actual playing phase',async()=>{
