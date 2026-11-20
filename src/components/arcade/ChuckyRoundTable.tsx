@@ -21,6 +21,7 @@ import {useChuckyBustAudio} from '@/hooks/useChuckyBustAudio';
 import {RoundIntroArtwork} from '@/components/run21/Run21RoundIntro';
 import {useRun21Bell} from '@/hooks/useRun21Bell';
 import '../run21/run21.css';
+import './chuckyShowdown.css';
 
 const portrait = '/arcade/chucky-portrait-four-cards.png';
 

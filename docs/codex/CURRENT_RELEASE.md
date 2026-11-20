@@ -1,3 +1,20 @@
+# Async Chucky card visibility — November 20, 2026 — qualified; owner smoke pending
+
+The shared Chucky renderer now imports its existing card/layout stylesheet, so
+direct Async entry and reconnect render the player/community cards without first
+visiting Arcade. The deployed projection already contained the permitted cards;
+the missing CSS dependency pushed faces outside the visible board. Rules,
+deadlines, scoring, privacy and financial state are unchanged; no migration.
+
+All 12 new native-browser checks pass without injected styles, covering fresh
+Start/deal, both decision phases, actual rank/suit visibility and running-turn
+reconnect at phone/desktop sizes. The existing Chucky four-size, three-phase,
+reveal/life-transition and competitive-layout fixture also passes. Full
+production build/typecheck, application/harness/release-tooling tests and the
+unchanged 90 MB gate pass (89,703,222 bytes). Owner phone smoke remains pending.
+Checkpoint: `async-chucky-cards-20261120`. See
+[investigation and regression](../../dev/async-chucky-cards/README.md).
+
 # Five Alive relative difficulty — November 19, 2026 — production deployed; owner smoke pending
 
 Approved relative version `five-alive-relative/1` produces 101 / 204 / 410 / 202 / 104 answers. Existing match tiers, multipliers and results remain frozen; vocabulary and global no-repeat allocation remain unchanged. Candidate and installed rollback proofs plus local concurrency pass. Migration `20261120004855` is installed. TypeScript, 4,640 tests, Vite and the unchanged 90 MB limit pass (89,704,807 bytes). Vercel `dpl_FMbusyu8HaTWkNUcaXGGQmJCgANn` is READY / production. Both public origins serve product commit `39d3b0663ee27a50feea884d474884f79fda61e6`; release-signal run `44649120114` succeeded and its database receipt matches. No qualification or deployment blockers remain. Owner runtime smoke is pending. See [checkpoint](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).
