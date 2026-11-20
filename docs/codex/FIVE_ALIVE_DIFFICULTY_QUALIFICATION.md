@@ -1,6 +1,6 @@
 # Five Alive relative difficulty qualification — November 19, 2026
 
-Status: all release gates passed. Production migration `20261120004855` is installed and the installed rollback proof passes. Git publication and deployment verification follow under the existing authorization.
+Status: production deployed and release signal verified. Production migration `20261120004855` is installed; candidate and installed rollback proofs pass. Owner runtime smoke remains pending.
 
 ## Scope and versions
 
@@ -48,3 +48,9 @@ An initial query-assembly error was a JavaScript replacement-string dollar expan
 TypeScript passes. All 4,353 application tests (590 files), 241 harness tests and 46 release-tooling tests pass: **4,640 tests total**. Vite passes and the static output remains **89,704,807 bytes / 185 files**, with **295,193 bytes** below the unchanged **90,000,000-byte** cap. The final expanded audit artifact also passed a fresh typecheck and the eleven focused tests.
 
 Production migration `20261120004855` is installed. The complete installed rollback proof passes, including genuine legacy assignment replay, new Arcade completion and actual fake/real financial settlement. No production fixtures or historical edits remain. There are no concrete qualification blockers. No gate or build-size limit has been weakened. Publication checkpoint tag: `five-alive-relative-v1-20261119`. Owner runtime smoke remains Jeremy's acceptance step.
+
+## Verified publication
+
+Product commit `39d3b0663ee27a50feea884d474884f79fda61e6` is published on `origin/main` and tagged `five-alive-relative-v1-20261119`. Vercel deployment `dpl_FMbusyu8HaTWkNUcaXGGQmJCgANn` is READY / production. Both `holm357.com` and `www.holm357.com` return HTTP 200, expose the exact product SHA in their build manifests and serve HTML referencing the matching `assets/index-at3mHfH1.js` bundle. GitHub release-signal run `44649120114` completed successfully. The authoritative publication receipt is `44649120114-1` at `2026-11-20T01:01:12.391Z`, with that same SHA.
+
+Final production readback confirms `five-alive-relative/1`, all 1,021 original answers, counts 101 / 204 / 410 / 202 / 104, and the unchanged legacy bank digest `c5d91b2d114080c6f144514a638ddb95`. Public and database readbacks are retained with the local qualification logs. No qualification or deployment blockers remain; Jeremy's ordinary runtime smoke is the remaining acceptance step.

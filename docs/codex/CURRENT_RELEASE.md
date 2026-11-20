@@ -1,6 +1,6 @@
-# Five Alive relative difficulty — November 19, 2026 — qualified; database installed
+# Five Alive relative difficulty — November 19, 2026 — production deployed; owner smoke pending
 
-Approved relative version `five-alive-relative/1` produces 101 / 204 / 410 / 202 / 104 answers. Existing match tiers, multipliers and results remain frozen; vocabulary and global no-repeat allocation remain unchanged. Candidate and installed rollback proofs plus local concurrency pass. Migration `20261120004855` is installed. TypeScript, 4,640 tests, Vite and the unchanged 90 MB limit pass (89,704,807 bytes). No qualification blockers remain; publication verification and owner smoke follow. See [checkpoint](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).
+Approved relative version `five-alive-relative/1` produces 101 / 204 / 410 / 202 / 104 answers. Existing match tiers, multipliers and results remain frozen; vocabulary and global no-repeat allocation remain unchanged. Candidate and installed rollback proofs plus local concurrency pass. Migration `20261120004855` is installed. TypeScript, 4,640 tests, Vite and the unchanged 90 MB limit pass (89,704,807 bytes). Vercel `dpl_FMbusyu8HaTWkNUcaXGGQmJCgANn` is READY / production. Both public origins serve product commit `39d3b0663ee27a50feea884d474884f79fda61e6`; release-signal run `44649120114` succeeded and its database receipt matches. No qualification or deployment blockers remain. Owner runtime smoke is pending. See [checkpoint](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).
 
 # Async 72-hour availability and timeout recovery — November 18, 2026 — production deployed
 
