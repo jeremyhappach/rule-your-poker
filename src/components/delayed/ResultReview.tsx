@@ -6,6 +6,8 @@ import {ChessHistoryButton} from '@/components/chess/ChessHistory';
 import type {ChessSnapshot} from '@/lib/chess/client';
 import {useVisible,usePlayback} from '@/lib/delayed/usePlayback';
 import {OriginalsBoard} from '@/components/originals/OriginalsBoard';
+import {ChuckyRoundResult} from './ChuckyRoundResult';
+import ChuckyShowdownRules from '@/components/rules/ChuckyShowdownRules';
 import {AsyncSessionName} from './AsyncSessionName';
 import {MegaHoleReplay} from '@/components/megaCardGolf/MegaHoleReplay';
 import {MegaCompetitionScorecard} from '@/components/megaCardGolf/MegaCompetitionScorecard';
@@ -90,7 +92,14 @@ function SavedBoard({event,scores,childId,userId,elapsed,holeResults}:{holeResul
  // Saved-result animation is read-only history; do not re-admit its audio.
  if(!board)return <main className="delayed-page"><p>Historic board replay is unavailable.</p><strong>{event.score?.toLocaleString()} points</strong></main>;
  if(event.receipt.game==='mega-card-golf')return <MegaHoleReplay view={event.board} elapsed={elapsed} identity={scope} userId={userId} actorName={name} players={scores.players} sound={!event.seen} results={[...holeResults.filter(r=>r.actor!==actor||r.hole!==event.round),...event.board.results.filter((r:any)=>r.hole===event.round&&elapsed>=schedule.countEnd).map((r:any)=>({actor,hole:r.hole,score:r.score,at:r.startedAt}))]}/>;
- if(event.receipt.game==='crib-lab'||event.receipt.game==='chucky-showdown')return <OriginalsBoard
+ if(event.receipt.game==='chucky-showdown')return <FullscreenGameShell gameplay={false} className="chucky-result-shell"
+  title="Chucky Showdown" description={'Round '+event.round} activeTab={tab} setActiveTab={setTab}
+  navigation={<nav aria-label="Saved result information"><button onClick={()=>setTab('lobby')}>Rules</button></nav>}
+  panel={<ChuckyShowdownRules config={board.config}/>} panelDescription="Recorded round results." announcement={false}>
+  <ChuckyRoundResult name={name} round={event.round} lives={board.cracks} uses={board.uses}
+   score={Math.round((event.score??0)*Math.max(0,Math.min(1,(elapsed-schedule.countStart)/(schedule.countEnd-schedule.countStart))))}/>
+ </FullscreenGameShell>;
+ if(event.receipt.game==='crib-lab')return <OriginalsBoard
   game={event.receipt.game} board={{...board,id:scope,revision:1,ruleset:event.receipt.rules.ruleset,serverAt:origin}}
   userId={userId} now={now} pending={false} canAct={false} live={active&&!event.seen} epoch={0}
   error="" reconnect={noop} onIntent={noop} activeTab={tab} setActiveTab={setTab}

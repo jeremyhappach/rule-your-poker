@@ -283,6 +283,7 @@ the opt-in Chucky v2 / Crib Lab face inside `PlayingCard`'s resolved-face guard.
 Saved async round score context: `src/lib/delayed/reviewPresentation.ts` projects acknowledged prior awards plus the active round; `ResultReview.tsx` supplies both participant pills to the existing game views. Replay highlight stays on the viewer while the result actor owns the count-up.
 
 - `src/components/delayed/ResultReview.tsx`: review-before-Start, child sequence and read-only parent finale.
+- `src/components/delayed/ChuckyRoundResult.tsx`: card-free Chucky saved-round overlay; recorded lives, reused Fold/Stay level dots and review-owned round-score count. Browser qualification: `dev/async-chucky-results/`.
 - `src/assets/async-finale/`: original illustrated neutral/winner cash-bag scenes and generation provenance; names, net amount and confetti remain runtime-owned by `ResultReview.tsx`.
 - `dev/async-combined/boxing-artwork-proof.mjs`: phone/desktop/reduced-motion finale geometry, player mapping, amount and acknowledgement checks against the isolated local preview.
 - `src/lib/delayed/reviewPresentation.ts`: frozen shared timing and timestamp-only replay projection.

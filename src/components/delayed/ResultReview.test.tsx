@@ -31,6 +31,58 @@ afterEach(()=>{expect(platformAudio.request).not.toHaveBeenCalled();expect(platf
 const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve();});
 const advance=async(ms:number)=>act(async()=>{await vi.advanceTimersByTimeAsync(ms);});
 const gate=()=> <ReviewGate home={mock.home} childId='child' matchId='match' userId='me'>{()=> <h1>Gameplay owner</h1>}</ReviewGate>;
+const savedChucky=(score=2500,lives=1)=>{
+ mock.state.events=[{...event,actorName:'Other',round:2,score,receipt:{game:'chucky-showdown',rules:{ruleset:'chucky-showdown/3'}},
+  board:{round:2,roundId:'saved-chucky-round',phase:'round_over',since:100,due:2450,cracks:lives,uses:[2,1,0,2,1,0,2],score:99999,
+   config:{version:'chucky-showdown/3',maxCracks:3,maxFolds:3,foldMs:15000,selectMs:15000,winBonuses:[100,200,300,400,500,1000,2000]},
+   player:[{rank:'A',suit:'hearts'}],community:[{rank:'K',suit:'clubs'}],chucky:[{rank:'Q',suit:'diamonds'}]}}];
+ mock.home.lineup[0].game='chucky-showdown';
+};
+it('Chucky reviews show recorded lives and Fold/Stay levels without cards, count the round score, then hand off once',async()=>{
+ savedChucky();const ui=mount(gate());await flush();await advance(3100);
+ const results=screen.getByRole('region',{name:'Opponent round results'});
+ expect(screen.getByRole('img',{name:'1 of 3 lives remaining'})).toBeTruthy();
+ expect(results.querySelectorAll('.cs-cracks svg')).toHaveLength(3);
+ expect(results.querySelectorAll('.cs-cracks [data-active=true]')).toHaveLength(1);
+ expect(screen.getAllByRole('listitem').map(e=>e.getAttribute('aria-label'))).toEqual([
+  'Level 1, 2 uses remaining','Level 2, 1 use remaining','Level 3, 0 uses remaining',
+  'Level 4, 2 uses remaining','Level 5, 1 use remaining','Level 6, 0 uses remaining','Level 7, 2 uses remaining']);
+ expect(results.querySelectorAll('[data-exhausted=true]')).toHaveLength(2);
+ expect(results.querySelectorAll('[data-available=true]')).toHaveLength(8);
+ expect(screen.getByLabelText('Round score').textContent).toBe('0');
+ await advance(450);
+ const counting=Number(screen.getByLabelText('Round score').textContent!.replace(/,/g,''));
+ expect(counting).toBeGreaterThan(0);expect(counting).toBeLessThan(2500);
+ await advance(500);expect(screen.getByLabelText('Round score').textContent).toBe('2,500');
+ expect(ui.container.querySelector('.cs-card,.cs-table,[data-arcade-classic-face]')).toBeNull();
+ expect(screen.queryByRole('button',{name:/fold|stay|press|continue/i})).toBeNull();
+ expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
+ await advance(6650);expect(screen.getByText('Your turn!')).toBeTruthy();
+ await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();
+ expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);
+ expect(mock.rpc.mock.calls.every(c=>['delayed_reviews','delayed_review_begin','delayed_review_ack'].includes(c[0]))).toBe(true);
+});
+it.each([0,3])('Chucky recovered results retain %s lives and the recorded zero score before acknowledgement',async lives=>{
+ savedChucky(0,lives);const rpc=mock.rpc.getMockImplementation()!;
+ mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'?Promise.resolve({elapsed:50000,seen:false}):rpc(name,args));
+ mount(gate());await flush();expect(screen.getByRole('img',{name:`${lives} of 3 lives remaining`})).toBeTruthy();
+ expect(screen.getByLabelText('Round score').textContent).toBe('0');
+ await advance(2900);expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
+ await advance(200);expect(screen.getByText('Your turn!')).toBeTruthy();
+});
+it('Chucky reduced-motion review presents the final round score and preserves the existing hold',async()=>{
+ savedChucky();window.matchMedia=vi.fn().mockReturnValue({matches:true});mount(gate());await flush();await advance(3100);
+ expect(screen.getByLabelText('Round score').textContent).toBe('2,500');
+ await advance(2800);expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
+ await advance(200);expect(screen.getByText('Your turn!')).toBeTruthy();
+});
+it('Chucky final opponent review continues automatically into the existing game result',async()=>{
+ savedChucky();mock.state.terminal=true;mock.state.events.push({id:'final',kind:'child',receipt:{winner:'other'},seen:false});
+ mount(<ChildResults childId='child' matchId='match' userId='me'/>);await flush();await advance(4000);
+ expect(screen.getByLabelText('Round score').textContent).toBe('2,500');await advance(6700);
+ expect(screen.getByText('Game Complete')).toBeTruthy();
+ expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event)).toEqual(['event']);
+});
 it.each([false,true])('finale marks the authoritative money mode (%s)',async realMoney=>{
  mock.home.realMoney=realMoney;mount(<MatchFinale matchId="match" userId="me"/>);await flush();
  expect(screen.queryByLabelText('Real money')!==null).toBe(realMoney);

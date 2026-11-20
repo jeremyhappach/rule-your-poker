@@ -1,3 +1,20 @@
+# Async Chucky opponent results — November 20, 2026 — qualified; owner smoke pending
+
+The opponent's saved round now shows a card-free results overlay: three hearts,
+the same seven Fold/Stay level indicators with dots per remaining use and gray
+exhausted levels, and a count to the recorded round score. Existing review
+recovery, final-score hold, acknowledgement and automatic continuation remain
+in place. Gameplay, rules, settlement and static match history are unchanged;
+no migration or historical mutation.
+
+All 60 focused checks and four native-browser layouts pass, including portrait,
+landscape, pending-review reload and both next-turn and terminal-result handoff.
+Full production build/typecheck, 4,358 application tests, 241 harness tests and
+46 release-tooling tests pass. Static output is 89,706,602 bytes, within the
+unchanged 90 MB gate. Phone production smoke remains Jeremy's acceptance step.
+Checkpoint: `async-chucky-results-20261120`. See
+[scope, evidence and smoke](../../dev/async-chucky-results/README.md).
+
 # Async Chucky card visibility — November 20, 2026 — qualified; owner smoke pending
 
 The shared Chucky renderer now imports its existing card/layout stylesheet, so

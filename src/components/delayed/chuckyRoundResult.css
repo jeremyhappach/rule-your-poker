@@ -1,0 +1,22 @@
+.chucky-result-shell {background:radial-gradient(ellipse at top,#254333,#0b1c15 80%);color:#fff1d3}
+.chucky-result-shell .fullscreen-game-board {display:grid;place-items:center;overflow:auto}
+.chucky-round-result {width:min(94%,32rem);max-height:100%;display:grid;gap:clamp(.5rem,3cqh,1.5rem);padding:clamp(.75rem,3cqh,2rem) clamp(.75rem,4cqw,2rem);border:1px solid #d5ac67;border-radius:1rem;background:#0b211bed;box-shadow:0 .5rem 2rem #0005;text-align:center;overflow:auto}
+.chucky-round-result h2 {font:bold clamp(1.15rem,min(5cqw,6cqh),1.8rem)/1.2 Georgia,serif;overflow-wrap:anywhere}
+.chucky-round-result header p,.chucky-round-result h3 {font-size:clamp(.75rem,min(3.5cqw,4cqh),1rem);color:#e9d6ab}
+.chucky-round-result h3 {margin-bottom:clamp(.25rem,1cqh,.5rem)}
+.chucky-round-result .cs-cracks svg {width:clamp(1.5rem,min(9cqw,10cqh),2.8rem);fill:transparent}
+.chucky-round-result .cs-cracks [data-active=true] {fill:#ff765e}
+.chucky-round-result .cs-availability {margin:0;padding:.5rem;gap:.25rem;border:1px solid #b28b5070;border-radius:.5rem}
+.chucky-round-result .cs-availability-label {display:none}
+.chucky-round-result .cs-availability-level {gap:.35rem;min-height:2.5rem}
+.chucky-round-result .cs-availability-level b {font-size:clamp(1rem,4cqw,1.3rem)}
+.chucky-round-result .cs-pips i {width:.35rem;height:.35rem}
+.chucky-result-score output {display:block;font:bold clamp(2rem,min(14cqw,15cqh),4rem)/1.1 Georgia,serif;color:#f5db8c;font-variant-numeric:tabular-nums}
+@container fullscreen-board (min-aspect-ratio:4/3) {
+ .chucky-round-result {width:min(94%,42rem);grid-template-columns:1fr 2fr;padding:min(2cqh,.75rem) .75rem;gap:min(2cqh,.5rem)}
+ .chucky-round-result header,.chucky-result-score {grid-column:1/-1}
+ .chucky-round-result header p,.chucky-round-result h3 {line-height:1.2}
+ .chucky-result-lives,.chucky-result-levels {align-self:center}
+ .chucky-round-result .cs-availability {padding:.25rem}
+ .chucky-round-result .cs-availability-level {min-height:2rem}
+}
