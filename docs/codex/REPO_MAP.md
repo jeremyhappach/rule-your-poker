@@ -1,3 +1,7 @@
+# Five Alive relative difficulty ownership
+
+`server/fiveAlive/relativeDifficulty.ts` reproduces the approved audit in `difficulty.relative.review.json` into `difficulty.relative.v1.txt` for qualification. Runtime ownership stays in `private.five_alive_allocate`; `supabase/five-alive/difficulty-relative-v1.sql` adds immutable difficulty catalog and assignment snapshots. Existing rules/adapters consume their frozen round tiers. Proofs live in `dev/five-alive/difficulty.*`; the checkpoint is [FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).
+
 Async availability: private.delayed_turn_window normalizes live child windows to
 48-hour Last Call / 72-hour expiry; existing per-game reducers still own playable
 clocks and outcomes. Migration 20261119011153 and supabase/delayed/timeout72*.sql

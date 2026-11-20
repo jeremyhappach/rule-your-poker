@@ -1,3 +1,7 @@
+# November 19, 2026 — Five Alive relative tiers are independent of vocabulary
+
+An immutable difficulty catalog and per-assignment tier/multiplier snapshots update new allocations while preserving the existing global shuffle and no-repeat cursor. Old assignments fall back to their original frozen bank tiers. Difficulty follows the approved relative composite ranking with tied scores grouped; familiarity remains prior eligibility, with no answers added or removed. See [qualification](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).
+
 # 2026-11-18 — Async availability passes through the existing game owner
 
 Jeremy approved a shared 72-hour availability window with 48-hour Last Call.

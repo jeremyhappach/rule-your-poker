@@ -1,0 +1,120 @@
+-- Approved relative difficulty; preserve the existing v3 pool, shuffle and cursor.
+CREATE TABLE IF NOT EXISTS private.five_alive_difficulty_versions (
+ version text PRIMARY KEY, pool_version text NOT NULL REFERENCES private.five_alive_pool(version),
+ rule_version text NOT NULL CHECK(rule_version='five-alive/1'),
+ tiers jsonb NOT NULL CHECK(jsonb_typeof(tiers)='object'),
+ multipliers integer[] NOT NULL CHECK(multipliers=ARRAY[80,100,120,140,160]),
+ tiers_sha256 text NOT NULL CHECK(tiers_sha256 ~ '^[0-9a-f]{64}$'),
+ review_sha256 text NOT NULL CHECK(review_sha256 ~ '^[0-9a-f]{64}$'),
+ UNIQUE(version,pool_version)
+);
+CREATE TABLE IF NOT EXISTS private.five_alive_difficulty_current (
+ pool_version text PRIMARY KEY REFERENCES private.five_alive_pool(version), difficulty_version text NOT NULL,
+ FOREIGN KEY(difficulty_version,pool_version) REFERENCES private.five_alive_difficulty_versions(version,pool_version)
+);
+CREATE TABLE IF NOT EXISTS private.five_alive_allocation_difficulty (
+ mode text NOT NULL, owner_id uuid NOT NULL, round smallint NOT NULL,
+ difficulty_version text NOT NULL REFERENCES private.five_alive_difficulty_versions(version),
+ difficulty smallint NOT NULL CHECK(difficulty BETWEEN 1 AND 5),
+ multiplier_percent smallint NOT NULL CHECK(multiplier_percent=60+20*difficulty),
+ PRIMARY KEY(mode,owner_id,round),
+ FOREIGN KEY(mode,owner_id,round) REFERENCES private.five_alive_allocations(mode,owner_id,round)
+);
+ALTER TABLE private.five_alive_difficulty_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE private.five_alive_difficulty_current ENABLE ROW LEVEL SECURITY;
+ALTER TABLE private.five_alive_allocation_difficulty ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON private.five_alive_difficulty_versions,private.five_alive_difficulty_current,private.five_alive_allocation_difficulty FROM PUBLIC,anon,authenticated,service_role;
+CREATE OR REPLACE FUNCTION private.five_alive_difficulty_frozen() RETURNS trigger
+LANGUAGE plpgsql SET search_path='' AS $$ BEGIN RAISE EXCEPTION 'five_alive:difficulty_frozen'; END $$;
+REVOKE ALL ON FUNCTION private.five_alive_difficulty_frozen() FROM PUBLIC,anon,authenticated,service_role;
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT FROM pg_trigger WHERE tgrelid='private.five_alive_difficulty_versions'::regclass AND tgname='five_alive_difficulty_frozen') THEN
+  CREATE TRIGGER five_alive_difficulty_frozen BEFORE UPDATE OR DELETE ON private.five_alive_difficulty_versions FOR EACH ROW EXECUTE FUNCTION private.five_alive_difficulty_frozen();
+ END IF;
+ IF NOT EXISTS(SELECT FROM pg_trigger WHERE tgrelid='private.five_alive_allocation_difficulty'::regclass AND tgname='five_alive_difficulty_frozen') THEN
+  CREATE TRIGGER five_alive_difficulty_frozen BEFORE UPDATE OR DELETE ON private.five_alive_allocation_difficulty FOR EACH ROW EXECUTE FUNCTION private.five_alive_difficulty_frozen();
+ END IF;
+END $$;
+-- The cutover takes the same lock as allocation, without changing the cycle.
+DO $$ BEGIN PERFORM 1 FROM private.five_alive_pool WHERE version='esdb-five-alive/3' FOR UPDATE; END $$;
+INSERT INTO private.five_alive_difficulty_versions(version,pool_version,rule_version,tiers,multipliers,tiers_sha256,review_sha256)
+VALUES('five-alive-relative/1','esdb-five-alive/3','five-alive/1','{"ABBEY":4,"ABOUT":2,"ABOVE":3,"ABYSS":3,"ACORN":2,"ACTOR":2,"ADAPT":3,"ADEPT":1,"ADMIT":3,"ADOPT":2,"ADULT":3,"AFTER":3,"AGAIN":3,"AGENT":1,"AGILE":3,"AGREE":3,"AHEAD":3,"AISLE":2,"ALARM":3,"ALBUM":3,"ALERT":1,"ALIEN":1,"ALIGN":2,"ALIKE":3,"ALIVE":3,"ALLEY":3,"ALLOT":3,"ALLOW":4,"ALLOY":4,"ALOFT":3,"ALONE":1,"ALONG":2,"ALOUD":3,"ALTER":2,"AMAZE":5,"AMBER":3,"AMONG":2,"AMPLE":3,"AMUSE":3,"ANGEL":3,"ANGER":3,"ANGLE":3,"ANKLE":4,"ANVIL":3,"APART":3,"APPLE":4,"APPLY":4,"APRON":2,"ARENA":3,"ARGUE":2,"ARISE":1,"ARMOR":3,"AROMA":3,"ARROW":3,"ASIDE":1,"ASSET":1,"ATLAS":2,"ATTIC":3,"AUDIO":3,"AUDIT":3,"AVOID":3,"AWAIT":3,"AWAKE":5,"AWARD":4,"AWARE":3,"AWFUL":4,"AZURE":3,"BACON":2,"BADGE":3,"BAGEL":4,"BAGGY":5,"BAKER":4,"BANJO":4,"BARGE":2,"BASIC":3,"BASIL":2,"BASIN":3,"BASIS":3,"BATCH":5,"BATHE":2,"BATON":2,"BEACH":3,"BEARD":2,"BEAST":3,"BEEFY":5,"BEGIN":3,"BEIGE":5,"BELCH":3,"BELLY":4,"BELOW":3,"BENCH":2,"BERET":3,"BERRY":5,"BIKER":4,"BINGO":4,"BIRCH":3,"BIRTH":2,"BISON":3,"BLACK":3,"BLADE":4,"BLAME":4,"BLAND":2,"BLANK":3,"BLAST":1,"BLAZE":5,"BLEND":2,"BLESS":2,"BLIMP":3,"BLIND":3,"BLINK":3,"BLOCK":4,"BLOOM":4,"BLUFF":4,"BLURB":4,"BOARD":2,"BOAST":3,"BONUS":2,"BOOST":2,"BOOTH":4,"BOUND":5,"BOXER":5,"BRAID":1,"BRAIN":3,"BRAKE":4,"BRAND":2,"BRASS":3,"BRAVE":4,"BREAD":3,"BREAK":3,"BRICK":3,"BRIDE":3,"BRIEF":3,"BRINE":3,"BRING":3,"BRISK":3,"BROAD":2,"BROIL":3,"BROOK":5,"BROOM":4,"BROTH":2,"BROWN":4,"BRUSH":3,"BUGGY":5,"BUGLE":4,"BUILD":3,"BULKY":4,"BUMPY":4,"BUNCH":3,"BUNNY":5,"BURST":2,"BUSHY":3,"BUYER":5,"CABIN":2,"CABLE":4,"CAMEL":4,"CANAL":2,"CANDY":3,"CANOE":1,"CARGO":3,"CARRY":3,"CARVE":3,"CATCH":5,"CATER":1,"CAUSE":1,"CEASE":2,"CEDAR":2,"CELLO":3,"CHAIN":3,"CHAIR":2,"CHALK":3,"CHARM":2,"CHART":1,"CHASE":1,"CHEAP":3,"CHECK":4,"CHEEK":4,"CHEER":4,"CHESS":3,"CHEST":1,"CHEWY":5,"CHICK":4,"CHIEF":3,"CHILD":3,"CHILI":5,"CHILL":5,"CHIME":3,"CHIRP":3,"CHIVE":4,"CHOIR":2,"CHORD":3,"CHORE":2,"CHUCK":4,"CHUMP":3,"CHUNK":3,"CHUTE":1,"CIDER":3,"CIVIC":5,"CIVIL":4,"CLAIM":2,"CLAMP":2,"CLASP":3,"CLASS":3,"CLEAN":2,"CLEAR":2,"CLEAT":1,"CLERK":3,"CLICK":4,"CLIFF":5,"CLIMB":3,"CLOAK":3,"CLOCK":4,"CLONE":1,"CLOSE":1,"CLOTH":1,"CLOUD":3,"CLOUT":1,"CLOVE":3,"CLOWN":3,"CLUMP":3,"COACH":3,"COAST":3,"COCOA":4,"COLOR":3,"COMET":3,"COMFY":4,"COMIC":3,"COMMA":4,"CORAL":1,"COUCH":3,"COUGH":4,"COUNT":1,"COURT":1,"COVER":4,"COYLY":3,"CRAFT":2,"CRANE":3,"CRANK":3,"CRASH":3,"CRATE":1,"CRAWL":4,"CRAZY":5,"CREAK":3,"CREAM":3,"CREEK":4,"CREPE":3,"CREST":1,"CRIME":3,"CRISP":2,"CROSS":3,"CROWD":3,"CROWN":3,"CRUMB":2,"CRUST":1,"CUBIC":3,"CUMIN":2,"CURLY":3,"CURRY":4,"CURVE":3,"CYCLE":3,"DAILY":3,"DAIRY":2,"DAISY":2,"DANCE":2,"DEATH":1,"DEBUG":3,"DEBUT":3,"DECAF":3,"DECAL":3,"DECOR":2,"DELAY":3,"DENIM":3,"DENSE":3,"DEPOT":3,"DEPTH":3,"DETER":3,"DIARY":2,"DIGIT":4,"DINER":2,"DITCH":3,"DIVER":4,"DIZZY":5,"DODGE":4,"DONUT":1,"DOUBT":2,"DOUGH":4,"DOWEL":3,"DOZEN":3,"DRAFT":3,"DRAIN":3,"DRAMA":3,"DRAPE":3,"DREAM":3,"DRESS":2,"DRIFT":3,"DRILL":4,"DRINK":3,"DRIVE":3,"DRYER":4,"DUSTY":3,"DWARF":4,"DWELL":4,"EAGER":5,"EAGLE":4,"EARLY":3,"EARTH":2,"EASEL":3,"EIGHT":4,"ELBOW":3,"ELECT":3,"EMBER":5,"EMPTY":3,"ENJOY":4,"ENTER":3,"ENTRY":2,"EPOCH":2,"EQUAL":4,"EQUIP":4,"ERASE":3,"ERROR":3,"ESSAY":3,"EVADE":5,"EVENT":3,"EXACT":3,"EXCEL":4,"EXILE":5,"EXIST":2,"EXTRA":3,"FABLE":4,"FACET":2,"FAITH":2,"FALSE":2,"FANCY":3,"FAULT":3,"FAVOR":5,"FEAST":3,"FENCE":4,"FERRY":5,"FETCH":3,"FEVER":5,"FIBER":4,"FIELD":3,"FIFTH":5,"FIFTY":4,"FIGHT":5,"FINAL":3,"FINCH":4,"FIRST":1,"FIZZY":5,"FJORD":5,"FLAIR":3,"FLAKE":5,"FLAME":4,"FLASH":3,"FLASK":3,"FLEET":3,"FLOAT":3,"FLOCK":4,"FLOOD":4,"FLOOR":5,"FLOSS":3,"FLOUR":3,"FLUFF":5,"FLUID":3,"FLUTE":2,"FOAMY":3,"FOCAL":4,"FOCUS":2,"FOGGY":5,"FORCE":2,"FORGE":4,"FORTH":4,"FORTY":3,"FOUND":5,"FOYER":5,"FRAIL":3,"FRAME":4,"FRESH":2,"FRONT":1,"FROST":2,"FROWN":3,"FRUIT":2,"FUDGE":5,"FULLY":5,"FUNNY":5,"FURRY":5,"FUTON":3,"FUZZY":5,"GAUGE":4,"GAUZE":4,"GECKO":3,"GIANT":1,"GIVEN":4,"GLASS":4,"GLAZE":5,"GLIDE":3,"GLOBE":3,"GLOOM":4,"GLORY":4,"GLOSS":3,"GLOVE":3,"GNOME":3,"GOOEY":4,"GOOSE":4,"GOURD":3,"GRACE":4,"GRADE":3,"GRAIN":3,"GRAND":1,"GRANT":1,"GRAPE":4,"GRAPH":4,"GRASP":2,"GRASS":2,"GRATE":2,"GRAVY":5,"GRAZE":5,"GREAT":2,"GREEN":3,"GREET":3,"GRIEF":4,"GRILL":4,"GRIND":2,"GROUP":3,"GROVE":3,"GROWL":4,"GUARD":3,"GUAVA":5,"GUESS":3,"GUEST":2,"GUIDE":4,"GUMMY":5,"GUPPY":5,"GUSTY":3,"HABIT":2,"HANDY":4,"HAPPY":5,"HASTE":3,"HATCH":5,"HAUNT":2,"HAVEN":3,"HAZEL":5,"HEART":1,"HEAVY":3,"HEDGE":4,"HERON":2,"HIKER":5,"HILLY":4,"HINGE":3,"HIPPO":4,"HOBBY":5,"HONEY":3,"HONOR":3,"HORSE":2,"HOTEL":2,"HOUND":5,"HOUSE":2,"HOVER":4,"HUMAN":3,"HUMID":3,"HUMOR":3,"HURRY":4,"ICING":4,"IDEAL":3,"IGLOO":4,"IMAGE":3,"INDEX":4,"INLAY":3,"INLET":2,"INNER":4,"INPUT":2,"IRONY":3,"ISSUE":3,"ITCHY":4,"IVORY":4,"JAZZY":5,"JELLY":5,"JEWEL":4,"JOINT":3,"JOLLY":5,"JUDGE":4,"JUICE":4,"JUICY":4,"JUMBO":4,"JUMPY":5,"KAYAK":5,"KAZOO":5,"KHAKI":3,"KIOSK":3,"KNACK":3,"KNEAD":3,"KNEEL":4,"KNIFE":4,"KNOCK":3,"KOALA":3,"LABEL":3,"LABOR":3,"LADLE":5,"LAPEL":3,"LARGE":2,"LASER":1,"LASSO":2,"LATCH":4,"LAUGH":3,"LAYER":4,"LEAFY":4,"LEAKY":3,"LEARN":2,"LEASE":2,"LEASH":1,"LEAST":3,"LEAVE":4,"LEDGE":4,"LEGAL":3,"LEMON":3,"LEMUR":3,"LEVEL":5,"LEVER":5,"LIGHT":5,"LILAC":3,"LIMIT":3,"LINEN":3,"LITER":3,"LLAMA":4,"LOBBY":4,"LOCAL":4,"LOGIC":3,"LOOSE":3,"LOYAL":3,"LUCKY":3,"LUNAR":2,"LUNCH":2,"LYMPH":3,"LYRIC":2,"MAGIC":3,"MAGMA":5,"MAJOR":4,"MAKER":4,"MANGO":3,"MANOR":2,"MAPLE":4,"MARCH":3,"MARSH":2,"MATCH":5,"MAYBE":4,"MAYOR":4,"MEDAL":3,"MELON":3,"MERGE":4,"MERIT":1,"MERRY":5,"MESSY":3,"METAL":2,"METER":2,"MIDST":2,"MIGHT":5,"MILKY":4,"MINCE":3,"MINOR":2,"MINTY":3,"MINUS":2,"MISTY":2,"MIXER":5,"MODEL":3,"MODEM":3,"MOIST":1,"MONEY":3,"MONTH":2,"MOOSE":3,"MOSSY":3,"MOTEL":3,"MOTOR":3,"MOTTO":3,"MOUND":5,"MOUNT":2,"MOUSE":3,"MOUTH":4,"MOVIE":3,"MOWER":5,"MUDDY":5,"MULCH":3,"MUMMY":5,"MURAL":3,"MUSIC":2,"NANNY":5,"NEVER":5,"NEWLY":4,"NICHE":3,"NIECE":4,"NIGHT":3,"NINTH":3,"NOISE":1,"NOISY":2,"NORTH":2,"NOTCH":2,"NOVEL":3,"NURSE":2,"NYLON":4,"OASIS":3,"OCCUR":3,"OCEAN":2,"ODDLY":4,"OFFER":5,"OFTEN":3,"OLIVE":3,"ONION":4,"OPERA":3,"ORBIT":2,"ORDER":3,"ORGAN":2,"OTHER":2,"OTTER":4,"OUNCE":2,"OUTER":3,"OWNER":4,"OXIDE":3,"OZONE":5,"PAINT":1,"PANDA":4,"PANEL":3,"PAPER":5,"PARKA":4,"PARTY":1,"PASTA":2,"PASTE":4,"PATCH":5,"PATIO":3,"PATTY":4,"PAUSE":2,"PEACE":3,"PEACH":2,"PEARL":2,"PECAN":2,"PEDAL":2,"PENNY":4,"PERCH":3,"PETAL":2,"PHASE":2,"PHONE":2,"PHOTO":2,"PIANO":1,"PIECE":3,"PILOT":2,"PITCH":3,"PIXEL":5,"PIZZA":4,"PLACE":3,"PLAID":2,"PLAIN":2,"PLANE":3,"PLANK":3,"PLANT":1,"PLATE":1,"PLEAT":1,"PLUSH":2,"POINT":3,"PORCH":2,"POUCH":2,"POUND":4,"POWER":4,"PRAWN":3,"PRESS":2,"PRICE":3,"PRIDE":2,"PRIME":4,"PRINT":1,"PRIOR":3,"PRISM":2,"PRIZE":5,"PROOF":4,"PROUD":3,"PROVE":3,"PRUNE":2,"PULSE":2,"PUPPY":5,"PUREE":3,"PURSE":2,"PUTTY":4,"QUACK":4,"QUAIL":3,"QUART":3,"QUEEN":4,"QUEUE":5,"QUICK":3,"QUIET":3,"QUILL":5,"QUILT":3,"QUITE":3,"QUOTA":3,"QUOTE":2,"RACER":4,"RADAR":3,"RADIO":2,"RAINY":1,"RAISE":1,"RALLY":4,"RANCH":3,"RANGE":2,"RAPID":2,"RATIO":1,"REACH":1,"REACT":1,"READY":3,"REALM":2,"RECAP":2,"REFER":5,"RELAX":4,"RELAY":3,"RENEW":3,"REPAY":3,"REPLY":4,"RERUN":3,"RESET":1,"REUSE":2,"RHYME":4,"RIDGE":2,"RIGHT":2,"RIGID":3,"RINSE":1,"RIPEN":2,"RIVER":5,"RIVET":3,"ROAST":1,"ROBIN":2,"ROBOT":3,"ROCKY":3,"ROOMY":4,"ROTOR":4,"ROUGH":3,"ROUND":3,"ROUTE":1,"ROYAL":2,"RULER":4,"RURAL":3,"SALAD":2,"SALON":1,"SALSA":3,"SALTY":1,"SANDY":3,"SATIN":1,"SAUCE":1,"SAVVY":4,"SCALE":1,"SCARF":3,"SCENE":2,"SCENT":1,"SCONE":2,"SCOOP":3,"SCOPE":2,"SCORE":1,"SCRAP":2,"SCRUB":3,"SCUBA":3,"SEDAN":1,"SENSE":3,"SERVE":3,"SETUP":2,"SHADE":4,"SHAKE":4,"SHAKY":3,"SHAPE":4,"SHARE":1,"SHARK":3,"SHEEP":3,"SHEER":3,"SHEET":2,"SHELF":4,"SHELL":4,"SHIFT":2,"SHINE":2,"SHINY":3,"SHIRT":1,"SHOCK":3,"SHORE":2,"SHORT":1,"SHOUT":2,"SHRED":2,"SHRUB":2,"SIEVE":3,"SIGHT":3,"SILKY":4,"SILLY":4,"SINCE":2,"SIXTH":3,"SIXTY":3,"SKATE":2,"SKIER":2,"SKILL":4,"SKIRT":2,"SLACK":1,"SLANT":1,"SLATE":1,"SLEEK":4,"SLEEP":3,"SLEET":2,"SLICE":1,"SLICK":3,"SLIDE":2,"SLOPE":3,"SLOTH":2,"SLUSH":3,"SMALL":3,"SMART":1,"SMELL":4,"SMILE":2,"SMOKE":4,"SNACK":2,"SNAIL":1,"SNAKE":3,"SNIFF":4,"SNOUT":2,"SNOWY":3,"SOAPY":3,"SOLAR":1,"SOLID":1,"SOLVE":2,"SONAR":2,"SORRY":3,"SOUND":2,"SOUTH":1,"SPACE":3,"SPARE":1,"SPARK":3,"SPEAK":2,"SPEED":4,"SPELL":4,"SPEND":2,"SPICE":2,"SPICY":3,"SPILL":4,"SPINE":2,"SPLIT":1,"SPOOF":4,"SPOOL":4,"SPOON":3,"SPORT":3,"SPOUT":3,"SPRAY":3,"SPREE":3,"SQUAD":2,"SQUID":3,"STACK":3,"STAFF":5,"STAGE":3,"STAIN":1,"STAIR":1,"STAKE":2,"STAMP":3,"STAND":1,"STARE":1,"START":3,"STATE":3,"STEAK":3,"STEAM":2,"STEEL":2,"STEEP":3,"STICK":3,"STIFF":5,"STILL":3,"STOCK":3,"STONE":1,"STOOL":3,"STORE":2,"STORK":4,"STORM":3,"STORY":4,"STOVE":3,"STRAP":3,"STRAW":3,"STRAY":4,"STRIP":1,"STRUM":1,"STUDY":3,"STUFF":5,"STUMP":3,"STYLE":2,"SUEDE":3,"SUGAR":3,"SUNNY":4,"SWAMP":3,"SWEAT":2,"SWEEP":4,"SWEET":3,"SWIFT":4,"SWING":3,"SWIRL":2,"SWORD":2,"SYRUP":3,"TABBY":5,"TABLE":1,"TAFFY":5,"TALLY":4,"TANGY":4,"TASTE":3,"TASTY":3,"TEACH":1,"TEMPO":2,"TENSE":1,"TENTH":2,"THANK":1,"THEIR":2,"THEME":3,"THERE":1,"THICK":3,"THING":3,"THINK":3,"THIRD":1,"THOSE":1,"THREE":3,"THROW":3,"THUMB":4,"THUMP":3,"THYME":4,"TIARA":2,"TIDAL":2,"TIGER":4,"TIGHT":5,"TIMER":3,"TIMID":3,"TIRED":3,"TITLE":3,"TOAST":3,"TODAY":3,"TOKEN":3,"TOOTH":4,"TOPIC":1,"TOTAL":3,"TOUCH":2,"TOUGH":3,"TOWEL":3,"TOWER":3,"TRACE":1,"TRACK":2,"TRACT":3,"TRADE":1,"TRAIL":1,"TRAIN":2,"TREAD":1,"TREAT":2,"TREND":1,"TRIAL":1,"TRIBE":2,"TRICK":2,"TROUT":2,"TRUCK":3,"TRULY":3,"TRUNK":3,"TRUST":2,"TRUTH":3,"TULIP":3,"TUNER":3,"TUTOR":3,"TWICE":2,"TWINE":3,"TWIRL":2,"TWIST":3,"UNCLE":2,"UNDER":3,"UNION":3,"UNITY":2,"UNTIE":2,"UNZIP":3,"UPPER":5,"URBAN":2,"USAGE":3,"USUAL":3,"VALID":3,"VALUE":4,"VALVE":5,"VAPOR":4,"VENUE":4,"VERGE":4,"VERSE":3,"VIDEO":3,"VINYL":5,"VIRUS":2,"VISIT":3,"VISOR":2,"VITAL":3,"VIVID":5,"VOCAL":4,"VOICE":3,"VOTER":3,"VOWEL":5,"WAFER":5,"WAGON":3,"WAIST":1,"WAIVE":4,"WALTZ":4,"WASTE":4,"WATCH":5,"WATER":3,"WEAVE":5,"WEDGE":5,"WEIGH":3,"WEIRD":3,"WHALE":3,"WHEAT":3,"WHEEL":4,"WHERE":4,"WHICH":4,"WHILE":4,"WHIRL":4,"WHISK":3,"WHITE":3,"WHOLE":3,"WIDEN":3,"WIDTH":4,"WINDY":4,"WIPER":5,"WOMAN":2,"WORLD":3,"WORRY":4,"WORTH":4,"WRIST":2,"WRITE":3,"WRONG":3,"YACHT":3,"YEAST":4,"YOUNG":4,"YOUTH":4,"ZEBRA":4}'::jsonb,
+ ARRAY[80,100,120,140,160],'f7b8d5a9eadc2cb40a4f7e6847afa88afaf669b59c628b8fd76b70d5ccee2670','266887e9df3f421153846f0859161c6e855ed7ecb51915d41383e08f650f0c60') ON CONFLICT(version) DO NOTHING;
+DO $$ DECLARE v private.five_alive_difficulty_versions; actual text; BEGIN
+ SELECT * INTO STRICT v FROM private.five_alive_difficulty_versions WHERE version='five-alive-relative/1';
+ IF v.pool_version<>'esdb-five-alive/3' OR v.rule_version<>'five-alive/1' OR v.multipliers<>ARRAY[80,100,120,140,160]
+ OR v.tiers_sha256<>'f7b8d5a9eadc2cb40a4f7e6847afa88afaf669b59c628b8fd76b70d5ccee2670' OR v.review_sha256<>'266887e9df3f421153846f0859161c6e855ed7ecb51915d41383e08f650f0c60'
+ OR (SELECT count(*) FROM jsonb_each_text(v.tiers))<>1021
+ OR EXISTS((SELECT key FROM jsonb_each_text(v.tiers)) EXCEPT (SELECT word FROM private.five_alive_answers WHERE version=v.pool_version))
+ OR EXISTS((SELECT word FROM private.five_alive_answers WHERE version=v.pool_version) EXCEPT (SELECT key FROM jsonb_each_text(v.tiers)))
+ OR EXISTS(SELECT FROM jsonb_each_text(v.tiers) WHERE value !~ '^[1-5]$') THEN RAISE EXCEPTION 'five_alive:difficulty_catalog_mismatch'; END IF;
+ SELECT encode(extensions.digest(string_agg(key||' '||value,E'\n' ORDER BY key COLLATE "C")||E'\n','sha256'),'hex') INTO actual FROM jsonb_each_text(v.tiers);
+ IF actual<>v.tiers_sha256 THEN RAISE EXCEPTION 'five_alive:difficulty_hash_mismatch'; END IF;
+ IF (SELECT md5(string_agg(word||' '||difficulty,E'\n' ORDER BY word COLLATE "C")||E'\n') FROM private.five_alive_answers WHERE version=v.pool_version)<>'c5d91b2d114080c6f144514a638ddb95' THEN RAISE EXCEPTION 'five_alive:baseline_bank_changed'; END IF;
+END $$;
+DO $guard$ DECLARE definition text; BEGIN
+ definition:=pg_get_functiondef('private.five_alive_allocate(text,uuid,text)'::regprocedure);
+ IF md5(definition) NOT IN('2750c0e49664f62cb4a752d21c42779a','e87e877680c4c20e2de9a33bf22984b0') THEN RAISE EXCEPTION 'five_alive:allocator_preimage_changed'; END IF;
+ EXECUTE $definition$CREATE OR REPLACE FUNCTION private.five_alive_allocate(p_mode text, p_owner uuid, p_version text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+DECLARE pool private.five_alive_pool; n integer; chosen text[]:=ARRAY[]::text[]; picked text; result jsonb; existing integer; relative_version private.five_alive_difficulty_versions; tier_i smallint;
+BEGIN
+ IF p_mode NOT IN ('arcade','async') OR p_mode IS NULL OR p_owner IS NULL OR p_version IS NULL THEN
+  RAISE EXCEPTION 'five_alive:invalid_allocation';
+ END IF;
+ -- The global pool lock is also the replay/concurrency lock for every owner.
+ SELECT * INTO STRICT pool FROM private.five_alive_pool WHERE version=p_version FOR UPDATE;
+ SELECT count(*) INTO existing FROM private.five_alive_allocations WHERE mode=p_mode AND owner_id=p_owner;
+ IF existing NOT IN (0,3) OR EXISTS(SELECT FROM private.five_alive_allocations WHERE mode=p_mode AND owner_id=p_owner AND version<>p_version) THEN
+  RAISE EXCEPTION 'five_alive:allocation_conflict';
+ END IF;
+ IF existing=0 THEN
+  -- Relative difficulty snapshots: selection and its global pool are unchanged.
+  SELECT d.* INTO relative_version FROM private.five_alive_difficulty_current c
+   JOIN private.five_alive_difficulty_versions d ON d.version=c.difficulty_version AND d.pool_version=c.pool_version
+   WHERE c.pool_version=p_version;
+  SELECT count(*) INTO n FROM private.five_alive_answers WHERE version=p_version;
+  IF n<3 THEN RAISE EXCEPTION 'five_alive:pool_too_small'; END IF;
+  FOR r IN 1..3 LOOP
+   IF pool.epoch=0 OR pool.cursor>=n THEN
+    pool.epoch:=pool.epoch+1;pool.cursor:=0;
+    -- pg_catalog.gen_random_uuid uses cryptographically strong randomness.
+    -- Move words already selected for this game (and the last prior word) to
+    -- the end on rollover, preventing cross-boundary duplicate game answers.
+    INSERT INTO private.five_alive_shuffle(version,epoch,position,word)
+    SELECT p_version,pool.epoch,row_number() OVER (ORDER BY (a.word=ANY(chosen) OR a.word=pool.last_word) NULLS FIRST,gen_random_uuid())::integer,a.word
+    FROM private.five_alive_answers a WHERE a.version=p_version;
+   END IF;
+   pool.cursor:=pool.cursor+1;
+   SELECT word INTO STRICT picked FROM private.five_alive_shuffle
+    WHERE version=p_version AND epoch=pool.epoch AND position=pool.cursor;
+   IF picked=ANY(chosen) THEN RAISE EXCEPTION 'five_alive:duplicate_answer'; END IF;
+   chosen:=array_append(chosen,picked);pool.last_word:=picked;
+   INSERT INTO private.five_alive_allocations(mode,owner_id,version,round,word)
+    VALUES(p_mode,p_owner,p_version,r,picked);
+   IF relative_version.version IS NOT NULL THEN
+    tier_i:=(relative_version.tiers->>picked)::smallint;
+    IF tier_i IS NULL OR tier_i NOT BETWEEN 1 AND 5 THEN RAISE EXCEPTION 'five_alive:missing_difficulty'; END IF;
+    INSERT INTO private.five_alive_allocation_difficulty(mode,owner_id,round,difficulty_version,difficulty,multiplier_percent)
+     VALUES(p_mode,p_owner,r,relative_version.version,tier_i,relative_version.multipliers[tier_i]);
+   END IF;
+  END LOOP;
+  UPDATE private.five_alive_pool SET epoch=pool.epoch,cursor=pool.cursor,last_word=pool.last_word WHERE version=p_version;
+ END IF;
+ SELECT jsonb_agg(jsonb_build_object('word',a.word,'difficulty',coalesce(d.difficulty,w.difficulty)) ORDER BY a.round) INTO result
+ FROM private.five_alive_allocations a JOIN private.five_alive_answers w USING(version,word)
+ LEFT JOIN private.five_alive_allocation_difficulty d ON d.mode=a.mode AND d.owner_id=a.owner_id AND d.round=a.round
+ WHERE a.mode=p_mode AND a.owner_id=p_owner;
+ RETURN result;
+END $function$
+$definition$;
+END $guard$;
+REVOKE ALL ON FUNCTION private.five_alive_allocate(text,uuid,text) FROM PUBLIC,anon,authenticated,service_role;
+INSERT INTO private.five_alive_difficulty_current(pool_version,difficulty_version)
+VALUES('esdb-five-alive/3','five-alive-relative/1') ON CONFLICT(pool_version) DO NOTHING;
+DO $$ BEGIN
+ IF NOT EXISTS(SELECT FROM private.five_alive_difficulty_current WHERE pool_version='esdb-five-alive/3' AND difficulty_version='five-alive-relative/1') THEN RAISE EXCEPTION 'five_alive:difficulty_cutover_changed'; END IF;
+END $$;

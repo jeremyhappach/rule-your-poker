@@ -10,3 +10,8 @@ supabase/migrations/20261026224857_ptown_words_v1.sql text eol=lf
 supabase/ptown-words/*.sql text eol=lf
 supabase/migrations/20261026234550_ptown_words_fake_money_bots.sql text eol=lf
 supabase/migrations/20261026235142_ptown_words_bot_accepted_human_guard.sql text eol=lf
+
+# Five Alive difficulty hashes and allocator preimage are byte-exact.
+supabase/five-alive/difficulty-relative-v1.sql text eol=lf
+supabase/migrations/20261120004855_five_alive_relative_difficulty_v1.sql text eol=lf
+dev/five-alive/difficulty.allocator-preimage.sql text eol=lf

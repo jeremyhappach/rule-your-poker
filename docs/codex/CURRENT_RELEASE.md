@@ -1,3 +1,7 @@
+# Five Alive relative difficulty — November 19, 2026 — qualified; database installed
+
+Approved relative version `five-alive-relative/1` produces 101 / 204 / 410 / 202 / 104 answers. Existing match tiers, multipliers and results remain frozen; vocabulary and global no-repeat allocation remain unchanged. Candidate and installed rollback proofs plus local concurrency pass. Migration `20261120004855` is installed. TypeScript, 4,640 tests, Vite and the unchanged 90 MB limit pass (89,704,807 bytes). No qualification blockers remain; publication verification and owner smoke follow. See [checkpoint](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).
+
 # Async 72-hour availability and timeout recovery — November 18, 2026 — production deployed
 
 Jeremy approved 72-hour availability, Last Call at 48 hours, Words timeout

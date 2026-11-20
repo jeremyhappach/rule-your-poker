@@ -1,3 +1,7 @@
+# Relative difficulty version — November 19, 2026
+
+The unchanged approved vocabulary is `esdb-five-alive/3` (1,021 answers, 11,204 separate guesses). `answers.reviewed.v3.txt` retains original tiers for historical matches. New allocations use the independent `five-alive-relative/1` catalog reproduced in `difficulty.relative.v1.txt`; `difficulty.relative.review.json` retains the approved audit evidence and source pointers. Familiarity eligibility and all exclusion/review records remain unchanged. See [qualification](../../docs/codex/FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).
+
 # Five Alive vocabulary candidate
 
 Source: English Speller Database (ESDB), https://github.com/en-wl/wordlist,

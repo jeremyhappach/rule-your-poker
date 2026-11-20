@@ -1,3 +1,7 @@
+# November 19 relative difficulty update
+
+Version `five-alive-relative/1` preserves all 1,021 answers and historical assignments. See [relative difficulty checkpoint](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md) for distribution, deterministic resolution, database proofs and release status.
+
 # Five Alive local qualification — November 12, 2026
 
 ## November 17 production approval resumed — production Async gate passed
