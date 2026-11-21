@@ -22,16 +22,23 @@ try{
    if(['horses','yahtzee','run21'].includes(game)){const amount=page.getByRole('textbox');await amount.scrollIntoViewIfNeeded();await expect(amount).toBeInViewport();}
    await shot('setup-'+game);
    if(game==='holm-game'){
-    await page.getByRole('button',{name:/Pussy Tax \$/}).click();await expect(page.getByLabel('Pussy Tax enabled')).toBeVisible();await expect(page.getByLabel('Ante ($)',{exact:true})).not.toBeVisible();
+    await page.getByRole('button',{name:/Pussy Tax \$/}).click();await expect(page.getByLabel('Pussy Tax enabled')).toBeVisible();await expect(page.getByLabel('Ante ($)',{exact:true})).toBeVisible();
     await page.getByRole('button',{name:/Pot Max \$/}).click();await expect(page.getByLabel('Pussy Tax enabled')).not.toBeVisible();await expect(page.getByLabel('Pot Max enabled')).toBeVisible();
     await page.getByLabel('Rabbit Hunt').scrollIntoViewIfNeeded();await expect(page.getByLabel('Rabbit Hunt')).toBeInViewport();
+   }
+   await expect(page.locator('.midnight-setup-heading .midnight-art')).toHaveCount(1);await expect(page.locator('.midnight-setup .midnight-illustration')).toHaveCount(0);
+   if(game==='cribbage'){
+    await expect(page.getByRole('combobox',{name:'Game Mode'})).toBeVisible();await expect(page.getByRole('switch',{name:/Skunks/})).toBeVisible();await page.getByRole('combobox',{name:'Game Mode'}).selectOption('custom');await expect(page.getByLabel('Points to Win')).toBeVisible();await expect(page.getByRole('switch',{name:/Skunks/})).toHaveCount(0);await page.getByRole('combobox',{name:'Game Mode'}).selectOption('full');
    }
    await page.getByRole('button',{name:/← Back/}).click();
   }
   await page.goto('http://127.0.0.1:5197/delayed/new');await expect(page.getByRole('button',{name:'Run21',exact:true})).toBeVisible();await shot('async-picker');
+  await expect(page.getByText('PLAY ON YOUR SCHEDULE')).toHaveCount(0);await expect(page.getByText(/Two humans/)).toHaveCount(0);
+  await expect(page.getByText('The first player in each game is selected randomly.')).toHaveCount(0);await page.getByRole('button',{name:'Match information'}).click();await expect(page.getByRole('dialog',{name:'Match information'})).toBeVisible();await expect(page.getByText('Invitations expire in 72 hours.')).toBeVisible();await shot('async-info');await page.getByRole('button',{name:'Close',exact:true}).click();
+  await page.getByRole('button',{name:'Ptown Words',exact:true}).click();await shot('async-words-config');assert.ok(await page.locator('.midnight-illustration').evaluate(el=>{const art=el.querySelector('.midnight-art').getBoundingClientRect(),frame=el.getBoundingClientRect(),title=el.querySelector('h3').getBoundingClientRect();return art.top>=frame.top&&art.bottom<=frame.bottom&&art.left>=title.right&&art.right<=frame.right;}),'Words artwork stays beside its title and above Stake');await page.getByRole('button',{name:'← Back to games'}).click();
   await page.getByRole('button',{name:'Run21',exact:true}).click();await page.getByLabel('Stake 1',{exact:true}).fill('3');await shot('async-config');await page.getByRole('button',{name:'OK',exact:true}).click();
   await page.getByRole('button',{name:'Copy Run21, $3'}).click();await page.getByRole('button',{name:'Add Game'}).click();await page.getByRole('button',{name:'Run21',exact:true}).click();await page.getByRole('button',{name:'OK',exact:true}).click();await shot('async-review');
-  await page.getByRole('button',{name:'Choose Opponent'}).click();await page.getByLabel('Opponent',{exact:true}).selectOption('22222222-2222-4222-8222-222222222222');await expect(page.getByText('2× $3 Run21, 1× $5 Run21')).toBeVisible();await shot('async-opponent');
+  await page.getByRole('button',{name:'Choose Opponent'}).click();await expect(page.getByRole('button',{name:'Send Invite'})).toBeDisabled();await expect(page.getByText('Choose a human opponent to send your invitation.')).toHaveCount(0);await page.getByLabel('Opponent',{exact:true}).selectOption('22222222-2222-4222-8222-222222222222');await expect(page.getByText('2× $3 Run21, 1× $5 Run21')).toBeVisible();await shot('async-opponent');
   await page.getByRole('button',{name:/Games \(3\)/}).click();await page.getByRole('button',{name:'Choose Opponent'}).click();await expect(page.getByLabel('Opponent',{exact:true})).toHaveValue('22222222-2222-4222-8222-222222222222');
   await page.getByRole('button',{name:'Send Invite'}).click();await expect(page).toHaveURL('http://127.0.0.1:5197/delayed');
   const send=await page.evaluate(()=>window.midnightCalls.filter(c=>c.name==='delayed_create'));assert.equal(send.length,1);assert.deepEqual(send[0].args.p_lineup,[{game:'run21',stake:3},{game:'run21',stake:3},{game:'run21',stake:5}]);

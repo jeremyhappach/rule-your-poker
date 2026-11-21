@@ -1,5 +1,5 @@
-import {GameIllustration} from '@/components/midnight/GameArtwork';
-import {SettingRow,AmountControl,ToggleRow} from '@/components/midnight/Settings';
+import {GameArtwork} from '@/components/midnight/GameArtwork';
+import {SettingRow,InlineSettingRow,AmountControl,ToggleRow} from '@/components/midnight/Settings';
 import type {ReactNode} from 'react';
 import {FARKLE_ENDGAME_LABELS,type FarkleEndgame} from '@/lib/farkle/types';
 import {useChessAccess} from '@/hooks/useChessAccess';
@@ -269,7 +269,7 @@ const DealerGameSetupInner = ({
   }, []);
   // Selection step: game selection -> config
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
-  const [expandedSetting,setExpandedSetting]=useState<string|null>('Ante');
+  const [expandedSetting,setExpandedSetting]=useState<string|null>(null);
   const selectionGeneration = useRef(0);
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
@@ -907,7 +907,7 @@ const DealerGameSetupInner = ({
   };
 
   const handleGameSelect = async (gameType: string) => {
-    setExpandedSetting('Ante');
+    setExpandedSetting(null);
     if (selectionReason(gameType)) return;
     const generation = ++selectionGeneration.current;
     if (gameType === 'farkle') {
@@ -1172,10 +1172,14 @@ const DealerGameSetupInner = ({
   };
 
   const setting=(label:string,value:ReactNode,children:ReactNode)=><SettingRow key={label} label={label} value={value} open={expandedSetting===label} onToggle={()=>setExpandedSetting(old=>old===label?null:label)}>{children}</SettingRow>;
+  const inlineSetting=(label:string,children:ReactNode)=><InlineSettingRow key={label} label={label}>{children}</InlineSettingRow>;
   const amount=(label:string,value:string,onChange:(value:string)=>void,min=1,max?:number,prefix='$')=><AmountControl label={label} value={value} onChange={onChange} min={min} max={max} prefix={prefix}/>;
   const optionalAmount=(label:string,enabled:boolean,toggle:(value:boolean)=>void,value:string,change:(value:string)=>void)=>setting(label,enabled?'$'+value:'Off',<><ToggleRow label={label+' enabled'} checked={enabled} onChange={toggle}/>{enabled&&amount(label,value,change)}</>);
 
-  const heading=(title:string,instruction:string)=><div className="midnight-setup-heading"><div><small>PEORIA POKER LEAGUE</small><h2>{title}</h2><p>{dealerUsername}, {instruction}</p>{activeHarnessMap[selectedGameType]?.active&&<p className="text-red-400">Harness: {activeHarnessMap[selectedGameType].label}</p>}</div><div className="midnight-setup-clock">{timeLeft!==null&&<Badge variant={timeLeft<=10?'destructive':'default'}><Timer className="w-4 h-4"/>{timeLeft}s</Badge>}{pauseControl}</div></div>;
+  const heading=(title:string,instruction:string)=><header className="midnight-setup-heading">
+    <div className="midnight-setup-toolbar"><small>PEORIA POKER LEAGUE</small><div className="midnight-setup-clock">{timeLeft!==null&&<Badge variant={timeLeft<=10?'destructive':'default'}><Timer className="w-4 h-4"/>{timeLeft}s</Badge>}{pauseControl}</div></div>
+    <div className="midnight-setup-identity"><div><h2>{title}</h2><p>{dealerUsername}, {instruction}</p>{activeHarnessMap[selectedGameType]?.active&&<p className="text-red-400">Harness: {activeHarnessMap[selectedGameType].label}</p>}</div>{selectionStep==='config'&&<GameArtwork game={selectedGameType}/>}</div>
+  </header>;
 
   // Game selection step - tabbed layout with Cards vs Dice
   if (selectionStep === 'game') {
@@ -1265,11 +1269,11 @@ const DealerGameSetupInner = ({
     };
     return <div className="midnight-setup fixed inset-0 flex items-center justify-center" style={{ zIndex: SHELL_Z.MODAL_OVERLAY }} data-dealer-game-setup-step="config" data-dealer-game-setup-selected-game="farkle">
       <Card className="w-full max-w-md border-poker-gold bg-poker-felt"><CardContent className="space-y-4 p-6">
-        {heading('Farkle','configure your game')}<GameIllustration game="farkle"/>
+        {heading('Farkle','configure your game')}
         <div className="midnight-settings">
- {setting('Match Stake','$'+farkleDraft.stake,amount('Stake',farkleDraft.stake,stake=>setFarkleDraft({...farkleDraft,stake})))}
- {setting('Target Score',farkleDraft.target,<Input aria-label="Target Score" value={farkleDraft.target} inputMode="numeric" onChange={e=>setFarkleDraft({...farkleDraft,target:e.target.value})}/>)}
- {setting('Endgame',FARKLE_ENDGAME_LABELS[farkleDraft.endgame],<select aria-label="Endgame" value={farkleDraft.endgame} onChange={e=>setFarkleDraft({...farkleDraft,endgame:e.target.value as FarkleEndgame})}>{Object.entries(FARKLE_ENDGAME_LABELS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>)}
+ {inlineSetting('Match Stake',amount('Stake',farkleDraft.stake,stake=>setFarkleDraft({...farkleDraft,stake})))}
+ {inlineSetting('Target Score',<Input aria-label="Target Score" value={farkleDraft.target} inputMode="numeric" onChange={e=>setFarkleDraft({...farkleDraft,target:e.target.value})}/>)}
+ {inlineSetting('Endgame',<select aria-label="Endgame" value={farkleDraft.endgame} onChange={e=>setFarkleDraft({...farkleDraft,endgame:e.target.value as FarkleEndgame})}>{Object.entries(FARKLE_ENDGAME_LABELS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>)}
 </div>
         {localTest&&<p className="text-sm text-amber-200">TEST ONLY: isolated local scoring configuration.</p>}
         <div className="midnight-footer"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={isSubmitting || !!selectionReason("farkle")} onClick={submitFarkleSetup}>{localTest ? 'Start TEST ONLY Game' : 'Start Game'}</Button></div>
@@ -1284,7 +1288,6 @@ const DealerGameSetupInner = ({
       
       const gameDisplayName=findGame(selectedGameType)?.name??selectedGameType;
       const stakeLabel=['horses','ship-captain-crew','yahtzee','cribbage','gin-rummy'].includes(selectedGameType)?'Ante':'Match Stake';
-      const multiple=isCribbage||isGinRummy||['six-card-golf','mega-card-golf'].includes(selectedGameType);
       const cribLabels:Record<string,string>={full:'Full',half:'Half (61 points)',super_quick:'Quick',sprint:'Sprint',custom:'Custom'};
 
       return (
@@ -1301,21 +1304,20 @@ const DealerGameSetupInner = ({
               {heading(gameDisplayName,'configure your game')}
 
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-                <GameIllustration game={selectedGameType}/>
                 <div className="midnight-settings">
-                {multiple?setting(stakeLabel,'$'+anteAmount,amount(stakeLabel==='Ante'?'Ante ($)':'Match stake ($)',anteAmount,setAnteAmount)):<div className="midnight-direct"><label>{stakeLabel}</label>{amount(stakeLabel==='Ante'?'Ante ($)':'Match stake ($)',anteAmount,setAnteAmount)}</div>}
+                {inlineSetting(stakeLabel,amount(stakeLabel==='Ante'?'Ante ($)':'Match stake ($)',anteAmount,setAnteAmount))}
                 {selectedGameType==='mega-card-golf'&&megaCatalog&&megaConfig&&setting('Course',megaConfig.course.name,<MegaCompetitionSettings courses={megaCatalog.courses} value={megaConfig} onChange={setMegaConfig}/>)}
-                {selectedGameType==='six-card-golf'&&setting('Match length',golfHoles+' holes',<select id="golf-match-length" aria-label="Match length" value={golfHoles} onChange={e=>setGolfHoles(golfHoleCount(Number(e.target.value)))}>{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select>)}
+                {selectedGameType==='six-card-golf'&&inlineSetting('Match length',<select id="golf-match-length" aria-label="Match length" value={golfHoles} onChange={e=>setGolfHoles(golfHoleCount(Number(e.target.value)))}>{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select>)}
                 {isCribbage&&<>
-                  {setting('Game Mode',cribLabels[cribbageGameMode],<select aria-label="Game Mode" value={cribbageGameMode} onChange={e=>setCribbageGameMode(e.target.value as import('@/lib/cribbageTypes').CribbageGameMode)}>{CRIBBAGE_GAME_MODES.map(mode=><option key={mode.id} value={mode.id}>{cribLabels[mode.id]} — {mode.description}</option>)}</select>)}
-                  {cribbageGameMode==='custom'&&setting('Points to Win',customPointsToWin,<Input aria-label="Points to Win" type="number" min="1" value={customPointsToWin} onChange={e=>setCustomPointsToWin(e.target.value)}/>)}
+                  {inlineSetting('Game Mode',<select aria-label="Game Mode" value={cribbageGameMode} onChange={e=>setCribbageGameMode(e.target.value as import('@/lib/cribbageTypes').CribbageGameMode)}>{CRIBBAGE_GAME_MODES.map(mode=><option key={mode.id} value={mode.id}>{cribLabels[mode.id]} — {mode.description}</option>)}</select>)}
+                  {cribbageGameMode==='custom'&&inlineSetting('Points to Win',<Input aria-label="Points to Win" type="number" min="1" value={customPointsToWin} onChange={e=>setCustomPointsToWin(e.target.value)}/>)}
                   {cribbageGameMode!=='sprint'&&cribbageGameMode!=='custom'&&<ToggleRow label="Skunks" description="2× & 3× payout multipliers" checked={skunksEnabled} onChange={setSkunksEnabled}/>}
                 </>}
                 {isGinRummy&&<>
-                  {setting('Match Target',ginRummyPointsToWin,<select aria-label="Match Target" value={ginRummyPointsToWin} onChange={e=>setGinRummyPointsToWin(Number(e.target.value))}><option value={100}>Standard — 100 pts</option><option value={50}>Short — 50 pts</option></select>)}
-                  {setting('Per-Point Value',ginRummyPerPointValue>0?'$'+ginRummyPerPointValue:'Off',amount('Per-Point Value ($)',String(ginRummyPerPointValue),v=>setGinRummyPerPointValue(parseInt(v)||0),0))}
-                  {setting('Gin',ginRummyGinBonus+' pts',amount('Gin (pts)',String(ginRummyGinBonus),v=>setGinRummyGinBonus(parseInt(v)||0),0,undefined,''))}
-                  {setting('Undercut',ginRummyUndercutBonus+' pts',amount('Undercut (pts)',String(ginRummyUndercutBonus),v=>setGinRummyUndercutBonus(parseInt(v)||0),0,undefined,''))}
+                  {inlineSetting('Match Target',<select aria-label="Match Target" value={ginRummyPointsToWin} onChange={e=>setGinRummyPointsToWin(Number(e.target.value))}><option value={100}>Standard — 100 pts</option><option value={50}>Short — 50 pts</option></select>)}
+                  {inlineSetting('Per-Point Value',amount('Per-Point Value ($)',String(ginRummyPerPointValue),v=>setGinRummyPerPointValue(parseInt(v)||0),0))}
+                  {inlineSetting('Gin',amount('Gin (pts)',String(ginRummyGinBonus),v=>setGinRummyGinBonus(parseInt(v)||0),0,undefined,''))}
+                  {inlineSetting('Undercut',amount('Undercut (pts)',String(ginRummyUndercutBonus),v=>setGinRummyUndercutBonus(parseInt(v)||0),0,undefined,''))}
                 </>}
                 </div>
               </div>
@@ -1358,14 +1360,13 @@ const DealerGameSetupInner = ({
           {heading(findGame(selectedGameType)?.name??selectedGameType,'configure your game')}
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-            <GameIllustration game={selectedGameType}/>
             <div className="midnight-settings">
-              {setting('Ante','$'+anteAmount,amount('Ante ($)',anteAmount,setAnteAmount))}
-              {selectedGameType==='holm-game'&&setting('Chucky Cards',chuckyCards,amount('Chucky Cards',chuckyCards,setChuckyCards,2,7,''))}
+              {inlineSetting('Ante',amount('Ante ($)',anteAmount,setAnteAmount))}
+              {selectedGameType==='holm-game'&&inlineSetting('Chucky Cards',amount('Chucky Cards',chuckyCards,setChuckyCards,2,7,''))}
               {selectedGameType==='3-5-7'&&<>
-                {setting('Leg Value','$'+legValue,amount('Leg Value ($)',legValue,setLegValue))}
-                {setting('Rollover','$'+rolloverAmount,amount('Rollover ($)',rolloverAmount,setRolloverAmount))}
-                {setting('Legs to Win',legsToWin,amount('Legs to Win',legsToWin,setLegsToWin,1,undefined,''))}
+                {inlineSetting('Leg Value',amount('Leg Value ($)',legValue,setLegValue))}
+                {inlineSetting('Rollover',amount('Rollover ($)',rolloverAmount,setRolloverAmount))}
+                {inlineSetting('Legs to Win',amount('Legs to Win',legsToWin,setLegsToWin,1,undefined,''))}
               </>}
               {optionalAmount('Pussy Tax',pussyTaxEnabled,setPussyTaxEnabled,pussyTaxValue,setPussyTaxValue)}
               {optionalAmount('Pot Max',potMaxEnabled,setPotMaxEnabled,potMaxValue,setPotMaxValue)}

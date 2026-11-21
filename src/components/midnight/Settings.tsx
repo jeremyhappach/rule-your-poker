@@ -11,6 +11,9 @@ export function SettingRow({label,value,open,onToggle,children}:{label:string;va
   const id=useId();
   return <section className="midnight-setting"><button type="button" className="midnight-setting-summary" aria-expanded={open} aria-controls={id} onClick={onToggle}><span>{label}</span><strong>{value}</strong><span aria-hidden="true">{open?'⌃':'›'}</span></button><div id={id} hidden={!open} className="midnight-setting-editor">{children}</div></section>;
 }
+export function InlineSettingRow({label,children}:{label:string;children:ReactNode}){
+  return <section className="midnight-setting midnight-inline-setting"><span>{label}</span><div className="midnight-inline-control">{children}</div></section>;
+}
 export function ToggleRow({label,description,checked,onChange}:{label:string;description?:string;checked:boolean;onChange:(value:boolean)=>void}){
   const id=useId();
   return <div className="midnight-toggle"><label htmlFor={id}>{label}{description&&<small>{description}</small>}</label><Switch id={id} checked={checked} onCheckedChange={onChange}/></div>;

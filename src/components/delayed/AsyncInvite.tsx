@@ -1,6 +1,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useNavigate,useSearchParams} from 'react-router-dom';
-import {ArrowDownAZ,History} from 'lucide-react';
+import {ArrowDownAZ,History,Info} from 'lucide-react';
+import {Dialog,DialogTrigger,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {delayedRpc,gameName,type Home} from '@/lib/delayed/client';
 import {AsyncLineupEditor} from './AsyncLineupEditor';
 import '@/components/midnight/midnight.css';
@@ -89,14 +90,22 @@ export function AsyncInvite({userId=''}:{userId?:string}){
  }
  if(source&&!loaded)return <section className="delayed-invite midnight-invite"><Link className="delayed-back" to={returnTo}>← Back</Link><p role={error?'alert':'status'}>{error||'Restoring completed match…'}</p></section>;
  return <section className="delayed-invite midnight-invite"><Link className="delayed-back" to={returnTo}>{source?'← Cancel Run It Back':'← All matches'}</Link>
-  <div className="delayed-match-heading"><small>PLAY ON YOUR SCHEDULE</small><h2>{source?'Run It Back':'New Async Match'}</h2><p className="delayed-match-meta">Two humans · {realMoney?'Real Money':'Fake Money'} · 72-hour turns</p></div>
+  <div className="delayed-match-heading midnight-invite-heading"><h2>{source?'Run It Back':'New Async Match'}</h2>
+   <Dialog><DialogTrigger asChild><button type="button" className="midnight-info-button" aria-label="Match information"><Info size={20}/></button></DialogTrigger>
+    <DialogContent className="midnight-match-info"><DialogTitle>Match information</DialogTitle><DialogDescription>How this invitation and its games work.</DialogDescription>
+     <p>The first player in each game is selected randomly.</p>
+     <p>Last Call at 48 hours; turns expire at 72 hours. Words passes a missed turn. Quintzee scores zero for a missed, unstarted round and continues. Other games retain their timeout rules.</p>
+     <p>No funds are reserved; {realMoney?'one net amount is posted to both players’ balances after all games finish.':'real balances are unaffected.'}</p>
+     <p>Invitations expire in 72 hours.</p>
+    </DialogContent>
+   </Dialog>
+  </div>
   {source&&<p>Copied from <Link to={'/delayed/'+source+'?history=1'}>your completed match</Link>. Edit this invitation before sending.</p>}
   {!enabled&&<p role="status">New async matches are unavailable.</p>}
   <fieldset className="delayed-form-card" disabled={locked}><legend>Match settings</legend>
    <label className="delayed-money-toggle"><span>Fake Money</span><span className="delayed-money-switch"><input type="checkbox" role="switch" aria-label="Real Money" checked={realMoney} disabled={!realAvailable&&!realMoney} onChange={e=>changeMoney(e.target.checked)}/><span aria-hidden="true"/></span><span>Real Money</span></label>
    {!realAvailable&&<small>Real-money matches are currently unavailable.</small>}
-   {source&&<><p className="delayed-terms">The first player in each game is selected randomly.</p><p className="delayed-terms">Last Call at 48 hours; turns expire at 72 hours. Words passes a missed turn. Quintzee scores zero for a missed, unstarted round and continues. Other games retain their timeout rules. No funds are reserved; {realMoney?'one net amount is posted to both players’ balances after all games finish.':'real balances are unaffected.'} Invitations expire in 72 hours.</p></>}
-   {policyIssue&&<p role="alert">This match used an unsupported invitation policy. <button onClick={()=>setDraft(old=>old?{...old,policyVersion:'delayed/1'}:old)}>Use the current terms shown above</button></p>}
+   {policyIssue&&<p role="alert">This match used an unsupported invitation policy. Review the current terms in Match information. <button onClick={()=>setDraft(old=>old?{...old,policyVersion:'delayed/1'}:old)}>Use the current match terms</button></p>}
   </fieldset>
   <AsyncLineupEditor lineup={lineup} caps={caps} source={!!source} realMoney={realMoney} locked={locked} collapsed={opponentStage} onCollapse={setOpponentStage} onChange={value=>{edited.current=true;request.current=null;setLineup(value);}}/>
   {opponentStage&&<>
@@ -108,8 +117,6 @@ export function AsyncInvite({userId=''}:{userId?:string}){
    {peopleError&&<p role="alert">{peopleError}</p>}
   </fieldset>
   <div className="delayed-offer-summary"><span>Maximum loss per player</span><strong>{realMoney?'$':''}{stake}</strong></div>
-  {!source&&<><p className="delayed-terms">The first player in each game is selected randomly.</p><p className="delayed-terms">Last Call at 48 hours; turns expire at 72 hours. Words passes a missed turn. Quintzee scores zero for a missed, unstarted round and continues. Other games retain their timeout rules. No funds are reserved; {realMoney?'one net amount is posted to both players’ balances after all games finish.':'real balances are unaffected.'} Invitations expire in 72 hours.</p></>}
-  {!opponent&&<p>Choose a human opponent to send your invitation.</p>}
   {draft?.submission&&!pending&&<p role="status">A send was attempted. Retry the same invitation to confirm its outcome before starting another draft.</p>}
   <button ref={sendButton} className="delayed-primary midnight-primary" disabled={pending||!!storageError||(!draft?.submission&&(!opponent?.isHuman||!enabled||!valid))} onClick={()=>void invite()}>{pending?'Sending…':'Send Invite'}</button></>}
   <AlertDialog open={confirmFake} onOpenChange={setConfirmFake}>

@@ -1,5 +1,14 @@
 # Midnight Blue UI — November 21, 2026 — local review; not deployed
 
+Rolling smoke follow-up: Multiplayer configuration now combines name/art in
+one header, with inline amounts/dropdowns and the existing boolean switches.
+Async has a compact title, fully contained configuration artwork and a Match
+information modal for the unchanged terms. Maximum loss and opponent validation
+remain next to the existing send flow. Artwork, handlers, rules and backend are
+unchanged. The 110 focused checks, typecheck, production bundle/size gate and
+76 responsive browser layouts pass. The local preview is refreshed; production
+remains held for review.
+
 The approved Midnight Blue brief is implemented across the three lobbies,
 Multiplayer selection/setup and Async invitation flow. Shared banner/tabs,
 compact cards, reused decorative art, navy settings and individual-game review

@@ -31,3 +31,32 @@
 .midnight-invite .delayed-back{color:#ebd6ac}
 body:has(.midnight-invite){background:#06111f}
 .delayed-match-page:has(.midnight-invite){background:#06111f;border-color:#b99558}
+
+/* Setup identity and controls share the same compact, container-sized surface. */
+.midnight-setup-heading{display:block}
+.midnight-setup-toolbar{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.midnight-setup-toolbar>small{min-width:0}
+.midnight-setup-identity{display:flex;align-items:center;gap:.7rem;min-width:0}
+.midnight-setup-identity>div{flex:1;min-width:0}
+.midnight-setup-identity>.midnight-art{flex:0 0 42%;width:42%;height:clamp(4rem,20cqb,7rem);object-fit:contain;mix-blend-mode:lighten;mask-image:none}
+.midnight-setup .midnight-settings{margin-top:0}
+.midnight-inline-setting{display:flex;align-items:center;justify-content:space-between;gap:.65rem;padding:.6rem .75rem;min-width:0}
+.midnight-inline-setting>span{flex:1;min-width:0;font:700 1.1rem/1.2 Georgia,serif}
+.midnight-inline-control{flex:0 1 58%;min-width:0;max-width:15rem}
+.midnight-inline-control :is(input,select){width:100%;background:#081727;color:#fff2d8;border-color:#957d54}
+.midnight-inline-control .midnight-amount{gap:.3rem}
+.midnight-inline-control .midnight-amount>div{flex:1;padding:0 .2rem}
+.midnight-inline-control .midnight-amount>button{min-width:2.75rem}
+.midnight-inline-control .midnight-amount input,.midnight-inline-control .midnight-amount>div>span{font-size:1.1rem}
+
+/* Keep art in normal flow: an absolute static position followed the title and
+   clipped its lower half at the Stake divider, especially for Words. */
+.midnight-config-card .midnight-illustration{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);align-items:center;gap:.5rem;padding:.75rem;aspect-ratio:auto;min-height:0}
+.midnight-config-card .midnight-illustration>h3{max-width:none;padding:0;min-width:0;overflow-wrap:anywhere;font-size:clamp(1.2rem,5cqi,1.65rem)}
+.midnight-config-card .midnight-illustration>.midnight-art{position:static;width:100%;height:clamp(5.5rem,30cqi,8rem);object-fit:contain;mask-image:none;mix-blend-mode:lighten}
+.delayed-match-page .midnight-invite{gap:.65rem}
+.midnight-invite .midnight-invite-heading{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:0;margin:0}
+.midnight-invite-heading h2{margin:0;min-width:0}
+.midnight-invite .midnight-info-button{display:grid;place-items:center;flex-shrink:0;width:2.75rem;min-height:2.75rem;padding:0;margin:0;border:0;background:transparent;color:#e9cc92}
+.midnight-match-info{max-width:min(32rem,calc(100% - 2rem));max-height:calc(100% - 2rem);overflow-y:auto;background:#0b1928;color:#fff2d8;border-color:#b99558;border-radius:.8rem}
+.midnight-match-info p{font-size:.9rem;line-height:1.5;color:#d6dfe5}

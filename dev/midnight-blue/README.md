@@ -4,6 +4,23 @@ Review branch: `codex/midnight-blue-review`, based on `origin/main` at
 `40cadbcd6f9e321d1ee35a97fbad109cdb090394`. Prepared for review only. Do not push
 or integrate into `main` until Jeremy authorizes publication.
 
+## Rolling smoke follow-up
+
+The five November 21 corrections are applied: one combined Multiplayer
+name/art header; compact Async heading; normal-flow configuration artwork that
+stays beside its title above Stake; inline simple amounts, dropdowns and
+switches; and a Match information modal containing the unchanged first-player,
+timeout, settlement and expiration terms. Maximum loss remains next to Send
+Invite. The opponent requirement and existing send/runback handlers are intact.
+All artwork is unchanged. Expanded editors remain for multi-control options
+such as enabled amounts and Mega course configuration.
+
+Follow-up validation: 110 focused setup/invite/grouping tests, typecheck,
+production bundling and the size gate pass. The updated browser suite passes
+76 layouts, including Words artwork containment, inline Cribbage mode/custom
+settings, modal access and required opponent selection before submission.
+The four viewport sizes remain unchanged; this is local sample-data evidence.
+
 ## Scope and preserved behavior
 
 The supplied `P-Town-Poker-Midnight-Blue.zip` / `CODEX-BRIEF.md` takes precedence
