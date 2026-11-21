@@ -109,6 +109,7 @@ import { ShellTimerProvider } from './ShellTimerRail';
 import type { PresentationMode } from './presentationMode';
 import {CinematicPresentationContext, useCinematicPresentation} from './CinematicPresentation';
 import './fullscreenGameShell.css';
+import './blueHourShell.css';
 
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer

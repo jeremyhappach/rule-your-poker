@@ -1,3 +1,23 @@
+# Blue Hour gameplay shell — November 21, 2026 — local preview; not deployed
+
+The approved center-column Blue Hour finish now styles the shared Multiplayer
+shell with deep navy, soft blue light, muted amber reflections, ivory chrome and
+restrained brass separators. One CSS reflection field surrounds the canonical
+oval and fades behind the hand/actions; no exterior bridge or bitmap is added.
+The table's bridge image, exact oval/rim, geometry, controls and all behavior
+remain unchanged. The body-portaled tab rail and existing cross-game dissolve
+share the same palette. Production source changes are one stylesheet plus its
+import in `PersistentTableShell`; no game adapter, authority or handler edits.
+
+Local preview: `http://127.0.0.1:5198/dev/blue-hour/compare.html`.
+`dev/blue-hour/README.md` documents fixture isolation and validation. TypeScript,
+36 existing shell tests, Vite build and size gate pass. Phone comparisons and
+before/after geometry at 390×844 and 320×568 are saved in
+`qualification.local/blue-hour/`. Geometry matches apart from the existing
+animated Buck marker's instantaneous position. The pre-existing short-phone
+Cribbage hand crop is retained. Owner visual acceptance is pending; production
+remains on the Midnight Blue release below.
+
 # Midnight Blue UI — November 21, 2026 — production live; mobile smoke pending
 
 Jeremy authorized production publication for mobile polish. Runtime commit

@@ -1,0 +1,63 @@
+/* Blue Hour: presentation only. No geometry, game/status tokens, or felt paint.
+   The tab bar portals to body, so it receives the same chrome palette directly. */
+[data-canonical-shell-root],
+[data-canonical-shell-tabbar] {
+  --background: 213 58% 8%;
+  --foreground: 42 35% 91%;
+  --card: 213 46% 12%;
+  --card-foreground: 42 35% 91%;
+  --muted: 213 30% 19%;
+  --muted-foreground: 212 19% 73%;
+  --border: 38 23% 31%;
+  color: hsl(var(--foreground));
+}
+
+/* One continuous, abstract reflected-light field. The existing bridge stays
+   exclusively inside CanonicalFeltSurface; no second scene or image is used.
+   Light gathers beside the oval and dies away before the hand/action region. */
+[data-canonical-shell-root] {
+  background-color: hsl(213 58% 8%);
+  background-image:
+    linear-gradient(180deg, transparent 35%, hsl(213 58% 8% / .18) 49%, hsl(213 58% 8% / .94) 69%, hsl(213 58% 8%) 94%),
+    radial-gradient(ellipse 12% 2% at 4% 35%, hsl(33 68% 59% / .43), transparent 75%),
+    radial-gradient(ellipse 10% 2.6% at 95% 44%, hsl(33 62% 58% / .45), transparent 78%),
+    radial-gradient(ellipse 9% 1.1% at 95% 47%, hsl(35 65% 59% / .35), transparent 80%),
+    radial-gradient(ellipse 14% 8% at 0% 30%, hsl(32 60% 45% / .4), transparent 78%),
+    radial-gradient(ellipse 13% 9% at 100% 42%, hsl(32 62% 46% / .36), transparent 78%),
+    radial-gradient(ellipse 28% 15% at 10% 43%, hsl(205 52% 46% / .52), transparent 75%),
+    radial-gradient(ellipse 34% 25% at 88% 19%, hsl(208 43% 39% / .55), transparent 80%),
+    radial-gradient(ellipse 44% 30% at 0% 21%, hsl(207 44% 35% / .4), transparent 80%),
+    radial-gradient(ellipse 75% 45% at 33% 0%, hsl(210 44% 28% / .62), transparent 80%);
+}
+
+/* Reuse existing dimensions and borders; only their finish changes. */
+[data-canonical-shell-header] {
+  background: linear-gradient(110deg, hsl(211 45% 18% / .65), hsl(213 58% 8% / .7));
+}
+[data-canonical-shell-header] > div {
+  background-color: hsl(213 51% 10% / .65);
+  border-color: hsl(38 34% 52% / .3);
+}
+[data-canonical-shell-header] .text-muted-foreground {
+  color: hsl(42 27% 83%);
+}
+[data-canonical-shell-tabbar] {
+  background: linear-gradient(180deg, hsl(211 38% 17%), hsl(213 48% 10%));
+  border-color: hsl(38 34% 52% / .3);
+}
+[data-canonical-shell-tabbar] .bg-primary\/20 {
+  background-color: hsl(211 22% 68% / .3);
+  box-shadow: inset 0 0 0 1px hsl(40 30% 65% / .22);
+}
+[data-canonical-shell-tabbar] .text-muted-foreground\/50 {
+  color: hsl(42 25% 85% / .8);
+}
+[data-canonical-shell-root] [data-hud-row="identity"] {
+  background: linear-gradient(180deg, transparent, hsl(213 61% 6% / .65));
+}
+
+/* Keep the same finish through the existing cross-game dissolve. */
+[data-canonical-shell-root][data-shell-transition]:not([data-shell-transition="stable"]),
+[data-canonical-shell-root] .shell-cinematic-bridge {
+  background: hsl(213 58% 8%);
+}
