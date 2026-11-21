@@ -1,4 +1,31 @@
-# Midnight Blue UI — November 21, 2026 — local review; not deployed
+# Midnight Blue UI — November 21, 2026 — production live; mobile smoke pending
+
+Jeremy authorized production publication for mobile polish. Runtime commit
+`2e4db30d32570fca363078ffae1150ecb27cf451` was fast-forwarded to `main` and
+pushed through the approved helper. Local checkpoint tag:
+`midnight-blue-production-20261121`. Vercel deployment
+`dpl_6tpDhH57US1NcvyMemqAKsmhdUpU` is READY; both `holm357.com` and
+`ptown-poker.vercel.app` serve this exact build manifest and its main bundle.
+The approved picker, setup and lighting assets return HTTP 200.
+
+Release validation passed: 4,366 source tests, 241 harness tests, 46
+release-tooling tests, TypeScript and the production build. Rebuilding with
+production push notifications enabled exposed a 582-byte asset-budget overage.
+Three existing scene crops were encoded as WebP using the existing extraction
+workflow, preserving their source rectangles and composition. The production
+build now totals 89,993,613 bytes, below the unchanged 90 MB limit. No gameplay,
+backend, defaults or notification-delivery changes were made for publication.
+
+GitHub release-signal run `44959125530` passed validation but exhausted its
+ten-minute production wait shortly before Vercel became READY. Its signal
+publication step was skipped. Retrying through the GitHub integration returned
+403 (Actions write permission unavailable), and the browser session was signed
+out. Production itself is verified; the release-signal retry remains outstanding.
+Refresh/reopen the mobile app for this smoke pass. Owner mobile acceptance and
+further visual polish remain pending. Earlier held-preview notes below are
+historical.
+
+## Preview history
 
 Reference fidelity pass: reopened ZIP mockups 02–04 before editing. Multiplayer
 picker now has the approved illuminated curtain/logo crown, one continuous
