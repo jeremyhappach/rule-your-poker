@@ -36,7 +36,7 @@ function Fixture() {
           legValue={0} legsToWin={0} potMaxEnabled potMaxValue={15} pendingSessionEnd={false} awaitingNextRound={false}
           gameType="holm-game" gameStatus="in_progress" roundStatus="betting" holmDealerGameId={dealerGame} holmHandNumber={1}
           handContextId={round} currentTurnPosition={1} onStay={noop} onFold={noop} anteAmount={3}
-          activeTab={tab} setActiveTab={setTab}/>} 
+          activeTab={tab} setActiveTab={setTab}/>}
       </ChatAttentionProvider>
     </GameChatContextProvider>
   </PersistentTableShell>;
