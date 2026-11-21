@@ -4,7 +4,27 @@ Review branch: `codex/midnight-blue-review`, based on `origin/main` at
 `40cadbcd6f9e321d1ee35a97fbad109cdb090394`. Prepared for review only. Do not push
 or integrate into `main` until Jeremy authorizes publication.
 
-## Shared atmosphere follow-up
+## Continuous picker backdrop and game-specific setup scenes
+
+The current preview places one Peoria bridge image on the picker page. Tiles
+contain only a translucent surface, title and game artwork. Cards/Dice retain
+their short proportions; Other remains compact and faint. The existing cocktail
+crop is specific to Holm's setup panel. Other setups reuse only the table texture
+and warm glow, alongside their own art. Title/art share the compact brass frame;
+clock/Pause sit outside it in a slim utility row. Transparent stepper buttons
+retain their existing touch targets, values and handlers.
+
+No assets were generated, modified or substituted in this pass. All required
+assets were already present. The 84 focused setup tests and typecheck pass, as do
+36 setup/expanded-editor checks at 390×844, 320×568, 455×488 and 844×390. Browser
+checks also verify no per-tile photographs, Holm-only cocktail imagery, separate
+utility controls, title readability and the existing pending-invite states.
+The complete build passes with 4,366 source tests, 241 harness tests, 46
+release-tooling tests and the production bundle/size gate.
+Screenshots are in `qualification.local/midnight-blue/shared-backdrop/`.
+Local sample transport only; no production publication.
+
+## Previous shared atmosphere follow-up
 
 The latest correction applies Holm's scene treatment to the shared Multiplayer
 setup header and all three picker categories. Title, clock/Pause and recognizable

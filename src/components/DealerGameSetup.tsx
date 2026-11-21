@@ -1176,9 +1176,9 @@ const DealerGameSetupInner = ({
   const amount=(label:string,value:string,onChange:(value:string)=>void,min=1,max?:number,prefix='$')=><AmountControl label={label} value={value} onChange={onChange} min={min} max={max} prefix={prefix}/>;
   const optionalAmount=(label:string,enabled:boolean,toggle:(value:boolean)=>void,value:string,change:(value:string)=>void)=>setting(label,enabled?'$'+value:'Off',<div className="midnight-optional-controls"><ToggleRow label={label+' enabled'} checked={enabled} onChange={toggle}/>{enabled&&amount(label,value,change)}</div>);
 
-  const heading=(title:string,instruction:string)=><header className={'midnight-setup-heading'+(selectionStep==='config'?' midnight-scene-header':'')}>
-    <div className="midnight-setup-toolbar">{selectionStep==='config'?<h2>{title}</h2>:<small>PEORIA POKER LEAGUE</small>}<div className="midnight-setup-clock">{timeLeft!==null&&<Badge variant={timeLeft<=10?'destructive':'default'}><Timer className="w-4 h-4"/>{timeLeft}s</Badge>}{pauseControl}</div></div>
-    <div className="midnight-setup-identity">{selectionStep==='config'?<><p className="sr-only">{dealerUsername}, {instruction}</p><GameArtwork game={selectedGameType} surface="setup"/></>:<div><h2>{title}</h2><p>{dealerUsername}, {instruction}</p></div>}</div>
+  const heading=(title:string,instruction:string)=><header className="midnight-setup-heading">
+    <div className="midnight-setup-toolbar"><small>PEORIA POKER LEAGUE</small><div className="midnight-setup-clock">{timeLeft!==null&&<Badge variant={timeLeft<=10?'destructive':'default'}><Timer className="w-4 h-4"/>{timeLeft}s</Badge>}{pauseControl}</div></div>
+    <div className={'midnight-setup-identity'+(selectionStep==='config'?' midnight-scene-header':'')} data-scene-game={selectionStep==='config'?selectedGameType:undefined}>{selectionStep==='config'?<><div><h2>{title}</h2><p className="sr-only">{dealerUsername}, {instruction}</p></div><GameArtwork game={selectedGameType} surface="setup"/></>:<div><h2>{title}</h2><p>{dealerUsername}, {instruction}</p></div>}</div>
     {activeHarnessMap[selectedGameType]?.active&&<p className="text-red-400">Harness: {activeHarnessMap[selectedGameType].label}</p>}
   </header>;
 

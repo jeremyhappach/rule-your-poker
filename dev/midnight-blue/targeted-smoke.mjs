@@ -2,7 +2,7 @@ import {chromium} from 'playwright';
 import {expect} from '@playwright/test';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
-const output='qualification.local/midnight-blue/atmosphere';mkdirSync(output,{recursive:true});
+const output='qualification.local/midnight-blue/shared-backdrop';mkdirSync(output,{recursive:true});
 const browser=await chromium.launch({channel:'msedge',headless:true,args:['--disable-gpu']}),checks=[],errors=[];
 try{
  for(const [width,height] of [[390,844],[320,568],[455,488],[844,390]]){
@@ -23,6 +23,7 @@ try{
    await page.getByRole('tab',{name:category,exact:true}).click();
    for(const tile of await page.locator('[data-dealer-game-option]').all()){
     assert.ok(await tile.evaluate(el=>{const r=el.querySelector('span').getBoundingClientRect(),b=el.getBoundingClientRect();return r.left>=b.left&&r.right<=b.right&&r.bottom<=b.bottom;}),`${category}: complete title`);
+    assert.ok(await tile.evaluate(el=>!['',':before',':after'].some(pseudo=>getComputedStyle(el,pseudo||null).backgroundImage.includes('url('))),`${category}: no per-tile photograph`);
    }
    if(category!=='Other')assert.ok(await page.locator('.midnight-tile-large').first().evaluate(el=>{const r=el.getBoundingClientRect();return r.width/r.height>=1.5;}),'Short Cards/Dice tiles');
    await capture(category.toLowerCase());
@@ -35,6 +36,8 @@ try{
    assert.deepEqual(bounds.overflows,[],`${width} ${game}: no internal scroll/clipping`);assert.deepEqual(bounds.clipped,[],`${width} ${game}: all controls inside viewport`);
    assert.ok(await page.locator('.midnight-setup-body').evaluate(el=>el.scrollHeight<=el.clientHeight+1&&el.getBoundingClientRect().bottom<=el.nextElementSibling.getBoundingClientRect().top),`${width} ${game}: settings do not overlap footer`);
    assert.ok(await page.locator('.midnight-scene-header .midnight-art').evaluate(el=>el.getBoundingClientRect().height>=55),'Scene artwork has readable height');
+   assert.equal(await page.locator('.midnight-scene-header').evaluate(el=>getComputedStyle(el,':before').backgroundImage.includes('approved-scene-light')),game==='holm-game','Cocktail is specific to Holm');
+   assert.equal(await page.locator('.midnight-scene-header .midnight-setup-clock').count(),0,'Utility row is outside the artwork panel');
    for(const input of await page.locator('.midnight-settings input:visible').all())assert.ok(await input.evaluate(el=>el.getBoundingClientRect().width>=32),'Numeric values remain readable');
    await capture(game);
    if(game==='3-5-7'){

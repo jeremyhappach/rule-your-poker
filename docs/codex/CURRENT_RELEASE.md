@@ -1,5 +1,18 @@
 # Midnight Blue UI — November 21, 2026 — local review; not deployed
 
+Continuous-backdrop correction: the picker uses one existing Peoria bridge image
+at page level, with translucent tile surfaces and each game's own art. The
+cocktail photograph appears only in Holm's setup panel; all setup games share
+the existing subtle table texture, warm glow and brass frame. Name/art stay
+together; clock/Pause occupy a separate slim utility row. Steppers are lighter
+without reducing touch targets or changing handlers. All required assets exist;
+none were generated or substituted. The 84 focused tests, typecheck and 36
+setup/expanded-editor fit checks pass at 390×844, 320×568, 455×488 and 844×390.
+The complete build validation also passes: 4,366 source tests, 241 harness tests,
+46 release-tooling tests, production bundle and asset-size gate.
+Phone screenshots are in `qualification.local/midnight-blue/shared-backdrop/`.
+Production remains held.
+
 Shared atmosphere follow-up: all Multiplayer picker categories and setup games
 reuse unobstructed lighting/cocktail/table crops from approved mockup 03. Cards
 and Dice share shorter tiles; Other stays compact and translucent. Existing

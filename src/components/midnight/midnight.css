@@ -74,11 +74,15 @@ body:has(.midnight-invite){background:#06111f}
 .midnight-setup[data-dealer-game-setup-step=config]>div{overflow:visible}
 .midnight-setup[data-dealer-game-setup-step=config]>div>div{padding:.4rem;gap:.3rem;display:flex;flex-direction:column}
 .midnight-setup[data-dealer-game-setup-step=config]>div>div>*{margin-top:0;margin-bottom:0}
-.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-clock button{min-height:2.75rem}
-.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity{margin:0;padding:0;border:0;border-radius:0;background:none;justify-content:flex-end}
-.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-toolbar h2{min-width:0;font-size:clamp(1.1rem,3.7cqi,1.6rem);line-height:1.1;margin:0;text-shadow:0 2px 5px #000}
-.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity>.midnight-art{flex:0 0 74%;width:74%;height:clamp(3.5rem,calc(100cqb - 30.6rem),7rem);object-fit:contain;mix-blend-mode:lighten;filter:drop-shadow(0 3px 3px #0008)}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-clock button{min-height:2.75rem;background:transparent;border-color:#b9955855;font-size:.75rem;padding:.1rem .5rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity{margin:.15rem 0 0;padding:.25rem .5rem;justify-content:space-between;gap:.35rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity h2{min-width:0;font-size:clamp(1.1rem,3.7cqi,1.6rem);line-height:1.1;margin:0;text-shadow:0 2px 5px #000}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity>.midnight-art{flex:0 0 68%;width:68%;height:clamp(3.5rem,calc(100cqb - 34rem),7rem);object-fit:contain;mix-blend-mode:lighten;filter:drop-shadow(0 3px 3px #0008)}
 .midnight-setup[data-dealer-game-setup-step=config] .midnight-amount>div{border:0}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-amount>button{border-color:transparent;background:transparent;color:#edd4a4;border-radius:.35rem;font-size:1.3rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-amount>button:hover:not(:disabled){background:#d4b46b18}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-amount>div{background:#07132055;border-radius:.3rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setting{border-color:#9b7d4d88}
 .midnight-setup[data-dealer-game-setup-step=config] .midnight-settings{gap:.18rem;padding:0}
 .midnight-setup .midnight-setup-body{flex:0 0 auto}
 .midnight-setup[data-dealer-game-setup-step=config] .midnight-inline-setting{padding:0 .45rem;gap:.35rem;min-height:2.875rem}
@@ -91,14 +95,14 @@ body:has(.midnight-invite){background:#06111f}
 .midnight-setup[data-dealer-game-setup-step=config] .midnight-footer{position:static;padding-top:.25rem;gap:.25rem}
 .midnight-setup[data-dealer-game-setup-step=config] .midnight-footer button{padding:.3rem;min-height:2.75rem;font-size:.95rem;line-height:1.1}
 .midnight-setup[data-dealer-game-setup-step=config] .midnight-footer>p{font-size:.6rem;line-height:1.15;margin:0}
-/* Exact unobstructed regions of approved mockup 03, shared across games. */
-.midnight-scene-header,.dealer-catalog .midnight-tile{position:relative;isolation:isolate;background-color:#07121b;background-image:linear-gradient(#07121b22,#07121b44),url('/game-branding/approved-scene-table.jpg');background-position:center,center bottom;background-size:100% 100%,100% 55%;background-repeat:no-repeat}
-.midnight-scene-header:before,.dealer-catalog .midnight-tile:before{content:'';position:absolute;z-index:-2;inset:0 auto 0 0;width:46%;background:url('/game-branding/approved-scene-light.jpg') left bottom/auto 100% no-repeat;mask-image:linear-gradient(90deg,#000 55%,transparent)}
-.midnight-scene-header:after,.dealer-catalog .midnight-tile:after{content:'';position:absolute;z-index:-2;inset:0 0 0 auto;width:28%;background:url('/game-branding/approved-scene-glow.jpg') right top/100% 100% no-repeat;mask-image:linear-gradient(90deg,transparent,#000)}
+/* Shared texture/light; the cocktail photograph belongs only to Holm. */
+.midnight-scene-header{position:relative;isolation:isolate;background-color:#07121b;background-image:linear-gradient(#07121b22,#07121b44),url('/game-branding/approved-scene-table.jpg');background-position:center,center bottom;background-size:100% 100%,100% 55%;background-repeat:no-repeat}
+.midnight-scene-header[data-scene-game=holm-game]:before{content:'';position:absolute;z-index:-2;inset:0 auto 0 0;width:46%;background:url('/game-branding/approved-scene-light.jpg') left bottom/auto 100% no-repeat;mask-image:linear-gradient(90deg,#000 55%,transparent)}
+.midnight-scene-header:after{content:'';position:absolute;z-index:-2;inset:0 0 0 auto;width:28%;background:url('/game-branding/approved-scene-glow.jpg') right top/100% 100% no-repeat;mask-image:linear-gradient(90deg,transparent,#000)}
 .midnight-scene-header{border:1px solid #b99558;border-radius:.8rem;padding:.25rem .5rem;overflow:hidden}
-.midnight-scene-header .midnight-setup-toolbar{position:relative;background:linear-gradient(90deg,#06111fb3,transparent);border-radius:.3rem}
-.dealer-catalog .midnight-tile:before,.dealer-catalog .midnight-tile:after{opacity:.5}
-.midnight-setup[data-dealer-game-setup-step=game-selection]>div{background-image:linear-gradient(#06111f9c,#06111ff0 70%),url('../../assets/peoria-bridge-mobile.jpg');background-position:center top;background-size:cover}
+.dealer-catalog .midnight-tile{background:linear-gradient(125deg,#142536e8,#07131de8);border-color:#b9955888}
+.midnight-setup[data-dealer-game-setup-step=game-selection]{background-image:linear-gradient(#06111f88,#06111fc9),url('../../assets/peoria-bridge-mobile.jpg');background-position:center;background-size:cover;background-repeat:no-repeat}
+.midnight-setup[data-dealer-game-setup-step=game-selection]>div{background:#06111f99}
 /* An expanded optional amount replaces its summary value in the same row.
    Its existing switch and amount handlers remain independently accessible. */
 .midnight-setup .midnight-setting:has(.midnight-optional-controls):has(>button[aria-expanded=true]){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,12.25rem);align-items:center;padding:0 .45rem}
@@ -115,11 +119,11 @@ body:has(.midnight-invite){background:#06111f}
 .midnight-optional-controls>.midnight-amount input,.midnight-optional-controls>.midnight-amount>div>span{font-size:1.1rem}
 @container (min-width:26rem) and (max-height:36rem){
  .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-heading{display:flex;align-items:center;gap:.4rem}
- .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-toolbar{flex:1;flex-wrap:wrap;gap:.1rem}
- .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-toolbar h2{flex-basis:100%}
- .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity{flex:0 0 52%}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-toolbar{flex:0 0 auto;gap:.1rem}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-toolbar>small{display:none}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity{flex:1;min-width:0;margin-top:0}
  .midnight-setup[data-dealer-game-setup-step=config] .midnight-settings{grid-template-columns:repeat(2,minmax(0,1fr))}
- .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity>.midnight-art{flex-basis:100%;width:100%;height:3.5rem}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity>.midnight-art{flex-basis:60%;width:60%;height:3.5rem}
 }
 @container (min-width:26rem) and (max-width:36rem) and (max-height:36rem){
  .midnight-setup .midnight-setting:has(.midnight-optional-controls):has(>button[aria-expanded=true]){grid-column:1/-1}
