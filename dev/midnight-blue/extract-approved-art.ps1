@@ -17,6 +17,9 @@ function Export-Region($source,$name,$x,$y,$width,$height) {
 # Only art regions: no mockup controls, device frame, status bar or example values.
 Export-Region '02-Multiplayer-Selector.png' 'approved-picker-crown' 32 73 454 96
 Export-Region '02-Multiplayer-Selector.png' 'approved-midnight-texture' 551 746 425 135
+Export-Region '03-Holm-Setup.png' 'approved-scene-glow' 800 244 95 165
+Export-Region '03-Holm-Setup.png' 'approved-scene-light' 30 244 210 220
+Export-Region '03-Holm-Setup.png' 'approved-scene-table' 115 411 125 53
 Export-Region '04-Multiplayer-Setup-Examples.png' 'approved-357-art' 29 211 280 195
 Export-Region '04-Multiplayer-Setup-Examples.png' 'approved-cribbage-art' 348 207 279 191
 Export-Region '04-Multiplayer-Setup-Examples.png' 'approved-gin-art' 665 208 279 201
