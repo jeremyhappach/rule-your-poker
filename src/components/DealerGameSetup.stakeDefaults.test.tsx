@@ -70,7 +70,7 @@ describe('Chess selection and submission share catalog admission',()=>{
   const deadline=new Date(Date.now()+600000).toISOString();
   render(<DealerGameSetup {...props} configDeadline={deadline} activePlayerCount={2} activeHumanCount={humans} realMoney={realMoney}/>);
   fireEvent.change(await selectChess(),{target:{value:'9'}});
-  const start=screen.getByRole('button',{name:'Start chess'});
+  const start=screen.getByRole('button',{name:'Start P-Town Chess'});
   fireEvent.click(start);fireEvent.click(start);
   await waitFor(()=>expect(state.configure).toHaveBeenCalledExactlyOnceWith({gameId:'session',dealerPlayerId:'caller',expectedDealerPosition:2,expectedConfigDeadline:deadline,gameType:'chess',config:{ante_amount:9}}));
  });
@@ -87,7 +87,7 @@ describe('Chess selection and submission share catalog admission',()=>{
   await selectChess();
   state.chessAllowed=allowed;
   view.rerender(<DealerGameSetup {...props} configDeadline={deadline} activePlayerCount={players} activeHumanCount={humans} realMoney={realMoney}/>);
-  const start=screen.getByRole('button',{name:'Start chess'});
+  const start=screen.getByRole('button',{name:'Start P-Town Chess'});
   expect((start as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(start);
   expect(state.configure).not.toHaveBeenCalled();

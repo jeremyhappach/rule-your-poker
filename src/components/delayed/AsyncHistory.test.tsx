@@ -6,6 +6,13 @@ import {AsyncHistory} from './AsyncHistory';
 const rpc=vi.hoisted(()=>vi.fn());
 vi.mock('@/lib/delayed/client',()=>({delayedRpc:rpc}));
 afterEach(()=>{cleanup();vi.clearAllMocks();});
+it('shows completed lobby game quantities through the existing read projection',async()=>{
+ rpc.mockImplementation(async name=>name==='delayed_history'?[{id:'match',opponent:'Other',completedAt:'2026-10-29T12:00:00Z',startedAt:'2026-10-28T12:00:00Z',count:3,net:5,realMoney:false}]:{lineup:[{game:'run21',ordinal:1},{game:'tri-towers',ordinal:2},{game:'run21',ordinal:3}]});
+ render(<MemoryRouter><AsyncHistory viewerName="Hap" showGameMix/></MemoryRouter>);
+ expect(await screen.findByText('2x Run21, Tri-Towers')).toBeTruthy();
+ expect(rpc.mock.calls).toContainEqual(['delayed_history_detail',{p_match:'match'}]);
+ expect(rpc.mock.calls.every(([name])=>['delayed_history','delayed_history_detail'].includes(name))).toBe(true);
+});
 it('marks real-money archived session names before their text',async()=>{
  rpc.mockResolvedValue([{id:'match',opponent:'Other',completedAt:'2026-10-29T12:00:00Z',startedAt:'2026-10-28T12:00:00Z',count:5,net:5,realMoney:true}]);
  render(<MemoryRouter><AsyncHistory viewerName="Hap"/></MemoryRouter>);

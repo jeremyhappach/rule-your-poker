@@ -1,5 +1,5 @@
 import { requestSessionEnd } from "@/lib/sessionLifecycleAuthority";
-import { Gamepad2 } from "lucide-react";
+import {findGame} from "@/lib/gameCatalog";
 import { useLayoutEffect, useState } from "react";
 import { useLobbyGames } from "@/hooks/useLobbyGames";
 import { cancelOnboardingEntry } from '@/lib/mobileOnboarding';
@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { SessionResults } from "@/components/SessionResults";
 import {AsyncHistory} from './delayed/AsyncHistory';
-import { GameDefaultsConfig } from "@/components/GameDefaultsConfig";
+
 import { format } from "date-fns";
 import { generateGameName } from "@/lib/gameNames";
 import { logSessionCreated } from "@/lib/sessionEventLog";
@@ -20,9 +20,8 @@ import { createSession } from "@/lib/sessionCreation";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { PerfSession } from "@/lib/perf";
-import { Settings, Wrench } from "lucide-react";
-import peoriaSkyline from "@/assets/peoria-skyline.jpg";
-import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+import { Wrench } from "lucide-react";
+
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { RealMoneyWarningDialog } from "@/components/RealMoneyWarningDialog";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -99,7 +98,6 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardi
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Game | null>(null);
   const [showSessionResults, setShowSessionResults] = useState(false);
-  const [showDefaultsConfig, setShowDefaultsConfig] = useState(false);
   const [realMoney, setRealMoney] = useState(false);
   const { isAdmin: isSuperuser } = useIsAdmin(userId);
   const [pendingRealMoneyGameId, setPendingRealMoneyGameId] = useState<string | null>(null);
@@ -107,7 +105,7 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardi
   const navigate = useNavigate();
   const { toast } = useToast();
   const hasRecoverableSession=games.some(game=>game.is_player&&!game.session_ended_at&&!['session_ended','completed','game_over'].includes(game.status));
-  const onboardingBlocked=loading||!initialLoadSucceeded||creatingGame||showCreateDialog||showSessionResults||showDefaultsConfig||!!pendingRealMoneyGameId||!!deleteGameId||hasRecoverableSession;
+  const onboardingBlocked=loading||!initialLoadSucceeded||creatingGame||showCreateDialog||showSessionResults||!!pendingRealMoneyGameId||!!deleteGameId||hasRecoverableSession;
   useLayoutEffect(()=>{onOnboardingBlocked?.(onboardingBlocked);},[onboardingBlocked,onOnboardingBlocked]);
   useLayoutEffect(()=>{if(initialLoadSucceeded&&hasRecoverableSession)cancelOnboardingEntry();},[initialLoadSucceeded,hasRecoverableSession]);
 
@@ -225,70 +223,7 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardi
           </div>
         </div>
       )}
-      {/* Header with Peoria Skyline Backdrop */}
-      <div className="relative overflow-hidden rounded-xl border border-amber-700/30 h-[200px] sm:min-h-[240px] md:min-h-[280px]">
-        {/* Bridge Background - All devices */}
-        <img 
-          src={peoriaBridgeMobile} 
-          alt="I-74 Bridge Peoria Illinois"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        {/* Gradient Overlay - lighter at top to show skyline, darker at bottom for text */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-        
-        {/* Content - title at top, buttons at bottom */}
-        <div className="absolute inset-0 z-10 flex flex-col justify-between p-3 sm:p-4 md:p-6">
-          {/* Title section */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/40 border-2 border-amber-300/50 flex-shrink-0">
-                <span className="text-black text-xl sm:text-3xl">♠</span>
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
-                  Peoria Poker League
-                </h1>
-                <p className="text-amber-200/80 text-xs sm:text-sm mt-0.5">Game Lobby</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Buttons section - at bottom */}
-          <div className="flex flex-col items-end gap-2 w-full mt-auto">
-            {isSuperuser && (
-              <Button 
-                onClick={() => setShowDefaultsConfig(true)} 
-                size="sm"
-                variant="outline"
-                className="border-amber-500/60 text-amber-400 hover:bg-amber-600/20 bg-black/50 backdrop-blur-sm text-xs"
-              >
-                <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Defaults
-              </Button>
-            )}
-            <div className="flex gap-2 w-full sm:w-auto">
-            <div className="flex flex-col gap-2 flex-1 sm:flex-none">
-            <Button onClick={() => navigate('/delayed')} disabled={isBlocked} size="sm"
-              className="bg-slate-800/90 border border-amber-500/40 text-amber-100">
-              <Gamepad2 className="h-4 w-4 mr-2" />Async Mode
-            </Button>
-            <Button onClick={() => navigate('/arcade')} disabled={isBlocked} size="sm"
-              className="flex-1 sm:flex-none bg-slate-800/90 border border-amber-500/40 text-amber-100">
-              <Gamepad2 className="h-4 w-4 mr-2" />Arcade Mode
-            </Button>
-            </div>
-            <Button 
-              onClick={() => setShowCreateDialog(true)} 
-              size="sm"
-              disabled={isBlocked}
-              className="h-auto self-stretch flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold shadow-lg shadow-amber-500/30 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Create New Game
-            </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <button className="midnight-create" onClick={()=>setShowCreateDialog(true)} disabled={isBlocked}>Create New Game</button>
 
       <Tabs defaultValue={new URLSearchParams(window.location.search).get('sessions')==='completed'?'historical':'active'} className="w-full">
         <TabsList className="grid w-full grid-cols-2 bg-slate-800/50 border border-amber-700/30">
@@ -319,182 +254,14 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardi
               </CardContent>
             </Card>
           ) : (
-            activeGames.map((game) => {
-              const isInProgress = ['dealer_selection', 'configuring', 'dealer_announcement', 'ante_decision', 'in_progress'].includes(game.status);
-              const activePlayers = game.players?.filter(p => !p.sitting_out) || [];
-              
-              return (
-                <Card 
-                  key={game.id} 
-                  className="bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90 border-2 border-amber-600/40 hover:border-amber-500/60 transition-all shadow-lg hover:shadow-amber-900/20"
-                >
-                  <CardContent className="pt-5 pb-4">
-                    <div className="space-y-4">
-                      {/* Game Header */}
-                      <div className="flex flex-col gap-2 pb-3 border-b border-amber-700/30">
-                        {/* Game name - full width */}
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md flex-shrink-0">
-                            <span className="text-black text-xs sm:text-sm font-bold">♦</span>
-                          </div>
-                          <h3 className="font-bold text-amber-100 text-sm sm:text-base flex-1">
-                            {game.name || `Game #${game.id.slice(0, 8)}`}
-                            {game.real_money && <span className="text-green-400 ml-1">$</span>}
-                          </h3>
-                        </div>
-                        
-                        {/* Button and badges row */}
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => joinGame(game.id)}
-                            disabled={(game.player_count >= 7 && !game.is_player) || isBlocked}
-                            className={`w-1/2 sm:w-auto text-xs sm:text-sm ${game.is_player 
-                              ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                              : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {game.is_player ? 'Re-Join' : 'Join'}
-                          </Button>
-                          <div className="flex gap-1 flex-1">
-                            <Badge 
-                              variant={isInProgress ? 'default' : 'secondary'}
-                              className={`text-xs ${game.is_paused
-                                ? 'bg-yellow-600/80 text-yellow-100 border-0'
-                                : isInProgress 
-                                  ? 'bg-green-600/80 text-white border-0' 
-                                  : 'bg-amber-600/30 text-amber-300 border-amber-600/50'
-                              }`}
-                            >
-                              {game.is_paused ? 'Paused' : game.status === 'waiting' ? 'Waiting' : 'Active'}
-                            </Badge>
-                            {game.is_player && (
-                              <Badge className="bg-blue-600/30 text-blue-300 border-blue-500/50 text-xs">
-                                Yours
-                              </Badge>
-                            )}
-                          </div>
-                          {game.is_creator && game.status === 'waiting' && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => setDeleteGameId(game.id)}
-                              className="bg-red-600/80 hover:bg-red-500 text-xs sm:text-sm"
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-                        {/* Game Info */}
-                        <div className="flex-1 space-y-2">
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm">
-                            <div className="flex items-center gap-1 sm:gap-2">
-                              <span className="text-amber-400/60">Host:</span> 
-                              <span className="text-amber-100 truncate">{game.host_username}</span>
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-2">
-                              <span className="text-amber-400/60">Players:</span> 
-                              <span className="text-amber-100">{activePlayers.length}/7</span>
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-2">
-                              <span className="text-amber-400/60">Started:</span> 
-                              <span className="text-amber-100">{format(new Date(game.created_at), 'MMM d, h:mm a')}</span>
-                            </div>
-                            <div className="flex items-center gap-1 sm:gap-2">
-                              <span className="text-amber-400/60">Duration:</span> 
-                              <span className="text-amber-100">{game.duration_minutes} min</span>
-                            </div>
-                          </div>
-
-                          {isInProgress && game.ante_amount !== undefined && (
-                            <div className="text-xs text-amber-300/70 pt-2 mt-2 border-t border-amber-700/30 space-y-1">
-                          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                                <span className="px-1.5 sm:px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 font-medium">
-                                  {game.game_type === 'holm-game' ? 'Holm' 
-                                    : game.game_type === 'cribbage' ? 'Cribbage'
-                                    : game.game_type === 'gin-rummy' ? 'Gin Rummy'
-                                    : game.game_type === 'horses' ? 'Horses'
-                                    : game.game_type === 'ship-captain-crew' ? 'SCC'
-                                    : game.game_type === 'yahtzee' ? 'Yahtzee'
-                                    : game.game_type === 'run21' ? 'Run21'
-                                    : '3-5-7'}
-                                  {game.real_money && <span className="text-green-400 ml-1">$</span>}
-                                </span>
-                                <span className="text-amber-400/50">•</span>
-                                <span>${game.ante_amount} {game.game_type === 'run21' ? 'Match stake' : 'Ante'}</span>
-                                {game.game_type === 'holm-game' ? (
-                                  <>
-                                    <span className="text-amber-400/50">•</span>
-                                    <span>{game.pot_max_enabled ? `$${game.pot_max_value} Max` : 'No Max'}</span>
-                                    <span className="text-amber-400/50">•</span>
-                                    <span>{game.chucky_cards || 4} Chucky</span>
-                                  </>
-                                ) : game.game_type === 'cribbage' ? (
-                                  <>
-                                    <span className="text-amber-400/50">•</span>
-                                    <span>{game.points_to_win || 121} pts</span>
-                                    <span className="text-amber-400/50">•</span>
-                                    <span>{(game as any).skunk_enabled ? 'Skunks' : 'No Skunks'}</span>
-                                  </>
-                                ) : game.game_type === 'gin-rummy' ? (
-                                  <>
-                                    <span className="text-amber-400/50">•</span>
-                                    <span>{game.points_to_win || 25} pts</span>
-                                  </>
-                                ) : game.game_type === 'run21' ? <span>· Isolated local match</span>
-                                : game.game_type === 'horses' || game.game_type === 'ship-captain-crew' || game.game_type === 'yahtzee' ? (
-                                  <></>
-                                ) : (
-                                  <>
-                                    <span className="text-amber-400/50">•</span>
-                                    <span>{game.pot_max_enabled ? `$${game.pot_max_value} Max` : 'No Max'}</span>
-                                    <span className="text-amber-400/50">•</span>
-                                    <span>{game.legs_to_win} Legs</span>
-                                  </>
-                                )}
-                              </div>
-                              {/* All params shown in first row above */}
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Players Table */}
-                        {isInProgress && game.game_type !== 'run21' && activePlayers.length > 0 && (
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-amber-400/60 mb-2">Current Standings</div>
-                            <div className="border border-amber-700/30 rounded-lg overflow-hidden bg-slate-900/50">
-                              <table className="w-full text-xs sm:text-sm">
-                                <thead>
-                                  <tr className="bg-amber-900/20">
-                                    <th className="text-left p-1.5 sm:p-2 font-medium text-amber-300">Player</th>
-                                    <th className="text-right p-1.5 sm:p-2 font-medium text-amber-300">Chips</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {activePlayers
-                                    .sort((a, b) => b.chips - a.chips)
-                                    .map((player, idx) => (
-                                      <tr key={idx} className="border-t border-amber-700/20">
-                                        <td className="p-1.5 sm:p-2 text-amber-100 truncate max-w-[100px] sm:max-w-none">{player.username}</td>
-                                        <td className={`p-1.5 sm:p-2 text-right font-mono ${player.chips >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                          ${formatChipValue(player.chips)}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
+            activeGames.map(game=><article key={game.id} className="midnight-session">
+              <div className="midnight-session-heading"><h3>{game.name||`Game #${game.id.slice(0,8)}`}{game.real_money&&<span className="text-green-400 ml-1">$</span>}</h3>
+                <Button size="sm" onClick={()=>joinGame(game.id)} disabled={(game.player_count>=7&&!game.is_player)||isBlocked}>{game.is_player?'Re-Join':'Join'}</Button></div>
+              <p>Host: {game.host_username} · Duration: {game.duration_minutes} min · Players: {game.player_count}</p>
+              {game.game_type&&game.ante_amount!==undefined&&<p>Last Game: $<span>{formatChipValue(game.ante_amount)}</span> {findGame(game.game_type)?.name??game.game_type}{['holm-game','holm','3-5-7','3-5-7-game'].includes(game.game_type)&&game.pot_max_enabled?`, $${formatChipValue(game.pot_max_value??0)} Max`:''}</p>}
+              <div className="midnight-session-status"><span>{game.is_paused?'Paused':game.status==='waiting'?'Waiting':'Active'}</span>{game.is_player&&<span>· Yours</span>}
+                {game.is_creator&&game.status==='waiting'&&<Button size="sm" variant="destructive" onClick={()=>setDeleteGameId(game.id)}>Delete</Button>}</div>
+            </article>)
           )}
         </TabsContent>
         
@@ -651,12 +418,6 @@ export const GameLobby = ({ userId, isMaintenanceMode, onInitialLoad, onOnboardi
           }}
         />
       )}
-
-      <GameDefaultsConfig 
-        open={showDefaultsConfig} 
-        onOpenChange={setShowDefaultsConfig} 
-      />
-
 
       <RealMoneyWarningDialog
         open={!!pendingRealMoneyGameId}

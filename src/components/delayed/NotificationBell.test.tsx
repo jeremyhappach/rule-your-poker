@@ -6,7 +6,7 @@ const mocks=vi.hoisted(()=>({request:vi.fn(()=>()=>{}),items:[] as any[],changed
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{request:mocks.request}}));
 vi.mock('@/lib/delayed/client',()=>({delayedRpc:mocks.rpc}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{auth:{getSession:async()=>({data:{session:{user:{id:'user'}}}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},channel:()=>{const c={on:(_a:any,_b:any,changed:()=>void)=>{mocks.changed=changed;return c;},subscribe:()=>c};return c;},removeChannel(){}}}));
-import {NotificationProvider,NotificationBell} from './NotificationBell';
+import {NotificationProvider,NotificationBell,NotificationInbox,useAsyncActionCount} from './NotificationBell';
 const notice={id:'n',match_id:'m',kind:'turn',revision:1,read_revision:0,actionable:true,payload:{availableCount:1,lastCall:false}};
 beforeEach(()=>{sessionStorage.clear();mocks.items=[];mocks.request.mockClear();mocks.rpc.mockImplementation(async()=>({items:mocks.items,actionable:mocks.items.length}));});afterEach(cleanup);
 function mount(path='/'){return render(<MemoryRouter initialEntries={[path]}><NotificationProvider><NotificationBell/></NotificationProvider></MemoryRouter>);}
@@ -61,6 +61,15 @@ it('uses the filtered server badge and refreshes deleted invitations from the ow
  mocks.items=[];await act(async()=>mocks.changed());expect(screen.getByRole('button',{name:'Notifications'})).toBeTruthy();expect(screen.getByText('No notifications.')).toBeTruthy();
 });
 function Path(){const location=useLocation();return <output data-testid="path">{location.pathname+location.search}</output>;}
+it('counts distinct actionable matches and keeps account actions in the dismissible inbox',async()=>{
+ mocks.items=[notice,{...notice,id:'result',kind:'results'},{...notice,id:'other',match_id:'other-match',kind:'settled'},{...notice,id:'old',match_id:'old-match',actionable:false},{...notice,id:'approval',kind:'registration',match_id:null,registration_user_id:'new-player',payload:{username:'New player'}}];
+ const close=vi.fn();function Count(){return <output data-testid="count">{useAsyncActionCount()}</output>;}
+ render(<MemoryRouter initialEntries={['/arcade']}><NotificationProvider><Count/><NotificationInbox open onOpenChange={close}/><Path/></NotificationProvider></MemoryRouter>);
+ await waitFor(()=>expect(screen.getByTestId('count').textContent).toBe('2'));
+ fireEvent.click(screen.getByRole('link',{name:/Approval required/}));
+ await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe('/?adminPlayer=new-player'));
+ expect(close).toHaveBeenCalledWith(false);
+});
 it.each([['invitation','/delayed/m'],['results','/delayed/m'],['settled','/delayed/m?finale=1']])('preserves %s notification navigation',async(kind,destination)=>{
  mocks.items=[{...notice,kind,payload:{completionCount:2}}];
  render(<MemoryRouter><NotificationProvider><NotificationBell/><Path/></NotificationProvider></MemoryRouter>);

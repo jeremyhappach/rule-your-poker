@@ -1,3 +1,22 @@
+# Midnight Blue UI — November 21, 2026 — local review; not deployed
+
+The approved Midnight Blue brief is implemented across the three lobbies,
+Multiplayer selection/setup and Async invitation flow. Shared banner/tabs,
+compact cards, reused decorative art, navy settings and individual-game review
+grouping preserve existing catalog, configuration and submission owners.
+The Async tab counts distinct actionable matches; ellipsis → Notifications
+retains invitation, turn, result and account-approval actions. Notification
+settings and push delivery remain intact. No backend/schema or financial changes.
+
+Prepared on `codex/midnight-blue-review` from `origin/main` at `40cadbcd6` in an
+isolated worktree. Jeremy requested review before publication: no integration,
+push or deployment. Local typecheck, 4,365 application tests, 241 harness tests,
+46 release-tooling tests and 68 browser layouts pass. Production build and the
+existing 90 MB size gate pass. Local sample-data browser evidence does not
+replace authenticated owner/phone smoke. Review instructions, preserved
+behavior, artwork provenance and acceptance steps are in
+[the Midnight Blue review packet](../../dev/midnight-blue/README.md).
+
 # Async Chucky opponent results — November 20, 2026 — qualified; owner smoke pending
 
 The opponent's saved round now shows a card-free results overlay: three hearts,

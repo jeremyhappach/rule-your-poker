@@ -7,20 +7,22 @@ import {useAccountAccess} from '@/lib/accountAccessContext';
 import {claimOnboardingEntry,consumeOnboardingEntry,onboardingPreference,pushEntryReady,subscribePushEntry,type OnboardingDecision,type OnboardingPreference} from '@/lib/mobileOnboarding';
 import {supabase} from '@/integrations/supabase/client';
 import {MobileOnboardingTutorial} from './MobileOnboardingTutorial';
+import {NotificationInbox} from './delayed/NotificationBell';
 import {AudioDiagnostics} from './AudioDiagnostics';
 
 interface Props {
- userId:string|null;ready:boolean;blocked:boolean;
+ userId:string|null;ready:boolean;blocked:boolean;onDefaults?:()=>void;
  onOpenSettings:()=>void;onRules:()=>void;onHistory:()=>void;onLogin:()=>void;onLogout:()=>void;
 }
-export function LobbyOnboarding({userId,ready,blocked,onOpenSettings,onRules,onHistory,onLogin,onLogout}:Props) {
+export function LobbyOnboarding({userId,ready,blocked,onOpenSettings,onRules,onHistory,onLogin,onLogout,onDefaults}:Props) {
  const account=useAccountAccess();
  const pushReady=useSyncExternalStore(subscribePushEntry,pushEntryReady);
  const [mode,setMode]=useState<'automatic'|'manual'|null>(null),[menuOpen,setMenuOpen]=useState(false);
  const [audioOpen,setAudioOpen]=useState(false);
+ const [notificationsOpen,setNotificationsOpen]=useState(false);
  const identity=useRef(userId);identity.current=userId;
  const pending=useRef<{userId:string;promise:Promise<OnboardingPreference>}|null>(null);
- const safe=!!userId&&mode===null&&!audioOpen&&ready&&!blocked&&!menuOpen&&pushReady&&account?.access.userId===userId&&account.access.enabled&&!account.reminderOpen;
+ const safe=!!userId&&mode===null&&!audioOpen&&!notificationsOpen&&ready&&!blocked&&!menuOpen&&pushReady&&account?.access.userId===userId&&account.access.enabled&&!account.reminderOpen;
  useEffect(()=>{
   if(!safe||!userId||!claimOnboardingEntry(userId))return;
   let alive=true;
@@ -50,6 +52,9 @@ export function LobbyOnboarding({userId,ready,blocked,onOpenSettings,onRules,onH
   <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
    <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-8 w-8 shrink-0 p-0" title="More options" aria-label="More options"><Ellipsis className="h-4 w-4"/></Button></DropdownMenuTrigger>
    <DropdownMenuContent align="end" collisionPadding={12}>
+    {userId&&<DropdownMenuItem onSelect={()=>setNotificationsOpen(true)}>Notifications</DropdownMenuItem>}
+    {onDefaults&&<DropdownMenuItem onSelect={onDefaults}>Defaults</DropdownMenuItem>}
+    <DropdownMenuItem disabled={!userId} onSelect={onOpenSettings}>Notification settings</DropdownMenuItem>
     <DropdownMenuItem disabled={!userId} onSelect={onHistory}><History className="mr-2 h-4 w-4"/>History</DropdownMenuItem>
     <DropdownMenuSub><DropdownMenuSubTrigger>Help</DropdownMenuSubTrigger><DropdownMenuSubContent collisionPadding={12}>
      <DropdownMenuItem onSelect={()=>{if(userId)consumeOnboardingEntry(userId);setMode('manual');setMenuOpen(false);}}>Install App &amp; Notifications</DropdownMenuItem>
@@ -61,6 +66,7 @@ export function LobbyOnboarding({userId,ready,blocked,onOpenSettings,onRules,onH
    </DropdownMenuContent>
   </DropdownMenu>
   {mode&&!account?.reminderOpen&&(mode==='manual'||!blocked)&&<MobileOnboardingTutorial onClose={close} onOpenSettings={()=>{close('snooze');onOpenSettings();}}/>}
+  <NotificationInbox open={notificationsOpen} onOpenChange={setNotificationsOpen}/>
   {audioOpen&&<AudioDiagnostics onClose={()=>setAudioOpen(false)}/>}
  </>;
 }

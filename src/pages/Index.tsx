@@ -1,7 +1,9 @@
-import {NotificationBell} from '@/components/delayed/NotificationBell';
+import {LobbyBanner,type LobbyMode} from '@/components/midnight/LobbyBanner';
+import {GameDefaultsConfig} from '@/components/GameDefaultsConfig';
+import {ArcadeSwitchboard} from '@/components/arcade/ArcadeSwitchboard';
 import { FreshLaunchSplash } from '@/components/FreshLaunchSplash';
 import { LobbyOnboarding } from '@/components/LobbyOnboarding';
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -72,7 +74,10 @@ import { accountAmountIsNegative, formatAccountAmount } from "@/lib/accountMoney
 import { RecentLoginsDialog } from '@/components/RecentLoginsDialog';
 import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
 
-const Index = () => {
+const AsyncMatchList=lazy(()=>import('./Delayed').then(m=>({default:m.MatchList})));
+
+const Index = ({lobbyMode='multiplayer'}:{lobbyMode?:LobbyMode}) => {
+  const [showLobbyDefaults,setShowLobbyDefaults]=useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, isReady } = useAuthGuard({ pageLabel: "Index" });
@@ -474,9 +479,9 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 bg-background">
-      <FreshLaunchSplash userId={user.id} ready={lobbyReady && !!currentUsername && !balanceLoading && !balanceError && !maintenanceLoading && !isMaintenanceMode} />
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen midnight-lobby">
+      <FreshLaunchSplash userId={user.id} ready={(lobbyMode!=='multiplayer'||lobbyReady) && !!currentUsername && !balanceLoading && !balanceError && !maintenanceLoading && !isMaintenanceMode} />
+      <div className="max-w-4xl mx-auto space-y-4">
         <div className="flex items-center justify-between gap-2" data-lobby-header>
           {/* Left-aligned username + balance button */}
           <Button 
@@ -498,7 +503,7 @@ const Index = () => {
             </span>
           </Button>
           
-          <NotificationBell />
+
           {/* Keep preferences pinned; secondary actions share one overflow menu. */}
           <div className="flex gap-1.5 flex-shrink-0">
             <Button 
@@ -511,10 +516,12 @@ const Index = () => {
             >
               <UserCircle className="w-4 h-4" />
             </Button>
-            <LobbyOnboarding userId={user.id} ready={lobbyReady&&!maintenanceLoading&&!isMaintenanceMode} blocked={onboardingBlocked||showProfileDialog||showHistoryDialog||showRulesDialog||showBalanceDialog||showAdminPlayerList||showRecentLogins||!!selectedAdminPlayer} onRules={()=>setShowRulesDialog(true)} onHistory={()=>setShowHistoryDialog(true)} onLogin={()=>navigate('/auth')} onLogout={()=>void handleLogout()} onOpenSettings={()=>{setOpenNotifications(true);setShowProfileDialog(true);}}/>
+            <LobbyOnboarding onDefaults={isAdmin?()=>setShowLobbyDefaults(true):undefined} userId={user.id} ready={lobbyMode==='multiplayer'&&lobbyReady&&!maintenanceLoading&&!isMaintenanceMode} blocked={onboardingBlocked||showLobbyDefaults||showProfileDialog||showHistoryDialog||showRulesDialog||showBalanceDialog||showAdminPlayerList||showRecentLogins||!!selectedAdminPlayer} onRules={()=>setShowRulesDialog(true)} onHistory={()=>setShowHistoryDialog(true)} onLogin={()=>navigate('/auth')} onLogout={()=>void handleLogout()} onOpenSettings={()=>{setOpenNotifications(true);setShowProfileDialog(true);}}/>
           </div>
         </div>
-        <GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} onInitialLoad={setLobbyReady} onOnboardingBlocked={setOnboardingBlocked} />
+        <LobbyBanner disabled={isMaintenanceMode&&!isAdmin}/>
+        {lobbyMode==='multiplayer'?<GameLobby userId={user.id} isMaintenanceMode={isMaintenanceMode} onInitialLoad={setLobbyReady} onOnboardingBlocked={setOnboardingBlocked}/>:lobbyMode==='arcade'?<ArcadeSwitchboard userId={user.id} embedded/>:<Suspense fallback={<p role="status">Loading matches…</p>}><AsyncMatchList userId={user.id}/></Suspense>}
+        {isAdmin&&<GameDefaultsConfig open={showLobbyDefaults} onOpenChange={setShowLobbyDefaults}/>}
       </div>
 
         <Dialog open={showProfileDialog} onOpenChange={open=>{setShowProfileDialog(open);if(!open&&selectedAdminPlayer){const next=new URLSearchParams(accountParams);next.delete('adminPlayer');setAccountParams(next,{replace:true});}}}>

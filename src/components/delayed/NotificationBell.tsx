@@ -2,9 +2,11 @@ import {startTransition,createContext,useContext,useCallback,useEffect,useRef,us
 import {Link,useLocation,useNavigate} from 'react-router-dom';
 import {compactTurnTime,turnDestination,turnEntryHint} from '@/lib/delayed/notifications';
 import type {Home} from '@/lib/delayed/client';
+import {distinctActionMatches} from '@/lib/delayed/inviteGroups';
 import {Bell} from 'lucide-react';
 import {supabase} from '@/integrations/supabase/client';
 import {delayedRpc} from '@/lib/delayed/client';
+import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {Popover,PopoverTrigger,PopoverContent} from '@/components/ui/popover';
 import {clearPrivateDrafts} from '@/lib/delayed/drafts';
 import '@/lib/delayed/delayed.css';
@@ -51,29 +53,36 @@ export function NotificationProvider({children}:{children:ReactNode}){
  },[userId,items,clock,refresh]);
  return <NotificationContext.Provider value={userId?{userId,items,count,clock,error,refresh,setError}:null}>{children}</NotificationContext.Provider>;
 }
-export function NotificationBell(){
- const context=useContext(NotificationContext);if(!context)return null;
- return <NotificationBellContent context={context}/>;
+export function useAsyncActionCount(){return distinctActionMatches(useContext(NotificationContext)?.items??[]);}
+export function NotificationInbox({open,onOpenChange}:{open:boolean;onOpenChange:(open:boolean)=>void}){
+ const context=useContext(NotificationContext);return open&&context?<NotificationBellContent context={context} textOnly onDismiss={()=>onOpenChange(false)}/>:null;
 }
-function NotificationBellContent({context}:{context:NonNullable<React.ContextType<typeof NotificationContext>>}){
+export function NotificationBell({textOnly=false}:{textOnly?:boolean}){
+ const context=useContext(NotificationContext);if(!context)return null;
+ return <NotificationBellContent context={context} textOnly={textOnly}/>;
+}
+function NotificationBellContent({context,textOnly,onDismiss}:{context:NonNullable<React.ContextType<typeof NotificationContext>>;textOnly:boolean;onDismiss?:()=>void}){
  const location=useLocation(),navigate=useNavigate();
- const [open,setOpen]=useState(false),[tick,setTick]=useState(()=>performance.now());
+ const [open,setOpen]=useState(textOnly),[tick,setTick]=useState(()=>performance.now());
+ useEffect(()=>{if(textOnly)void context.refresh();},[textOnly,context.refresh]);
  useEffect(()=>{if(!open)return;setTick(performance.now());const timer=setInterval(()=>setTick(performance.now()),60000);return()=>clearInterval(timer);},[open]);
- if(location.pathname!=='/')return null;
+ if(!textOnly&&location.pathname!=='/')return null;
  const {userId,items,count,clock,error,refresh,setError}=context;
  const now=clock.server+Math.max(0,tick-clock.at);
  const destination=(n:Notice)=>n.kind==='registration'?'/?adminPlayer='+n.registration_user_id:'/delayed/'+n.match_id+(n.kind==='settled'?'?finale=1':'');
  const markRead=(n:Notice)=>delayedRpc('delayed_notification_read',{p_id:n.id,p_revision:n.revision}).then(refresh).catch(()=>setError('Unable to mark read.'));
- const openTurn=async(n:Notice)=>{try{const home=await delayedRpc<Home>('delayed_home',{p_match:n.match_id});void markRead(n);const destination=turnDestination(home,userId);startTransition(()=>navigate(destination,{state:turnEntryHint(home,destination.split('/play/')[1]??'',userId)}));}catch{setError('Unable to verify the current turn. Please retry.');}};
- return <Popover open={open} onOpenChange={value=>{setOpen(value);if(value)void refresh();}}><PopoverTrigger asChild><button className="delayed-bell" data-pending={count>0||undefined} data-ring={count>0&&(location.pathname==='/'||location.pathname==='/delayed')||undefined} aria-label={`Notifications${count?`, ${count} pending`:''}`}>
-  <Bell size={19}/>{count>0&&<span>{count}</span>}</button></PopoverTrigger><PopoverContent className="w-80 max-w-full async-notification-popover" align="end">
-  <h2 className="font-semibold">Notifications</h2>{error?<p role="alert">{error} <button onClick={()=>void refresh()}>Retry</button></p>:
+ const openTurn=async(n:Notice)=>{try{const home=await delayedRpc<Home>('delayed_home',{p_match:n.match_id});void markRead(n);const destination=turnDestination(home,userId);onDismiss?.();startTransition(()=>navigate(destination,{state:turnEntryHint(home,destination.split('/play/')[1]??'',userId)}));}catch{setError('Unable to verify the current turn. Please retry.');}};
+ const contents=<>{error?<p role="alert">{error} <button onClick={()=>void refresh()}>Retry</button></p>:
    items.length===0?<p>No notifications.</p>:<ul className="async-notification-list">{items.map(n=><li key={n.kind==='turn'?'turn:'+n.match_id:n.id} data-match-id={n.match_id}>
     {n.kind==='turn'?<div className="async-notification-turn"><button onClick={()=>void openTurn(n)}>YOUR TURN</button><span className="async-notification-opponent">vs {n.payload.opponentName?.trim()||'your opponent'}</span>{n.payload.earliestDeadline&&<time>({compactTurnTime(n.payload.earliestDeadline,now)})</time>}</div>:<>
-    <Link to={destination(n)} onClick={event=>{void markRead(n);if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();startTransition(()=>navigate(destination(n)));}}}>
+    <Link to={destination(n)} onClick={event=>{void markRead(n);if(event.button===0&&!event.metaKey&&!event.ctrlKey&&!event.shiftKey&&!event.altKey){event.preventDefault();onDismiss?.();startTransition(()=>navigate(destination(n)));}}}>
      <strong>{n.kind==='registration'?'Approval required · '+(n.payload.username??'New player'):n.kind==='invitation'?'Pending invite'+(n.payload.opponentName?' from '+n.payload.opponentName:''):n.kind==='accepted'?(n.payload.opponentName??'Your opponent')+' accepted your match!':n.kind==='results'?`${n.payload.completionCount} game completions ready to view`:n.kind==='settled'?'Match complete · View results':'Invitation '+n.payload.status}</strong>
      {n.kind==='registration'&&<><small className="block break-all">{n.payload.email}</small><span className="block underline">Open player approval</span></>}{n.kind==='accepted'&&<small className="block">No turns yet available</small>}
      {!n.actionable&&<small className="block">For your records</small>}
-    </Link></>}</li>)}</ul>}
+    </Link></>}</li>)}</ul>}</>;
+ if(textOnly)return <Dialog open onOpenChange={value=>{if(!value)onDismiss?.();}}><DialogContent className="async-notification-popover"><DialogTitle>Notifications</DialogTitle><DialogDescription>Invitations, turns, results and account actions.</DialogDescription>{contents}</DialogContent></Dialog>;
+ return <Popover open={open} onOpenChange={value=>{setOpen(value);if(value)void refresh();}}><PopoverTrigger asChild><button className={textOnly?"midnight-notifications":"delayed-bell"} data-pending={count>0||undefined} data-ring={!textOnly&&count>0&&(location.pathname==='/'||location.pathname==='/delayed')||undefined} aria-label={`Notifications${count?`, ${count} pending`:''}`}>
+  {textOnly?"Notifications":<Bell size={19}/>} {count>0&&<span>{count}</span>}</button></PopoverTrigger><PopoverContent className="w-80 max-w-full async-notification-popover" align="end">
+{contents}
  </PopoverContent></Popover>;
 }

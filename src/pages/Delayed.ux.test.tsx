@@ -83,7 +83,7 @@ it('preserves the unified parent and simultaneous child turns, pending results a
 it('keeps one lobby parent card and navigation to setup, archive and multiplayer',async()=>{
  mount('/delayed');await screen.findByRole('link',{name:/vs. Opponent/});
  expect(document.querySelectorAll('.delayed-lineup>li')).toHaveLength(1);
- expect(screen.getByRole('link',{name:'New Async Match'}).getAttribute('href')).toBe('/delayed/new');
+ expect(screen.getByRole('link',{name:'New Match'}).getAttribute('href')).toBe('/delayed/new');
  expect(screen.getByRole('link',{name:'Archived / Completed Sessions'}).getAttribute('href')).toBe('/?sessions=completed');
  fireEvent.click(screen.getByRole('link',{name:'Lobby'}));expect(screen.getByRole('heading',{name:'Multiplayer lobby'})).toBeTruthy();
 });

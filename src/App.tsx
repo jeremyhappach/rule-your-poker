@@ -210,11 +210,11 @@ const App = () => {
               <WartimeAdminGateMount />
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/arcade" element={<Arcade />} />
+                <Route path="/arcade" element={<Index lobbyMode="arcade" />} />
                 <Route path="/arcade/:game" element={<Arcade />} />
                 <Route path="/arcade/:game/run/:runId" element={<ReleaseProtectedGameRoute><RouteErrorBoundary title="Arcade screen crashed"><Arcade /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
                 <Route element={<AsyncAudioScope/>}>
-                  <Route path="/delayed" element={<Delayed />} />
+                  <Route path="/delayed" element={<Index lobbyMode="async" />} />
                   <Route path="/delayed/:matchId" element={<Delayed />} />
                   <Route path="/delayed/:matchId/play/:childId" element={<ReleaseProtectedGameRoute checkingFallback={<AsyncTurnEntry/>}><RouteErrorBoundary title="Async Words screen crashed"><Delayed /></RouteErrorBoundary></ReleaseProtectedGameRoute>} />
                 </Route>

@@ -1,14 +1,16 @@
+import {GameArtwork} from '@/components/midnight/GameArtwork';
 import type {CSSProperties, ComponentProps} from 'react';
 import {Link} from 'react-router-dom';
 import {ArcadeArtwork, ArcadeInfo} from './ArcadeInfo';
 import {APPROVED_TILE_ARTWORK, hasNewerTileArtwork} from '@/lib/arcade/tileArtwork';
 import type {Artwork} from '@/lib/arcade/artwork';
 
-export function ArcadeTile({original=false,artwork,...props}: ComponentProps<typeof ArcadeInfo>&{original?:boolean;artwork?:Artwork}) {
+export function ArcadeTile({original=false,compact=false,artwork,...props}: ComponentProps<typeof ArcadeInfo>&{original?:boolean;compact?:boolean;artwork?:Artwork}) {
   const {game, name} = props;
   const approved = APPROVED_TILE_ARTWORK[game];
   const useApproved = !!approved && !hasNewerTileArtwork(artwork);
   const source = approved ? '/arcade/approved-v1/' + approved.slug : '';
+  if(compact)return <article className="midnight-tile midnight-arcade-tile"><Link to={'/arcade/'+game} aria-label={name+' leaderboard'}><h2>{name}</h2></Link>{hasNewerTileArtwork(artwork)?<ArcadeArtwork path={artwork?.object_path??null}/>:<GameArtwork game={game}/>}<ArcadeInfo {...props}/></article>;
   return <article data-original={original||undefined} className={"arcade-tile arcade-banner-tile"+(useApproved&&approved.embeddedInfo?' arcade-tile--embedded-info':'')}
     style={{'--embedded-info-right':approved?.embeddedInfo?.right,'--embedded-info-bottom':approved?.embeddedInfo?.bottom,'--embedded-info-width':approved?.embeddedInfo?.width,'--embedded-info-height':approved?.embeddedInfo?.height,'--arcade-info-bottom':useApproved ? approved.infoBottom : undefined} as CSSProperties}>
     <div className="arcade-banner-frame" style={{width:useApproved&&approved.width&&approved.height?`${Math.min(1,approved.width/approved.height/(1466/564))*100}%`:undefined}}>

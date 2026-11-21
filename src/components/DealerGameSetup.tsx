@@ -1,3 +1,7 @@
+import {GameIllustration} from '@/components/midnight/GameArtwork';
+import {SettingRow,AmountControl,ToggleRow} from '@/components/midnight/Settings';
+import type {ReactNode} from 'react';
+import {FARKLE_ENDGAME_LABELS,type FarkleEndgame} from '@/lib/farkle/types';
 import {useChessAccess} from '@/hooks/useChessAccess';
 import {useMegaCompetitionConfig} from '@/hooks/useMegaCompetitionConfig';
 import {MegaCompetitionSettings} from './megaCardGolf/MegaCompetitionConfig';
@@ -17,7 +21,7 @@ import {useTripFlipAccess} from '@/hooks/useTripFlipAccess';
 import {useTakeTwoAccess} from '@/hooks/useTakeTwoAccess';
 import {useRoyalFlashAccess} from '@/hooks/useRoyalFlashAccess';
 import {useElevenUpAccess} from '@/hooks/useElevenUpAccess';
-import { FarkleDealerFields, type FarkleDealerFieldsValue } from '@/components/farkle/FarkleDealerFields';
+import { type FarkleDealerFieldsValue } from '@/components/farkle/FarkleDealerFields';
 import { farkleLocalSetup, isFarkleLocalQualification } from '@/lib/farkle/localQualification';
 import { farkleProductionSetup, loadFarkleAdminDefaults } from '@/lib/farkle/dealerDefaults';
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -31,17 +35,12 @@ import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  useActiveHarnessInfo,
   useActiveHarnessMap,
 } from "@/lib/debugHarness/activeHarnessWarning";
 import { CRIBBAGE_GAME_MODES } from "@/lib/cribbageTypes";
-import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
+import { Lock, Timer, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 // playerStateEvaluation helpers no longer needed here — config timeout uses
 // the shared handle_config_deadline_timeout RPC for atomic state transitions.
@@ -270,6 +269,7 @@ const DealerGameSetupInner = ({
   }, []);
   // Selection step: game selection -> config
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
+  const [expandedSetting,setExpandedSetting]=useState<string|null>('Ante');
   const selectionGeneration = useRef(0);
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
   const [selectedGameType, setSelectedGameType] = useState<string>(previousGameType || "holm-game");
@@ -907,6 +907,7 @@ const DealerGameSetupInner = ({
   };
 
   const handleGameSelect = async (gameType: string) => {
+    setExpandedSetting('Ante');
     if (selectionReason(gameType)) return;
     const generation = ++selectionGeneration.current;
     if (gameType === 'farkle') {
@@ -1170,34 +1171,24 @@ const DealerGameSetupInner = ({
     setSelectionStep('game');
   };
 
+  const setting=(label:string,value:ReactNode,children:ReactNode)=><SettingRow key={label} label={label} value={value} open={expandedSetting===label} onToggle={()=>setExpandedSetting(old=>old===label?null:label)}>{children}</SettingRow>;
+  const amount=(label:string,value:string,onChange:(value:string)=>void,min=1,max?:number,prefix='$')=><AmountControl label={label} value={value} onChange={onChange} min={min} max={max} prefix={prefix}/>;
+  const optionalAmount=(label:string,enabled:boolean,toggle:(value:boolean)=>void,value:string,change:(value:string)=>void)=>setting(label,enabled?'$'+value:'Off',<><ToggleRow label={label+' enabled'} checked={enabled} onChange={toggle}/>{enabled&&amount(label,value,change)}</>);
+
+  const heading=(title:string,instruction:string)=><div className="midnight-setup-heading"><div><small>PEORIA POKER LEAGUE</small><h2>{title}</h2><p>{dealerUsername}, {instruction}</p>{activeHarnessMap[selectedGameType]?.active&&<p className="text-red-400">Harness: {activeHarnessMap[selectedGameType].label}</p>}</div><div className="midnight-setup-clock">{timeLeft!==null&&<Badge variant={timeLeft<=10?'destructive':'default'}><Timer className="w-4 h-4"/>{timeLeft}s</Badge>}{pauseControl}</div></div>;
+
   // Game selection step - tabbed layout with Cards vs Dice
   if (selectionStep === 'game') {
     return (
       <div
         data-dealer-game-setup-step="game-selection"
         data-dealer-game-setup-game-id={gameId}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+        className="midnight-setup fixed inset-0 flex items-center justify-center"
         style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
       >
         <Card className="w-full max-w-2xl border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark max-h-[100%] overflow-y-auto">
           <CardContent className="p-3 space-y-3 sm:p-5">
-            {pauseControl}
-            {/* Header with Timer */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-poker-gold">Dealer Setup</h2>
-                <p className="text-amber-100 text-sm">{dealerUsername}, choose game type</p>
-              </div>
-              {timeLeft !== null && (
-                <Badge 
-                  variant={timeLeft <= 10 ? "destructive" : "default"} 
-                  className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
-                >
-                  <Timer className="w-4 h-4" />
-                  {timeLeft}s
-                </Badge>
-              )}
-            </div>
+            {heading('Choose a game','choose game type')}
 
             <DealerGamePicker previousGame={previousGameType} roster={catalogRoster} access={catalogAccess} onSelect={handleGameSelect} harnesses={activeHarnessMap}/>
 
@@ -1219,7 +1210,7 @@ const DealerGameSetupInner = ({
             )}
 
             {/* Sit Out and End Session options */}
-            <div className="pt-3 border-t border-poker-gold/30 flex flex-col gap-2">
+            <div className="midnight-footer">
               {/* Sit Out - always show when handler is provided */}
               {onSitOut && (
                 <button
@@ -1272,243 +1263,64 @@ const DealerGameSetupInner = ({
         toast.error(error instanceof Error ? error.message : dealerSetupFailureMessage(error));
       }
     };
-    return <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4" style={{ zIndex: SHELL_Z.MODAL_OVERLAY }} data-dealer-game-setup-step="config" data-dealer-game-setup-selected-game="farkle">
+    return <div className="midnight-setup fixed inset-0 flex items-center justify-center" style={{ zIndex: SHELL_Z.MODAL_OVERLAY }} data-dealer-game-setup-step="config" data-dealer-game-setup-selected-game="farkle">
       <Card className="w-full max-w-md border-poker-gold bg-poker-felt"><CardContent className="space-y-4 p-6">
-        {pauseControl}
-        <h2 className="text-xl font-bold text-poker-gold">Farkle Setup</h2>
-        <FarkleDealerFields value={farkleDraft} onChange={setFarkleDraft} />
-        <p className="text-sm text-amber-200">{localTest ? 'TEST ONLY: isolated local scoring configuration.' : 'Scoring rules are frozen when this game starts.'}</p>
-        <div className="flex gap-2"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={isSubmitting || !!selectionReason("farkle")} onClick={submitFarkleSetup}>{localTest ? 'Start TEST ONLY Game' : 'Start Game'}</Button></div>
+        {heading('Farkle','configure your game')}<GameIllustration game="farkle"/>
+        <div className="midnight-settings">
+ {setting('Match Stake','$'+farkleDraft.stake,amount('Stake',farkleDraft.stake,stake=>setFarkleDraft({...farkleDraft,stake})))}
+ {setting('Target Score',farkleDraft.target,<Input aria-label="Target Score" value={farkleDraft.target} inputMode="numeric" onChange={e=>setFarkleDraft({...farkleDraft,target:e.target.value})}/>)}
+ {setting('Endgame',FARKLE_ENDGAME_LABELS[farkleDraft.endgame],<select aria-label="Endgame" value={farkleDraft.endgame} onChange={e=>setFarkleDraft({...farkleDraft,endgame:e.target.value as FarkleEndgame})}>{Object.entries(FARKLE_ENDGAME_LABELS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select>)}
+</div>
+        {localTest&&<p className="text-sm text-amber-200">TEST ONLY: isolated local scoring configuration.</p>}
+        <div className="midnight-footer"><Button variant="outline" onClick={() => setSelectionStep('game')}>Back</Button><Button disabled={isSubmitting || !!selectionReason("farkle")} onClick={submitFarkleSetup}>{localTest ? 'Start TEST ONLY Game' : 'Start Game'}</Button></div>
       </CardContent></Card>
     </div>;
   }
   if (selectionStep === 'config') {
     // Simple ante games only need ante configuration.
     if (isSimpleAnteGame(selectedGameType)) {
-      const isSCC = selectedGameType === 'ship-captain-crew';
-      const isHorses = selectedGameType === 'horses';
       const isCribbage = selectedGameType === 'cribbage';
       const isGinRummy = selectedGameType === 'gin-rummy';
-      const isYahtzee = selectedGameType === 'yahtzee';
-      const isRun21 = selectedGameType === 'run21';
-      const isTriTowers = selectedGameType === TRI_TOWERS.id;
       
-      const gameDisplayName = selectedGameType==='crib-lab'?'Crib Lab':selectedGameType==='chucky-showdown'?'Chucky Showdown':selectedGameType==='canasta'?'Canasta':selectedGameType==='mega-card-golf'?'Mega Card Golf':selectedGameType==='six-card-golf'?'Six-Card Golf':selectedGameType==='race-poker'?'Race Poker':selectedGameType==='battle-31'?'Battle 31':selectedGameType==='quintzee'?'Quintzee':selectedGameType==='ptown-words'?'Ptown Words':selectedGameType==='boxdrop'?'Boxdrop':selectedGameType==='trip-flip'?'Trip Flip':selectedGameType==='take-two'?'Take 2':selectedGameType==='royal-flash'?'Royal Flash':selectedGameType==='eleven-up'?'11 Up':isTriTowers ? TRI_TOWERS.label : isSCC ? 'Ship' : isHorses ? 'Horses' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : isRun21 ? 'Run21' : selectedGameType;
-      const gameRulesText = (selectedGameType==='crib-lab'||selectedGameType==='chucky-showdown')?'Three rounds each · Highest total wins · One match stake':selectedGameType==='canasta'?'Draw two · Two canastas to go out · 5,000 points · One match stake':selectedGameType==='mega-card-golf'?(megaConfig?.course.holes??9)+' holes · Lowest signed total wins · One match stake':selectedGameType==='six-card-golf'?golfHoles+' holes · Lowest total wins · One match stake':selectedGameType==='race-poker'?'Build five-card hands · Race to 48,000 · Equal final hands · One match stake':selectedGameType==='battle-31'?'Two players · Four losses eliminate · One match stake':selectedGameType==='quintzee'?'Five dice · Two rounds and earned bonus · Fake money only':selectedGameType==='ptown-words'?'ENABLE2K · Three-minute turns · One match stake':selectedGameType==='boxdrop'?'Four scales · Two rounds and earned bonus · One match stake':selectedGameType==='trip-flip'?'Trips and Runs · Two rounds each · One match stake':selectedGameType==='take-two'?'Match pairs · Three rounds · One match stake':selectedGameType==='royal-flash'?'5 × 5 poker grid · Two rounds and earned bonus · One match stake':selectedGameType==='eleven-up'?'Total 11 · Two rounds and earned bonus · One match stake':isTriTowers ? 'Independent deals · One player at a time · Two stages and earned bonus · One match stake' : isRun21 ? 'Five columns · Three rounds · One match stake' : isSCC
-        ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
-        : isHorses 
-          ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
-          : isGinRummy
-              ? '10 cards • Draw & discard • Knock at ≤10 deadwood • Match to target'
-              : isYahtzee
-                ? '5 dice • 13 categories • Highest total wins'
-                : 'First to 121 • Skunk (2x) if loser < 91 • Double-skunk (3x) if < 61';
-      
+      const gameDisplayName=findGame(selectedGameType)?.name??selectedGameType;
+      const stakeLabel=['horses','ship-captain-crew','yahtzee','cribbage','gin-rummy'].includes(selectedGameType)?'Ante':'Match Stake';
+      const multiple=isCribbage||isGinRummy||['six-card-golf','mega-card-golf'].includes(selectedGameType);
+      const cribLabels:Record<string,string>={full:'Full',half:'Half (61 points)',super_quick:'Quick',sprint:'Sprint',custom:'Custom'};
+
       return (
         <div
           data-dealer-game-setup-step="config"
           data-dealer-game-setup-game-id={gameId}
           data-dealer-game-setup-selected-game={selectedGameType}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          className="midnight-setup fixed inset-0 flex items-center justify-center"
           style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
         >
           {/* Viewport-safe dialog: header + footer pinned, body scrolls. */}
-          <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
+          <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-full">
             <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
-              {pauseControl}
-              {/* Header with Timer */}
-              <div className="flex shrink-0 items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-poker-gold">{gameDisplayName} Setup</h2>
-                  <p className="text-amber-100 text-sm">{dealerUsername}, configure {isRun21 || selectedGameType==='crib-lab' || selectedGameType==='chucky-showdown' || selectedGameType==='canasta' || selectedGameType==='mega-card-golf' || selectedGameType==='six-card-golf' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='quintzee' || selectedGameType==='chess' || selectedGameType==='ptown-words' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || isTriTowers || selectedGameType==='eleven-up' ? 'match stake' : 'ante'}</p>
-                  {activeHarnessMap[selectedGameType]?.active && (
-                    <p className="mt-1 text-sm font-bold text-red-500">
-                      Harness: {activeHarnessMap[selectedGameType].label}
-                    </p>
-                  )}
+              {heading(gameDisplayName,'configure your game')}
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+                <GameIllustration game={selectedGameType}/>
+                <div className="midnight-settings">
+                {multiple?setting(stakeLabel,'$'+anteAmount,amount(stakeLabel==='Ante'?'Ante ($)':'Match stake ($)',anteAmount,setAnteAmount)):<div className="midnight-direct"><label>{stakeLabel}</label>{amount(stakeLabel==='Ante'?'Ante ($)':'Match stake ($)',anteAmount,setAnteAmount)}</div>}
+                {selectedGameType==='mega-card-golf'&&megaCatalog&&megaConfig&&setting('Course',megaConfig.course.name,<MegaCompetitionSettings courses={megaCatalog.courses} value={megaConfig} onChange={setMegaConfig}/>)}
+                {selectedGameType==='six-card-golf'&&setting('Match length',golfHoles+' holes',<select id="golf-match-length" aria-label="Match length" value={golfHoles} onChange={e=>setGolfHoles(golfHoleCount(Number(e.target.value)))}>{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select>)}
+                {isCribbage&&<>
+                  {setting('Game Mode',cribLabels[cribbageGameMode],<select aria-label="Game Mode" value={cribbageGameMode} onChange={e=>setCribbageGameMode(e.target.value as import('@/lib/cribbageTypes').CribbageGameMode)}>{CRIBBAGE_GAME_MODES.map(mode=><option key={mode.id} value={mode.id}>{cribLabels[mode.id]} — {mode.description}</option>)}</select>)}
+                  {cribbageGameMode==='custom'&&setting('Points to Win',customPointsToWin,<Input aria-label="Points to Win" type="number" min="1" value={customPointsToWin} onChange={e=>setCustomPointsToWin(e.target.value)}/>)}
+                  {cribbageGameMode!=='sprint'&&cribbageGameMode!=='custom'&&<ToggleRow label="Skunks" description="2× & 3× payout multipliers" checked={skunksEnabled} onChange={setSkunksEnabled}/>}
+                </>}
+                {isGinRummy&&<>
+                  {setting('Match Target',ginRummyPointsToWin,<select aria-label="Match Target" value={ginRummyPointsToWin} onChange={e=>setGinRummyPointsToWin(Number(e.target.value))}><option value={100}>Standard — 100 pts</option><option value={50}>Short — 50 pts</option></select>)}
+                  {setting('Per-Point Value',ginRummyPerPointValue>0?'$'+ginRummyPerPointValue:'Off',amount('Per-Point Value ($)',String(ginRummyPerPointValue),v=>setGinRummyPerPointValue(parseInt(v)||0),0))}
+                  {setting('Gin',ginRummyGinBonus+' pts',amount('Gin (pts)',String(ginRummyGinBonus),v=>setGinRummyGinBonus(parseInt(v)||0),0,undefined,''))}
+                  {setting('Undercut',ginRummyUndercutBonus+' pts',amount('Undercut (pts)',String(ginRummyUndercutBonus),v=>setGinRummyUndercutBonus(parseInt(v)||0),0,undefined,''))}
+                </>}
                 </div>
-                {timeLeft !== null && (
-                  <Badge 
-                    variant={timeLeft <= 10 ? "destructive" : "default"} 
-                    className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
-                  >
-                    <Timer className="w-4 h-4" />
-                    {timeLeft}s
-                  </Badge>
-                )}
               </div>
 
-              {/* Simple Game Config */}
-              <div className="space-y-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-
-                <div className="space-y-1">
-                  <Label htmlFor="ante-simple" className="text-amber-100 text-sm">{isRun21 || selectedGameType==='crib-lab' || selectedGameType==='chucky-showdown' || selectedGameType==='canasta' || selectedGameType==='mega-card-golf' || selectedGameType==='six-card-golf' || selectedGameType==='race-poker' || selectedGameType==='battle-31' || selectedGameType==='quintzee' || selectedGameType==='chess' || selectedGameType==='ptown-words' || selectedGameType==='boxdrop' || selectedGameType==='trip-flip' || selectedGameType==='take-two' || selectedGameType==='royal-flash' || selectedGameType==='eleven-up' || selectedGameType==='tri-towers' ? 'Match stake ($)' : 'Ante ($)'}</Label>
-                  <Input
-                    id="ante-simple"
-                    type="text"
-                    inputMode="numeric"
-                    value={anteAmount}
-                    onChange={(e) => setAnteAmount(e.target.value)}
-                    className="bg-amber-900/30 border-poker-gold/50 text-white"
-                  />
-                </div>
-                
-                {selectedGameType==='mega-card-golf'&&megaCatalog&&megaConfig&&<MegaCompetitionSettings courses={megaCatalog.courses} value={megaConfig} onChange={setMegaConfig}/>}
-                {selectedGameType==='six-card-golf'&&<div className="space-y-1"><Label htmlFor="golf-match-length" className="text-amber-100 text-sm">Match length</Label><select id="golf-match-length" value={golfHoles} onChange={e=>setGolfHoles(golfHoleCount(Number(e.target.value)))} className="flex h-10 w-full rounded-md border border-poker-gold/50 bg-amber-950 px-3 py-2 text-white">{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select></div>}
-                {/* Cribbage-specific settings - preset game modes */}
-                {isCribbage && (
-                  <>
-                    {/* Game Mode Selection — compact dropdown (same modes/values) */}
-                    <div className="space-y-1">
-                      <Label className="text-amber-100 text-sm">Game Mode</Label>
-                      <Select
-                        value={cribbageGameMode}
-                        onValueChange={(v) =>
-                          setCribbageGameMode(v as import('@/lib/cribbageTypes').CribbageGameMode)
-                        }
-                      >
-                        <SelectTrigger className="bg-amber-900/30 border-poker-gold/50 text-white">
-                          <SelectValue placeholder="Select game mode" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CRIBBAGE_GAME_MODES.map((mode) => (
-                            <SelectItem key={mode.id} value={mode.id}>
-                              {mode.label} — {mode.description}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {/* Custom points input - only show when custom mode selected */}
-                    {cribbageGameMode === 'custom' && (
-                      <div className="space-y-1">
-                        <Label className="text-amber-100 text-sm">Points to Win</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={customPointsToWin}
-                          onChange={(e) => setCustomPointsToWin(e.target.value)}
-                          className="bg-amber-900/30 border-amber-700/50 text-white"
-                          placeholder="Enter target points"
-                        />
-                        <p className="text-xs text-amber-200/50">Skunks disabled for custom games</p>
-                      </div>
-                    )}
-
-                    
-                    {/* Skunks Toggle - only show if mode supports skunks (not sprint or custom) */}
-                    {cribbageGameMode !== 'sprint' && cribbageGameMode !== 'custom' && (
-                      <div className="flex items-center justify-between pt-2">
-                        <div>
-                          <Label htmlFor="skunks-toggle" className="text-amber-100 text-sm">Skunks</Label>
-                          <p className="text-xs text-amber-200/50">2x & 3x payout multipliers</p>
-                        </div>
-                        <Switch
-                          id="skunks-toggle"
-                          checked={skunksEnabled}
-                          onCheckedChange={setSkunksEnabled}
-                        />
-                      </div>
-                    )}
-                    
-                    {/* Mode description */}
-                    <div className="text-xs text-amber-200/60 bg-amber-900/20 rounded-lg p-2 text-center">
-                      {cribbageGameMode === 'full' && skunksEnabled && 'Skunk <91 (2x) • Double Skunk <61 (3x)'}
-                      {cribbageGameMode === 'full' && !skunksEnabled && 'No skunk multipliers'}
-                      {cribbageGameMode === 'half' && skunksEnabled && 'Skunk <31 (2x) • Double Skunk <15 (3x)'}
-                      {cribbageGameMode === 'half' && !skunksEnabled && 'No skunk multipliers'}
-                      {cribbageGameMode === 'super_quick' && skunksEnabled && 'Quick: Skunk <30 (2x) • No double skunk'}
-                      {cribbageGameMode === 'super_quick' && !skunksEnabled && 'Quick: No skunk multipliers'}
-                      {cribbageGameMode === 'sprint' && 'Quick game, no skunk penalties'}
-                      {cribbageGameMode === 'custom' && `First to ${customPointsToWin || '?'} points, no skunks`}
-                    </div>
-                  </>
-                )}
-                
-                {/* Gin Rummy-specific settings */}
-                {isGinRummy && (
-                  <>
-                    {/* Match Mode Selection */}
-                    <div className="space-y-2">
-                      <Label className="text-amber-100 text-sm">Match Target</Label>
-                      <div className="flex flex-col gap-2">
-                        {[
-                          { pts: 100, label: 'Standard', desc: '100 pts' },
-                          { pts: 50, label: 'Short', desc: '50 pts' },
-                        ].map((mode) => (
-                          <button
-                            key={mode.pts}
-                            type="button"
-                            onClick={() => setGinRummyPointsToWin(mode.pts)}
-                            className={`w-full py-2.5 px-4 rounded-lg border transition-all flex items-center justify-between ${
-                              ginRummyPointsToWin === mode.pts
-                                ? 'border-poker-gold bg-poker-gold/20 text-white'
-                                : 'border-amber-700/50 bg-amber-900/20 text-amber-200 hover:bg-amber-900/40'
-                            }`}
-                          >
-                            <span className="font-medium">{mode.label}</span>
-                            <span className="text-sm opacity-70">{mode.desc}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Per-point value */}
-                    <div className="space-y-1">
-                      <Label className="text-amber-100 text-sm">Per-Point Value ($)</Label>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        value={ginRummyPerPointValue}
-                        onChange={(e) => setGinRummyPerPointValue(parseInt(e.target.value) || 0)}
-                        className="bg-amber-900/30 border-poker-gold/50 text-white"
-                      />
-                      <p className="text-xs text-amber-200/50">0 = disabled (flat ante only)</p>
-                    </div>
-                    
-                     {/* Bonus points */}
-                     <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-1">
-                          <Label className="text-amber-100 text-sm">Gin (pts)</Label>
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            value={ginRummyGinBonus}
-                            onChange={(e) => setGinRummyGinBonus(parseInt(e.target.value) || 0)}
-                            className="bg-amber-900/30 border-poker-gold/50 text-white"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-amber-100 text-sm">Undercut (pts)</Label>
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            value={ginRummyUndercutBonus}
-                            onChange={(e) => setGinRummyUndercutBonus(parseInt(e.target.value) || 0)}
-                            className="bg-amber-900/30 border-poker-gold/50 text-white"
-                          />
-                        </div>
-                      </div>
-                     
-                     {/* Summary */}
-                     <div className="text-xs text-amber-200/60 bg-amber-900/20 rounded-lg p-2 text-center">
-                       Match to {ginRummyPointsToWin} pts
-                       {ginRummyPerPointValue > 0 && ` • $${ginRummyPerPointValue}/pt`}
-                       {ginRummyGinBonus > 0 && ` • Gin +${ginRummyGinBonus}pts`}
-                       {ginRummyUndercutBonus > 0 && ` • Undercut +${ginRummyUndercutBonus}pts`}
-                     </div>
-                  </>
-                )}
-                
-                {!isCribbage && !isGinRummy && (
-                  <p className="text-sm text-amber-200/70 text-center">
-                    {gameRulesText}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex shrink-0 gap-2 pb-[env(safe-area-inset-bottom)]">
+              <div className="midnight-footer shrink-0">
                 <button
                   onClick={handleBackToGameSelection}
                   className="flex-1 p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
@@ -1538,250 +1350,30 @@ const DealerGameSetupInner = ({
       data-dealer-game-setup-step="config"
       data-dealer-game-setup-game-id={gameId}
       data-dealer-game-setup-selected-game={selectedGameType}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      className="midnight-setup fixed inset-0 flex items-center justify-center"
       style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
     >
-      <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-[calc(100dvh-2rem)]">
+      <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-full">
         <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
-          {pauseControl}
-          {/* Header with Timer */}
-          <div className="flex shrink-0 items-center justify-between">
+          {heading(findGame(selectedGameType)?.name??selectedGameType,'configure your game')}
 
-            <div>
-              <h2 className="text-2xl font-bold text-poker-gold">Card Game Setup</h2>
-              <p className="text-amber-100 text-sm">{dealerUsername}, configure your game</p>
-              {activeHarnessMap[selectedGameType]?.active && (
-                <p className="mt-1 text-sm font-bold text-red-500">
-                  Harness: {activeHarnessMap[selectedGameType].label}
-                </p>
-              )}
-            </div>
-            {timeLeft !== null && (
-              <Badge 
-                variant={timeLeft <= 10 ? "destructive" : "default"} 
-                className={`text-lg px-3 py-1 flex items-center gap-1 ${timeLeft <= 10 ? 'animate-pulse' : ''}`}
-              >
-                <Timer className="w-4 h-4" />
-                {timeLeft}s
-              </Badge>
-            )}
-          </div>
-
-          {/* Scrollable configuration body — footer stays reachable */}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
-            {/* The game is fixed by the preceding selection screen. */}
-            {/* Holm Game Config */}
-            {selectedGameType === 'holm-game' && (
-              <div className="space-y-4">
-              <p className="text-amber-200 text-sm text-center">4 cards + 4 community cards vs Chucky</p>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label htmlFor="ante-holm" className="text-amber-100 text-sm">Ante ($)</Label>
-                  <Input
-                    id="ante-holm"
-                    type="text"
-                    inputMode="numeric"
-                    value={anteAmount}
-                    onChange={(e) => setAnteAmount(e.target.value)}
-                    className="bg-amber-900/30 border-poker-gold/50 text-white"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="chucky" className="text-amber-100 text-sm">Chucky Cards</Label>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/20"
-                      onClick={() => setChuckyCards(String(Math.max(2, (parseInt(chuckyCards) || 4) - 1)))}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <Input
-                      id="chucky"
-                      type="text"
-                      inputMode="numeric"
-                      value={chuckyCards}
-                      onChange={(e) => setChuckyCards(e.target.value)}
-                      className="bg-amber-900/30 border-poker-gold/50 text-white text-center flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-9 w-9 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/20"
-                      onClick={() => setChuckyCards(String(Math.min(7, (parseInt(chuckyCards) || 4) + 1)))}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-amber-100 text-sm">Pussy Tax</Label>
-                    <Switch checked={pussyTaxEnabled} onCheckedChange={setPussyTaxEnabled} />
-                  </div>
-                  {pussyTaxEnabled && (
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={pussyTaxValue}
-                      onChange={(e) => setPussyTaxValue(e.target.value)}
-                      className="bg-amber-900/30 border-poker-gold/50 text-white"
-                    />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-amber-100 text-sm">Pot Max</Label>
-                    <Switch checked={potMaxEnabled} onCheckedChange={setPotMaxEnabled} />
-                  </div>
-                  {potMaxEnabled && (
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={potMaxValue}
-                      onChange={(e) => setPotMaxValue(e.target.value)}
-                      className="bg-amber-900/30 border-poker-gold/50 text-white"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2 border-t border-poker-gold/20">
-                <div className="space-y-0.5">
-                  <Label className="text-amber-100 text-sm">Rabbit Hunt</Label>
-                  <p className="text-xs text-amber-200/60">Show hidden cards when everyone folds</p>
-                </div>
-                <Switch checked={rabbitHunt} onCheckedChange={setRabbitHunt} />
-              </div>
-              </div>
-            )}
-
-            {/* 3-5-7 Config */}
-            {selectedGameType === '3-5-7' && (
-              <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="ante-357" className="text-amber-100 text-sm">Ante ($)</Label>
-                  <Input
-                    id="ante-357"
-                    type="text"
-                    inputMode="numeric"
-                    value={anteAmount}
-                    onChange={(e) => setAnteAmount(e.target.value)}
-                    className="bg-amber-900/30 border-poker-gold/50 text-white"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="leg-value" className="text-amber-100 text-sm">Leg Value ($)</Label>
-                  <Input
-                    id="leg-value"
-                    type="text"
-                    inputMode="numeric"
-                    value={legValue}
-                    onChange={(e) => setLegValue(e.target.value)}
-                    className="bg-amber-900/30 border-poker-gold/50 text-white"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="rollover-357" className="text-amber-100 text-sm">Rollover ($)</Label>
-                  <Input
-                    id="rollover-357"
-                    type="text"
-                    inputMode="numeric"
-                    value={rolloverAmount}
-                    onChange={(e) => setRolloverAmount(e.target.value)}
-                    className="bg-amber-900/30 border-poker-gold/50 text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label htmlFor="legs-to-win" className="text-amber-100 text-sm">Legs to Win</Label>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/20"
-                    onClick={() => setLegsToWin(String(Math.max(1, (parseInt(legsToWin) || 3) - 1)))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <Input
-                    id="legs-to-win"
-                    type="text"
-                    inputMode="numeric"
-                    value={legsToWin}
-                    onChange={(e) => setLegsToWin(e.target.value)}
-                    className="bg-amber-900/30 border-poker-gold/50 text-white text-center flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9 border-poker-gold/50 text-poker-gold hover:bg-poker-gold/20"
-                    onClick={() => setLegsToWin(String((parseInt(legsToWin) || 3) + 1))}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-amber-100 text-sm">Pussy Tax</Label>
-                    <Switch checked={pussyTaxEnabled} onCheckedChange={setPussyTaxEnabled} />
-                  </div>
-                  {pussyTaxEnabled && (
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={pussyTaxValue}
-                      onChange={(e) => setPussyTaxValue(e.target.value)}
-                      className="bg-amber-900/30 border-poker-gold/50 text-white"
-                    />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-amber-100 text-sm">Pot Max</Label>
-                    <Switch checked={potMaxEnabled} onCheckedChange={setPotMaxEnabled} />
-                  </div>
-                  {potMaxEnabled && (
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={potMaxValue}
-                      onChange={(e) => setPotMaxValue(e.target.value)}
-                      className="bg-amber-900/30 border-poker-gold/50 text-white"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-amber-100 text-sm">Secret Reveal at Showdown</Label>
-                  <p className="text-xs text-amber-200/60">In rounds 1-2, players who stay can see each other's cards</p>
-                </div>
-                <Switch 
-                  checked={revealAtShowdown} 
-                  onCheckedChange={setRevealAtShowdown} 
-                />
-              </div>
-              </div>
-            )}
+            <GameIllustration game={selectedGameType}/>
+            <div className="midnight-settings">
+              {setting('Ante','$'+anteAmount,amount('Ante ($)',anteAmount,setAnteAmount))}
+              {selectedGameType==='holm-game'&&setting('Chucky Cards',chuckyCards,amount('Chucky Cards',chuckyCards,setChuckyCards,2,7,''))}
+              {selectedGameType==='3-5-7'&&<>
+                {setting('Leg Value','$'+legValue,amount('Leg Value ($)',legValue,setLegValue))}
+                {setting('Rollover','$'+rolloverAmount,amount('Rollover ($)',rolloverAmount,setRolloverAmount))}
+                {setting('Legs to Win',legsToWin,amount('Legs to Win',legsToWin,setLegsToWin,1,undefined,''))}
+              </>}
+              {optionalAmount('Pussy Tax',pussyTaxEnabled,setPussyTaxEnabled,pussyTaxValue,setPussyTaxValue)}
+              {optionalAmount('Pot Max',potMaxEnabled,setPotMaxEnabled,potMaxValue,setPotMaxValue)}
+              {selectedGameType==='holm-game'?<ToggleRow label="Rabbit Hunt" description="Show hidden cards when everyone folds" checked={rabbitHunt} onChange={setRabbitHunt}/>:<ToggleRow label="Secret Reveal at Showdown" description="In rounds 1–2, players who stay can see each other's cards" checked={revealAtShowdown} onChange={setRevealAtShowdown}/>}
+            </div>
           </div>
 
-          <div className="shrink-0 space-y-2 pb-[env(safe-area-inset-bottom)]">
+          <div className="midnight-footer shrink-0">
             {/* Back Button */}
             <button
               onClick={handleBackToGameSelection}

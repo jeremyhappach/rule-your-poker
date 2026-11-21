@@ -1,3 +1,6 @@
+import {GameArtwork} from '@/components/midnight/GameArtwork';
+import {AsyncHistory} from '@/components/delayed/AsyncHistory';
+import {Tabs,TabsList,TabsTrigger,TabsContent} from '@/components/ui/tabs';
 import {ChessHistoryButton} from '@/components/chess/ChessHistory';
 import {CompletedMatchRecord} from '@/components/delayed/CompletedMatchRecord';
 import {ChessTurn} from '@/components/delayed/ChessTurn';
@@ -44,7 +47,7 @@ function useUpdates(userId:string,refresh:()=>void,enabled=true){
   return()=>{void supabase.removeChannel(channel);window.removeEventListener('online',focus);document.removeEventListener('visibilitychange',focus);};
  },[userId,refresh,enabled]);
 }
-function MatchList({userId}:{userId:string}){
+export function MatchList({userId}:{userId:string}){
  const [rows,setRows]=useState<Home[]>([]),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);
  const [older,setOlder]=useState(true),[loadingOlder,setLoadingOlder]=useState(false);
  const [clock,setClock]=useState({serverAt:0,receivedAt:0}),[,refreshClock]=useState(0);
@@ -65,11 +68,11 @@ function MatchList({userId}:{userId:string}){
    Math.max(0,Math.ceil(nextDeadline-clock.serverAt-performance.now()+clock.receivedAt)));
   return()=>clearTimeout(timer);
  },[clock,nextDeadline]);
- return <><Link className="delayed-primary" to="/delayed/new">New Async Match</Link>
+ return <div className="space-y-4"><Link className="midnight-create" to="/delayed/new">New Match</Link><Tabs defaultValue="active"><TabsList className="grid grid-cols-2"><TabsTrigger value="active">Active ({matches.length})</TabsTrigger><TabsTrigger value="completed">Completed</TabsTrigger></TabsList><TabsContent value="active">
   {error&&<p role="alert">{error} <button onClick={refresh}>Retry</button></p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
   {loaded&&!matches.length&&<p>No active async matches.</p>}
-  <ul className="delayed-lineup">{matches.map(({home:row,opponent,own,other,results,invitation,accepts,actionable})=><li key={row.id} data-turn={actionable?'own':'opponent'}>
-   <Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {opponent}</AsyncSessionName></strong>{!invitation&&<> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></>}</Link>
+  <ul className="delayed-lineup">{matches.map(({home:row,opponent,own,other,results,invitation,accepts,actionable})=><li className="midnight-match" key={row.id} data-turn={actionable?'own':'opponent'}>
+   <GameArtwork game={row.lineup[0]?.game??'holm-game'}/><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {opponent}</AsyncSessionName></strong>{!invitation&&<> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></>}</Link>
    <p>{!invitation&&<>{row.status} · </>}{row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>
    <p className="delayed-game-mix" aria-label="Match game mix">{matchGameMix(row.lineup)}</p>
    {invitation?<strong>Invited <time dateTime={row.createdAt}>{localInvitationTime(row.createdAt)}</time> - Pending {accepts?'Your':opponent+'’s'} Acceptance</strong>:
@@ -79,7 +82,7 @@ function MatchList({userId}:{userId:string}){
   {rows.length>=30&&older&&<button disabled={loadingOlder} onClick={()=>{const last=rows.at(-1)!;setLoadingOlder(true);
    void delayedRpc<Home[]>('delayed_list',{p_before:last.createdAt,p_before_id:last.id}).then(v=>{
     setRows(old=>[...old,...v.filter(item=>!old.some(existing=>existing.id===item.id))]);setOlder(v.length===30);
-   }).catch(e=>setError(e.message)).finally(()=>setLoadingOlder(false));}}>Load older matches</button>}<Link to="/?sessions=completed">Archived / Completed Sessions</Link></>;
+   }).catch(e=>setError(e.message)).finally(()=>setLoadingOlder(false));}}>Load older matches</button>}<Link to="/?sessions=completed">Archived / Completed Sessions</Link></TabsContent><TabsContent value="completed"><AsyncHistory profileId={userId} showGameMix/></TabsContent></Tabs></div>;
 }
 function MatchHome({id,userId}:{id:string;userId:string}){
  const navigate=useNavigate();

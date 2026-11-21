@@ -3,7 +3,7 @@ export default {
   "id": "quintzee",
   "defaultsKey": "quintzee",
   "name": "Quintzee",
-  "category": "dice",
+  "category": "other",
   "order": 19,
   "family": "megatouch",
   "modes": [
