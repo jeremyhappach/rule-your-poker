@@ -11,8 +11,9 @@ function Die({n,x,y,size=45,fill}:{n:number;x:number;y:number;size?:number;fill:
   const pips=n===1?[[.5,.5]]:n===2?[[.25,.25],[.75,.75]]:n===3?[[.25,.25],[.5,.5],[.75,.75]]:n===4?[[.25,.25],[.75,.25],[.25,.75],[.75,.75]]:n===5?[[.25,.25],[.75,.25],[.5,.5],[.25,.75],[.75,.75]]:[[.25,.22],[.75,.22],[.25,.5],[.75,.5],[.25,.78],[.75,.78]];
   return <g transform={`translate(${x} ${y})`}><rect width={size} height={size} rx={size*.16} fill={fill} stroke="#f9deb0" strokeWidth="1.5"/>{pips.map(([a,b],i)=><circle key={i} cx={a*size} cy={b*size} r={size*.075} fill="#14212b"/>)}</g>;
 }
-export function GameArtwork({game,className=''}:{game:string;className?:string}){
+export function GameArtwork({game,className='',surface='motif'}:{game:string;className?:string;surface?:'motif'|'setup'}){
   const id=useId().replace(/:/g,''),paper=id+'paper',gold=id+'gold';
+  if(game==='holm-game')return <img className={'midnight-art '+(surface==='setup'?'midnight-holm-scene ':'')+className} src={'/game-branding/holm-approved-'+(surface==='setup'?'scene':'cards')+'.jpg'} alt="" aria-hidden="true"/>;
   if(game in atlas){const cell=atlas[game];return <svg className={'midnight-art '+className} viewBox="0 0 418 418" aria-hidden="true" focusable="false"><defs><clipPath id={id+'clip'}><rect width="418" height="418"/></clipPath></defs><g clipPath={`url(#${id}clip)`}><image href="/game-branding/midnight-motifs.webp" x={-(cell%3)*418} y={-Math.floor(cell/3)*418} width="1254" height="1254"/></g></svg>;}
   if(game==='chucky-showdown')return <img className={'midnight-art midnight-portrait '+className} src="/arcade/approved-v1/chucky-portrait.webp" alt="" aria-hidden="true"/>;
   if(motifs.has(game))return <img className={'midnight-art midnight-existing-art '+className} src={`/game-branding/async-v1/${game}-motif.webp`} alt="" aria-hidden="true"/>;

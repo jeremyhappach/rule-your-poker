@@ -14,7 +14,7 @@ export const supabase={
   calls.push({name,args});let data:unknown=null;
   if(name==='delayed_capabilities')data={enabled:true,fake_money_only:false,max_children:32,games:games.map(id=>({id,stake:5}))};
   if(name==='delayed_opponent_page')data={items:[{id:other,name:'M Crew 81',isHuman:true},{id:'3',name:'RiverRat 57',isHuman:true}],next:null,hasMore:false};
-  if(name==='delayed_list')data=[home(2),home(1),home(0)];
+  if(name==='delayed_list')data=[home(2),{...home(2),id:'match-incoming',organizer:other,opponent:viewer,players:[{id:viewer,name:'Hap'},{id:other,name:'Incoming Rival'}]},home(1),home(0)];
   if(name==='delayed_create')data='preview-match';
   if(name==='delayed_history')data=[];
   if(name==='platform_notification_center')data={items:[{id:'n1',match_id:'match-0',kind:'turn',actionable:true,revision:1,read_revision:0,payload:{opponentName:'M Crew 81',availableCount:3}},{id:'n2',match_id:'match-0',kind:'results',actionable:true,revision:1,read_revision:0,payload:{completionCount:1}},{id:'n3',match_id:'match-1',kind:'results',actionable:true,revision:1,read_revision:0,payload:{completionCount:1}}],actionable:3,serverAt:Date.now()};

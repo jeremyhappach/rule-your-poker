@@ -4,6 +4,48 @@ Review branch: `codex/midnight-blue-review`, based on `origin/main` at
 `40cadbcd6f9e321d1ee35a97fbad109cdb090394`. Prepared for review only. Do not push
 or integrate into `main` until Jeremy authorizes publication.
 
+## Final targeted smoke pass
+
+The approved references and latest smoke corrections determine the layout.
+Cards use the reference's 1.4 tile ratio; Dice use 1.12. Titles occupy a separate
+row above the artwork so wrapped names cannot be covered. Cribbage/Golf art is
+smaller and fainter; Other is unchanged. Holm's four cards are side by side.
+
+The ZIP has no standalone Holm scene asset. `holm-approved-scene.jpg` is an
+art-only crop of mockup 03 at (30,244), size 964×220; `holm-approved-cards.jpg`
+uses (250,267), size 540×181. Both retain the supplied pixels, encoded as JPEG
+quality 90. The scene keeps the table, cocktail, warm lighting and four cards,
+without the mockup's rule caption. No new artwork or image generation was used.
+The other existing motifs are retained.
+
+Shared setup spacing is reduced, with 44px amount/Pause/Back/Start targets.
+Optional amount accordions display their existing switch and stepper beside
+the label when expanded, without adding vertical height. Short, wide containers
+use two settings columns and place the clock beside the compact identity panel.
+The settings body does not shrink under the footer or hide clipped controls.
+Pending invite cards say `Pending acceptance` in both directions; incoming
+acceptance retains the green card treatment and original action/deep link.
+
+Validation: 128 focused tests (84 setup tests repeated after the final markup
+change), typecheck, production build/size gate, 80 regression browser layouts,
+and 27 targeted setup/expanded-editor fit checks. The latter cover eight games
+at 390×844, 320×568 and 844×390, plus both invitation directions, title/art
+separation and footer overlap. Run `node dev/midnight-blue/targeted-smoke.mjs`.
+The fixture uses local sample data; no live invites or transactions are sent.
+
+Visually reviewed phone-size side-by-side evidence under
+`qualification.local/midnight-blue/final/`:
+
+- `comparison-picker.png`: approved picker beside the refreshed picker,
+  including Holm, Cribbage and Six-Card Golf.
+- `comparison-holm.png`: approved Holm scene beside the combined setup panel.
+- `comparison-fit-and-invites.png`: approved 3-5-7, short-phone default/expanded
+  setup, and both pending invitation states.
+
+The reference example omits existing 3-5-7 settings; all real settings/defaults
+remain available. No gameplay, configuration, eligibility, timer, payout,
+validation, invite, notification or backend owner changed. Publication is held.
+
 ## Rolling smoke follow-up — pass 2
 
 The latest five requested changes restore a subtle brass-bordered Multiplayer

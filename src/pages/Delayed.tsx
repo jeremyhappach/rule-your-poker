@@ -11,7 +11,7 @@ import {AsyncSessionName} from '@/components/delayed/AsyncSessionName';
 import {RealMoneyWarningDialog} from '@/components/RealMoneyWarningDialog';
 import {AsyncGameHeader} from '@/components/delayed/AsyncGameHeader';
 import {MatchInfo} from '@/components/delayed/MatchInfo';
-import {isReviewedGame,orderedLobbyGames,lobbyGameGroup,matchLobbyStatus,localInvitationTime,matchGameMix} from '@/lib/delayed/lobbyPresentation';
+import {isReviewedGame,orderedLobbyGames,lobbyGameGroup,matchLobbyStatus,matchGameMix} from '@/lib/delayed/lobbyPresentation';
 import {AsyncTurnEntry} from '@/components/delayed/AsyncTurnEntry';
 import {turnEntryHint} from '@/lib/delayed/notifications';
 import {AsyncInvite} from '@/components/delayed/AsyncInvite';
@@ -71,11 +71,11 @@ export function MatchList({userId}:{userId:string}){
  return <div className="space-y-4"><Link className="midnight-create" to="/delayed/new">New Match</Link><Tabs defaultValue="active"><TabsList className="grid grid-cols-2"><TabsTrigger value="active">Active ({matches.length})</TabsTrigger><TabsTrigger value="completed">Completed</TabsTrigger></TabsList><TabsContent value="active">
   {error&&<p role="alert">{error} <button onClick={refresh}>Retry</button></p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
   {loaded&&!matches.length&&<p>No active async matches.</p>}
-  <ul className="delayed-lineup">{matches.map(({home:row,opponent,own,other,results,invitation,accepts,actionable})=><li className="midnight-match" key={row.id} data-turn={actionable?'own':'opponent'}>
+  <ul className="delayed-lineup">{matches.map(({home:row,opponent,own,other,results,invitation,accepts,actionable})=><li className="midnight-match" key={row.id} data-turn={actionable?'own':'opponent'} data-acceptance={invitation?(accepts?'own':'opponent'):undefined}>
    <GameArtwork game={row.lineup[0]?.game??'holm-game'}/><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {opponent}</AsyncSessionName></strong></Link>
    <p>{!invitation&&<>{row.status} · </>}{row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>
    <p className="delayed-game-mix" aria-label="Match game mix">{matchGameMix(row.lineup)}</p>
-   {invitation?<strong>Invited <time dateTime={row.createdAt}>{localInvitationTime(row.createdAt)}</time> - Pending {accepts?'Your':opponent+'’s'} Acceptance</strong>:
+   {invitation?<strong className="midnight-pending">Pending acceptance</strong>:
     row.status==='active'&&(row.held?<strong>On hold</strong>:<strong>Turns - You: {own}, {opponent}: {other}</strong>)}
    {results>0&&<p><strong>{results} {results===1?'result':'results'} to view</strong></p>}
    </li>)}</ul>

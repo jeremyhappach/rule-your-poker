@@ -63,6 +63,61 @@ body:has(.midnight-invite){background:#06111f}
 .midnight-match-info p{font-size:.9rem;line-height:1.5;color:#d6dfe5}
 
 .dealer-catalog .midnight-art{mix-blend-mode:lighten}
-.dealer-catalog .midnight-tile-large{aspect-ratio:1.7;min-height:5rem;align-items:center;padding:.6rem}
-.dealer-catalog .midnight-tile-large>span{max-width:65%}
-.dealer-catalog .midnight-tile-large>.midnight-art{top:0;right:-.4rem;width:68%;height:100%;object-fit:contain;mask-image:none}
+.dealer-catalog .midnight-tile-large{aspect-ratio:1.4;min-height:5rem;display:grid;grid-template-rows:auto minmax(0,1fr);align-items:start;padding:.7rem}
+.dealer-catalog[data-category=dice] .midnight-tile-large{aspect-ratio:1.12}
+.dealer-catalog .midnight-tile-large>span{grid-row:1;max-width:100%;font-size:clamp(1.05rem,3.7cqi,1.55rem);line-height:1.08;text-shadow:0 2px 4px #000,0 0 8px #06111f}
+.dealer-catalog .midnight-tile-large>.midnight-art{position:static;grid-row:2;justify-self:end;width:90%;height:100%;min-height:0;opacity:.8;object-fit:contain;mask-image:none}
+.dealer-catalog [data-dealer-game-option=holm-game]>.midnight-art{width:100%;opacity:1}
+.dealer-catalog :is([data-dealer-game-option=cribbage],[data-dealer-game-option=six-card-golf])>.midnight-art{width:78%;opacity:.65}
+
+/* Use available container space, with full-size controls and no clipped rows. */
+.midnight-setup[data-dealer-game-setup-step=config]{padding:max(.5rem,env(safe-area-inset-top)) .5rem max(.5rem,env(safe-area-inset-bottom))}
+.midnight-setup[data-dealer-game-setup-step=config]>div{overflow:visible}
+.midnight-setup[data-dealer-game-setup-step=config]>div>div{padding:.4rem;gap:.3rem;display:flex;flex-direction:column}
+.midnight-setup[data-dealer-game-setup-step=config]>div>div>*{margin-top:0;margin-bottom:0}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-clock button{min-height:2.75rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity{margin-top:.2rem;padding:.25rem .5rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity h2{font-size:clamp(1.15rem,3.7cqi,1.6rem);margin:.15rem 0}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity p{font-size:.65rem;line-height:1.2}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity>.midnight-art{height:clamp(2.75rem,10cqb,5rem)}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-settings{gap:.18rem;padding:0}
+.midnight-setup .midnight-setup-body{flex:0 0 auto}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-inline-setting{padding:0 .45rem;gap:.35rem;min-height:2.875rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-inline-setting>span{font-size:.95rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-amount input{height:2.75rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setting-summary{min-height:2.75rem;padding:.25rem .5rem;font-size:1rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-toggle{min-height:2.75rem;padding:.25rem .5rem;gap:.5rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-toggle label{font-size:.9rem;line-height:1.1}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-toggle small{font-size:.65rem;line-height:1.1;margin-top:.15rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-footer{position:static;padding-top:.25rem;gap:.25rem}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-footer button{padding:.3rem;min-height:2.75rem;font-size:.95rem;line-height:1.1}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-footer>p{font-size:.6rem;line-height:1.15;margin:0}
+.midnight-setup-identity:has(>.midnight-holm-scene){flex-wrap:wrap;overflow:hidden}
+.midnight-setup-identity:has(>.midnight-holm-scene)>div{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;flex-basis:100%}
+.midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity>.midnight-holm-scene{flex-basis:100%;width:100%;height:auto;max-height:8rem;object-fit:contain;mix-blend-mode:normal;filter:none;border-radius:.35rem}
+/* An expanded optional amount replaces its summary value in the same row.
+   Its existing switch and amount handlers remain independently accessible. */
+.midnight-setup .midnight-setting:has(.midnight-optional-controls):has(>button[aria-expanded=true]){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,12.25rem);align-items:center;padding:0 .45rem}
+.midnight-setup .midnight-setting:has(.midnight-optional-controls)>button[aria-expanded=true]{padding:.25rem 0;font-size:.9rem}
+.midnight-setup .midnight-setting:has(.midnight-optional-controls)>button[aria-expanded=true]>:not(:first-child){display:none}
+.midnight-setup .midnight-setting:has(.midnight-optional-controls)>.midnight-setting-editor{padding:0;border:0}
+.midnight-optional-controls{display:flex;align-items:center;gap:.25rem}
+.midnight-setup .midnight-optional-controls>.midnight-toggle{flex:0 0 2.75rem;padding:0;border:0;background:none;justify-content:center}
+.midnight-optional-controls>.midnight-toggle>label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.midnight-optional-controls [role=switch]{position:relative}
+.midnight-optional-controls [role=switch]:after{content:'';position:absolute;inset:-.625rem 0}
+.midnight-optional-controls>.midnight-amount{gap:.2rem;min-width:0}
+.midnight-optional-controls>.midnight-amount>div{padding:0 .1rem}
+.midnight-optional-controls>.midnight-amount input,.midnight-optional-controls>.midnight-amount>div>span{font-size:1.1rem}
+@container (min-width:36rem) and (max-height:36rem){
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-heading{display:flex;align-items:center;gap:.4rem}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-toolbar{order:2}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-toolbar>small{display:none}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity{flex:1;margin-top:0}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-settings{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .midnight-setup-identity:has(>.midnight-holm-scene){flex-wrap:nowrap}
+ .midnight-setup-identity:has(>.midnight-holm-scene)>div{display:block;flex-basis:30%}
+ .midnight-setup[data-dealer-game-setup-step=config] .midnight-setup-identity>.midnight-holm-scene{flex-basis:65%;width:65%;max-height:4rem}
+}
+.midnight-pending{display:block;white-space:nowrap;font-size:.9rem}
+.midnight-lobby .delayed-lineup li[data-acceptance=own]{background:linear-gradient(125deg,#163c2c,#0b241c);border-color:#3c8b59;box-shadow:inset 3px 0 #62ad7f}

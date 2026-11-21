@@ -1,5 +1,16 @@
 # Midnight Blue UI — November 21, 2026 — local review; not deployed
 
+Final targeted smoke pass: picker proportions follow the supplied references,
+with titles above their art bounds and reduced Cribbage/Golf art contrast.
+Holm reuses exact art-only crops from approved mockup 03: four cards in one row
+and the speakeasy scene. No artwork generation. The shared compact setup fits
+320×568 phones and 844×390 landscape without clipped settings or footer overlap;
+expanded optional amounts retain their switch/stepper in the same row. Pending
+invites use one-line “Pending acceptance”; incoming invites retain green cards.
+128 focused tests, typecheck, build/size gate, 80 browser regression layouts and
+27 targeted fit checks pass. Phone-size reference comparisons are saved in
+`qualification.local/midnight-blue/final/`. Production publication remains held.
+
 Second rolling smoke pass: restored the subtle brass frame around Multiplayer
 name/art panels and shortened/blended Cards/Dice tiles; Other stays compact.
 Async lobby cards omit Current Net and start timestamps. Every lineup group has

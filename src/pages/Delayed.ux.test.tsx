@@ -106,10 +106,12 @@ it('renders simultaneous turns, unseen results and local invitations in action o
   ['/delayed/both','/delayed/incoming','/delayed/results','/delayed/outgoing','/delayed/waiting']);
  expect(cards.map(card=>card.getAttribute('data-turn'))).toEqual(['own','own','own','opponent','opponent']);
  expect(cards[0].querySelector('p > strong')?.textContent).toBe('2 results to view');
- expect(cards[1].textContent).toContain('Invited 11/11 8:59am - Pending Your Acceptance');
- expect(cards[1].querySelector('time')?.dateTime).toBe(createdAt);
+ expect(cards[1].querySelector('.midnight-pending')?.textContent).toBe('Pending acceptance');
+ expect(cards[1].getAttribute('data-acceptance')).toBe('own');
+ expect(cards[1].querySelector('time')).toBeNull();
  expect(cards[2].textContent).toContain('1 result to view');
- expect(cards[3].textContent).toContain('Invited 11/11 8:59am - Pending TheOG’s Acceptance');
+ expect(cards[3].querySelector('.midnight-pending')?.textContent).toBe('Pending acceptance');
+ expect(cards[3].getAttribute('data-acceptance')).toBe('opponent');
  expect(cards[4].textContent).toContain('Turns - You: 0, Rival: 1');
 });
 it('refreshes the same match on a new notification tap and removes stale turn actions',async()=>{

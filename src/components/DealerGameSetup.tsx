@@ -1174,11 +1174,11 @@ const DealerGameSetupInner = ({
   const setting=(label:string,value:ReactNode,children:ReactNode)=><SettingRow key={label} label={label} value={value} open={expandedSetting===label} onToggle={()=>setExpandedSetting(old=>old===label?null:label)}>{children}</SettingRow>;
   const inlineSetting=(label:string,children:ReactNode)=><InlineSettingRow key={label} label={label}>{children}</InlineSettingRow>;
   const amount=(label:string,value:string,onChange:(value:string)=>void,min=1,max?:number,prefix='$')=><AmountControl label={label} value={value} onChange={onChange} min={min} max={max} prefix={prefix}/>;
-  const optionalAmount=(label:string,enabled:boolean,toggle:(value:boolean)=>void,value:string,change:(value:string)=>void)=>setting(label,enabled?'$'+value:'Off',<><ToggleRow label={label+' enabled'} checked={enabled} onChange={toggle}/>{enabled&&amount(label,value,change)}</>);
+  const optionalAmount=(label:string,enabled:boolean,toggle:(value:boolean)=>void,value:string,change:(value:string)=>void)=>setting(label,enabled?'$'+value:'Off',<div className="midnight-optional-controls"><ToggleRow label={label+' enabled'} checked={enabled} onChange={toggle}/>{enabled&&amount(label,value,change)}</div>);
 
   const heading=(title:string,instruction:string)=><header className="midnight-setup-heading">
     <div className="midnight-setup-toolbar"><small>PEORIA POKER LEAGUE</small><div className="midnight-setup-clock">{timeLeft!==null&&<Badge variant={timeLeft<=10?'destructive':'default'}><Timer className="w-4 h-4"/>{timeLeft}s</Badge>}{pauseControl}</div></div>
-    <div className="midnight-setup-identity"><div><h2>{title}</h2><p>{dealerUsername}, {instruction}</p>{activeHarnessMap[selectedGameType]?.active&&<p className="text-red-400">Harness: {activeHarnessMap[selectedGameType].label}</p>}</div>{selectionStep==='config'&&<GameArtwork game={selectedGameType}/>}</div>
+    <div className="midnight-setup-identity"><div><h2>{title}</h2><p>{dealerUsername}, {instruction}</p>{activeHarnessMap[selectedGameType]?.active&&<p className="text-red-400">Harness: {activeHarnessMap[selectedGameType].label}</p>}</div>{selectionStep==='config'&&<GameArtwork game={selectedGameType} surface="setup"/>}</div>
   </header>;
 
   // Game selection step - tabbed layout with Cards vs Dice
@@ -1298,12 +1298,12 @@ const DealerGameSetupInner = ({
           className="midnight-setup fixed inset-0 flex items-center justify-center"
           style={{ zIndex: SHELL_Z.MODAL_OVERLAY }}
         >
-          {/* Viewport-safe dialog: header + footer pinned, body scrolls. */}
+          {/* Shared compact configuration surface; expanded editors retain their controls. */}
           <Card className="w-full max-w-lg border-poker-gold border-4 bg-gradient-to-br from-poker-felt to-poker-felt-dark flex flex-col max-h-full">
             <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
               {heading(gameDisplayName,'configure your game')}
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+              <div className="midnight-setup-body min-h-0 flex-1">
                 <div className="midnight-settings">
                 {inlineSetting(stakeLabel,amount(stakeLabel==='Ante'?'Ante ($)':'Match stake ($)',anteAmount,setAnteAmount))}
                 {selectedGameType==='mega-card-golf'&&megaCatalog&&megaConfig&&setting('Course',megaConfig.course.name,<MegaCompetitionSettings courses={megaCatalog.courses} value={megaConfig} onChange={setMegaConfig}/>)}
@@ -1359,7 +1359,7 @@ const DealerGameSetupInner = ({
         <CardContent className="pt-6 pb-6 flex min-h-0 flex-1 flex-col gap-4">
           {heading(findGame(selectedGameType)?.name??selectedGameType,'configure your game')}
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
+          <div className="midnight-setup-body min-h-0 flex-1">
             <div className="midnight-settings">
               {inlineSetting('Ante',amount('Ante ($)',anteAmount,setAnteAmount))}
               {selectedGameType==='holm-game'&&inlineSetting('Chucky Cards',amount('Chucky Cards',chuckyCards,setChuckyCards,2,7,''))}
@@ -1380,7 +1380,7 @@ const DealerGameSetupInner = ({
               onClick={handleBackToGameSelection}
               className="w-full p-3 rounded-lg border border-amber-600/50 text-amber-400 hover:bg-amber-900/30 transition-colors"
             >
-              ← Back to Game Types
+              ← Back
             </button>
 
             {/* Start Button */}
