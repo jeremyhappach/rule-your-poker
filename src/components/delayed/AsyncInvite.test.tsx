@@ -37,7 +37,7 @@ it('copies exact entries, separates stakes, removes one copy and keeps original 
  fireEvent.click(screen.getByRole('button',{name:'Copy Run21, $3'}));
  fireEvent.click(screen.getByRole('button',{name:'Add Game'}));pick('run21');ok();
  expect(screen.getByText('2×')).toBeTruthy();expect(screen.getByText('1×')).toBeTruthy();
- fireEvent.click(screen.getByRole('button',{name:'Remove one Run21, $3'}));expect(screen.queryByRole('button',{name:'Remove one Run21, $3'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Remove one Run21, $3'}));expect(screen.getByRole('button',{name:'Remove one Run21, $3'})).toBeTruthy();expect(screen.queryByText('Edit individual games or order')).toBeNull();
  opponent();expect(screen.getByText('1× $3 Run21, 1× $5 Run21')).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Send Invite'}));
  await waitFor(()=>expect(sends()).toHaveLength(1));expect(sends()[0][1].p_lineup).toEqual([{game:'run21',stake:3},{game:'run21',stake:5}]);
 });
@@ -45,6 +45,8 @@ it('Back leaves an uncommitted game out of the review and respects the child lim
  mock.max=1;await mount();pick('run21');fireEvent.click(screen.getByRole('button',{name:'← Back to games'}));pick('boxdrop');ok();
  expect((screen.getByRole('button',{name:'Add Game'}) as HTMLButtonElement).disabled).toBe(true);
  expect((screen.getByRole('button',{name:'Copy Boxdrop, $5'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Remove one Boxdrop, $5'}));expect(screen.queryByRole('button',{name:'Edit Boxdrop, $5'})).toBeNull();expect((screen.getByRole('button',{name:'Choose Opponent'}) as HTMLButtonElement).disabled).toBe(true);expect(sends()).toHaveLength(0);
+ fireEvent.click(screen.getByRole('button',{name:'Add Game'}));pick('boxdrop');ok();
  opponent();fireEvent.click(screen.getByRole('button',{name:'Send Invite'}));await waitFor(()=>expect(sends()).toHaveLength(1));expect(sends()[0][1].p_lineup).toEqual([{game:'boxdrop',stake:5}]);
 });
 it('keeps fake money confirmation, cancellation and established default stake reset',async()=>{
@@ -58,7 +60,7 @@ it('keeps fake money usable when real admission is closed',async()=>{
  mock.real=false;await mount();expect((screen.getByRole('switch') as HTMLInputElement).disabled).toBe(true);pick();ok();opponent();fireEvent.click(screen.getByRole('button',{name:'Send Invite'}));fireEvent.click(screen.getByRole('button',{name:'Send Fake Money Invitation'}));await waitFor(()=>expect(sends()).toHaveLength(1));expect(sends()[0][1].p_real_money).toBe(false);
 });
 it.each(['0','-1','1.5','10000',''])('blocks invalid stake %s before committing a draft',async value=>{
- await mount();pick();fireEvent.change(screen.getByLabelText('Stake 1'),{target:{value}});expect(screen.getByLabelText('Stake 1').getAttribute('aria-invalid')).toBe('true');expect((screen.getByRole('button',{name:'OK'}) as HTMLButtonElement).disabled).toBe(true);expect(sends()).toHaveLength(0);
+ await mount();pick();expect(screen.queryByText('Enter a whole-number stake from 1 to 9,999.')).toBeNull();expect(screen.queryByRole('alert')).toBeNull();fireEvent.change(screen.getByLabelText('Stake 1'),{target:{value}});expect(screen.getByLabelText('Stake 1').getAttribute('aria-invalid')).toBe('true');expect(screen.getByRole('alert').textContent).toBe('Stake must be a whole number from 1 to 9,999.');expect(screen.getByLabelText('Stake 1').getAttribute('aria-describedby')).toBe(screen.getByRole('alert').id);expect((screen.getByRole('button',{name:'OK'}) as HTMLButtonElement).disabled).toBe(true);expect(sends()).toHaveLength(0);
 });
 it('retries lost responses with the same request and retains the chosen opponent',async()=>{
  await mount();pick();ok();opponent();mock.fail=true;fireEvent.click(screen.getByRole('button',{name:'Send Invite'}));await screen.findByRole('alert');

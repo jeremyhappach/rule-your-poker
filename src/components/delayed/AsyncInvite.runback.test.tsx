@@ -46,6 +46,13 @@ it('recovers an ambiguous send across remount with its original locked payload',
  mock.fail=true;const first=await mount();chooseOpponent();send();await screen.findByRole('alert');expect(sends()).toHaveLength(1);const payload=structuredClone(sends()[0][1]);first.unmount();await mount();expect((screen.getByLabelText('Opponent').closest('fieldset') as HTMLFieldSetElement).disabled).toBe(true);mock.fail=false;send();await waitFor(()=>expect(sends()).toHaveLength(2));expect(sends()[1][1]).toEqual(payload);await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe('/delayed'));
 });
 it('new intentional archive entries receive distinct draft/request identities',()=>expect(runbackUrl('original','/delayed')).not.toBe(runbackUrl('original','/delayed')));
+it('restores an intentionally empty draft after the last group is removed and blocks sending until a game is added',async()=>{
+ const first=await mount();for(const button of screen.getAllByRole('button',{name:/^Remove one /}))fireEvent.click(button);
+ expect((screen.getByRole('button',{name:'Choose Opponent'}) as HTMLButtonElement).disabled).toBe(true);expect(sends()).toHaveLength(0);first.unmount();await mount();
+ expect(screen.queryByRole('button',{name:/^Edit /})).toBeNull();expect((screen.getByRole('button',{name:'Choose Opponent'}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(screen.getByRole('button',{name:'Add Game'}));fireEvent.click(screen.getByRole('button',{name:'Run21'}));fireEvent.click(screen.getByRole('button',{name:'OK'}));chooseOpponent();send();
+ await waitFor(()=>expect(sends()).toHaveLength(1));expect(sends()[0][1]).toMatchObject({p_request:id,p_opponent:'other',p_lineup:[{game:'run21',stake:5,config:rules[0]}]});
+});
 it('unlocks a definite validation rejection without changing the draft request ID',async()=>{
  await mount();const prior=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation(async(name,args)=>{if(name==='delayed_create')throw Error('delayed:unsupported_configuration');return prior(name,args);});chooseOpponent();send();await screen.findByRole('alert');expect((screen.getByLabelText('Opponent').closest('fieldset') as HTMLFieldSetElement).disabled).toBe(false);fireEvent.click(screen.getByRole('button',{name:/Games \(3\)/}));edit();fireEvent.change(screen.getByLabelText('Stake 1'),{target:{value:'15'}});fireEvent.click(screen.getByRole('button',{name:'OK'}));chooseOpponent();mock.rpc.mockImplementation(prior);send();await waitFor(()=>expect(sends()).toHaveLength(2));expect(sends()[1][1].p_request).toBe(id);expect(sends()[1][1].p_lineup[0].stake).toBe(15);
 });

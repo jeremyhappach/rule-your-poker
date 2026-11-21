@@ -1,5 +1,14 @@
 # Midnight Blue UI — November 21, 2026 — local review; not deployed
 
+Second rolling smoke pass: restored the subtle brass frame around Multiplayer
+name/art panels and shortened/blended Cards/Dice tiles; Other stays compact.
+Async lobby cards omit Current Net and start timestamps. Every lineup group has
+minus/plus, including removal at 1×; the individual-order disclosure is removed.
+Invalid stakes show an accessible error instead of a permanent hint. Empty,
+unsubmitted Run It Back drafts can reopen and still cannot submit until a valid
+game is added. The 128 focused checks and 80 browser layouts pass, alongside
+typecheck and production bundle/size validation. Publication remains held.
+
 Rolling smoke follow-up: Multiplayer configuration now combines name/art in
 one header, with inline amounts/dropdowns and the existing boolean switches.
 Async has a compact title, fully contained configuration artwork and a Match

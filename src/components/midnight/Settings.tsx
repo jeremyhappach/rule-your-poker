@@ -3,9 +3,9 @@ import {Input} from '@/components/ui/input';
 import {Switch} from '@/components/ui/switch';
 import './midnight.css';
 
-export function AmountControl({label,value,onChange,min=0,max,disabled=false,id,prefix='$',invalid}:{label:string;value:string;onChange:(value:string)=>void;min?:number;max?:number;disabled?:boolean;id?:string;prefix?:string;invalid?:boolean}){
+export function AmountControl({label,value,onChange,min=0,max,disabled=false,id,prefix='$',invalid,describedBy}:{label:string;value:string;onChange:(value:string)=>void;min?:number;max?:number;disabled?:boolean;id?:string;prefix?:string;invalid?:boolean;describedBy?:string}){
   const step=(delta:number)=>onChange(String(Math.max(min,Math.min(max??Infinity,(Number(value)||0)+delta))));
-  return <div className="midnight-amount"><button type="button" aria-label={'Decrease '+label} disabled={disabled||Number(value)<=min} onClick={()=>step(-1)}>−</button><div><span aria-hidden="true">{prefix}</span><Input id={id} aria-label={label} aria-invalid={invalid} type="text" inputMode="numeric" value={value} disabled={disabled} onChange={e=>onChange(e.target.value)}/></div><button type="button" aria-label={'Increase '+label} disabled={disabled||(max!==undefined&&Number(value)>=max)} onClick={()=>step(1)}>+</button></div>;
+  return <div className="midnight-amount"><button type="button" aria-label={'Decrease '+label} disabled={disabled||Number(value)<=min} onClick={()=>step(-1)}>−</button><div><span aria-hidden="true">{prefix}</span><Input id={id} aria-label={label} aria-invalid={invalid} aria-describedby={describedBy} type="text" inputMode="numeric" value={value} disabled={disabled} onChange={e=>onChange(e.target.value)}/></div><button type="button" aria-label={'Increase '+label} disabled={disabled||(max!==undefined&&Number(value)>=max)} onClick={()=>step(1)}>+</button></div>;
 }
 export function SettingRow({label,value,open,onToggle,children}:{label:string;value:ReactNode;open:boolean;onToggle:()=>void;children:ReactNode}){
   const id=useId();

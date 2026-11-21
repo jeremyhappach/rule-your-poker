@@ -33,7 +33,7 @@ export function AsyncHistory({profileId,balance=false,viewerName,showGameMix=fal
   <div className="async-history-heading"><strong><AsyncSessionName realMoney={r.realMoney}>{name} vs {r.opponent}</AsyncSessionName></strong><span className="async-badge">Async</span></div>
   <span>{new Date(r.completedAt).toLocaleString()} · {r.count} games</span>
   {showGameMix&&<HistoryGameMix id={r.id}/>}
-  {!balance&&<small>Started {new Date(r.startedAt).toLocaleString()}</small>}
+  {!balance&&!showGameMix&&<small>Started {new Date(r.startedAt).toLocaleString()}</small>}
   <b>{r.net>0?'W':r.net<0?'L':'Draw'} {money(r.net)}</b>{r.realMoney&&<small>Balances have been settled</small>}
   <Link className="async-see-results" to={matchRecordPath(r.id)}>See Results</Link>
   <ChessHistoryButton mode="async" matchId={r.id} label="Chess boards"/>

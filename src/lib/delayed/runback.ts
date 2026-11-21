@@ -55,7 +55,7 @@ const storageKey=(user:string,draft:string)=>'async-runback:v1:'+user+':'+draft;
 export function readRunback(user:string,id:string,source:string):RunbackDraft|null{
  const raw=sessionStorage.getItem(storageKey(user,id));if(!raw)return null;
  const draft=JSON.parse(raw) as RunbackDraft;
- if(draft.source!==source||typeof draft.realMoney!=='boolean'||typeof draft.policyVersion!=='string'||!Array.isArray(draft.lineup)||!draft.lineup.length||
+ if(draft.source!==source||typeof draft.realMoney!=='boolean'||typeof draft.policyVersion!=='string'||!Array.isArray(draft.lineup)||(!draft.lineup.length&&(draft.submission||draft.sent))||
   !draft.lineup.every(c=>c&&typeof c.key==='string'&&typeof c.game==='string'&&typeof c.stake==='string'&&Object.prototype.hasOwnProperty.call(c,'config'))||
   !draft.opponent||typeof draft.opponent.id!=='string'||typeof draft.opponent.name!=='string'||typeof draft.opponent.isHuman!=='boolean'||
   (draft.submission&&(draft.submission.p_request!==id||typeof draft.submission.p_opponent!=='string'||typeof draft.submission.p_real_money!=='boolean'||!Array.isArray(draft.submission.p_lineup))))

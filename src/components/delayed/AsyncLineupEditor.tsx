@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {Copy,Minus} from 'lucide-react';
+import {Plus,Minus} from 'lucide-react';
 import {findGame} from '@/lib/gameCatalog';
 import {gameName} from '@/lib/delayed/client';
 import {configurationIssue,type Capabilities,type InviteEntry} from '@/lib/delayed/runback';
@@ -16,7 +16,8 @@ export function AsyncLineupEditor({lineup,caps,source,realMoney,locked,collapsed
   useEffect(()=>{if(!realMoney&&!source)setEditing(old=>old?{...old,stake:String(caps.games.find(c=>c.id===old.game)?.stake??5)}:old);},[realMoney,source,caps.games]);
   const groups=inviteGroups(lineup),index=editing?lineup.findIndex(c=>c.key===editing.key):-1;
   const issue=editing?configurationIssue(editing,caps):null;
-  const valid=!!editing&&!issue&&/^[1-9][0-9]{0,3}$/.test(editing.stake);
+  const invalidStake=!!editing&&!/^[1-9][0-9]{0,3}$/.test(editing.stake);
+  const valid=!!editing&&!issue&&!invalidStake;
   const name=editing?inviteGameName(editing.game):'';
   const newEntry=(game:string):InviteEntry=>({key:editing?.key??crypto.randomUUID(),game,stake:source&&editing?editing.stake:String(caps.games.find(c=>c.id===game)?.stake??5),...(source||game==='mega-card-golf'?{config:structuredClone(caps.games.find(c=>c.id===game)?.rules??null)}:{})});
   const edit=(entry:InviteEntry)=>{setEditing(structuredClone(entry));setStage('configure');};
@@ -30,22 +31,21 @@ export function AsyncLineupEditor({lineup,caps,source,realMoney,locked,collapsed
       <button type="button" onClick={()=>setStage('pick')}>← Back to games</button>
       <h3>Configure game #{index<0?lineup.length+1:index+1}</h3>
       <div className="midnight-config-card"><GameIllustration game={editing.game} name={name}/><div className="midnight-config-controls"><label htmlFor={'stake-'+editing.key}>Stake</label>
-        <AmountControl label={'Stake '+(index<0?lineup.length+1:index+1)} id={'stake-'+editing.key} value={editing.stake} invalid={!/^[1-9][0-9]{0,3}$/.test(editing.stake)} min={1} max={9999} disabled={locked||(!realMoney&&!source)} onChange={stake=>setEditing({...editing,stake})}/>
+        <AmountControl label={'Stake '+(index<0?lineup.length+1:index+1)} id={'stake-'+editing.key} value={editing.stake} invalid={invalidStake} describedBy={invalidStake?'stake-error-'+editing.key:undefined} min={1} max={9999} disabled={locked||(!realMoney&&!source)} onChange={stake=>setEditing({...editing,stake})}/>
         {!realMoney&&!source&&<small>Play-money stake: {editing.stake}</small>}
-        {realMoney||source?<small>Enter a whole-number stake from 1 to 9,999.</small>:null}
+        {invalidStake&&<p id={'stake-error-'+editing.key} role="alert">Stake must be a whole number from 1 to 9,999.</p>}
         {editing.game==='mega-card-golf'&&!!editing.config&&<MegaCompetitionSettings courses={caps.games.find(g=>g.id===editing.game)?.courses??[]} value={editing.config as MegaCompetitionConfig} disabled={locked} onChange={config=>setEditing({...editing,config})}/>}
         {issue&&<p role="alert">{issue} {caps.games.some(g=>g.id===editing.game)&&<button type="button" onClick={()=>setEditing({...editing,config:structuredClone(caps.games.find(g=>g.id===editing.game)?.rules??null)})}>Use current rules for game {index+1}</button>}</p>}
       </div></div>
-      {index>=0&&<div className="midnight-game-editor-actions"><button type="button" disabled={index===0} onClick={()=>{const next=[...lineup];[next[index-1],next[index]]=[next[index],next[index-1]];onChange(next);}}>Move game {index+1} up</button><button type="button" disabled={lineup.length===1} onClick={()=>remove(editing.key)}>Remove game {index+1}</button><button type="button" onClick={()=>{setEditing(null);setStage('review');}}>Cancel edit</button></div>}
+      {index>=0&&<div className="midnight-game-editor-actions"><button type="button" disabled={index===0} onClick={()=>{const next=[...lineup];[next[index-1],next[index]]=[next[index],next[index-1]];onChange(next);}}>Move game {index+1} up</button><button type="button" onClick={()=>remove(editing.key)}>Remove game {index+1}</button><button type="button" onClick={()=>{setEditing(null);setStage('review');}}>Cancel edit</button></div>}
       <button type="button" className="midnight-primary" disabled={!valid||locked||(index<0&&lineup.length>=caps.max_children)} onClick={commit}>OK</button>
     </>}
     {stage==='review'&&<><div className="midnight-review-list">{groups.map(group=>{const first=group.entries[0];return <div className="midnight-review-card" key={group.key}>
       <span className="midnight-quantity" data-multiple={group.entries.length>1}>{group.entries.length}×</span><button type="button" className="midnight-review-edit" aria-label={`Edit ${inviteGameName(first.game)}, $${first.stake}`} onClick={()=>edit(first)}><strong>{inviteGameName(first.game)}</strong><small>${first.stake} stake{group.entries.length>1?' each':''}</small></button><GameArtwork game={first.game}/><div className="midnight-review-actions">
-      {group.entries.length>1&&<button type="button" aria-label={`Remove one ${inviteGameName(first.game)}, $${first.stake}`} onClick={()=>onChange(lineup.filter(c=>c.key!==group.entries.at(-1)!.key))}><Minus size={19}/></button>}
-      <button type="button" disabled={lineup.length>=caps.max_children} aria-label={`Copy ${inviteGameName(first.game)}, $${first.stake}`} onClick={()=>onChange([...lineup,{...structuredClone(first),key:crypto.randomUUID()}])}><Copy size={19}/></button></div>
+      <button type="button" aria-label={`Remove one ${inviteGameName(first.game)}, $${first.stake}`} onClick={()=>remove(group.entries.at(-1)!.key)}><Minus size={19}/></button>
+      <button type="button" disabled={lineup.length>=caps.max_children} aria-label={`Copy ${inviteGameName(first.game)}, $${first.stake}`} onClick={()=>onChange([...lineup,{...structuredClone(first),key:crypto.randomUUID()}])}><Plus size={19}/></button></div>
     </div>;})}</div>
       {lineup.some(c=>configurationIssue(c,caps))&&<p role="alert">Some saved game settings need review. Edit the affected game before sending.</p>}
-      {lineup.length>1&&<details><summary>Edit individual games or order</summary>{lineup.map((entry,i)=><button type="button" key={entry.key} onClick={()=>edit(entry)} className="midnight-games-summary">Game {i+1}: {inviteGameName(entry.game)} · ${entry.stake}</button>)}</details>}
       <button type="button" className="midnight-create" disabled={lineup.length>=caps.max_children||!caps.games.length} onClick={()=>{setEditing(null);setStage('pick');}}>Add Game</button>
       <small>{lineup.length} of {caps.max_children} games · Repeats allowed</small>
       {lineup.length>caps.max_children&&<p role="alert">Only {caps.max_children} games are currently supported. Remove games before sending.</p>}

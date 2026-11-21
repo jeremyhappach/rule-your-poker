@@ -4,7 +4,29 @@ Review branch: `codex/midnight-blue-review`, based on `origin/main` at
 `40cadbcd6f9e321d1ee35a97fbad109cdb090394`. Prepared for review only. Do not push
 or integrate into `main` until Jeremy authorizes publication.
 
-## Rolling smoke follow-up
+## Rolling smoke follow-up — pass 2
+
+The latest five requested changes restore a subtle brass-bordered Multiplayer
+name/art panel, shorten the Cards/Dice tiles and blend their unchanged artwork
+into the surface, simplify Async lobby cards, add minus/plus to every lineup
+group and replace the permanent stake hint with an error for invalid input.
+Other's shorter faint-art treatment and the inline setup controls remain intact.
+
+The latest instruction supersedes the initial brief's 2× minimum for minus and
+its individual-game disclosure: minus removes the last entry too, plus appends
+an identical independent entry, and the disclosure is removed. Grouping still
+compares game, stake and exact settings; remaining entry order and payloads are
+preserved. An intentionally empty Run It Back draft now reloads safely without
+restoring removed games. Sending remains blocked until a valid game is added;
+submitted/locked drafts retain their existing protection.
+
+Validation: 128 focused tests, typecheck, production bundle/size gate and 80
+browser layouts pass. Browser checks cover the shorter blended tiles, bordered
+configuration panel, simplified Async cards, last-entry removal and invalid
+stake feedback. The follow-up runback test covers empty-draft reload/rebuild
+with the same opponent and request identity. No artwork or backend changes.
+
+## Rolling smoke follow-up — pass 1
 
 The five November 21 corrections are applied: one combined Multiplayer
 name/art header; compact Async heading; normal-flow configuration artwork that
@@ -39,8 +61,8 @@ remove a supported mode while preserving existing rules.
 
 Async selects games before an opponent. Grouping compares game ID, exact stake
 and canonical configuration; it never merges the underlying entries. Copy
-appends an independent entry, group minus removes one, and individual edit,
-remove and ordering controls remain available. Different settings/stakes remain
+appends an independent entry, group minus removes one including the last copy,
+and tapping a group opens its existing game editor. Different settings/stakes remain
 separate groups. Reopening Games retains the opponent. Runback persistence,
 locked ambiguous-send retries, request IDs and the existing ordered payload
 remain intact.

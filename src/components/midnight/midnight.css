@@ -38,7 +38,8 @@ body:has(.midnight-invite){background:#06111f}
 .midnight-setup-toolbar>small{min-width:0}
 .midnight-setup-identity{display:flex;align-items:center;gap:.7rem;min-width:0}
 .midnight-setup-identity>div{flex:1;min-width:0}
-.midnight-setup-identity>.midnight-art{flex:0 0 42%;width:42%;height:clamp(4rem,20cqb,7rem);object-fit:contain;mix-blend-mode:lighten;mask-image:none}
+.midnight-setup-identity:has(>.midnight-art){margin-top:.6rem;padding:.55rem .8rem;border:1px solid #b995587a;border-radius:.8rem;background:#0b1928}
+.midnight-setup-identity>.midnight-art{flex:0 0 50%;width:50%;height:clamp(5rem,24cqb,8rem);object-fit:contain;mix-blend-mode:lighten;mask-image:none}
 .midnight-setup .midnight-settings{margin-top:0}
 .midnight-inline-setting{display:flex;align-items:center;justify-content:space-between;gap:.65rem;padding:.6rem .75rem;min-width:0}
 .midnight-inline-setting>span{flex:1;min-width:0;font:700 1.1rem/1.2 Georgia,serif}
@@ -60,3 +61,8 @@ body:has(.midnight-invite){background:#06111f}
 .midnight-invite .midnight-info-button{display:grid;place-items:center;flex-shrink:0;width:2.75rem;min-height:2.75rem;padding:0;margin:0;border:0;background:transparent;color:#e9cc92}
 .midnight-match-info{max-width:min(32rem,calc(100% - 2rem));max-height:calc(100% - 2rem);overflow-y:auto;background:#0b1928;color:#fff2d8;border-color:#b99558;border-radius:.8rem}
 .midnight-match-info p{font-size:.9rem;line-height:1.5;color:#d6dfe5}
+
+.dealer-catalog .midnight-art{mix-blend-mode:lighten}
+.dealer-catalog .midnight-tile-large{aspect-ratio:1.7;min-height:5rem;align-items:center;padding:.6rem}
+.dealer-catalog .midnight-tile-large>span{max-width:65%}
+.dealer-catalog .midnight-tile-large>.midnight-art{top:0;right:-.4rem;width:68%;height:100%;object-fit:contain;mask-image:none}

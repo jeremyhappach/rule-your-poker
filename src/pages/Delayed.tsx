@@ -72,13 +72,13 @@ export function MatchList({userId}:{userId:string}){
   {error&&<p role="alert">{error} <button onClick={refresh}>Retry</button></p>}{!loaded&&!error&&<p role="status">Loading matches…</p>}
   {loaded&&!matches.length&&<p>No active async matches.</p>}
   <ul className="delayed-lineup">{matches.map(({home:row,opponent,own,other,results,invitation,accepts,actionable})=><li className="midnight-match" key={row.id} data-turn={actionable?'own':'opponent'}>
-   <GameArtwork game={row.lineup[0]?.game??'holm-game'}/><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {opponent}</AsyncSessionName></strong>{!invitation&&<> <time>{new Date(row.acceptedAt??row.createdAt).toLocaleString()}</time></>}</Link>
+   <GameArtwork game={row.lineup[0]?.game??'holm-game'}/><Link className="delayed-card-link" to={'/delayed/'+row.id}><strong><AsyncSessionName realMoney={row.realMoney}>vs. {opponent}</AsyncSessionName></strong></Link>
    <p>{!invitation&&<>{row.status} · </>}{row.completed}/{row.lineup.length} complete · {row.realMoney?'Real money':'Play money'}</p>
    <p className="delayed-game-mix" aria-label="Match game mix">{matchGameMix(row.lineup)}</p>
    {invitation?<strong>Invited <time dateTime={row.createdAt}>{localInvitationTime(row.createdAt)}</time> - Pending {accepts?'Your':opponent+'’s'} Acceptance</strong>:
     row.status==='active'&&(row.held?<strong>On hold</strong>:<strong>Turns - You: {own}, {opponent}: {other}</strong>)}
    {results>0&&<p><strong>{results} {results===1?'result':'results'} to view</strong></p>}
-   {row.acceptedAt&&<p>Current Net: {money(row.net)}</p>}</li>)}</ul>
+   </li>)}</ul>
   {rows.length>=30&&older&&<button disabled={loadingOlder} onClick={()=>{const last=rows.at(-1)!;setLoadingOlder(true);
    void delayedRpc<Home[]>('delayed_list',{p_before:last.createdAt,p_before_id:last.id}).then(v=>{
     setRows(old=>[...old,...v.filter(item=>!old.some(existing=>existing.id===item.id))]);setOlder(v.length===30);
