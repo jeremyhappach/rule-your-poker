@@ -1,5 +1,20 @@
 # Midnight Blue UI — November 21, 2026 — local review; not deployed
 
+Reference fidelity pass: reopened ZIP mockups 02–04 before editing. Multiplayer
+picker now has the approved illuminated curtain/logo crown, one continuous
+texture, brass tabs/footer, Cards 1.4 and Dice 1.12 tile ratios. Other stays short
+and translucent. Exact artwork regions from 02 replace the picker approximations;
+03 supplies Holm's horizontal cards/cocktail, and 04 supplies the six illustrated
+setup motifs. One shared framed setup scene has visible table texture and warm
+light; art uses available room while retaining inline controls and short-phone
+fit. The ZIP has no separate scene/lamp layers or individual game source files:
+only unobstructed source regions are reused, with source-coordinate masks for
+labels printed into empty corners. No generated imagery or backend changes.
+The source crops/encoding are reproducible in `dev/midnight-blue/`; no full
+mockup UI is shipped. 84 focused tests, typecheck, build/size gate and 36 setup
+checks pass. Six phone comparisons are saved under
+`qualification.local/midnight-blue/reference-fidelity/`. Production remains held.
+
 Continuous-backdrop correction: the picker uses one existing Peoria bridge image
 at page level, with translucent tile surfaces and each game's own art. The
 cocktail photograph appears only in Holm's setup panel; all setup games share

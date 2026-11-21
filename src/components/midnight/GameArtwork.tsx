@@ -6,6 +6,21 @@ const motifs = new Set(['run21','tri-towers','quintzee','boxdrop','trip-flip','t
 const atlas:Record<string,number>={'holm-game':0,'3-5-7':1,'357-drop':1,cribbage:2,'crib-lab':2,'gin-rummy':3,canasta:4,'six-card-golf':5,horses:6,'horses-blitz':6,'ship-captain-crew':7,'ship-cap-voyage':7,yahtzee:8};
 // Trim only empty atlas margins on Multiplayer surfaces; the artwork is unchanged.
 const sceneBounds:Record<number,string>={1:'22 64 374 285',2:'20 80 385 285',3:'20 50 380 305',4:'25 50 370 320',5:'20 20 388 350',6:'35 35 335 330',7:'55 10 320 355',8:'10 112 398 155'};
+const approvedSetupArt:Record<string,string>={'3-5-7':'357',cribbage:'cribbage','gin-rummy':'gin',horses:'horses',yahtzee:'yahtzee',run21:'run21'};
+const approvedPickerArt:Record<string,string>={'3-5-7':'357',cribbage:'cribbage','gin-rummy':'gin',canasta:'canasta','six-card-golf':'golf',horses:'horses','ship-captain-crew':'scc',yahtzee:'yahtzee',farkle:'farkle',chess:'chess','ptown-words':'words',run21:'run21','tri-towers':'tri','eleven-up':'eleven',boxdrop:'boxdrop','trip-flip':'trip','take-two':'take','royal-flash':'royal','race-poker':'race','crib-lab':'crib-lab',quintzee:'quintzee'};
+// The flattened reference prints labels into otherwise empty art corners.
+// Clip in source coordinates so letterboxing cannot move those exclusions.
+const pickerClips:Record<string,{width:number;height:number;points:string}>={
+ '357':{width:153,height:117,points:'31,0 153,0 153,112 148,117 0,117 0,36 31,36'},
+ cribbage:{width:199,height:93,points:'120,0 199,0 199,89 193,93 0,93 0,16 120,16'},
+ gin:{width:158,height:103,points:'59,0 158,0 158,99 153,103 0,103 0,30 59,30'},
+ scc:{width:184,height:153,points:'91,0 184,0 184,153 0,153 0,57 58,57 58,31 91,31'},
+ canasta:{width:175,height:90,points:'90,0 175,0 175,90 0,90 0,9 90,9'},
+ golf:{width:143,height:97,points:'11,0 143,0 143,97 0,97 0,28 11,28'},
+ tri:{width:110,height:63,points:'35,0 110,0 110,60 0,60 0,30 35,30'},
+ race:{width:100,height:60,points:'22,0 100,0 100,55 0,55 0,28 22,28'},
+ quintzee:{width:98,height:63,points:'0,2 98,2 98,63 0,63'},
+};
 const fans:Record<string,string[]> = {
   'battle-31':['A♠','K♠','Q♠'], 'race-poker':['A♠','K♥','Q♣'],
 };
@@ -15,7 +30,13 @@ function Die({n,x,y,size=45,fill}:{n:number;x:number;y:number;size?:number;fill:
 }
 export function GameArtwork({game,className='',surface='motif'}:{game:string;className?:string;surface?:'motif'|'picker'|'setup'}){
   const id=useId().replace(/:/g,''),paper=id+'paper',gold=id+'gold';
-  if(game==='holm-game')return <img className={'midnight-art midnight-holm-cards '+className} src="/game-branding/holm-approved-cards.jpg" alt="" aria-hidden="true"/>;
+  if(game==='holm-game')return <img className={'midnight-art midnight-holm-cards '+className} src="/game-branding/holm-approved-cards.webp" alt="" aria-hidden="true"/>;
+  if(surface==='setup'&&approvedSetupArt[game])return <img className={'midnight-art midnight-approved-art '+className} src={'/game-branding/approved-'+approvedSetupArt[game]+'-art.webp'} alt="" aria-hidden="true"/>;
+  if(surface!=='motif'&&approvedPickerArt[game]){
+    const art=approvedPickerArt[game],clip=pickerClips[art],src='/game-branding/approved-picker-'+art+'.webp';
+    if(clip)return <svg className={'midnight-art midnight-approved-art '+className} viewBox={`0 0 ${clip.width} ${clip.height}`} aria-hidden="true" focusable="false"><defs><clipPath id={id+'approved'}><polygon points={clip.points}/></clipPath></defs><image href={src} width={clip.width} height={clip.height} clipPath={`url(#${id}approved)`}/></svg>;
+    return <img className={'midnight-art midnight-approved-art '+className} src={src} alt="" aria-hidden="true"/>;
+  }
   if(game in atlas){const cell=atlas[game];return <svg className={'midnight-art '+className} viewBox={surface==='motif'?'0 0 418 418':sceneBounds[cell]??'0 0 418 418'} aria-hidden="true" focusable="false"><defs><clipPath id={id+'clip'}><rect width="418" height="418"/></clipPath></defs><g clipPath={`url(#${id}clip)`}><image href="/game-branding/midnight-motifs.webp" x={-(cell%3)*418} y={-Math.floor(cell/3)*418} width="1254" height="1254"/></g></svg>;}
   if(game==='chucky-showdown')return <img className={'midnight-art midnight-portrait '+className} src="/arcade/approved-v1/chucky-portrait.webp" alt="" aria-hidden="true"/>;
   if(motifs.has(game))return <img className={'midnight-art midnight-existing-art '+className} src={`/game-branding/async-v1/${game}-motif.webp`} alt="" aria-hidden="true"/>;

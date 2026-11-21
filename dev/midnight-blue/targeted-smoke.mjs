@@ -2,7 +2,7 @@ import {chromium} from 'playwright';
 import {expect} from '@playwright/test';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
-const output='qualification.local/midnight-blue/shared-backdrop';mkdirSync(output,{recursive:true});
+const output='qualification.local/midnight-blue/reference-fidelity';mkdirSync(output,{recursive:true});
 const browser=await chromium.launch({channel:'msedge',headless:true,args:['--disable-gpu']}),checks=[],errors=[];
 try{
  for(const [width,height] of [[390,844],[320,568],[455,488],[844,390]]){
@@ -25,7 +25,7 @@ try{
     assert.ok(await tile.evaluate(el=>{const r=el.querySelector('span').getBoundingClientRect(),b=el.getBoundingClientRect();return r.left>=b.left&&r.right<=b.right&&r.bottom<=b.bottom;}),`${category}: complete title`);
     assert.ok(await tile.evaluate(el=>!['',':before',':after'].some(pseudo=>getComputedStyle(el,pseudo||null).backgroundImage.includes('url('))),`${category}: no per-tile photograph`);
    }
-   if(category!=='Other')assert.ok(await page.locator('.midnight-tile-large').first().evaluate(el=>{const r=el.getBoundingClientRect();return r.width/r.height>=1.5;}),'Short Cards/Dice tiles');
+   if(category!=='Other')assert.ok(await page.locator('.midnight-tile-large').first().evaluate((el,ratio)=>{const r=el.getBoundingClientRect();return Math.abs(r.width/r.height-ratio)<.03;},category==='Cards'?1.4:1.12),'Reference Cards/Dice proportions');
    await capture(category.toLowerCase());
   }
   for(const [game,category] of [['holm-game','Cards'],['3-5-7','Cards'],['cribbage','Cards'],['gin-rummy','Cards'],['six-card-golf','Cards'],['horses','Dice'],['yahtzee','Dice'],['run21','Other']]){

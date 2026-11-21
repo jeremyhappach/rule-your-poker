@@ -4,7 +4,40 @@ Review branch: `codex/midnight-blue-review`, based on `origin/main` at
 `40cadbcd6f9e321d1ee35a97fbad109cdb090394`. Prepared for review only. Do not push
 or integrate into `main` until Jeremy authorizes publication.
 
-## Continuous picker backdrop and game-specific setup scenes
+## Current reference fidelity pass
+
+Mockups 02–04 were opened before edits. The picker uses the approved illuminated
+curtain/logo crop across its top and one texture across the whole card. Tabs,
+tile frames and footer share brass details. Cards and Dice retain the reference
+ratios (1.4 and 1.12); Other stays compact and translucent. Existing catalog
+eligibility, game names and all controls remain authoritative.
+
+The ZIP contains flattened references and Chucky's portrait, not independent
+background/lamp layers or per-game art sources. This was flagged before editing.
+`extract-approved-art.ps1` records every exact source rectangle; run it from the
+review worktree, followed by `node dev/midnight-blue/encode-approved-art.mjs`.
+The latter encodes source pixels as WebP at .58, maximum width 384, to stay within
+the existing bundle budget. It does not generate or repaint imagery. Nine
+regions with overprinted selector labels/frame edges use source-coordinate SVG
+clips, which exclude only those empty edges. Full mockup UI, device frames, status bars and
+example controls are not used as assets. The unused prior Holm scene export was
+removed; its horizontal card region is now WebP. Other modes retain their
+existing motif selection, apart from that equivalent Holm encoding.
+
+The shared setup background now wins the earlier identity background selector,
+so table texture and lighting actually render. Approved 04 motifs are larger;
+single-setting games can use more available art space. Holm alone keeps the
+cocktail. Compact spacing retains 44px controls, Back and Start without setup
+scrolling at 390×844, 320×568, 455×488 and 844×390. Short, wide picker containers
+use a compact crown/header so the catalog remains reachable.
+
+Validation: 84 focused tests, typecheck, production bundle/size gate and 36 setup
+checks. Visual comparisons cover Cards, Dice, Other, Holm, 3-5-7 (also the short
+phone) and Horses against 02–04 at phone size. Saved in
+`qualification.local/midnight-blue/reference-fidelity/`. Local sample transport
+only; no production publication.
+
+## Previous continuous picker backdrop correction
 
 The current preview places one Peoria bridge image on the picker page. Tiles
 contain only a translucent surface, title and game artwork. Cards/Dice retain
