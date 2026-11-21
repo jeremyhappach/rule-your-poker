@@ -4,6 +4,8 @@ import './midnight.css';
 // Decorative motifs only. Names, availability and game rules stay in the catalog.
 const motifs = new Set(['run21','tri-towers','quintzee','boxdrop','trip-flip','take-two','royal-flash','mega-card-golf']);
 const atlas:Record<string,number>={'holm-game':0,'3-5-7':1,'357-drop':1,cribbage:2,'crib-lab':2,'gin-rummy':3,canasta:4,'six-card-golf':5,horses:6,'horses-blitz':6,'ship-captain-crew':7,'ship-cap-voyage':7,yahtzee:8};
+// Trim only empty atlas margins on Multiplayer surfaces; the artwork is unchanged.
+const sceneBounds:Record<number,string>={1:'22 64 374 285',2:'20 80 385 285',3:'20 50 380 305',4:'25 50 370 320',5:'20 20 388 350',6:'35 35 335 330',7:'55 10 320 355',8:'10 112 398 155'};
 const fans:Record<string,string[]> = {
   'battle-31':['A♠','K♠','Q♠'], 'race-poker':['A♠','K♥','Q♣'],
 };
@@ -11,10 +13,10 @@ function Die({n,x,y,size=45,fill}:{n:number;x:number;y:number;size?:number;fill:
   const pips=n===1?[[.5,.5]]:n===2?[[.25,.25],[.75,.75]]:n===3?[[.25,.25],[.5,.5],[.75,.75]]:n===4?[[.25,.25],[.75,.25],[.25,.75],[.75,.75]]:n===5?[[.25,.25],[.75,.25],[.5,.5],[.25,.75],[.75,.75]]:[[.25,.22],[.75,.22],[.25,.5],[.75,.5],[.25,.78],[.75,.78]];
   return <g transform={`translate(${x} ${y})`}><rect width={size} height={size} rx={size*.16} fill={fill} stroke="#f9deb0" strokeWidth="1.5"/>{pips.map(([a,b],i)=><circle key={i} cx={a*size} cy={b*size} r={size*.075} fill="#14212b"/>)}</g>;
 }
-export function GameArtwork({game,className='',surface='motif'}:{game:string;className?:string;surface?:'motif'|'setup'}){
+export function GameArtwork({game,className='',surface='motif'}:{game:string;className?:string;surface?:'motif'|'picker'|'setup'}){
   const id=useId().replace(/:/g,''),paper=id+'paper',gold=id+'gold';
-  if(game==='holm-game')return <img className={'midnight-art '+(surface==='setup'?'midnight-holm-scene ':'')+className} src={'/game-branding/holm-approved-'+(surface==='setup'?'scene':'cards')+'.jpg'} alt="" aria-hidden="true"/>;
-  if(game in atlas){const cell=atlas[game];return <svg className={'midnight-art '+className} viewBox="0 0 418 418" aria-hidden="true" focusable="false"><defs><clipPath id={id+'clip'}><rect width="418" height="418"/></clipPath></defs><g clipPath={`url(#${id}clip)`}><image href="/game-branding/midnight-motifs.webp" x={-(cell%3)*418} y={-Math.floor(cell/3)*418} width="1254" height="1254"/></g></svg>;}
+  if(game==='holm-game')return <img className={'midnight-art midnight-holm-cards '+className} src="/game-branding/holm-approved-cards.jpg" alt="" aria-hidden="true"/>;
+  if(game in atlas){const cell=atlas[game];return <svg className={'midnight-art '+className} viewBox={surface==='motif'?'0 0 418 418':sceneBounds[cell]??'0 0 418 418'} aria-hidden="true" focusable="false"><defs><clipPath id={id+'clip'}><rect width="418" height="418"/></clipPath></defs><g clipPath={`url(#${id}clip)`}><image href="/game-branding/midnight-motifs.webp" x={-(cell%3)*418} y={-Math.floor(cell/3)*418} width="1254" height="1254"/></g></svg>;}
   if(game==='chucky-showdown')return <img className={'midnight-art midnight-portrait '+className} src="/arcade/approved-v1/chucky-portrait.webp" alt="" aria-hidden="true"/>;
   if(motifs.has(game))return <img className={'midnight-art midnight-existing-art '+className} src={`/game-branding/async-v1/${game}-motif.webp`} alt="" aria-hidden="true"/>;
   const cards=fans[game];

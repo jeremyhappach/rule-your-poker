@@ -1,5 +1,16 @@
 # Midnight Blue UI — November 21, 2026 — local review; not deployed
 
+Shared atmosphere follow-up: all Multiplayer picker categories and setup games
+reuse unobstructed lighting/cocktail/table crops from approved mockup 03. Cards
+and Dice share shorter tiles; Other stays compact and translucent. Existing
+motifs have their empty margins trimmed on Multiplayer surfaces; the atlas's
+connected navy backdrop is transparent, preserving the game objects. The title,
+clock/Pause and larger art now share one scene panel. Dense setup also fits the
+455×488 preview pane with readable values. The 128 focused tests, 80 regression
+browser layouts, 36 targeted setup checks, typecheck and build/size gate pass.
+Five phone-size reference comparisons are under
+`qualification.local/midnight-blue/atmosphere/`. No backend changes or deployment.
+
 Final targeted smoke pass: picker proportions follow the supplied references,
 with titles above their art bounds and reduced Cribbage/Golf art contrast.
 Holm reuses exact art-only crops from approved mockup 03: four cards in one row

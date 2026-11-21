@@ -4,7 +4,45 @@ Review branch: `codex/midnight-blue-review`, based on `origin/main` at
 `40cadbcd6f9e321d1ee35a97fbad109cdb090394`. Prepared for review only. Do not push
 or integrate into `main` until Jeremy authorizes publication.
 
-## Final targeted smoke pass
+## Shared atmosphere follow-up
+
+The latest correction applies Holm's scene treatment to the shared Multiplayer
+setup header and all three picker categories. Title, clock/Pause and recognizable
+art are composed inside one framed scene. Cards/Dice share shorter 1.6 tiles
+(subject to the existing minimum height); Other keeps its short translucent
+treatment. The existing Peoria bridge is a subtle picker backdrop.
+
+There is no standalone empty tabletop asset in the ZIP; this was flagged before
+using direct, unobstructed pixel regions of approved mockup 03. New JPEG crops
+(quality 90) are `approved-scene-light.jpg` at (30,244), 210×220;
+`approved-scene-table.jpg` at (115,411), 125×53; and
+`approved-scene-glow.jpg` at (800,244), 95×165. CSS feathers the photo edges into
+the table. No replacement imagery or image generation was used.
+
+The existing motif atlas retains its nine game objects. A border-connected
+navy-background flood fill makes only the backdrop transparent (1,074,817 pixels),
+then the browser WebP encoder saves at quality .92, 1254×1254, 153,250 bytes.
+Multiplayer-only SVG view boxes trim empty margins so the objects fill their
+scene. Holm still uses the approved horizontal four-card crop; Horses still
+shows one/six and Yahtzee five sixes. Other modes retain their motif framing.
+
+Settings, defaults and handlers are unchanged. Removing an inner input border
+saves row height while preserving 44px steppers. Short, wide containers use two
+columns; narrow preview panes put each setting label above its direct controls
+to retain readable numeric values. Expanded optional amounts still fit in place.
+Both pending-invite states keep one-line `Pending acceptance`, with green for
+incoming acceptance. No Async product code changes were needed this pass.
+
+Validation: 128 focused tests, 80 browser regression layouts, 36 targeted setup
+and expanded-editor checks at 390×844, 320×568, 455×488 and 844×390, typecheck and
+production bundle/size gate. Targeted checks assert title bounds, art presence,
+numeric input widths, no vertical overflow, no footer overlap and both invitation
+states. Screenshots wait for fonts/images and completed paints. Visual comparisons
+against mockups 02–04 cover Cards, Dice, Other, Holm and 3-5-7, saved under
+`qualification.local/midnight-blue/atmosphere/`. Local sample transport only;
+production remains held.
+
+## Previous targeted smoke pass
 
 The approved references and latest smoke corrections determine the layout.
 Cards use the reference's 1.4 tile ratio; Dice use 1.12. Titles occupy a separate
