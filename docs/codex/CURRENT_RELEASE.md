@@ -1,4 +1,19 @@
-# Blue Hour gameplay shell — November 21, 2026 — local preview; not deployed
+# Blue Hour gameplay shell — November 21, 2026 — production live; mobile smoke pending
+
+Jeremy approved the paired phone preview and authorized production for mobile
+review. Runtime commit `2bda096c4c33e446abdf6c3012e39ed9dc45a351` was
+fast-forwarded to `main` and published through the approved push helper.
+Local checkpoint tag: `blue-hour-production-20261121`. Vercel deployment
+`dpl_t1rSe224HVDkGLi1dTybQLdcxYZR` is READY. Both `holm357.com` and
+`ptown-poker.vercel.app` serve this exact build manifest, main bundle and the
+Blue Hour shell CSS (HTTP 200). GitHub release workflow `44962617621` succeeded,
+including publication of the automatic update signal at 23:47:45 UTC. This
+successful release signal supersedes the prior Midnight Blue signal timeout.
+
+Full release validation passed, including 4,366 source tests, 241 harness tests,
+release-tooling checks, TypeScript and the production build with push enabled.
+The static output is 89,995,593 bytes, below the unchanged 90 MB limit.
+Physical mobile acceptance remains pending.
 
 The approved center-column Blue Hour finish now styles the shared Multiplayer
 shell with deep navy, soft blue light, muted amber reflections, ivory chrome and
@@ -15,8 +30,8 @@ Local preview: `http://127.0.0.1:5198/dev/blue-hour/compare.html`.
 before/after geometry at 390×844 and 320×568 are saved in
 `qualification.local/blue-hour/`. Geometry matches apart from the existing
 animated Buck marker's instantaneous position. The pre-existing short-phone
-Cribbage hand crop is retained. Owner visual acceptance is pending; production
-remains on the Midnight Blue release below.
+Cribbage hand crop is retained. Jeremy approved this visual preview; production
+now includes this shared shell finish over the Midnight Blue release below.
 
 # Midnight Blue UI — November 21, 2026 — production live; mobile smoke pending
 
