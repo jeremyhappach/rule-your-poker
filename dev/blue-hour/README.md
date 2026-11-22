@@ -38,4 +38,23 @@ the same palette explicitly; the existing cross-game dissolve stays navy.
   aspect-preserved crops of the supplied Blue Hour reference. It does not
   modify gameplay artwork.
 
-No production publication. Review on `codex/blue-hour-gameplay`.
+Gameplay finish published in runtime commit `2bda096c4`; see CURRENT_RELEASE.
+
+## Waiting-table preview — November 21, 2026
+
+Open <http://127.0.0.1:5198/dev/blue-hour/waiting.html> for waiting and ready
+states side by side. `/?game=waiting&state=observer` also shows open seats.
+The real waiting surface uses isolated fixtures; it never joins or starts a
+live session. Its neutral controls, count badge and lower panel now continue
+the Blue Hour finish. Start/Return and status colors, geometry and all live
+handlers are unchanged. No additional artwork is used.
+
+- TypeScript, 104 existing waiting/start/shell tests, push-enabled Vite build
+  and static-size gate passed (89,996,441 bytes).
+- At 390 × 844, before/after bounds match for all 73 waiting, 84 ready and
+  100 observer elements. Start remains green, enabled for the eligible ready
+  fixture, absent with one player, and absent for the observer.
+- Ready controls and footer fit at 320 × 568 without scrolling or clipping.
+- Screenshots and geometry evidence: `qualification.local/blue-hour/waiting/`.
+
+Waiting changes are preview-only on `codex/blue-hour-waiting`; not published.

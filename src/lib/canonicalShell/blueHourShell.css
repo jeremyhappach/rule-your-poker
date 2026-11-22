@@ -56,6 +56,39 @@
   background: linear-gradient(180deg, transparent, hsl(213 61% 6% / .65));
 }
 
+/* Pre-session waiting uses the same continuous shell finish. These selectors
+   cover neutral waiting controls only; green Start/Return, status colors,
+   disabled opacity, seat geometry and hit areas retain their existing owners. */
+[data-canonical-shell-waiting-hud-region] {
+  background: transparent;
+}
+[data-canonical-shell-waiting-felt-message] > div {
+  background: linear-gradient(135deg, hsl(211 38% 17% / .92), hsl(213 58% 8% / .94));
+  border-color: hsl(38 34% 52% / .4);
+  box-shadow: 0 4px 16px hsl(213 61% 4% / .25);
+}
+[data-canonical-shell-waiting-felt-message] p {
+  color: hsl(var(--foreground));
+}
+[data-canonical-shell-waiting-surface] button:is(.border-amber-500, .border-amber-600) {
+  background: linear-gradient(180deg, hsl(211 38% 17%), hsl(213 48% 10%));
+  color: hsl(var(--foreground));
+  border-color: hsl(38 34% 52% / .55);
+  box-shadow: inset 0 1px 0 hsl(42 35% 91% / .04), 0 3px 12px hsl(213 61% 4% / .2);
+}
+[data-canonical-shell-waiting-surface] button:is(.border-amber-500, .border-amber-600):hover:not(:disabled) {
+  background: hsl(211 38% 21%);
+  border-color: hsl(38 34% 62% / .8);
+}
+[data-waiting-seat-open] > button {
+  background: hsl(211 38% 17% / .8);
+  border-color: hsl(38 34% 52% / .65);
+}
+[data-waiting-seat-open] > button:hover {
+  background: hsl(211 38% 24% / .9);
+  border-color: hsl(38 34% 62% / .9);
+}
+
 /* Keep the same finish through the existing cross-game dissolve. */
 [data-canonical-shell-root][data-shell-transition]:not([data-shell-transition="stable"]),
 [data-canonical-shell-root] .shell-cinematic-bridge {

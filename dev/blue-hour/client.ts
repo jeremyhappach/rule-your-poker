@@ -24,7 +24,7 @@ export const cribbage: CribbageState = {
 const result = (data: unknown) => ({data,error:null});
 export const supabase = {
   auth:{getSession:async()=>({data:{session:null}}),getUser:async()=>({data:{user:null}}),onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},
-  rpc(name:string){const promise = Promise.resolve(result(name==='cribbage_get_state'?cribbage:[]));return Object.assign(promise,{abortSignal:()=>promise});},
+  rpc(name:string){const promise = Promise.resolve(result(name==='get_waiting_start_blocked'?false:name==='cribbage_get_state'?cribbage:[]));return Object.assign(promise,{abortSignal:()=>promise});},
   from(table:string){let single=false; const data=()=>table==='rounds'?{id:round,hand_number:1,round_number:1,status:'betting',cribbage_state:cribbage}:table==='games'?{id:session,status:'in_progress',current_game_uuid:dealerGame,is_paused:false}:table==='profiles'?{username:'Hap',play_sounds:false,table_layout:'bridge',card_back_design:'bears',deck_color_mode:'two_color'}:table==='game_defaults'?{}:single?null:[];
     const q:any=new Proxy({then:(ok:any,no:any)=>Promise.resolve(result(data())).then(ok,no)},{get(target,key){if(key==='then')return target.then;if(key==='single'||key==='maybeSingle')return()=>{single=true;return q;};return()=>q;}});return q;},
   channel(){const c={on:()=>c,subscribe:()=>c,unsubscribe:()=>{}};return c;},removeChannel:async()=>{},

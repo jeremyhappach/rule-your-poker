@@ -11,12 +11,31 @@ import { GameChatContextProvider } from '@/hooks/GameChatContext';
 import { ChatAttentionProvider } from '@/hooks/ChatAttention';
 import { MobileGameTable } from '@/components/MobileGameTable';
 import { CribbageMobileGameTable } from '@/components/CribbageMobileGameTable';
+import { CanonicalShellWaitingSurface } from '@/components/canonicalShell/CanonicalShellWaitingSurface';
 import { createCountingClock } from '@/lib/cribbage/countingClock';
 import { session, dealerGame, round, players } from './client';
 import '@/index.css';
 
-const game = new URLSearchParams(location.search).get('game') === 'cribbage' ? 'cribbage' : 'holm-game';
+const params = new URLSearchParams(location.search);
+const game = params.get('game') === 'cribbage' ? 'cribbage' : 'holm-game';
 const noop = () => {};
+const waitingBoundary = { status: 'waiting', current_game_uuid: null, pot: 0 };
+const waitingPlayers = players.slice(0, params.get('state') === 'ready' || params.get('state') === 'observer' ? 2 : 1);
+function WaitingFixture() {
+  const observer = params.get('state') === 'observer';
+  const viewer = observer ? '20000000-0000-4000-8000-000000000009' : players[0].user_id;
+  return <PersistentTableShell gameId={session} lobbyMode anteAmount={0}
+    viewerPosition={observer ? null : 1} viewerUserId={viewer} projectionMode={observer ? 'observer-absolute' : 'active-canonical'}
+    seats={waitingPlayers.map(p=>({position:p.position,occupied:true}))} preSessionParticipants={waitingPlayers}
+    header={<CanonicalTableHeader title="Nov 21 – Blue Hour"><button aria-label="Player options"><Settings size={16}/></button><button aria-label="Visual preferences"><Sun size={16}/></button></CanonicalTableHeader>}>
+    <GameChatContextProvider value={{allMessages:[],isChatHydrated:true,hydrationBaselineIds:[],sendMessage:async()=>{},isSending:false} as any}>
+      <ChatAttentionProvider currentUserId={viewer}>
+        <CanonicalShellWaitingSurface gameId={session} gameType={null} players={waitingPlayers} currentUserId={viewer}
+          currentHost={players[0].user_id} startBoundary={waitingBoundary} onSelectSeat={noop} onGameStart={noop}/>
+      </ChatAttentionProvider>
+    </GameChatContextProvider>
+  </PersistentTableShell>;
+}
 function Fixture() {
   const [tab, setTab] = useState<any>('cards');
   const [clock] = useState(() => createCountingClock(noop));
@@ -42,5 +61,5 @@ function Fixture() {
   </PersistentTableShell>;
 }
 createRoot(document.getElementById('root')!).render(<MemoryRouter><QueryClientProvider client={new QueryClient()}>
-  <VisualPreferencesProvider userId={players[0].user_id}><ResponsiveGeometryProvider><Fixture/></ResponsiveGeometryProvider></VisualPreferencesProvider>
+  <VisualPreferencesProvider userId={players[0].user_id}><ResponsiveGeometryProvider>{params.get('game') === 'waiting' ? <WaitingFixture/> : <Fixture/>}</ResponsiveGeometryProvider></VisualPreferencesProvider>
 </QueryClientProvider></MemoryRouter>);

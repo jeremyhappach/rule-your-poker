@@ -1,3 +1,20 @@
+# Blue Hour waiting table — November 21, 2026 — local preview; publication held
+
+Jeremy requested the Blue Hour treatment before session start, preview first.
+The shared waiting HUD, seated-count badge, neutral invitation/bot/share
+controls and open-seat buttons now continue the existing shell palette.
+Production changes are CSS paint only: oval/rim/bridge, geometry, Start
+eligibility, statuses, handlers and gameplay are unchanged.
+
+Preview: `http://127.0.0.1:5198/dev/blue-hour/waiting.html` on
+`codex/blue-hour-waiting`. Waiting, ready and observer fixtures use the real
+components with isolated local data. All 73/84/100 measured element bounds at
+390×844 match before/after; ready controls and footer also fit at 320×568.
+Start retains its green color and existing eligibility. TypeScript, 104 focused
+tests, push-enabled build and size gate pass (89,996,441 bytes). Evidence is in
+`qualification.local/blue-hour/waiting/`. No production deployment or main push.
+The production gameplay release below remains current.
+
 # Blue Hour gameplay shell — November 21, 2026 — production live; mobile smoke pending
 
 Jeremy approved the paired phone preview and authorized production for mobile
