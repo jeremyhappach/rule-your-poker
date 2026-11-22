@@ -1,3 +1,21 @@
+## Queued — Remove timers from play-money games — November 22, 2026
+
+Jeremy requested: “Bobbalouie timed out, restore this game to that turn prior
+to timeout and remove all timers from fake money games moving forward.”
+The restoration is complete for Chess match
+`0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15`: its unintended $5 real-money
+settlement was reversed through auditable linked ledger entries, and the same
+nine-move board now resumes as play money with Bobbalouie to move.
+See [restoration receipt](BOBBALOUIE_PLAY_MONEY_RESTORATION.md).
+
+The broader timer request remains Queued, with no timer-policy change in
+that correction. Investigate the canonical owners for play-money availability,
+inactivity and gameplay deadlines; establish the intended coverage across
+Async and Live and preserve shared versioned gameplay-rule requirements.
+An earlier scope question distinguishing inactivity deadlines from gameplay
+clocks remains unanswered. Provenance: Jeremy's direct request and subsequent
+clarification that this match should have been play money, November 22.
+
 ## Resolved locally — Five Alive static-size headroom — November 17, 2026
 
 Lossless recompression of the two 512 px v2 app icons saved 316,982 bytes with identical decoded pixels. The size-remediation build passed at 89,688,520 bytes, 311,480 below the unchanged 90 MB cap, with 4,602 tests and TypeScript passing. The next traced pass reproduced an unclosed Word Results panel after the smoke runner's assumed Escape dismissal. Confirmed Close now replaces that assumption; the corrected full-App hosted smoke passed with real Auth/Realtime, pending reload, both ACKs and correct scores. Jeremy reaffirmed approval. The corrected production Async gate now passed with live first-viewer review, reload, both ACKs and exactly one balanced fake-money settlement; the new polish candidate awaits publication and post-deployment smoke. Final check results and evidence: [FIVE_ALIVE_QUALIFICATION.md](FIVE_ALIVE_QUALIFICATION.md).

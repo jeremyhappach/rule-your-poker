@@ -149,4 +149,3 @@ END $restore$;
 SELECT set_config('request.jwt.claim.sub','d7dc1928-3727-4351-b0ff-0e80c81c2953',true);
 SELECT set_config('request.jwt.claims','{"sub":"d7dc1928-3727-4351-b0ff-0e80c81c2953","role":"authenticated"}',true);
 SELECT pg_temp.restore_bob_play_money() AS approved_correction;
-

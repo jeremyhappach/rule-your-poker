@@ -84,4 +84,3 @@ There are no frontend changes, so production behavior is already corrected
 by the committed database migration. Owner iPhone/PWA smoke is pending:
 open this match, confirm Play Money and the retained board, then let
 Bobbalouie open and play his turn.
-

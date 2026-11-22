@@ -70,4 +70,3 @@ SELECT jsonb_build_object(
  'currentSettlements',(SELECT count(*) FROM private.delayed_current_settlements WHERE match_id='0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15'),
  'guardMd5',md5(pg_get_functiondef('private.delayed_terms_guard()'::regprocedure))
 ) as installed;
-
