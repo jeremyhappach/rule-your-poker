@@ -1,4 +1,18 @@
-# Blue Hour waiting table — November 21, 2026 — local preview; publication held
+# Blue Hour waiting table — November 21, 2026 — production live; mobile smoke pending
+
+Jeremy approved the waiting preview and authorized production. Runtime commit
+`7a79a03cf90be005e79827ecadc66bdb7951fffc` was fast-forwarded to `main` and
+published through the approved push helper. Local checkpoint tag:
+`blue-hour-waiting-production-20261121`. Vercel deployment
+`dpl_7esYjgaTed2JdCRCztDQKH98BU3b` is READY. Both `holm357.com` and
+`ptown-poker.vercel.app` serve this exact manifest, main bundle and waiting
+stylesheet (HTTP 200), verified at 00:27:13 UTC November 22 (November 21 CST).
+GitHub release run `44965793819` succeeded, including the automatic update
+signal. Full release qualification passed: 4,366 source tests, 241 harness
+tests, 46 release-tooling tests and TypeScript. The push-enabled build remains
+89,996,441 bytes, below the unchanged 90 MB limit. No runtime error/fatal log
+records were returned for this deployment in the initial scan; physical
+mobile acceptance remains pending.
 
 Jeremy requested the Blue Hour treatment before session start, preview first.
 The shared waiting HUD, seated-count badge, neutral invitation/bot/share
@@ -12,8 +26,9 @@ components with isolated local data. All 73/84/100 measured element bounds at
 390×844 match before/after; ready controls and footer also fit at 320×568.
 Start retains its green color and existing eligibility. TypeScript, 104 focused
 tests, push-enabled build and size gate pass (89,996,441 bytes). Evidence is in
-`qualification.local/blue-hour/waiting/`. No production deployment or main push.
-The production gameplay release below remains current.
+`qualification.local/blue-hour/waiting/`, including production verification.
+This waiting finish is now published over the gameplay release below. The
+earlier preview-only note in `dev/blue-hour/README.md` is superseded here.
 
 # Blue Hour gameplay shell — November 21, 2026 — production live; mobile smoke pending
 
