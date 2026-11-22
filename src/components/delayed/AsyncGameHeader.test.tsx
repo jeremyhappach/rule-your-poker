@@ -26,8 +26,9 @@ it('resets image state when a different canonical game is rendered',()=>{
 });
 it('uses native Words tiles and readable fallback for a game without branding',()=>{
   const {container,rerender}=render(<AsyncGameHeader game="ptown-words" name="Ptown Words" ordinal={1} stake={5}/>);
-  expect(screen.getByRole('heading',{name:/Ptown Words/}).getAttribute('aria-label')).toBeNull();
-  expect(container.querySelector('.async-brand-letters')?.getAttribute('aria-hidden')).toBe('true');
+  expect(screen.getByRole('heading',{name:/P-Town Words/}).getAttribute('aria-label')).toBeNull();
+  expect(screen.getByRole('img',{name:'P-Town Words'})).toBeTruthy();
+  expect(container.querySelector('.async-brand-letters,.midnight-art')).toBeNull();
   rerender(<AsyncGameHeader game="future-game" name="Future Game" ordinal={6} stake={7}/>);
   expect(screen.getByRole('heading',{name:/Future Game/})).toBeTruthy();
   expect(container.querySelector('img')).toBeNull();

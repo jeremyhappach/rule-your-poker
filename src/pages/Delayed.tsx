@@ -123,10 +123,10 @@ function MatchHome({id,userId}:{id:string;userId:string}){
      <span className={'async-completed-outcome '+(c.result&&c.result.delta>0?'delayed-win':c.result&&c.result.delta<0?'delayed-loss':'')}>
       {c.result?<>{c.result.delta>0?'W':c.result.delta<0?'L':'T'} {money(Math.abs(c.result.delta)).replace('+','')}</>:'Result unavailable'}
      </span>}}/>
-     <div id={panelId} hidden={!expanded} className="async-completed-details">{scores}{c.game==='five-alive'&&expanded&&<FiveAliveMatchWords key={c.id} userId={userId} childId={c.id} revision={c.revision} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'}/>}{c.game==='chess'&&<ChessHistoryButton mode="async" matchId={id} id={c.id}/>} {timeoutLabel&&<p>{timeoutLabel}</p>}</div>
+     <div id={panelId} hidden={!expanded} className="async-completed-details">{scores}{c.game==='five-alive'&&expanded&&<FiveAliveMatchWords key={c.id} childId={c.id} revision={c.revision} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'}/>}{c.game==='chess'&&<ChessHistoryButton mode="async" matchId={id} id={c.id}/>} {timeoutLabel&&<p>{timeoutLabel}</p>}</div>
     </>:<><AsyncGameHeader game={c.game} name={gameName(c.game)} stake={c.stake}/>
     {scores}
-    {c.game==='five-alive'&&home.acceptedAt&&<FiveAliveMatchWords key={c.id} userId={userId} childId={c.id} revision={c.revision} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'}/>}
+    {c.game==='five-alive'&&home.acceptedAt&&<FiveAliveMatchWords key={c.id} childId={c.id} revision={c.revision} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'}/>}
     {needsChildReview(c,userId)&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
     {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{timeoutLabel?' · '+timeoutLabel:''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:
      home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):c.game==='five-alive'?'Waiting on opponent.':"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>

@@ -1,3 +1,42 @@
+# Async compact headers and static own-word results - November 22, 2026 - approved release; owner smoke pending
+
+Jeremy approved the compact headers and static View Last Word changes after
+reviewing all 14 configuration headers. This supersedes the local publication
+hold. The candidate is on `codex/async-compact-headers-static-results`, based on
+published `14496d33e`; release checkpoint:
+`async-compact-headers-static-results-approved-20261122`.
+
+The picker, configuration headers and match headers now use the same game marks
+and artwork. Configuration has one compact header followed directly by stake
+and game parameters; the redundant illustration panel is removed for every game.
+Peoria city backgrounds remain visible, and match stakes stay beside each mark.
+
+View Last Word immediately renders all saved guesses and final colors, including
+the last row, plus a static total and calculation. It mounts no reveal, award,
+failure or countup effects. Word History opens above the existing completed board;
+closing history retains that board, while its Match control returns to the match.
+Live completion, opponent review, settlement and the APPLE harness are unchanged.
+
+Focused validation covers 99 tests, TypeScript, production bundling and the
+unchanged static-size gate. Chrome layout evidence checks
+all 14 games at 320/390/430px in configuration and match headers (84 cases), plus
+static saved results, history dismissal in place, and read-only transport calls.
+The native Chrome recording and previews are in
+`qualification.local/five-alive/static-results/`; repeat with
+`dev/five-alive/presentation/tiles-replay-proof.mjs` (now proves static results).
+The four supplied images were inspected from `ptown-async-smoke-screenshots.zip`.
+The per-game rendered audit in `qualification.local/five-alive/all-config-headers/`
+confirms one header, zero standalone illustration panels, no art outside the
+header, no repeated image URLs, and controls directly following the header for
+all 14 games. The approved release build is recorded in
+`qualification.local/five-alive/compact-headers-release-build.log`.
+The full production-push build passes TypeScript, 4,379 application tests,
+241 harness tests, release tooling and the unchanged 90 MB static-size gate
+(89,833,521 bytes).
+Physical iPhone/PWA acceptance remains pending. No database change is part of
+this release. The exact published SHA and deployment verification are reported
+at delivery.
+
 # Five Alive Async polish - November 22, 2026 - approved release; owner smoke pending
 
 Jeremy approved the revised mobile previews and publication, superseding the

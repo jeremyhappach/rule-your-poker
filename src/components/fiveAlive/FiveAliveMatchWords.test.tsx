@@ -1,16 +1,38 @@
 // @vitest-environment jsdom
 import {afterEach,expect,it,vi} from 'vitest';
 import {cleanup,fireEvent,render,screen,within} from '@testing-library/react';
-import {endAnimation} from './animationTestEvent';
 import {FiveAliveMatchWords} from './FiveAliveMatchWords';
-const request=vi.hoisted(()=>vi.fn());
+const {request,sound}=vi.hoisted(()=>({request:vi.fn(),sound:vi.fn()}));
 vi.mock('@/lib/delayed/client',()=>({delayedRequest:request}));
-afterEach(()=>{cleanup();request.mockReset();});
-it('offers finished-word history from the match without beginning or acknowledging a turn',async()=>{
- const result={answer:'APPLE',solved:true,score:800,difficulty:1,guesses:[{word:'APPLE',feedback:Array(5).fill('correct')}]};
- request.mockResolvedValue({id:'child',revision:4,view:{round:2,ownFinished:2,opponentFinished:1,ownResult:{...result,answer:'WATER',solved:false,score:0,guesses:Array(6).fill({word:'STARE',feedback:[]})},revealed:[{own:result,opponent:result}]}});
- render(<FiveAliveMatchWords childId="child" userId="me" revision={4} opponentName="Hap"/>);
- expect(await screen.findByText('You: 2 of 3 finished · Hap: 1 of 3 finished')).toBeTruthy();expect(screen.queryByText(/APPLE|WATER|points/)).toBeNull();fireEvent.click(screen.getByRole('button',{name:'View Last Word'}));expect(screen.queryByLabelText('Keyboard')).toBeNull();expect(screen.getByLabelText('Guess board').textContent).toBe('STARE');for(let column=0;column<5;column++){const tile=document.querySelector('[data-reveal=close]')!;endAnimation(tile,'five-alive-flip-close');endAnimation(tile,'five-alive-flip-open');}expect(screen.getByLabelText('Guess board').textContent).toBe('STARESTARE');fireEvent.click(screen.getByRole('button',{name:'View Words'}));
- const history=within(screen.getByRole('dialog'));expect(history.getByRole('heading',{name:'Word 1'})).toBeTruthy();expect(history.getByRole('heading',{name:'Word 2'})).toBeTruthy();expect(history.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent==='Hap: Pending')).toBeTruthy();expect(history.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent==='You: Failed = 0')).toBeTruthy();
- fireEvent.click(history.getByRole('button',{name:'Close'}));expect(request).toHaveBeenCalledExactlyOnceWith({game:'five-alive',op:'state',childId:'child'});
+vi.mock('@/lib/audio/presentationSound',()=>({presentSound:sound}));
+afterEach(()=>{cleanup();request.mockReset();sound.mockReset();});
+it.each([true,false])('opens the complete saved board silently and closes history in place (solved=%s)',async solved=>{
+ const prior={answer:'APPLE',solved:true,score:800,difficulty:1,guesses:[{word:'APPLE',feedback:Array(5).fill('correct')}]};
+ const guesses=Array.from({length:6},(_,i)=>({word:solved&&i===5?'APPLE':'STARE',feedback:Array(5).fill(solved&&i===5?'correct':'absent')}));
+ request.mockResolvedValue({id:'child',revision:4,view:{round:2,ownFinished:2,opponentFinished:1,ownResult:{answer:'APPLE',difficulty:1,solved,score:solved?134:0,guesses},revealed:[{own:prior,opponent:prior}]}});
+ render(<FiveAliveMatchWords childId="child" revision={4} opponentName="Hap"/>);
+ expect(await screen.findByText('You: 2 of 3 finished · Hap: 1 of 3 finished')).toBeTruthy();
+ expect(screen.queryByText(/APPLE|points/)).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'View Last Word'}));
+ const board=screen.getByLabelText('Guess board');
+ expect(board.textContent).toBe(guesses.map(g=>g.word).join(''));
+ expect([...board.querySelectorAll('.five-alive-row:last-child [data-color]')].map(t=>t.getAttribute('data-color'))).toEqual(guesses[5].feedback);
+ expect(screen.getByText(solved?'934':'800',{selector:'.five-alive-score:not([data-opponent-score]) strong'})).toBeTruthy();
+ expect(screen.queryByLabelText('Keyboard')).toBeNull();
+ expect(document.querySelector('[data-reveal],.five-alive-award')).toBeNull();
+ expect(sound).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'View Words'}));
+ const history=within(screen.getByRole('dialog',{name:'Word Results'}));
+ expect(history.getByRole('heading',{name:'Word 1'})).toBeTruthy();expect(history.getByRole('heading',{name:'Word 2'})).toBeTruthy();
+ expect(history.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent==='Hap: Pending')).toBeTruthy();
+ expect(history.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent===(solved?'You: 6 guesses = 168 × 0.8 very easy = 134 points':'You: Failed = 0'))).toBeTruthy();
+ fireEvent.click(history.getByRole('button',{name:'Close'}));
+ expect(screen.queryByRole('dialog',{name:'Word Results'})).toBeNull();
+ expect(screen.getByLabelText('Guess board')).toBe(board);
+ expect(board.textContent).toBe(guesses.map(g=>g.word).join(''));
+ expect(document.querySelector('[data-reveal],.five-alive-award')).toBeNull();expect(sound).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'‹ Match'}));
+ expect(screen.queryByLabelText('Guess board')).toBeNull();
+ expect(screen.getByRole('button',{name:'View Last Word'})).toBeTruthy();
+ expect(request).toHaveBeenCalledExactlyOnceWith({game:'five-alive',op:'state',childId:'child'});
 });

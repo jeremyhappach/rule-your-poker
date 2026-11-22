@@ -42,11 +42,11 @@
 
 .async-words-logo{display:block;width:100%;height:auto;max-height:100%}
 .async-picker-grid [data-picker-game=ptown-words]>.midnight-art,.async-picker-grid [data-picker-game=five-alive]>.midnight-art{display:none}
-.async-picker-grid :is([data-picker-game=ptown-words],[data-picker-game=five-alive],[data-picker-game=chess])::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none}
-.async-picker-grid [data-picker-game=ptown-words]::before{background:url('../../assets/peoria-bridge-mobile.jpg') center 60%/cover;opacity:.58}
-.async-picker-grid [data-picker-game=five-alive]::before{background:url('../../assets/peoria-skyline.jpg') center calc(50% - .9rem)/cover no-repeat;opacity:.58;mask-image:linear-gradient(#000 60%,transparent 87%)}
+.async-brand-surface:is([data-brand=ptown-words],[data-brand=five-alive],[data-brand=chess])::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none}
+.async-brand-surface[data-brand=ptown-words]::before{background:url('../../assets/peoria-bridge-mobile.jpg') center 60%/cover;opacity:.58}
+.async-brand-surface[data-brand=five-alive]::before{background:url('../../assets/peoria-skyline.jpg') var(--async-city-position,center calc(50% - .9rem))/cover no-repeat;opacity:.58;mask-image:var(--async-city-mask,linear-gradient(#000 60%,transparent 87%))}
 .async-picker-grid :is([data-picker-game=ptown-words],[data-picker-game=five-alive]) .async-brand-title{filter:drop-shadow(0 2px 3px #000b)}
-.async-picker-grid [data-picker-game=chess]::before{background:repeating-conic-gradient(#d8c7a6 0% 25%,#163047 0% 50%) center/25% 25%;opacity:.18}
+.async-brand-surface[data-brand=chess]::before{background:repeating-conic-gradient(#d8c7a6 0% 25%,#163047 0% 50%) center/25% 25%;opacity:.18}
 .midnight-invite .async-picker-grid [data-picker-game=chess] .async-brand-title{align-items:flex-start;justify-content:flex-start;text-align:left}
 .midnight-invite .async-picker-grid [data-picker-game=chess] .async-brand-name{font-size:clamp(.75rem,13cqi,1.45rem);line-height:1.12;text-shadow:0 1px 3px #000,0 0 5px #06111f}
 .async-chess-title-line{display:block;white-space:nowrap}
@@ -56,3 +56,16 @@
 .midnight-invite .async-picker-grid [data-picker-game=chucky-showdown] .async-brand-name{max-width:100%;font-size:clamp(.7rem,10.7cqi,1.2rem)}
 .async-picker-grid [data-picker-game=crib-lab]>.midnight-art{width:96%;height:74%;top:auto;bottom:0;right:0;opacity:.95;object-position:right bottom;filter:brightness(1.3) drop-shadow(0 3px 3px #0005)}
 .async-picker-grid [data-picker-game=chucky-showdown]>.midnight-art{width:66%;height:100%;right:0;opacity:.86;object-position:right bottom;filter:drop-shadow(0 3px 3px #0005)}
+
+/* A single compact scene uses the picker's mark and artwork, with controls below. */
+.async-brand-heading{--async-city-position:center bottom;--async-city-mask:none;overflow:hidden;align-items:center;min-height:5rem}
+.async-brand-heading h3{height:4rem;container-type:inline-size}
+.async-brand-heading .async-brand-title{height:100%;max-width:12rem;filter:drop-shadow(0 2px 3px #0009)}
+.async-brand-heading .async-brand-name{font-size:clamp(.85rem,9cqi,1.3rem)}
+.async-brand-heading .async-brand-title[data-game=ptown-words]{max-width:10.5rem}
+.async-brand-heading>.midnight-art{position:absolute;inset:0 0 0 auto;width:54%;height:100%;object-fit:contain;object-position:right center;opacity:.42;pointer-events:none;z-index:-1}
+.async-brand-heading:is([data-brand=crib-lab],[data-brand=chess])>.midnight-art{width:40%;opacity:.85;object-position:right bottom;filter:brightness(1.3)}
+.async-brand-heading[data-brand=chucky-showdown]>.midnight-art{width:42%;opacity:.82;object-position:right 30%;object-fit:cover}
+.midnight-config-card .async-brand-heading{border-radius:.7rem .7rem 0 0;border-bottom:1px solid #b99c66}
+.midnight-review-card.async-brand-surface{--async-city-position:center bottom;--async-city-mask:none}
+.midnight-review-card .async-words-logo{max-width:8rem;max-height:3rem}
