@@ -361,6 +361,14 @@ configuration and terminal checks are in `supabase/six-card-golf/match-length.ca
 `dev/six-card-golf/match-length-proof.mjs` and `match-length-review.mjs` reproduce
 local authority/UI evidence. See `SIX_CARD_GOLF_MATCH_LENGTH_LOCAL.md`.
 
+Words placement preview and dictionary errors: `private.ptown_words_evaluate`
+is shared by the existing reducer and authenticated advisory
+`public.ptown_words_preview`. Candidate/proof:
+`supabase/ptown-words/placement-preview.sql` and
+`placement-preview-proof.sql`; client: `src/lib/ptownWords/usePlacementPreview.ts`.
+The existing view/gesture owner also owns local rack insertion order. See
+`SIX_ITEM_GAMEPLAY_POLISH.md`.
+
 Ptown Words: `supabase/ptown-words` owns shared SQL rules, private dictionary/state,
 canonical multiplayer admission, settlement, recovery and proofs. `src/lib/ptownWords`,
 `src/hooks/usePtownWords*` and `src/components/ptownWords` own projected state and

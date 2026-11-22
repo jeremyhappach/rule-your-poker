@@ -1,3 +1,29 @@
+# Six-item gameplay polish — November 22, 2026 — qualified release; mobile smoke pending
+
+The requested pass restores light active HUD/dice/card presentation inside the
+approved Blue Hour surroundings; fixes committed-tile pan dead zones; adds a
+server-evaluated Submit Word score independent of dictionary validity; names all
+invalid words without discarding the draft; enables rack insertion ordering;
+and restores green Async cards for invitations, playable turns and pending
+opponent results, including intermediate results.
+
+Migration `20261122151403_words_placement_preview_and_validation` is installed.
+The candidate, installed and repeat-application rollback proofs pass against
+the live dictionary, all four supported frozen versions and the prior reducer.
+No historical sessions, application data or financial records were modified.
+The preview is read-only; commands retain exact state/turn/revision/receipt and
+financial ownership. Words has Multiplayer and Async adapters, not Arcade.
+
+Full qualification passed: 4,375 source tests, 241 harness tests, 46 release
+tooling tests, TypeScript and the push-enabled production build. Output is
+89,998,824 bytes, below the unchanged 90 MB gate. Ten phone/desktop layouts,
+90 native touch pan starts, pinch/reset, rack movement, SQL-backed score/error
+feedback, local/opponent/bot artifacts and Async highlighting/refresh passed.
+Physical iPhone/PWA smoke remains pending. See
+[root causes, scope and evidence](SIX_ITEM_GAMEPLAY_POLISH.md).
+Release checkpoint: `six-item-gameplay-polish-20261122`; exact production
+deployment and commit verification are recorded in the delivery report.
+
 # Blue Hour waiting table — November 21, 2026 — production live; mobile smoke pending
 
 Jeremy approved the waiting preview and authorized production. Runtime commit

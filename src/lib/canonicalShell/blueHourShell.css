@@ -56,6 +56,27 @@
   background: linear-gradient(180deg, transparent, hsl(213 61% 6% / .65));
 }
 
+/* The environment palette must not recolor the shared HUD or game pieces.
+   Reset their original light tokens at the presentation boundary; held/selected
+   states, pip classes and card-face paint keep their existing component owners. */
+[data-canonical-shell-hud-grid]:not([data-canonical-shell-waiting-surface] *),
+[data-gameplay-die],
+[data-gameplay-result],
+[data-playing-card-root] {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --border: 214.3 31.8% 91.4%;
+}
+[data-canonical-shell-hud-grid]:not([data-canonical-shell-waiting-surface] *),
+[data-canonical-shell-hud-grid]:not([data-canonical-shell-waiting-surface] *) [data-hud-row="identity"] {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
 /* Pre-session waiting uses the same continuous shell finish. These selectors
    cover neutral waiting controls only; green Start/Return, status colors,
    disabled opacity, seat geometry and hit areas retain their existing owners. */

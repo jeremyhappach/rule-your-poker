@@ -11,7 +11,8 @@ import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/u
 import {CircleHelp,RefreshCw,Pause,Play,X} from 'lucide-react';
 import {premiumAt,type Intent,type Placement,type WordsSnapshot} from '@/lib/ptownWords/model';
 import {wordPresentation,wordSquares,visibleBoard,playedWord} from '@/lib/ptownWords/presentation';
-import {shuffleRack,isInvalidWord} from '@/lib/ptownWords/rackPresentation';
+import {shuffleRack,isInvalidWord,invalidWordMessage,reorderRack} from '@/lib/ptownWords/rackPresentation';
+import {usePlacementPreview} from '@/lib/ptownWords/usePlacementPreview';
 import {presentSound} from '@/lib/audio/presentationSound';
 import {createPortal} from 'react-dom';
 import {useWordsBoardGestures,type DragTile,type DropTarget,type TileOrigin} from './useWordsBoardGestures';
@@ -33,7 +34,9 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
   setDialog(next);
  };
  const rack=[...v.rack].sort((a,b)=>{const rank=(id:number)=>{const i=rackOrder.indexOf(id);return i<0?rackOrder.length+v.rack.findIndex(t=>t.id===id):i;};return rank(a.id)-rank(b.id);});
- useEffect(()=>{if(!isInvalidWord(error)){setInvalid(false);return;}setInvalid(true);const timer=setTimeout(()=>setInvalid(false),1500);return()=>clearTimeout(timer);},[error,errorVersion]);
+ useEffect(()=>{setInvalid(isInvalidWord(error));},[error,errorVersion]);
+ useEffect(()=>{setInvalid(false);},[draft]);
+ useEffect(()=>{setRackOrder([]);},[v.identity.dealerGameId,v.identity.roundId,v.viewerId]);
  const hostElement=useRef<HTMLDivElement>(null),viewport=useRef<HTMLDivElement>(null);
  const presentation=wordPresentation(v,now);
  const shownBoard=visibleBoard(v,now); const highlighted=new Set(presentation?wordSquares(v):[]);
@@ -74,6 +77,7 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
   }
  },[announce,handoff.done,turnKey,onIntent]);
  const editable=gameplay&&!nonWord.notice&&activeTab==='cards'&&!waitingForClock&&!readOnly&&v.canAct&&!presentation&&!scoreMotion&&!v.paused&&!pending&&(connected||!!asyncDraftUserId)&&now<v.deadline&&v.phase==='playing'&&!v.finished&&!sessionEnded;
+ const preview=usePlacementPreview(authoritative,draft,editable&&connected);
  useEffect(()=>{if(readOnly){setDraft([]);setSelected(null);setDialog(null);setBlank(null);setExchanges([]);}},[readOnly]);
  useEffect(()=>{if(v.paused){setDialog(null);setSelected(null);setBlank(null);}},[v.paused]);
  const host=v.hostUserId===v.players.find(p=>p.id===v.viewerId)?.userId;
@@ -86,12 +90,13 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
   if(!editable||!rack.some(tile=>tile.id===origin.tileId))return false;
   const staged=draft.find(p=>p.tileId===origin.tileId);
   if(staged?.square!==origin.square)return false;
-  if(target.kind==='rack')return !!staged;
+  if(target.kind==='rack')return !!staged||target.index!==undefined;
   return target.square!==origin.square&&!v.board[target.square]&&!draftAt(target.square);
  };
  const moveTile=(origin:TileOrigin,target:DropTarget,blankLetter?:string)=>{
   if(!canDrop(origin,target))return;
   if(target.kind==='rack'){
+   if(target.index!==undefined)setRackOrder(reorderRack(rack.map(tile=>tile.id),origin.tileId,target.index));
    setDraft(current=>current.filter(p=>p.tileId!==origin.tileId));
    setSelected(null);
    return;
@@ -144,6 +149,8 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
  const seconds=useWordsCountdown(countdownKey,asyncDraftUserId?authoritative.playDeadline??0:authoritative.deadline,now,dialog?dialogSurface:viewport,connected);
  const countdownInRail=gestures.size.width-fittedBoardSize(gestures.size)*camera.scale<140;
  const ghost=gestures.ghost;
+ const previewOrder=ghost?.target?.kind==='rack'&&ghost.target.index!==undefined
+  ?reorderRack(rack.map(tile=>tile.id),ghost.tile.tileId,ghost.target.index):rack.map(tile=>tile.id);
  const draggedTile=(tile:TileOrigin)=>ghost?.tile.tileId===tile.tileId&&ghost.tile.square===tile.square;
  const hoverSquare=ghost?.target?.kind==='square'?ghost.target.square:undefined;
  const text=error.replace(/^.*ptown_words:/,'').replace('invalid_word:', 'Not in ENABLE2K: ').replace(/_/g,' ');
@@ -153,21 +160,22 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
  const actions=sessionEnded?<span>Session ended</span>:v.phase==='complete'&&!presentation?<div className="words-result"><strong>{v.terminal?.winnerIds.map(id=>v.players.find(p=>p.id===id)?.name).join(' & ')} {v.terminal?.winnerIds.length===1?'wins':'tie'}</strong>{!asyncDraftUserId&&<span>Final rack deductions applied</span>}</div>:<div className="words-player" data-canonical-felt-interaction-layer="">
   <div className="words-status"><strong className={editable?'words-your-turn':undefined}>{v.paused?'Paused':presentation?`${v.players.find(p=>p.id===presentation.playerId)?.name??'Player'} played`:v.canAct?'Your turn':`${actor?.name??'Opponent'}’s turn`}</strong>{v.canAct&&<button className="words-rumble" aria-label="Shuffle rack" title="Shuffle rack" disabled={!editable} onClick={()=>setRackOrder(shuffleRack(rack.map(t=>t.id)))}><RefreshCw size={16} aria-hidden="true"/></button>}<div className="words-clock"><time>{asyncDraftUserId&&v.playDeadline==null?Math.floor(left/3600)+'h '+Math.floor(left%3600/60)+'m':Math.floor(left/60)+':'+String(left%60).padStart(2,'0')}</time>{!readOnly&&v.canAct&&banks.map(slot=><button key={slot} className="words-bank" aria-label={'Use time bank '+(slot+1)+': add 3 minutes'} disabled={!editable} onClick={()=>void onIntent({type:'time_bank',items:[{slot}]})}>+3m</button>)}</div>{!asyncDraftUserId&&!!v.rules.timeBankUses&&<button className="words-pause" data-cancel-request={cancelRequest||undefined} aria-label={cancelRequest?'Cancel pause request':v.paused?'Resume game':host?'Pause game':'Request pause'} title={cancelRequest?'Cancel pause request':v.paused?'Resume':host?'Pause':'Request pause'} disabled={readOnly||pending||pausePending||!connected||(v.paused&&!host)||(!host&&!!v.pauseRequest&&!cancelRequest)||v.phase!=='playing'} onClick={()=>host?onPause?.():void onIntent(cancelRequest?{type:'cancel_pause_request',items:[{requestId:v.pauseRequest!.id}]}:{type:'request_pause'})}>{cancelRequest?<X size={18}/>:v.paused?<Play size={18}/>:<Pause size={18}/>}</button>}<span>{v.bagCount} in bag</span></div>
   <div className="words-rack" data-view-only={readOnly||undefined} data-concealed={v.paused} data-actionable={editable} data-drop-target={ghost?.target?.kind==='rack'||undefined} aria-label="Your private rack">
-   {rack.map(tile=><button key={tile.id} data-tile-id={tile.id} aria-label={v.paused?'Concealed tile':`${tile.face==='?'?'Blank':tile.face}, ${tile.value} points`}
+   {rack.map((tile,index)=><button key={tile.id} data-tile-id={tile.id} aria-label={v.paused?'Concealed tile':`${tile.face==='?'?'Blank':tile.face}, ${tile.value} points`}
+    style={{transform:`translateX(calc(${previewOrder.indexOf(tile.id)-index} * (100% + var(--words-rack-gap))))`}}
     aria-pressed={selected===tile.id} data-used={used.has(tile.id)} data-dragging={draggedTile({tileId:tile.id})||undefined}
     disabled={!editable||used.has(tile.id)} onClick={event=>{if(event.detail===0)tapRack(tile.id);}}>
     {v.paused?'◇':tile.face==='?'?'◇':tile.face}{!v.paused&&<small>{tile.value}</small>}
    </button>)}
   </div>
-  {!readOnly&&<div className="words-submit-slot"><button className="words-submit" hidden={!draft.length} disabled={!draft.length||!editable||!connected} onClick={()=>void send({type:'place',items:draft})}>{pending?'Submitting…':'Submit Word'}</button></div>}
+  {!readOnly&&<div className="words-submit-slot"><button className="words-submit" hidden={!draft.length} disabled={!draft.length||!editable||!connected} onClick={()=>void send({type:'place',items:draft})}>{pending?'Submitting…':preview?`Submit Word (+${preview.points})`:'Submit Word'}</button></div>}
   <div className="words-turn-actions">{draft.length>0?<><button disabled={!editable} onClick={()=>setDraft(d=>d.slice(0,-1))}>Undo</button><button disabled={!editable} onClick={()=>{setDraft([]);setSelected(null);}}>Recall</button></>:<><button disabled={!editable||v.bagCount<7} title={v.bagCount<7?'Need 7 in bag':undefined} onClick={()=>{setExchanges([]);openDialog('exchange');}}>Exchange</button><button disabled={!editable} onClick={()=>openDialog('pass')}>Pass</button></>}</div>
   {((error&&!isInvalidWord(error))||!connected)&&<div className="words-error" role="status">{text||'Reconnecting…'}{!connected&&<button onClick={onReconnect}>Reconnect</button>}</div>}
+  {invalid&&<div className="words-error words-invalid-message" role="alert">{invalidWordMessage(error)}</div>}
  </div>;
  return <div className="words-host" data-game-background={gameBackground(v.backgroundId)?.id} ref={hostElement} {...gestures.pointerHandlers}><GameBackground id={v.backgroundId}/><FullscreenGameShell gameplay={gameplay} navigation={navigation} announcement={announce?<div className="words-turn-announcement" role="status">YOUR TURN</div>:undefined} className="words-shell" title="Ptown Words" description="" activeTab={activeTab} setActiveTab={setActiveTab} sessionLabel={<PtownWordsRulesLabel/>} panelTitle={activeTab==='lobby'?'Rules':undefined} panel={panel} scores={scores} actions={actions} sessionEnded={sessionEnded}>
   {!sessionEnded&&<div className="words-board-region" data-paused={v.paused}>
    {readOnly&&<div className="words-view-only" role="status">Opponent's Turn — View Only</div>}
    {v.paused&&<div className="words-paused-cover" role="status">Paused{!host&&<small>Waiting for host to resume</small>}</div>}
-   {invalid&&<div className="words-invalid" role="alert">invalid word</div>}
    <div className="words-navigation" data-canonical-felt-interaction-layer="">
     <span>{selected!==null?'Tap a square to place your tile':editable?'Drag tiles · Pinch to zoom':'Pinch to zoom'}</span>
     <button type="button" className="words-reset-zoom" data-words-reset="" data-hidden={gestures.camera.scale===1||undefined} disabled={gestures.camera.scale===1||!!presentation||v.paused}

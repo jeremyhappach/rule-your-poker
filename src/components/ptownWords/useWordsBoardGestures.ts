@@ -5,7 +5,7 @@ import type { BoardCamera, BoardSize, Point } from './wordsBoardCamera';
 
 export type TileOrigin = { tileId: number; square?: number };
 export type DragTile = TileOrigin & { letter: string; value: number };
-export type DropTarget = { kind: 'square'; square: number } | { kind: 'rack' };
+export type DropTarget = { kind: 'square'; square: number } | { kind: 'rack'; index?: number };
 type Surface = { kind: 'board'; square?: number } | { kind: 'rack'; tileId: number } | { kind: 'reset' };
 type Pointer = { point: Point; element: HTMLElement; touch: boolean };
 type TileGhost = { tile: DragTile; point: Point; origin: Point; touch: boolean; target?: DropTarget; returning?: boolean };
@@ -40,7 +40,14 @@ function dropTarget(host: HTMLDivElement | null, point: Point): DropTarget | und
   if (!element || !host?.contains(element)) return;
   const cell = element.closest<HTMLElement>('[data-square]');
   if (cell) return { kind: 'square', square: Number(cell.dataset.square) };
-  if (element.closest('.words-rack')) return { kind: 'rack' };
+  const rack = element.closest<HTMLElement>('.words-rack');
+  if (rack) {
+    // Stable layout slots, independent of the neighboring tiles' animated offsets.
+    const tile = rack.querySelector<HTMLElement>('[data-tile-id]');
+    const step = (tile?.offsetWidth ?? 0) + (parseFloat(getComputedStyle(rack).columnGap) || 0);
+    const index = step > 0 ? Math.floor((point.x - rack.getBoundingClientRect().left) / step) : 0;
+    return { kind: 'rack', index: Math.max(0, Math.min(rack.children.length - 1, index)) };
+  }
 }
 
 export function useWordsBoardGestures({ host, board, enabled, scope, tileAt, canDrop, drop, tapSquare, tapRack }: Options) {
@@ -161,7 +168,9 @@ export function useWordsBoardGestures({ host, board, enabled, scope, tileAt, can
       : { kind: 'board', square: cell ? Number(cell.dataset.square) : undefined };
     gesture.current = {
       kind: 'press', id: event.pointerId, surface, start: point, tile: tileAt(surface),
-      canPan: onBoard && !cell?.classList.contains('has-tile'),
+      // Committed tiles are passive board content. Staged tiles still take the
+      // existing drag branch first; all other board pixels belong to panning.
+      canPan: onBoard,
     };
   }
 

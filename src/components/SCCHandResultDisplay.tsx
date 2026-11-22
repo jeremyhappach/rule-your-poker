@@ -34,7 +34,7 @@ export function SCCHandResultDisplay({
   // Handle NQ (Not Qualified)
   if (description === "NQ") {
     return (
-      <div className={cn(
+      <div data-gameplay-result="" className={cn(
         "inline-flex items-center justify-center rounded-md px-3 py-1.5",
         "bg-muted border border-muted-foreground/30"
       )}>
@@ -53,7 +53,7 @@ export function SCCHandResultDisplay({
     const dieSize = effectiveSize === "sm" ? "sm" : "md";
     
     return (
-      <div className={cn(
+      <div data-gameplay-result="" className={cn(
         "inline-flex items-center gap-1 rounded-md px-1.5 py-1",
         isWinning 
           ? "bg-poker-gold border-2 border-poker-gold" 
@@ -80,7 +80,7 @@ export function SCCHandResultDisplay({
   
   if (!isNaN(cargoSum)) {
     return (
-      <div className={cn(
+      <div data-gameplay-result="" className={cn(
         "inline-flex items-center gap-2 rounded-md px-3 py-1.5",
         isWinning 
           ? "bg-poker-gold border-2 border-poker-gold" 

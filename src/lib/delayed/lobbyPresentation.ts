@@ -20,7 +20,10 @@ export function orderedLobbyGames(home:Home,userId:string,now:number){
 
 export function matchLobbyStatus(home:Home,userId:string,now:number){
  const opponent=home.players.find(player=>player.id!==userId);
- const results=home.lineup.filter(child=>needsChildReview(child,userId)).length;
+ // Intermediate opponent results are outstanding even before the child ends.
+ // Keep terminal-review admission in needsChildReview unchanged.
+ const results=home.lineup.filter(child=>needsChildReview(child,userId)
+  ||Object.entries(child.pendingResults??{}).some(([actor,count])=>actor!==userId&&count>0)).length;
  // playable is viewer-specific; an opponent-owned turn deliberately has false.
  const turns=home.status==='active'&&!home.held&&!home.removedAt
   ?home.lineup.filter(child=>!child.terminal&&turnDeadline(child)>now&&(child.game!=='five-alive'||child.playable===true||child.opponentPlayable===true))

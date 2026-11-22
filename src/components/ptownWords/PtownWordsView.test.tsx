@@ -3,6 +3,8 @@ import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import type {WordsSnapshot} from '@/lib/ptownWords/model';
 const {placementSound,countdownSound}=vi.hoisted(()=>({placementSound:vi.fn(),countdownSound:vi.fn()}));
+const previewMock=vi.hoisted(()=>vi.fn<()=>import('@/lib/ptownWords/usePlacementPreview').PlacementPreview|null>(()=>null));
+vi.mock('@/lib/ptownWords/usePlacementPreview',()=>({usePlacementPreview:previewMock}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{getSnapshot:()=>({userId:'u1'}),present:countdownSound}}));
 vi.mock('@/lib/audio/approvedSounds',()=>({approvedCountdownBeat:vi.fn(()=>({durationMs:180,schedule:vi.fn()}))}));
 vi.mock('@/lib/audio/presentationSound',()=>({presentSound:placementSound,isSoundSurfaceVisible:()=>true}));
@@ -18,6 +20,7 @@ beforeEach(()=>{
  vi.spyOn(Element.prototype,'clientHeight','get').mockReturnValue(380);
  Object.defineProperty(document,'elementFromPoint',{configurable:true,value:hit});
  hit.mockReset();intent.mockReset();intent.mockResolvedValue(true);countdownSound.mockClear();
+ previewMock.mockReturnValue(null);
 });
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();Reflect.deleteProperty(document,'elementFromPoint');});
 const board=(container:HTMLElement)=>container.querySelector<HTMLDivElement>('.words-viewport')!;
@@ -40,6 +43,33 @@ function drag(from:Element,to:Element|null){
  pointer('up',from,140,150);
  fireEvent.click(from,{detail:1});
 }
+it('uses server potential points despite dictionary rejection and lists every invalid word',()=>{
+ const {container,rerender}=render(<PtownWordsView {...props}/>);
+ tap(screen.getByRole('button',{name:'C, 3 points'}));tap(square(container,112));
+ previewMock.mockReturnValue({points:42,invalidWords:['CC','ZX'],words:[]});
+ rerender(<PtownWordsView {...props} error="ptown_words:invalid_word:CC,ZX" errorVersion={1}/>);
+ expect(screen.getByRole('button',{name:'Submit Word (+42)'})).toHaveProperty('disabled',false);
+ expect(screen.getByRole('alert').textContent).toBe('Invalid words: CC, ZX');
+ expect(container.querySelectorAll('.is-staged')).toHaveLength(1);
+ fireEvent.click(screen.getByRole('button',{name:'Recall'}));expect(screen.queryByRole('alert')).toBeNull();
+});
+it('pans from committed passive tiles without picking them up',()=>{
+ const occupied=[...view.board];occupied[112]={id:99,face:'A',letter:'A',value:1};
+ const {container}=render(<PtownWordsView {...props} view={{...view,board:occupied}}/>);
+ zoomIn(container);zoomIn(container);
+ const grid=container.querySelector('.words-grid')!,before=grid.getAttribute('style');
+ pointer('down',square(container,112),100,100,1,'touch');pointer('move',square(container,112),120,120,1,'touch');pointer('up',square(container,112),120,120,1,'touch');
+ expect(grid.getAttribute('style')).not.toBe(before);expect(container.querySelectorAll('.is-staged')).toHaveLength(0);expect(intent).not.toHaveBeenCalled();
+});
+it('commits a rack insertion and preserves ID order on ordinary rerenders',()=>{
+ vi.spyOn(HTMLElement.prototype,'offsetWidth','get').mockReturnValue(50);
+ const {container,rerender}=render(<PtownWordsView {...props}/>);
+ drag(screen.getByRole('button',{name:'C, 3 points'}),screen.getByRole('button',{name:'Blank, 0 points'}));
+ const ids=()=>[...container.querySelectorAll<HTMLElement>('.words-rack button')].map(tile=>tile.dataset.tileId);
+ expect(ids()).toEqual(['2','3','1']);
+ rerender(<PtownWordsView {...props} now={2000}/>);expect(ids()).toEqual(['2','3','1']);
+ expect(intent).not.toHaveBeenCalled();expect(container.querySelectorAll('.is-staged')).toHaveLength(0);
+});
 it('view-only immediately retires a staged blank/dialog and permits navigation even with a stale actionable snapshot',()=>{
  const {container,rerender}=render(<PtownWordsView {...props} asyncDraftUserId="u1"/>);
  fireEvent.click(screen.getByRole('button',{name:'C, 3 points'}));fireEvent.click(container.querySelector('[data-square="112"]')!);
@@ -170,11 +200,11 @@ it('handles acceptance and opponent reveal arriving together without restoring t
  rerender(<PtownWordsView {...props} view={opponent} now={1200}/>);expect(level(container)).toBeGreaterThan(1);
  rerender(<PtownWordsView {...props} view={opponent} now={4000}/>);expect(level(container)).toBe(1);
 });
-it('shows each dictionary rejection for 1500ms without discarding draft/camera or resetting the clock',()=>{
+it('names each dictionary rejection until the draft changes without discarding tiles/camera or resetting the clock',()=>{
  const {container,rerender}=render(<PtownWordsView {...props}/>);zoomIn(container);
  tap(screen.getByRole('button',{name:'C, 3 points'}));tap(square(container,112));
- rerender(<PtownWordsView {...props} error="ptown_words:invalid_word:CC" errorVersion={1}/>);expect(screen.getByRole('alert').textContent).toBe('invalid word');
- act(()=>vi.advanceTimersByTime(1499));expect(screen.getByRole('alert')).not.toBeNull();act(()=>vi.advanceTimersByTime(1));expect(screen.queryByRole('alert')).toBeNull();
+ rerender(<PtownWordsView {...props} error="ptown_words:invalid_word:CC" errorVersion={1}/>);expect(screen.getByRole('alert').textContent).toBe('Invalid word: CC');
+ act(()=>vi.advanceTimersByTime(5000));expect(screen.getByRole('alert')).not.toBeNull();
  rerender(<PtownWordsView {...props} now={3000} error="ptown_words:invalid_word:CC" errorVersion={2}/>);expect(screen.getByRole('alert')).not.toBeNull();expect(container.querySelector('time')?.textContent).toBe('2:58');
  expect(container.querySelectorAll('.is-staged')).toHaveLength(1);expect(level(container)).toBe(1.25);
  rerender(<PtownWordsView {...props} error="Connection uncertain. Reconnect to retry." errorVersion={3}/>);expect(screen.queryByRole('alert')).toBeNull();expect(screen.getByRole('status').textContent).toContain('Connection uncertain');

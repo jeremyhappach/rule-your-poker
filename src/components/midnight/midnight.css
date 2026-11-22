@@ -158,4 +158,4 @@ body:has(.midnight-invite){background:#06111f}
  .midnight-setup[data-dealer-game-setup-step=config] .midnight-settings>.midnight-toggle{grid-column:1/-1}
 }
 .midnight-pending{display:block;white-space:nowrap;font-size:.9rem}
-.midnight-lobby .delayed-lineup li[data-acceptance=own]{background:linear-gradient(125deg,#163c2c,#0b241c);border-color:#3c8b59;box-shadow:inset 3px 0 #62ad7f}
+.midnight-lobby .delayed-lineup li[data-turn=own]{background:linear-gradient(125deg,#163c2c,#0b241c);border-color:#3c8b59;box-shadow:inset 3px 0 #62ad7f}

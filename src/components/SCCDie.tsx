@@ -192,6 +192,7 @@ export function SCCDie({
 
   return (
     <button
+      data-gameplay-die=""
       type="button"
       onClick={canToggle ? onToggle : undefined}
       disabled={!canToggle}
