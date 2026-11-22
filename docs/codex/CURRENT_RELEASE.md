@@ -1,3 +1,10 @@
+# Main-screen Live label - November 22, 2026 - approved publication
+
+Jeremy requested and approved publishing the main-screen mode-tab rename from
+Multiplayer to Live. `LobbyBanner` changes only the visible label; its existing
+route, mode identity and behavior remain intact. TypeScript and the focused diff
+check pass. Release checkpoint: `main-screen-live-label-approved-20261122`.
+
 # Async compact headers and static own-word results - November 22, 2026 - approved release; owner smoke pending
 
 Jeremy approved the compact headers and static View Last Word changes after
