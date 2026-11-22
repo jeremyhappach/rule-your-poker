@@ -20,6 +20,14 @@ it('never holds a live turn past its authored handoff and isolates another match
  const one=renderHook(()=>useWordScorePresentation(v,4000,false));expect(one.result.current.frame).toBeNull();one.unmount();
  const other=renderHook(()=>useWordScorePresentation({...v,identity:{...v.identity,dealerGameId:'different'}},20000,true));expect(other.result.current.frame?.phase).toBe('reveal');
 });
+it('keeps a completed Async word static when recovery supplies a fresh copy of the same snapshot',()=>{
+ const done=vi.fn();const hook=renderHook(({snapshot,now})=>useWordScorePresentation(snapshot,now,true,done),{initialProps:{snapshot:v,now:20000}});
+ hook.rerender({snapshot:v,now:30000});expect(hook.result.current.frame).toBeNull();expect(done).toHaveBeenCalledTimes(1);
+ const receipt=sessionStorage.getItem('ptown:words:score:score-test:me');
+ hook.rerender({snapshot:structuredClone(v),now:33000});
+ expect(hook.result.current.frame).toBeNull();expect(visibleBoard(hook.result.current.visual,33000).filter(Boolean)).toHaveLength(3);
+ expect(sessionStorage.getItem('ptown:words:score:score-test:me')).toBe(receipt);expect(done).toHaveBeenCalledTimes(1);
+});
 it('does not consume an unseen opponent event while an async match is held',()=>{
  const hook=renderHook(({held,now})=>useWordScorePresentation({...v,paused:held,canAct:!held},now,true),{initialProps:{held:true,now:20000}});expect(hook.result.current.frame).toBeNull();expect(sessionStorage.length).toBe(0);
  hook.rerender({held:false,now:25000});expect(hook.result.current.frame?.phase).toBe('reveal');expect(hook.result.current.visual.movePresentation?.startedAt).toBe(25000);

@@ -80,12 +80,13 @@ it('preserves the unified parent and simultaneous child turns, pending results a
  expect(screen.getByLabelText('Real money').textContent).toBe('$');
  expect(screen.getByRole('button',{name:/Quintzee.*W.*\$5/}).getAttribute('aria-expanded')).toBe('false');
 });
-it('keeps one lobby parent card and navigation to setup, archive and multiplayer',async()=>{
+it('keeps one lobby parent card, returns to Async and labels the explicit Live archive exit',async()=>{
  mount('/delayed');await screen.findByRole('link',{name:/vs. Opponent/});
  expect(document.querySelectorAll('.delayed-lineup>li')).toHaveLength(1);
  expect(screen.getByRole('link',{name:'New Match'}).getAttribute('href')).toBe('/delayed/new');
- expect(screen.getByRole('link',{name:'Archived / Completed Sessions'}).getAttribute('href')).toBe('/?sessions=completed');
- fireEvent.click(screen.getByRole('link',{name:'Lobby'}));expect(screen.getByRole('heading',{name:'Multiplayer lobby'})).toBeTruthy();
+ expect(screen.getByRole('link',{name:'Back to Lobby'}).getAttribute('href')).toBe('/delayed');
+ expect(screen.getByRole('link',{name:'Live session archive'}).getAttribute('href')).toBe('/?sessions=completed');
+ fireEvent.click(screen.getByRole('link',{name:'Live session archive'}));expect(screen.getByRole('heading',{name:'Multiplayer lobby'})).toBeTruthy();
 });
 it('renders simultaneous turns, unseen results and local invitations in action order',async()=>{
  const createdAt=new Date(2026,10,11,8,59).toISOString();

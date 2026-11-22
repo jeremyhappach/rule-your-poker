@@ -39,7 +39,7 @@ export function CompletedMatchRecord({matchId,userId,childId}:{matchId:string;us
  },[matchId,userId,childId,retry]);
  const home=record?.home,child=home?.lineup.find(c=>c.id===childId);
  return <main className="delayed-page delayed-match-page async-match-record">
-  <header><Link to={childId?matchRecordPath(matchId):'/?sessions=completed'}>{childId?'← Match record':'← Completed matches'}</Link><h1>{childId?'Completed game':'Completed match'}</h1></header>
+  <header><Link to={childId?matchRecordPath(matchId):'/delayed'}>{childId?'← Match record':'← Async lobby'}</Link><h1>{childId?'Completed game':'Completed match'}</h1></header>
   {error?<div role="alert"><p>{error}</p><button onClick={()=>setRetry(n=>n+1)}>Retry</button></div>:!home?<p role="status">Loading completed record…</p>:<>
    <h2><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></h2>
    <p>Read-only match record{home.settledAt?' · '+new Date(home.settledAt).toLocaleString():''}</p>

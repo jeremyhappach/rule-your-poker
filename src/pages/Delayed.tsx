@@ -38,7 +38,7 @@ export default function Delayed(){
  if(childId&&matchId)return <ChildTurn key={childId} childId={childId} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('review'))return <ChildResults key={matchId+':'+query.get('review')} childId={query.get('review')!} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('finale'))return <MatchFinale key={user.id+':'+matchId} matchId={matchId} userId={user.id}/>;
- return <main className="delayed-page delayed-match-page"><header><Link to="/">Lobby</Link><h1>Async Matches</h1><GameplaySoundButton/><NotificationBell/></header>
+ return <main className="delayed-page delayed-match-page"><header><Link to="/delayed">Back to Lobby</Link><h1>Async Matches</h1><GameplaySoundButton/><NotificationBell/></header>
   {matchId==='new'?<AsyncInvite key={user.id+':'+(query.get('runback')??'new')+':'+(query.get('draft')??'')} userId={user.id}/>:matchId?<MatchHome key={user.id+':'+matchId+':'+query.has('history')} id={matchId} userId={user.id}/>:<MatchList userId={user.id}/>}</main>;
 }
 function useUpdates(userId:string,refresh:()=>void,enabled=true){
@@ -83,7 +83,7 @@ export function MatchList({userId}:{userId:string}){
   {rows.length>=30&&older&&<button disabled={loadingOlder} onClick={()=>{const last=rows.at(-1)!;setLoadingOlder(true);
    void delayedRpc<Home[]>('delayed_list',{p_before:last.createdAt,p_before_id:last.id}).then(v=>{
     setRows(old=>[...old,...v.filter(item=>!old.some(existing=>existing.id===item.id))]);setOlder(v.length===30);
-   }).catch(e=>setError(e.message)).finally(()=>setLoadingOlder(false));}}>Load older matches</button>}<Link to="/?sessions=completed">Archived / Completed Sessions</Link></TabsContent><TabsContent value="completed"><AsyncHistory profileId={userId} showGameMix/></TabsContent></Tabs></div>;
+   }).catch(e=>setError(e.message)).finally(()=>setLoadingOlder(false));}}>Load older matches</button>}<Link to="/?sessions=completed">Live session archive</Link></TabsContent><TabsContent value="completed"><AsyncHistory profileId={userId} showGameMix/></TabsContent></Tabs></div>;
 }
 function MatchHome({id,userId}:{id:string;userId:string}){
  const navigate=useNavigate();

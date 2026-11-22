@@ -21,6 +21,7 @@ const Path=()=>{const location=useLocation();return <output data-testid="path">{
 function mount(path='/delayed/match?history=1'){
  return render(<MemoryRouter initialEntries={[path]}><Path/><Routes>
   <Route path="/" element={<AsyncHistory viewerName="Hap"/>}/>
+  <Route path="/delayed" element={<h1>Async lobby</h1>}/>
   <Route path="/delayed/:matchId" element={<Delayed/>}/>
   <Route path="/delayed/:matchId/play/:childId" element={<Delayed/>}/>
  </Routes></MemoryRouter>);
@@ -30,6 +31,10 @@ beforeEach(()=>{
  mock.rpc.mockImplementation(async(name,args)=>name==='delayed_history'?[{id:'match',opponent:'Opponent',count:11,net:5,completedAt:'2026-11-17',startedAt:'2026-11-17',realMoney:false}]:name==='delayed_match_record'?recordFixture(args.p_child??undefined):Promise.reject(Error('Unexpected RPC '+name)));
 });
 afterEach(()=>{cleanup();vi.useRealTimers();});
+it('returns completed Async records to the Async lobby',async()=>{
+ mount();await screen.findByRole('list',{name:'Completed match games'});fireEvent.click(screen.getByRole('link',{name:'← Async lobby'}));
+ expect(screen.getByRole('heading',{name:'Async lobby'})).toBeTruthy();expect(screen.getByTestId('path').textContent).toBe('/delayed');
+});
 it('opens completed history into the full lineup, details and back without live owners',async()=>{
  mount('/');fireEvent.click(await screen.findByRole('link',{name:'See Results'}));
  await screen.findByRole('list',{name:'Completed match games'});

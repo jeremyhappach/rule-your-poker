@@ -1,10 +1,11 @@
-import {createAuthoritativeSubscription,scheduleAuthoritativeBoundary,retireAcknowledgedCommand} from '@/lib/authoritativeSubscription';
+import {createAuthoritativeSubscription,scheduleAuthoritativeBoundary,retireAcknowledgedCommand,type AuthoritativeConnectionState} from '@/lib/authoritativeSubscription';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {acceptWordsSnapshot,type WordsSnapshot,type Intent} from '@/lib/ptownWords/model';
 import type {Command,WordsTransport} from '@/lib/ptownWords/client';
 /** Pending UUID/payload survives uncertain replies. No client advances a turn. */
 export function usePtownWords(id:string,userId:string,transport:WordsTransport,storageScope='ptown:words:1'){
  const [snapshot,setSnapshot]=useState<WordsSnapshot|null>(null),[error,setError]=useState(''),[errorVersion,setErrorVersion]=useState(0),[pending,setPending]=useState(false),[connected,setConnected]=useState(false),[now,setNow]=useState(0);
+ const [connection,setConnection]=useState<AuthoritativeConnectionState>({phase:'connecting'});
  const latest=useRef<WordsSnapshot|null>(null),generation=useRef(0),flight=useRef(false),clock=useRef({server:0,local:0});
  const recoveryRef=useRef<ReturnType<typeof createAuthoritativeSubscription>|null>(null);
  const key=`${storageScope}:${userId}:${id}`;
@@ -19,7 +20,7 @@ export function usePtownWords(id:string,userId:string,transport:WordsTransport,s
   }catch(e){if(token===generation.current){setError((e as Error).message);setErrorVersion(n=>n+1);}}finally{if(token===generation.current){flight.current=false;setPending(!!sessionStorage.getItem(key));}}return ok;
  },[key,transport,accept]);
  useEffect(()=>{const token=++generation.current;latest.current=null;flight.current=false;setSnapshot(null);setConnected(false);setError('');
-  const recovery=createAuthoritativeSubscription({isPaused:()=>!!latest.current?.paused,subscribe:transport.subscribe,load:transport.load,apply:v=>{accept(v,token);if(latest.current!==v)return false;setError('');return true;},connected:setConnected,error:e=>setError((e as Error).message),interrupt:()=>{},recoverPending:async()=>{if(sessionStorage.getItem(key))await resolve();}});recoveryRef.current=recovery;
+  const recovery=createAuthoritativeSubscription({isPaused:()=>!!latest.current?.paused,subscribe:transport.subscribe,load:transport.load,apply:v=>{accept(v,token);return latest.current===v;},connected:setConnected,connectionState:setConnection,error:()=>{},interrupt:()=>{},recoverPending:async()=>{if(sessionStorage.getItem(key))await resolve();}});recoveryRef.current=recovery;
   const timer=setInterval(()=>setNow(clock.current.server+performance.now()-clock.current.local),100);
   return()=>{generation.current++;recovery.dispose();clearInterval(timer);};
  },[transport,accept,resolve]);
@@ -29,5 +30,5 @@ export function usePtownWords(id:string,userId:string,transport:WordsTransport,s
   return scheduleAuthoritativeBoundary(snapshot.deadline-at,()=>recoveryRef.current?.refresh());
  },[snapshot?.identity.roundId,snapshot?.deadline,snapshot?.phase,snapshot?.paused,snapshot?.finished]);
  const act=async(intent:Intent)=>{const v=latest.current;if(!v||(!['request_pause','cancel_pause_request'].includes(intent.type)&&!v.canAct)||v.paused||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;const requestId=crypto.randomUUID();sessionStorage.setItem(key,JSON.stringify({requestId,revision:v.revision,intent}));return resolve(requestId);};
- return {snapshot,error,errorVersion,pending,connected,now,act,reconnect:()=>recoveryRef.current?.recover()??Promise.resolve(false)};
+ return {snapshot,error,errorVersion,pending,connected,connection,now,act,reconnect:()=>recoveryRef.current?.recover(true)??Promise.resolve(false)};
 }

@@ -1,7 +1,12 @@
 import {subscribeAuthoritativeRecoverySnapshot} from './realtimeAuthoritativeCatchup';
 
+export interface AuthoritativeConnectionState {
+  phase: 'connecting' | 'recovering' | 'connected' | 'offline' | 'failed';
+  message?: string;
+}
+
 export interface AuthoritativeSubscriptionOptions<T> {
-  subscribe: (changed: () => void, status: (connected: boolean) => void) => () => void;
+  subscribe: (changed: () => void, status: (connected: boolean, error?: unknown) => void) => () => void;
   load: () => Promise<T>;
   apply: (value: T, recovering: boolean) => boolean;
   connected: (ready: boolean) => void;
@@ -9,6 +14,7 @@ export interface AuthoritativeSubscriptionOptions<T> {
   interrupt: () => void;
   recoverPending?: () => Promise<unknown>;
   isPaused?: () => boolean;
+  connectionState?: (state: AuthoritativeConnectionState) => void;
 }
 
 /** A socket ACK is not readiness. Every new channel needs a post-ACK snapshot.
@@ -16,6 +22,7 @@ export interface AuthoritativeSubscriptionOptions<T> {
  */
 export function createAuthoritativeSubscription<T>(options: AuthoritativeSubscriptionOptions<T>) {
   let ready = false;
+  let phase: AuthoritativeConnectionState['phase'] = 'connecting';
   let recovering = false;
   let disposed = false, generation = 0, subscribed = false, rebind = false, retries = 0;
   let stop = () => {}, ackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -23,17 +30,26 @@ export function createAuthoritativeSubscription<T>(options: AuthoritativeSubscri
   const newLane = () => ({ running: null as Promise<boolean> | null, dirty: false, ack: 0 });
   let lane = newLane();
   const available = () => !document.hidden && navigator.onLine;
-  const publishReady = (value: boolean) => { ready = value; options.connected(value); };
-  const blocked = () => { recovering = true; publishReady(false); options.interrupt(); };
+  const publishPhase = (next: AuthoritativeConnectionState['phase'], error?: unknown) => {
+    phase = next;
+    options.connectionState?.({phase, ...(error ? {message: error instanceof Error ? error.message : String(error)} : {})});
+  };
+  const publishReady = (value: boolean) => { ready = value; options.connected(value); if (value) publishPhase('connected'); };
+  const blocked = (error?: unknown) => { recovering = true; publishReady(false); publishPhase(available() ? 'recovering' : 'offline', error); options.interrupt(); };
   const retire = () => {
     generation++; ready = false; subscribed = false; clearTimeout(ackTimer); clearTimeout(retryTimer); ackTimer = retryTimer = undefined;
     stop(); stop = () => {}; lane = newLane();
   };
-  const retry = (replace: boolean) => {
+  const retry = (replace: boolean, error: unknown) => {
     if (disposed) return;
-    blocked();
+    // Subscription diagnostics belong to connection state. Keep existing
+    // adapters' command-error channels unchanged while a socket is recovering.
+    if (!replace) options.error(error);
+    blocked(error);
     if (replace) { retire(); rebind = true; }
-    if (!available() || retries >= 2 || retryTimer) return;
+    if (!available()) return;
+    if (retries >= 2) { clearTimeout(retryTimer); retryTimer = undefined; publishPhase('failed', error); return; }
+    if (retryTimer) return;
     retries++;
     retryTimer = setTimeout(() => {
       retryTimer = undefined;
@@ -42,7 +58,7 @@ export function createAuthoritativeSubscription<T>(options: AuthoritativeSubscri
     }, 1000);
   };
   function refresh(): Promise<boolean> {
-    if (disposed || !available()) return Promise.resolve(false);
+    if (disposed || !available() || phase === 'failed') return Promise.resolve(false);
     const current = lane, token = generation;
     current.dirty = true;
     if (current.running) return current.running;
@@ -65,12 +81,12 @@ export function createAuthoritativeSubscription<T>(options: AuthoritativeSubscri
         // An ACK arriving during the read queues a second read. Only that
         // post-ACK request can close the fetch/subscribe blind window.
         if (subscribed && ack > 0 && ack === current.ack && !current.dirty) {
-          retries = 0; recovering = false; publishReady(true);
+          retries = 0; clearTimeout(retryTimer); retryTimer = undefined; recovering = false; publishReady(true);
         }
       }
     } catch (error) {
       success = false;
-      if (!disposed && token === generation) { options.error(error); retry(false); }
+      if (!disposed && token === generation) retry(false, error);
     } finally { current.running = null; }
     return success;
     }
@@ -78,28 +94,35 @@ export function createAuthoritativeSubscription<T>(options: AuthoritativeSubscri
   function open(initial = false) {
     retire(); rebind = false;
     if (disposed) return;
-    if (!initial) blocked();
+    if (!available()) { rebind = true; blocked(); return; }
+    if (!initial) blocked(); else publishPhase('connecting');
     const token = generation;
-    ackTimer = setTimeout(() => { ackTimer = undefined; if (!disposed && token === generation && !subscribed) retry(true); }, 5000);
-    const unsubscribe = options.subscribe(
+    ackTimer = setTimeout(() => { ackTimer = undefined; if (!disposed && token === generation && !subscribed) retry(true, new Error('Live update subscription timed out')); }, 5000);
+    let unsubscribe: () => void;
+    try { unsubscribe = options.subscribe(
       () => { if (!disposed && token === generation) void refresh(); },
-      online => {
+      (online, error) => {
         if (disposed || token !== generation) return;
-        if (!online) { retry(true); return; }
+        if (!online) { retry(true, error ?? new Error('Live update connection interrupted')); return; }
         clearTimeout(ackTimer); ackTimer = undefined;
         subscribed = true; lane.ack++; void refresh();
         if (options.recoverPending) void options.recoverPending().catch(options.error);
       },
-    );
+    ); } catch (error) { if (token === generation) retry(true, error); return; }
     // Some deterministic transports report failure synchronously in subscribe.
     if (disposed || token !== generation) unsubscribe(); else stop = unsubscribe;
     void refresh();
   }
   async function recover(block = false): Promise<boolean> {
     if (disposed) return false;
+    // Online, visibility and focus commonly arrive together. Keep the joining
+    // channel and its watchdog instead of repeatedly retiring its pending ACK.
+    if (available() && !rebind && !subscribed && ackTimer) return lane.running ?? false;
+    const failed = phase === 'failed';
     recovering = true;
+    publishPhase(available() ? 'recovering' : 'offline');
     options.interrupt();
-    if (block || !subscribed || rebind) blocked();
+    if (block || failed || !subscribed || rebind) blocked();
     if (!available()) { rebind = true; return false; }
     retries = 0; clearTimeout(retryTimer); retryTimer = undefined;
     if (!subscribed || rebind) { open(); return false; }
@@ -124,7 +147,7 @@ export function createAuthoritativeSubscription<T>(options: AuthoritativeSubscri
   // A missed resume can leave a healthy socket and a paused projection forever.
   // Read the existing authority while paused; this never advances game time.
   const pausedCheck = setInterval(() => {
-    if (options.isPaused?.() && available()) void recover().catch(options.error);
+    if (ready && !recovering && options.isPaused?.() && available()) void recover().catch(options.error);
   }, 5000);
   open(true);
   if (options.recoverPending) void options.recoverPending().catch(options.error);

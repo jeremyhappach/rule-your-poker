@@ -12,7 +12,7 @@ it('allows a seated waiting player to request pause without admitting gameplay o
  await act(async()=>{expect(await result.current.act({type:'time_bank',items:[{slot:0}]})).toBe(false);expect(await result.current.act({type:'pass'})).toBe(false);expect(await result.current.act({type:'request_pause'})).toBe(true);});
  expect(send).toHaveBeenCalledTimes(1);expect(send.mock.calls[0][0].intent).toEqual({type:'request_pause'});
 });
-afterEach(()=>{cleanup();sessionStorage.clear();vi.restoreAllMocks();});
+afterEach(()=>{cleanup();sessionStorage.clear();vi.restoreAllMocks();vi.useRealTimers();});
 it('reconnect retries the exact cancellation while waiting and accepts a host pause that won the race',async()=>{
  Object.defineProperty(document,'hidden',{configurable:true,value:false});const request={id:'request-one',playerId:'me',hostUserId:'host',pauseVersion:0},sent:Command[]=[];
  let authority={...snapshot,canAct:false,pauseRequest:request} as WordsSnapshot;const transport:WordsTransport={load:async()=>authority,subscribe:(_refresh,status)=>{status(true);return()=>{};},send:async command=>{sent.push(command);if(sent.length===1)throw Error('Connection uncertain. Reconnect to retry.');authority={...snapshot,revision:2,canAct:false,paused:true};return authority;}};
@@ -43,4 +43,21 @@ it('reports repeated identical dictionary rejections separately without advancin
  const {result}=renderHook(()=>usePtownWords('match','user',transport));await waitFor(()=>expect(result.current.connected&&!!result.current.snapshot).toBe(true));
  for(let i=1;i<=2;i++){await act(async()=>{expect(await result.current.act({type:'place',items:[]})).toBe(false);});expect(result.current.errorVersion).toBe(i);expect(result.current.snapshot?.revision).toBe(0);expect(result.current.pending).toBe(false);}
  expect(sent[0].requestId).not.toBe(sent[1].requestId);expect(sessionStorage.length).toBe(0);
+});
+it('retains the board through failed subscription recovery and restores it only after a fresh ACK and snapshot',async()=>{
+ vi.useFakeTimers();Object.defineProperty(document,'hidden',{configurable:true,value:false});Object.defineProperty(navigator,'onLine',{configurable:true,value:true});
+ const channels:Array<{changed:()=>void;status:(connected:boolean,error?:unknown)=>void}>=[];
+ let authority=snapshot;const send=vi.fn(),load=vi.fn(async()=>authority);
+ const transport:WordsTransport={load,send,subscribe:(changed,status)=>{channels.push({changed,status});return()=>{};}};
+ const {result}=renderHook(()=>usePtownWords('match','user',transport));
+ await act(async()=>{channels[0].status(true);});expect(result.current.connected).toBe(true);
+ await act(async()=>{channels[0].status(false,new Error('socket interrupted'));});
+ await act(async()=>vi.advanceTimersByTimeAsync(30000));
+ expect(result.current.snapshot).toBe(snapshot);expect(result.current.connection.phase).toBe('failed');expect(result.current.connected).toBe(false);expect(result.current.error).toBe('');
+ const count=channels.length;await act(async()=>vi.advanceTimersByTimeAsync(30000));expect(channels).toHaveLength(count);
+ authority={...snapshot,revision:2};await act(async()=>{await result.current.reconnect();});
+ expect(result.current.connection.phase).toBe('recovering');expect(result.current.connected).toBe(false);
+ await act(async()=>{channels.at(-1)!.status(true);});
+ expect(result.current.connected).toBe(true);expect(result.current.snapshot?.revision).toBe(2);expect(result.current.connection.phase).toBe('connected');expect(send).not.toHaveBeenCalled();
+ await act(async()=>{channels[0].status(false);channels[0].changed();});expect(result.current.connected).toBe(true);
 });

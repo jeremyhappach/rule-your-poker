@@ -43,6 +43,16 @@ function drag(from:Element,to:Element|null){
  pointer('up',from,140,150);
  fireEvent.click(from,{detail:1});
 }
+it('keeps Async drafting available but blocks all commands until connection recovery completes',()=>{
+ const v={...view,playDeadline:view.deadline,rules:{...view.rules,timeBankUses:2}};
+ const ui=render(<PtownWordsView {...props} view={v} asyncDraftUserId="u1" connected={false} connection={{phase:'failed'}}/>);
+ for(const name of ['Pass','Exchange','Use time bank 1: add 3 minutes'])expect(screen.getByRole('button',{name})).toHaveProperty('disabled',true);
+ expect(screen.getByRole('button',{name:'C, 3 points'})).toHaveProperty('disabled',false);
+ tap(screen.getByRole('button',{name:'C, 3 points'}));tap(square(ui.container,113));expect(ui.container.querySelectorAll('.is-staged')).toHaveLength(1);
+ expect(screen.getByRole('button',{name:'Submit Word'})).toHaveProperty('disabled',true);
+ ui.rerender(<PtownWordsView {...props} view={v} asyncDraftUserId="u1" connection={{phase:'connected'}}/>);
+ expect(ui.container.querySelectorAll('.is-staged')).toHaveLength(1);expect(screen.getByRole('button',{name:'Submit Word'})).toHaveProperty('disabled',false);expect(intent).not.toHaveBeenCalled();
+});
 it('uses server potential points despite dictionary rejection and lists every invalid word',()=>{
  const {container,rerender}=render(<PtownWordsView {...props}/>);
  tap(screen.getByRole('button',{name:'C, 3 points'}));tap(square(container,112));

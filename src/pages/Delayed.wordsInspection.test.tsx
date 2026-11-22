@@ -13,6 +13,7 @@ vi.mock('@/hooks/usePtownWords',()=>({usePtownWords:mock.play}));
 vi.mock('@/lib/delayed/playingPresence',()=>({usePlayingPresence:()=>{},playingTopic:()=>null}));
 vi.mock('@/components/delayed/NotificationBell',()=>({NotificationBell:()=>null}));
 vi.mock('@/components/delayed/PlayingNow',()=>({PlayingNow:()=>null}));
+vi.mock('@/components/delayed/AsyncInvite',()=>({AsyncInvite:()=> <p>Configure Async match</p>}));
 vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:({children,actions,scores,panel,navigation}:any)=><div>{navigation}{scores}{children}{actions}{panel}</div>}));
 import Delayed from './Delayed';
 beforeEach(()=>{
@@ -30,7 +31,14 @@ beforeEach(()=>{
  mock.play.mockImplementation(()=>({snapshot:mock.snapshot,now:mock.snapshot.serverAt,pending:false,connected:true,error:'',errorVersion:0,act:mock.intent,reconnect:vi.fn()}));
 });
 afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();vi.useRealTimers();vi.unstubAllGlobals();});
-function mount(path='/delayed/match'){return render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/delayed/:matchId" element={<Delayed/>}/><Route path="/delayed/:matchId/play/:childId" element={<Delayed/>}/></Routes></MemoryRouter>);}
+function mount(path='/delayed/match'){return render(<MemoryRouter initialEntries={['/', '/delayed',path]}><Routes><Route path="/" element={<h1>Live lobby</h1>}/><Route path="/delayed" element={<h1>Async lobby</h1>}/><Route path="/delayed/:matchId" element={<Delayed/>}/><Route path="/delayed/:matchId/play/:childId" element={<Delayed/>}/></Routes></MemoryRouter>);}
+it.each(['/delayed/new','/delayed/match'])('returns directly to Async from %s despite deeper browser history',async path=>{
+ mount(path);fireEvent.click(await screen.findByRole('link',{name:'Back to Lobby'}));expect(screen.getByRole('heading',{name:'Async lobby'})).toBeTruthy();expect(screen.queryByRole('heading',{name:'Live lobby'})).toBeNull();
+});
+it('returns from a nested Words board through match home to the Async lobby',async()=>{
+ mount('/delayed/match/play/words');await screen.findByText("Opponent's Turn — View Only");fireEvent.click(screen.getAllByRole('link',{name:'Match Home'})[0]);
+ fireEvent.click(await screen.findByRole('link',{name:'Back to Lobby'}));expect(screen.getByRole('heading',{name:'Async lobby'})).toBeTruthy();
+});
 it('opens the committed board and own rack without gameplay, pending-command replay or subscriptions; returning refreshes ownership',async()=>{
  const request='ptown:async-words:request:me:words';sessionStorage.setItem(request,JSON.stringify({requestId:'old',revision:1,intent:{type:'pass'}}));
  const {container}=mount();fireEvent.click(await screen.findByRole('link',{name:'View board'}));

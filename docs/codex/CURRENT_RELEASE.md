@@ -1,3 +1,21 @@
+# Async navigation and Words recovery — November 22, 2026 — approved release; owner smoke pending
+
+Async setup/match, completed-record and finale lobby exits remain in Async.
+Words now exposes actual connection progress and a bounded, retryable failure;
+foreground signals share a pending join. The board and drafts survive recovery,
+commands wait for an acknowledged subscription and fresh snapshot, and uncertain
+commands retain their request UUID and an explicit retry control.
+
+Focused tests and isolated browser checks cover nested navigation, brief outage,
+exhausted recovery, manual Retry, retained board/drafts and lost-reply replay
+(two sends, one commit). Existing score/reveal receipts and game rules remain.
+No database, financial or dependency changes. The original network interruption
+trigger remains unconfirmed; physical iPhone/PWA production smoke is pending.
+See [root causes and verification](ASYNC_NAV_WORDS_RECOVERY.md).
+Checkpoint: async-nav-words-recovery-20261122.
+Full build passed: TypeScript, 4,390 application tests, 241 harness tests,
+46 release-tooling tests, production bundle and size gate.
+
 # Main-screen Live label - November 22, 2026 - approved publication
 
 Jeremy requested and approved publishing the main-screen mode-tab rename from

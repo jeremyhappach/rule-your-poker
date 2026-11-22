@@ -1,0 +1,6 @@
+import {createServer} from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import {resolve} from 'node:path';
+const html='<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/dev/async-words-recovery/preview.tsx"></script></body></html>';
+const server=await createServer({configFile:false,cacheDir:'qualification.local/async-words-recovery/vite',plugins:[react(),{name:'recovery-fixture',configureServer(s){s.middlewares.use(async(req,res,next)=>{if(req.url?.split('?')[0].includes('.')||req.url?.startsWith('/@')||req.url?.startsWith('/node_modules'))return next();res.setHeader('Content-Type','text/html');res.end(await s.transformIndexHtml(req.url,html));});}}],resolve:{alias:[{find:'@/integrations/supabase/client',replacement:resolve('dev/async-words-recovery/client.ts')},{find:'@/hooks/useAuthGuard',replacement:resolve('dev/async-words-recovery/auth.ts')},{find:'@',replacement:resolve('src')}]},define:{__RUN21_APP_TEST_LANE__:false,__BUILD_HASH__:'"recovery-fixture"',__APP_BUILD_SHA__:'"recovery-fixture"',__BUILD_TIMESTAMP__:'"local"'},server:{host:'127.0.0.1',port:5203,strictPort:true,hmr:false}});
+await server.listen();console.log('Isolated Async/Words fixture: http://127.0.0.1:5203/delayed');

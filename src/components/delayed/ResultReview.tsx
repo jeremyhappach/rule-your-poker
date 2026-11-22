@@ -169,6 +169,6 @@ export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
   </figure><strong>{winner?home.players.find(p=>p.id===winner)?.name+' wins '+money(Math.abs(home.net)):'Draw · $0'}</strong>
   {home.realMoney&&home.receipt&&<p>Balances have been settled</p>}
   <ol className="async-finale-breakdown">{home.lineup.map(c=><li key={c.id}>{c.ordinal}. {c.game}{c.game==='chess'&&c.result?.reason==='timeout_forfeit'?' · '+(home.players.find(p=>p.id!==c.result?.winner)?.name??'Player')+' timed out':''} · {c.result?.delta?c.result.delta>0?'W':'L':'T'} {money(c.result?.delta??0)}</li>)}</ol>
-  {imageReady&&play.elapsed>=7500&&<div className="async-finale-exit">{ackError&&<p role="alert">{ackError} <button onClick={acknowledgeFinale}>Retry acknowledgement</button></p>}<div className="delayed-actions">{runbackEligible&&<RunbackLink matchId={matchId} returnTo={'/delayed/'+matchId+'?finale=1'} primary/>}<Link className={runbackEligible?'delayed-secondary':'delayed-primary'} to="/">Back to Lobby</Link></div></div>}
+  {imageReady&&play.elapsed>=7500&&<div className="async-finale-exit">{ackError&&<p role="alert">{ackError} <button onClick={acknowledgeFinale}>Retry acknowledgement</button></p>}<div className="delayed-actions">{runbackEligible&&<RunbackLink matchId={matchId} returnTo={'/delayed/'+matchId+'?finale=1'} primary/>}<Link className={runbackEligible?'delayed-secondary':'delayed-primary'} to="/delayed">Back to Lobby</Link></div></div>}
  </div></FullscreenGameShell></div>;
 }

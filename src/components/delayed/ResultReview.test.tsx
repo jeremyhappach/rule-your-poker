@@ -21,7 +21,7 @@ vi.mock('canvas-confetti',()=>({default:vi.fn()}));
 vi.mock('@/components/GameplaySoundButton',()=>({GameplaySoundButton:()=>null}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{request:vi.fn(()=>vi.fn()),follow:vi.fn(()=>vi.fn())}}));
 const event={id:'event',kind:'attempt',actor:'other',round:1,score:100,at:'2026-10-29T00:00:00Z',receipt:{game:'run21'},board:null,seen:false};
-const mount=(element:React.ReactNode)=>render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/review']}><Routes><Route path='/' element={<h1>Lobby destination</h1>}/><Route path='/review' element={element}/><Route path='/delayed/match' element={<h1>Match home destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);
+const mount=(element:React.ReactNode)=>render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/review']}><Routes><Route path='/' element={<h1>Live lobby destination</h1>}/><Route path='/delayed' element={<h1>Async lobby destination</h1>}/><Route path='/review' element={element}/><Route path='/delayed/match' element={<h1>Match home destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);
 beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(new Date('2026-10-29T15:00:00Z'));Object.defineProperty(document,'hidden',{configurable:true,value:false});Object.defineProperty(navigator,'onLine',{configurable:true,value:true});window.matchMedia=vi.fn().mockReturnValue({matches:false,addEventListener(){},removeEventListener(){}});global.ResizeObserver=class{observe(){}disconnect(){}unobserve(){}} as any;
  mock.state={events:[structuredClone(event)],terminal:false,actor:'me',segment:2,revision:2,started:false,expiresAt:new Date(Date.now()+3600000).toISOString(),held:false,serverAt:Date.now()};
  mock.home={id:'match',status:'settled',organizer:'me',opponent:'other',players:[{id:'me',name:'Hap'},{id:'other',name:'Other'}],net:-5,reviewsComplete:true,receipt:{match_id:'match'},lineup:[{id:'child',game:'run21',stake:5,ordinal:1,terminal:true,result:{winner:'other',delta:-5}}]};
@@ -196,7 +196,7 @@ it.each([false,true])('final match results persist until Back to Lobby, reduced=
  window.matchMedia=vi.fn().mockReturnValue({matches:reduced});const ui=mount(<MatchFinale matchId='match' userId='me'/>);await flush();fireEvent.load(screen.getByRole('img'));await advance(7600);
  expect(screen.getByRole('link',{name:'Back to Lobby'})).toBeTruthy();expect(ui.container.querySelector('.async-finale-breakdown')).toBeTruthy();await advance(60000);
  expect(screen.getByRole('link',{name:'Back to Lobby'})).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_finale_ack')).toHaveLength(1);
- fireEvent.click(screen.getByRole('link',{name:'Back to Lobby'}));expect(screen.getByText('Lobby destination')).toBeTruthy();
+ fireEvent.click(screen.getByRole('link',{name:'Back to Lobby'}));expect(screen.getByText('Async lobby destination')).toBeTruthy();
 });
 it('lost finale acknowledgement preserves final results and retries only the idempotent receipt',async()=>{
  const original=mock.rpc.getMockImplementation()!;let failed=true;mock.rpc.mockImplementation((name,args)=>name==='delayed_finale_ack'&&failed?Promise.reject(Error('lost')):original(name,args));

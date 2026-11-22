@@ -5,11 +5,11 @@ const disposals:Array<()=>void>=[];
 const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
 beforeEach(()=>{vi.useFakeTimers();Object.defineProperty(document,'hidden',{configurable:true,value:false});Object.defineProperty(navigator,'onLine',{configurable:true,value:true});});
 afterEach(()=>{disposals.splice(0).forEach(f=>f());vi.useRealTimers();});
-function fixture(load=vi.fn(async()=>1)){
+function fixture(load=vi.fn(async()=>1),isPaused=()=>false){
  const channels:Array<{changed:()=>void;status:(v:boolean)=>void;stop:ReturnType<typeof vi.fn>}>=[];
- const connected=vi.fn(),apply=vi.fn(()=>true),error=vi.fn(),interrupt=vi.fn();
- const subscription=createAuthoritativeSubscription({load,apply,connected,error,interrupt,subscribe:(changed,status)=>{const stop=vi.fn();channels.push({changed,status,stop});return stop;}});
- disposals.push(subscription.dispose);return {subscription,channels,load,connected,apply,error,interrupt};
+ const connected=vi.fn(),apply=vi.fn(()=>true),error=vi.fn(),interrupt=vi.fn(),connectionState=vi.fn();
+ const subscription=createAuthoritativeSubscription({load,apply,connected,error,interrupt,isPaused,connectionState,subscribe:(changed,status)=>{const stop=vi.fn();channels.push({changed,status,stop});return stop;}});
+ disposals.push(subscription.dispose);return {subscription,channels,load,connected,apply,error,interrupt,connectionState};
 }
 it('closes the pre-ACK read race with a second read before admitting actions',async()=>{
  let finish!:(v:number)=>void;const load=vi.fn(()=>new Promise<number>(r=>finish=r)),f=fixture(load);
@@ -34,7 +34,27 @@ it('late command acknowledgement cannot delete a newer durable intent',()=>{
 });
 it('exhausts finite retries, then allows explicit recovery',async()=>{
  const f=fixture();await vi.advanceTimersByTimeAsync(30000);expect(f.channels).toHaveLength(3);
+ expect(f.connectionState).toHaveBeenLastCalledWith({phase:'failed',message:'Live update subscription timed out'});
+ expect(f.channels.every(c=>c.stop.mock.calls.length===1)).toBe(true);
+ await vi.advanceTimersByTimeAsync(60000);expect(f.channels).toHaveLength(3);
  await f.subscription.recover();expect(f.channels).toHaveLength(4);f.channels[3].status(true);await flush();expect(f.connected).toHaveBeenLastCalledWith(true);
+ expect(f.connectionState).toHaveBeenLastCalledWith({phase:'connected'});
+});
+it('coalesces foreground signals while the replacement subscription is joining',async()=>{
+ const f=fixture();f.channels[0].status(true);await flush();
+ Object.defineProperty(navigator,'onLine',{configurable:true,value:false});window.dispatchEvent(new Event('offline'));
+ expect(f.connectionState).toHaveBeenLastCalledWith({phase:'offline'});
+ Object.defineProperty(navigator,'onLine',{configurable:true,value:true});window.dispatchEvent(new Event('online'));
+ window.dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));await f.subscription.recover();await flush();
+ expect(f.channels).toHaveLength(2);expect(f.subscription.isReady()).toBe(false);
+ f.channels[1].status(true);await flush();expect(f.subscription.isReady()).toBe(true);
+});
+it('does not silently restart exhausted snapshot recovery on paused checks or update events',async()=>{
+ const load=vi.fn(async()=>1),f=fixture(load,()=>true);f.channels[0].status(true);await flush();
+ load.mockRejectedValue(new Error('Connection unavailable'));f.channels[0].changed();await flush();
+ await vi.advanceTimersByTimeAsync(3000);expect(f.connectionState).toHaveBeenLastCalledWith({phase:'failed',message:'Connection unavailable'});
+ const count=load.mock.calls.length;f.channels[0].changed();await vi.advanceTimersByTimeAsync(60000);expect(load).toHaveBeenCalledTimes(count);
+ load.mockResolvedValue(2);await f.subscription.recover();expect(f.subscription.isReady()).toBe(true);
 });
 it('requires a new ACK and snapshot after offline/online and ignores late reads after disposal',async()=>{
  const f=fixture();f.channels[0].status(true);await flush();
