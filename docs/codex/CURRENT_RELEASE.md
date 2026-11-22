@@ -1,3 +1,20 @@
+# Five Alive APPLE harness cleanup — November 22, 2026 — production database verified
+
+The temporary runtime override, switch and allocation receipts are removed.
+Exactly three confirmed Async matches (four Five Alive children) and their
+gameplay/notification data were deleted: two Hap–Happach Gmail play-money matches
+and the $1 Hap–mcru81 match. The latter was unfinished with zero settlement or
+financial postings, so no reversal was needed; wallets and ledger are unchanged.
+Immutable admission/removal audit receipts remain outside Async history.
+
+Migration `20261122230159` restores the exact original allocator. Candidate,
+replay and installed rollback proofs pass: normal distinct-word deals, Arcade,
+difficulty, private access, stale-call rejection, history absence and unchanged
+financial/unrelated data. Ten shared-rule tests pass. Post-commit verification
+confirms no harness tables/functions or target match data remain.
+See [match IDs, accounting and evidence](FIVE_ALIVE_HARNESS_REMOVAL.md).
+Checkpoint: five-alive-harness-removal-20261122. Owner iPhone/PWA smoke pending.
+
 # Async navigation and Words recovery — November 22, 2026 — approved release; owner smoke pending
 
 Async setup/match, completed-record and finale lobby exits remain in Async.

@@ -1,0 +1,257 @@
+{
+  "status": "installed_and_verified",
+  "project": "xvhmbuppghwmwpwrkzao",
+  "candidateRollbackProof": [
+    {
+      "data": {
+        "reason": "Owner requested removal of temporary APPLE harness and all affected Async matches",
+        "settlements": 0,
+        "removedMatches": [
+          {
+            "id": "09512245-5592-4fdc-aa14-462049666051",
+            "offer": [
+              {
+                "game": "five-alive",
+                "stake": 1,
+                "config": {
+                  "rounds": 3,
+                  "guesses": 6,
+                  "version": "five-alive/1",
+                  "baseScores": [
+                    1000,
+                    700,
+                    490,
+                    343,
+                    240,
+                    168
+                  ],
+                  "multipliers": [
+                    80,
+                    100,
+                    120,
+                    140,
+                    160
+                  ],
+                  "poolVersion": "esdb-five-alive/3"
+                }
+              },
+              {
+                "game": "five-alive",
+                "stake": 1,
+                "config": {
+                  "rounds": 3,
+                  "guesses": 6,
+                  "version": "five-alive/1",
+                  "baseScores": [
+                    1000,
+                    700,
+                    490,
+                    343,
+                    240,
+                    168
+                  ],
+                  "multipliers": [
+                    80,
+                    100,
+                    120,
+                    140,
+                    160
+                  ],
+                  "poolVersion": "esdb-five-alive/3"
+                }
+              }
+            ],
+            "status": "cancelled",
+            "children": [
+              "e0a9d680-8170-4ee2-91e1-6f28ef4101f7",
+              "5862c4dc-198c-4ef4-ae91-79b3abe8cedc"
+            ],
+            "opponent": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+            "revision": 3,
+            "organizer": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+            "created_at": "2026-11-22T18:52:26.044613+00:00",
+            "expires_at": "2026-11-25T18:52:26.044613+00:00",
+            "offer_hash": "842acb989831676bc1f11a71db35608d",
+            "real_money": false,
+            "settled_at": null,
+            "accepted_at": "2026-11-22T18:52:39.619931+00:00",
+            "policy_version": "delayed/1"
+          },
+          {
+            "id": "666767c9-ad6b-4030-8e53-ee8240c405a3",
+            "offer": [
+              {
+                "game": "five-alive",
+                "stake": 1,
+                "config": {
+                  "rounds": 3,
+                  "guesses": 6,
+                  "version": "five-alive/1",
+                  "baseScores": [
+                    1000,
+                    700,
+                    490,
+                    343,
+                    240,
+                    168
+                  ],
+                  "multipliers": [
+                    80,
+                    100,
+                    120,
+                    140,
+                    160
+                  ],
+                  "poolVersion": "esdb-five-alive/3"
+                }
+              }
+            ],
+            "status": "active",
+            "children": [
+              "700e3bda-b8b3-4191-a7b5-358520b604d3"
+            ],
+            "opponent": "e13e2dd9-6b38-4073-a313-2286877af40c",
+            "revision": 5,
+            "organizer": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+            "created_at": "2026-11-22T21:12:26.526456+00:00",
+            "expires_at": "2026-11-25T21:12:26.526456+00:00",
+            "offer_hash": "333fe5fe50214fb12aac86a2051a305c",
+            "real_money": true,
+            "settled_at": null,
+            "accepted_at": "2026-11-22T22:22:11.687659+00:00",
+            "policy_version": "delayed/1"
+          },
+          {
+            "id": "ad6d7d19-640e-4561-ae57-1ba51fde1d6d",
+            "offer": [
+              {
+                "game": "five-alive",
+                "stake": 1,
+                "config": {
+                  "rounds": 3,
+                  "guesses": 6,
+                  "version": "five-alive/1",
+                  "baseScores": [
+                    1000,
+                    700,
+                    490,
+                    343,
+                    240,
+                    168
+                  ],
+                  "multipliers": [
+                    80,
+                    100,
+                    120,
+                    140,
+                    160
+                  ],
+                  "poolVersion": "esdb-five-alive/3"
+                }
+              }
+            ],
+            "status": "cancelled",
+            "children": [
+              "d7e91d16-b076-4ac5-b8f8-2647005af3c7"
+            ],
+            "opponent": "fb835d1f-db2f-4de4-84e2-ce0074512e46",
+            "revision": 4,
+            "organizer": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+            "created_at": "2026-11-22T17:48:13.225819+00:00",
+            "expires_at": "2026-11-25T17:48:13.225819+00:00",
+            "offer_hash": "333fe5fe50214fb12aac86a2051a305c",
+            "real_money": false,
+            "settled_at": null,
+            "accepted_at": "2026-11-22T17:48:41.305984+00:00",
+            "policy_version": "delayed/1"
+          }
+        ],
+        "financialWrites": 0,
+        "removedChildren": 4,
+        "removedCommands": 7,
+        "preservedFingerprints": {
+          "public.games": "1c225dc66b869c03f124386dfc6a5b0b",
+          "other_matches": "34b792a5610a464f73f5357c296ce179",
+          "other_children": "a99767217cb090ff6c32357c03e67819",
+          "other_commands": "cc2b8ee3ef643776e152bfa6cf0a4383",
+          "public.players": "9a3e88b500e62d8f90922dcc6425e288",
+          "public.dealer_games": "138fad095b64f42c06035f4b96ba2092",
+          "public.game_results": "8c0c7c4a3285c64007c0124ff37c6b34",
+          "private.five_alive_pool": "8395db502ce54f1ef898896d0e9f3be9",
+          "private.delayed_requests": "df6fd6bc88c25b6b414ab45aceec80c4",
+          "private.five_alive_shuffle": "f9f4f1d4e8ef8c5c6fcb23941423afa1",
+          "public.player_transactions": "1ff4a92bf8ef51881830958a117f816a",
+          "private.five_alive_allocations": "47781f98f6ed205031f6ef75e188dd15",
+          "public.session_player_snapshots": "8701d753d4c9cea37d88fc6a85586a37",
+          "public.gameplay_transfer_batches": "e4f80998d32b4f143c066a507d1b90ed",
+          "private.five_alive_allocation_difficulty": "20edbe54d3e66c4b002036d33c74da8a",
+          "public.gameplay_transfer_pending_changes": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        "walletBalancesBeforeAndAfter": {
+          "d7dc1928-3727-4351-b0ff-0e80c81c2953": "-74.00",
+          "e13e2dd9-6b38-4073-a313-2286877af40c": "71.00",
+          "fb835d1f-db2f-4de4-84e2-ce0074512e46": "-244.00"
+        }
+      }
+    }
+  ],
+  "cleanupReplayProof": [
+    {
+      "data": {
+        "alreadyRemoved": true
+      }
+    }
+  ],
+  "liveVerification": {
+    "balances": [
+      {
+        "id": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "balance": "-74.00",
+        "username": "Hap"
+      },
+      {
+        "id": "e13e2dd9-6b38-4073-a313-2286877af40c",
+        "balance": "71.00",
+        "username": "mcru81"
+      }
+    ],
+    "migration": {
+      "name": "remove_five_alive_apple_harness_and_test_matches",
+      "version": "20261122230159"
+    },
+    "allocatorMD5": "e87e877680c4c20e2de9a33bf22984b0",
+    "commandGuard": "O",
+    "removalAudit": [
+      {
+        "actor": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "match_id": "09512245-5592-4fdc-aa14-462049666051",
+        "removed_at": "2026-11-22T21:24:03.580464+00:00",
+        "request_id": "32c51bb6-3dd9-4fc6-8fe5-586e3b052f92",
+        "prior_status": "active"
+      },
+      {
+        "actor": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "match_id": "ad6d7d19-640e-4561-ae57-1ba51fde1d6d",
+        "removed_at": "2026-11-22T21:24:47.59526+00:00",
+        "request_id": "b0d18fbe-2131-44b3-a4af-6ffff92ebde2",
+        "prior_status": "active"
+      },
+      {
+        "actor": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "match_id": "666767c9-ad6b-4030-8e53-ee8240c405a3",
+        "removed_at": "2026-11-22T23:02:03.413378+00:00",
+        "request_id": "e6a00bda-2844-4c8a-8109-2ed5b07e18db",
+        "prior_status": "active"
+      }
+    ],
+    "harnessTables": [
+      null,
+      null
+    ],
+    "financialEntries": 0,
+    "remainingMatches": 0,
+    "remainingChildren": 0,
+    "remainingNotifications": 0,
+    "runtimeHarnessFunctions": 0
+  }
+}
