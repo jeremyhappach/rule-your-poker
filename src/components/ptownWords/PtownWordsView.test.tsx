@@ -49,7 +49,9 @@ it('uses server potential points despite dictionary rejection and lists every in
  previewMock.mockReturnValue({points:42,invalidWords:['CC','ZX'],words:[]});
  rerender(<PtownWordsView {...props} error="ptown_words:invalid_word:CC,ZX" errorVersion={1}/>);
  expect(screen.getByRole('button',{name:'Submit Word (+42)'})).toHaveProperty('disabled',false);
- expect(screen.getByRole('alert').textContent).toBe('Invalid words: CC, ZX');
+ expect(screen.getByRole('alert').querySelector('strong')?.textContent).toBe('CC, ZX');
+ expect(screen.getByRole('alert').closest('.words-board-region')).not.toBeNull();
+ expect(container.querySelector('.words-player [role="alert"]')).toBeNull();
  expect(container.querySelectorAll('.is-staged')).toHaveLength(1);
  fireEvent.click(screen.getByRole('button',{name:'Recall'}));expect(screen.queryByRole('alert')).toBeNull();
 });
@@ -200,15 +202,36 @@ it('handles acceptance and opponent reveal arriving together without restoring t
  rerender(<PtownWordsView {...props} view={opponent} now={1200}/>);expect(level(container)).toBeGreaterThan(1);
  rerender(<PtownWordsView {...props} view={opponent} now={4000}/>);expect(level(container)).toBe(1);
 });
-it('names each dictionary rejection until the draft changes without discarding tiles/camera or resetting the clock',()=>{
- const {container,rerender}=render(<PtownWordsView {...props}/>);zoomIn(container);
+it.each([false,true])('dismisses invalid words with OK or after three seconds, retaining draft, preview and gestures (async=%s)',asyncMode=>{
+ const modeProps={...props,asyncDraftUserId:asyncMode?'u1':undefined,view:{...view,playDeadline:view.deadline}};
+ const {container,rerender,unmount}=render(<PtownWordsView {...modeProps}/>);zoomIn(container);
  tap(screen.getByRole('button',{name:'C, 3 points'}));tap(square(container,112));
- rerender(<PtownWordsView {...props} error="ptown_words:invalid_word:CC" errorVersion={1}/>);expect(screen.getByRole('alert').textContent).toBe('Invalid word: CC');
- act(()=>vi.advanceTimersByTime(5000));expect(screen.getByRole('alert')).not.toBeNull();
- rerender(<PtownWordsView {...props} now={3000} error="ptown_words:invalid_word:CC" errorVersion={2}/>);expect(screen.getByRole('alert')).not.toBeNull();expect(container.querySelector('time')?.textContent).toBe('2:58');
- expect(container.querySelectorAll('.is-staged')).toHaveLength(1);expect(level(container)).toBe(1.25);
- rerender(<PtownWordsView {...props} error="Connection uncertain. Reconnect to retry." errorVersion={3}/>);expect(screen.queryByRole('alert')).toBeNull();expect(screen.getByRole('status').textContent).toContain('Connection uncertain');
+ tap(screen.getByRole('button',{name:'A, 1 points'}));tap(square(container,113));
+ previewMock.mockReturnValue({points:42,invalidWords:['FUC','FE','CE'],words:[]});
+ const rejected={...modeProps,error:'ptown_words:invalid_word:FUC,FE,CE',errorVersion:1};
+ rerender(<PtownWordsView {...rejected}/>);
+ expect(screen.getByRole('heading',{name:'Invalid Words'})).not.toBeNull();
+ expect(screen.getByRole('alert').querySelector('strong')?.textContent).toBe('FUC, FE, CE');
+ act(()=>vi.advanceTimersByTime(1000));fireEvent.click(screen.getByRole('button',{name:'OK'}));
+ expect(screen.queryByRole('alert')).toBeNull();
+ rerender(<PtownWordsView {...rejected} now={2000}/>);expect(screen.queryByRole('alert')).toBeNull();
+ rerender(<PtownWordsView {...rejected} connected={false}/>);expect(screen.queryByRole('alert')).toBeNull();expect(screen.getByRole('status').textContent).toBe('Reconnecting…Reconnect');
+ rerender(<PtownWordsView {...rejected}/>);
+ expect(square(container,112).textContent).toBe('C3');expect(square(container,113).textContent).toBe('A1');expect(level(container)).toBe(1.25);
+ expect(screen.getByRole('button',{name:'Submit Word (+42)'})).toHaveProperty('disabled',false);
+ rerender(<PtownWordsView {...rejected} errorVersion={2}/>);
+ act(()=>vi.advanceTimersByTime(2500));expect(screen.getByRole('alert')).not.toBeNull();
+ rerender(<PtownWordsView {...rejected} errorVersion={3}/>);
+ act(()=>vi.advanceTimersByTime(2999));expect(screen.getByRole('alert')).not.toBeNull();
+ act(()=>vi.advanceTimersByTime(1));expect(screen.queryByRole('alert')).toBeNull();
+ expect(container.querySelectorAll('.is-staged')).toHaveLength(2);expect(level(container)).toBe(1.25);
+ drag(square(container,113),square(container,114));expect(square(container,114).textContent).toBe('A1');
+ rerender(<PtownWordsView {...rejected} now={3000} errorVersion={4}/>);expect(screen.getByRole('alert')).not.toBeNull();expect(container.querySelector('time')?.textContent).toBe('2:58');
+ rerender(<PtownWordsView {...modeProps} error="Connection uncertain. Reconnect to retry." errorVersion={5}/>);expect(screen.queryByRole('alert')).toBeNull();expect(screen.getByRole('status').textContent).toContain('Connection uncertain');
  for(const error of ['42501','ptown_words:disconnected','ptown_words:rate_limited','invalid_word:CAT'])expect(isInvalidWord(error)).toBe(false);
+ const timersBeforeOverlay=vi.getTimerCount();
+ rerender(<PtownWordsView {...rejected} errorVersion={6}/>);expect(vi.getTimerCount()).toBe(timersBeforeOverlay+1);
+ unmount();expect(vi.getTimerCount()).toBeLessThanOrEqual(timersBeforeOverlay);
 });
 it('shuffles presentation IDs while preserving selection, staged placements, recall and authority',()=>{
  const {container}=render(<PtownWordsView {...props}/>);const ids=()=>[...container.querySelectorAll('.words-rack button')].map(b=>b.getAttribute('data-tile-id'));

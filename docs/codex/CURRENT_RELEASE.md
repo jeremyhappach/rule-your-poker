@@ -1,3 +1,36 @@
+# P-Town Words invalid-word overlay — November 22, 2026 — owner smoke pending
+
+The shared Words view restores the original centered board overlay, dark
+backdrop, border and prominence. It lists every authoritative invalid word,
+offers immediate OK dismissal and automatically clears after three seconds.
+Repeated rejection starts a fresh timer; dismissal, replacement, turn reset
+and unmount clean up the timer. The persistent controls-area banner is removed,
+including dictionary text leaking into a reconnect warning after dismissal.
+Staged tile identities/positions, camera, rack order, submission eligibility
+and the live Submit Word (+X) preview are preserved. No rule, dictionary,
+scoring, server, migration or financial changes.
+
+Multiplayer and Async use this same view. Words has no Arcade adapter; this
+correction covers every existing Words gameplay path without adding a game.
+The original overlay was removed in `d09d08eb3`; this correction supersedes
+that release's inline-message presentation. Focused component tests cover
+single/multiple words, OK/automatic dismissal, repeated errors, timer cleanup,
+connection warnings, tile preservation and gestures in both adapters.
+The reproducible mobile/layout check is `dev/words-invalid-overlay/browser.mjs`;
+its isolated transport returns fixed errors to test presentation, not rules.
+Evidence and build output: `qualification.local/words-invalid-overlay/`.
+All ten phone/desktop layouts passed in Multiplayer and Async, including
+native touch pinch/pan/drag after dismissal; focused lint also passed.
+The push-enabled release build passed TypeScript, 4,376 application tests,
+241 harness tests and release-tooling checks. Static output is 89,816,229 bytes,
+below the unchanged 90 MB gate.
+
+Release checkpoint: `words-invalid-overlay-20261122`. Exact commit and
+production verification are recorded in the delivery report. Physical iPhone/PWA
+acceptance remains Jeremy's smoke: submit invalid crosswords, confirm every
+rejected word, dismiss with OK and by waiting, resubmit unchanged tiles, then
+correct them by dragging. Verify the score preview and pinch/pan remain intact.
+
 # Six-item gameplay polish — November 22, 2026 — qualified release; mobile smoke pending
 
 The requested pass restores light active HUD/dice/card presentation inside the

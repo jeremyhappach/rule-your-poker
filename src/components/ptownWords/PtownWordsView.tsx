@@ -11,7 +11,7 @@ import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/u
 import {CircleHelp,RefreshCw,Pause,Play,X} from 'lucide-react';
 import {premiumAt,type Intent,type Placement,type WordsSnapshot} from '@/lib/ptownWords/model';
 import {wordPresentation,wordSquares,visibleBoard,playedWord} from '@/lib/ptownWords/presentation';
-import {shuffleRack,isInvalidWord,invalidWordMessage,reorderRack} from '@/lib/ptownWords/rackPresentation';
+import {shuffleRack,isInvalidWord,invalidWords,reorderRack} from '@/lib/ptownWords/rackPresentation';
 import {usePlacementPreview} from '@/lib/ptownWords/usePlacementPreview';
 import {presentSound} from '@/lib/audio/presentationSound';
 import {createPortal} from 'react-dom';
@@ -35,6 +35,7 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
  };
  const rack=[...v.rack].sort((a,b)=>{const rank=(id:number)=>{const i=rackOrder.indexOf(id);return i<0?rackOrder.length+v.rack.findIndex(t=>t.id===id):i;};return rank(a.id)-rank(b.id);});
  useEffect(()=>{setInvalid(isInvalidWord(error));},[error,errorVersion]);
+ useEffect(()=>{if(!invalid)return;const timer=setTimeout(()=>setInvalid(false),3000);return()=>clearTimeout(timer);},[invalid,error,errorVersion]);
  useEffect(()=>{setInvalid(false);},[draft]);
  useEffect(()=>{setRackOrder([]);},[v.identity.dealerGameId,v.identity.roundId,v.viewerId]);
  const hostElement=useRef<HTMLDivElement>(null),viewport=useRef<HTMLDivElement>(null);
@@ -153,7 +154,7 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
   ?reorderRack(rack.map(tile=>tile.id),ghost.tile.tileId,ghost.target.index):rack.map(tile=>tile.id);
  const draggedTile=(tile:TileOrigin)=>ghost?.tile.tileId===tile.tileId&&ghost.tile.square===tile.square;
  const hoverSquare=ghost?.target?.kind==='square'?ghost.target.square:undefined;
- const text=error.replace(/^.*ptown_words:/,'').replace('invalid_word:', 'Not in ENABLE2K: ').replace(/_/g,' ');
+ const text=isInvalidWord(error)?'':error.replace(/^.*ptown_words:/,'').replace(/_/g,' ');
  const scores=<div className="words-scores">{v.players.map(p=><div key={p.id} data-score-player={p.id} data-active={p.id===(!gameplay&&reviewPlayerId?reviewPlayerId:scoreMotion?.playerId??presentation?.playerId??(waitingForClock?v.movePresentation?.playerId:undefined)??(v.phase==='playing'?v.activePlayerId:null))}><span>{p.id===v.viewerId?'You':p.name}</span><strong>{scoreMotion?.playerId===p.id?scoreMotion.score:v.scores[p.id]??0}</strong><span className="words-last" aria-label="Last turn">{scoreMotion?.playerId===p.id&&scoreMotion.phase!=='after'?'':lastTurn(v,p.id)}</span>{balance?.(p.id)}</div>)}</div>;
  const word=playedWord(v);
  const flightSquares=typeof word?.square==='number'&&typeof word.direction==='number'?[...word.word].map((_,i)=>word.square!+i*(word.direction===1?15:1)):v.movePresentation?.squares??[];
@@ -170,12 +171,18 @@ export function PtownWordsView({reviewPlayerId,readOnly=false,gameplay=true,view
   {!readOnly&&<div className="words-submit-slot"><button className="words-submit" hidden={!draft.length} disabled={!draft.length||!editable||!connected} onClick={()=>void send({type:'place',items:draft})}>{pending?'Submitting…':preview?`Submit Word (+${preview.points})`:'Submit Word'}</button></div>}
   <div className="words-turn-actions">{draft.length>0?<><button disabled={!editable} onClick={()=>setDraft(d=>d.slice(0,-1))}>Undo</button><button disabled={!editable} onClick={()=>{setDraft([]);setSelected(null);}}>Recall</button></>:<><button disabled={!editable||v.bagCount<7} title={v.bagCount<7?'Need 7 in bag':undefined} onClick={()=>{setExchanges([]);openDialog('exchange');}}>Exchange</button><button disabled={!editable} onClick={()=>openDialog('pass')}>Pass</button></>}</div>
   {((error&&!isInvalidWord(error))||!connected)&&<div className="words-error" role="status">{text||'Reconnecting…'}{!connected&&<button onClick={onReconnect}>Reconnect</button>}</div>}
-  {invalid&&<div className="words-error words-invalid-message" role="alert">{invalidWordMessage(error)}</div>}
  </div>;
  return <div className="words-host" data-game-background={gameBackground(v.backgroundId)?.id} ref={hostElement} {...gestures.pointerHandlers}><GameBackground id={v.backgroundId}/><FullscreenGameShell gameplay={gameplay} navigation={navigation} announcement={announce?<div className="words-turn-announcement" role="status">YOUR TURN</div>:undefined} className="words-shell" title="Ptown Words" description="" activeTab={activeTab} setActiveTab={setActiveTab} sessionLabel={<PtownWordsRulesLabel/>} panelTitle={activeTab==='lobby'?'Rules':undefined} panel={panel} scores={scores} actions={actions} sessionEnded={sessionEnded}>
   {!sessionEnded&&<div className="words-board-region" data-paused={v.paused}>
    {readOnly&&<div className="words-view-only" role="status">Opponent's Turn — View Only</div>}
    {v.paused&&<div className="words-paused-cover" role="status">Paused{!host&&<small>Waiting for host to resume</small>}</div>}
+   {invalid&&<div className="words-invalid" role="alert" data-canonical-felt-interaction-layer="">
+    <h2>Invalid Words</h2>
+    <p>The following words are not valid:</p>
+    <strong>{invalidWords(error).join(', ')}</strong>
+    <p>Correct your tiles and try again.</p>
+    <button type="button" onClick={()=>setInvalid(false)}>OK</button>
+   </div>}
    <div className="words-navigation" data-canonical-felt-interaction-layer="">
     <span>{selected!==null?'Tap a square to place your tile':editable?'Drag tiles · Pinch to zoom':'Pinch to zoom'}</span>
     <button type="button" className="words-reset-zoom" data-words-reset="" data-hidden={gestures.camera.scale===1||undefined} disabled={gestures.camera.scale===1||!!presentation||v.paused}
