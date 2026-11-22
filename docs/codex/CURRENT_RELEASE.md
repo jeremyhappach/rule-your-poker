@@ -1,3 +1,16 @@
+# Temporary Five Alive APPLE harness — November 22, 2026 — enabled
+
+Jeremy requested an immediately enabled, server-only smoke harness. New Five
+Alive Async allocations now use APPLE for all three words for both players.
+Existing games retain their frozen answers. Arcade, shared scoring, commands,
+review/settlement owners and frontend controls are unchanged. The private switch
+stays enabled until Jeremy requests otherwise. No URL flags or UI options.
+
+Migration `20261122173210_five_alive_temporary_apple_async_harness` is installed;
+live enabled state and rollback cleanup were verified. Candidate and installed
+database proofs and 12 shared-rule tests passed. See
+[operation and disable procedure](FIVE_ALIVE_APPLE_HARNESS.md).
+
 # Five Alive Async smoke polish — November 22, 2026 — local qualification; physical smoke pending
 
 Shared setup/match branding, finished progress, immediate View Words history,
