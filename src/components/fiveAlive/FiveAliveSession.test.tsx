@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
+import {useEffect} from 'react';
 import {afterEach,expect,it,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {FiveAliveSession} from './FiveAliveSession';
 import {endAnimation} from './animationTestEvent';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {fiveAliveInvalid} from './fiveAliveAudio';
+vi.mock('./FiveAliveInterlude',()=>({FiveAliveIntro:({onDone}:any)=>{useEffect(onDone,[onDone]);return null;},FiveAliveFailure:({answer,onDone}:any)=><button onClick={onDone}>You failed! {answer}</button>}));
 
 const {request,navigate,updates}=vi.hoisted(()=>({request:vi.fn(),navigate:vi.fn(),updates:[] as (()=>void)[]}));
 vi.mock('@/lib/audio/presentationSound',()=>({presentSound:vi.fn()}));
@@ -41,8 +43,8 @@ it('shows a completed run and returns to its leaderboard receipt',async()=>{
  request.mockResolvedValue({...initial,revision:4,status:'completed',score:800,view:{...initial.view,round:3,score:800,completed:true,current:null,revealed:[{answer:'APPLE',difficulty:1,score:800,solved:true,guesses:[{word:'APPLE',feedback:['correct','correct','correct','correct','correct']}]}]}});
  render(<FiveAliveSession mode="arcade" id="run" userId="user"/>);
  expect(await screen.findByText('Game Over')).toBeTruthy();
- fireEvent.click(screen.getByRole('button',{name:'Word Results'}));
- expect(screen.getByText(/You: 1 guesses · 1,000 × 0.8 = 800/)).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'View Words'}));
+ expect(screen.getAllByText(/You: Solved in 1 guess · 800 points/)[0]).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Close'}));
  fireEvent.click(screen.getByRole('button',{name:'View Leaderboard'}));
  expect(navigate).toHaveBeenCalledWith('/arcade/five-alive?result=run');
@@ -51,9 +53,9 @@ it('shows a completed run and returns to its leaderboard receipt',async()=>{
 it('shows the player their private completed word while waiting',async()=>{
  request.mockResolvedValue({...initial,segment:2,view:{...initial.view,round:2,ownScore:800,opponentScore:800,current:{completed:true,waiting:true},ownResult:{answer:'APPLE',difficulty:1,score:800,solved:true,guesses:[apple]},revealed:[{own:{answer:'BREAD',score:800},opponent:{answer:'BREAD',score:800}}]}});
  render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
- expect(await screen.findByText(/Waiting for the other player/)).toBeTruthy();
+ expect(await screen.findByText(/Waiting on opponent./)).toBeTruthy();
  expect(screen.queryByText(/APPLE · Very Easy/)).toBeNull();
- fireEvent.click(screen.getByRole('button',{name:'Word Results'}));expect(screen.getByLabelText('Answer APPLE')).toBeTruthy();expect(screen.getByText('Opponent: Waiting')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'View Words'}));expect(screen.getByLabelText('Answer APPLE')).toBeTruthy();expect(screen.getByText('Opponent: Pending')).toBeTruthy();
  expect(screen.queryByLabelText('Keyboard')).toBeNull();
 });
 
@@ -146,13 +148,13 @@ it('restores only own completed guesses while the opponent is sealed, then admit
  const waiting={...initial,revision:2,segment:1,view:{...initial.view,current:{completed:true,waiting:true},ownResult:result,ownScore:0,opponentScore:0}};
  request.mockResolvedValue(waiting);
  const {container}=render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
- await screen.findByText(/Waiting for the other player/);
+ await screen.findByText(/Waiting on opponent./);
  expect(screen.getByLabelText('Guess board').textContent).toBe('APPLE');expect(container.querySelector('[data-reveal]')).toBeNull();
- expect(screen.queryByText(/Opponent:/)).toBeNull();expect(screen.getByRole('button',{name:'Word Results'})).toBeTruthy();
+ expect(screen.queryByText(/Opponent: (Solved|Failed)/)).toBeNull();expect(screen.getByRole('button',{name:'View Words'})).toBeTruthy();
  request.mockResolvedValue({...solved,revision:3,segment:2,view:{...solved.view,ownScore:800,opponentScore:0,revealed:[{own:result,opponent:{...result,solved:false,score:0,guesses:[{word:'STONE',feedback:['absent','absent','present','absent','correct']}]}}]}});
  await act(async()=>updates[0]());
- fireEvent.click(await screen.findByRole('button',{name:'Word Results'}));
- expect(screen.getByText(/Opponent: 1 guesses · 0 × 0.8 = 0/)).toBeTruthy();expect(screen.queryByText(/STONE/)).toBeNull();
+ fireEvent.click(await screen.findByRole('button',{name:'View Words'}));
+ expect(screen.getByText(/Opponent: Failed in 1 guess · 0 points/)).toBeTruthy();expect(screen.queryByText(/STONE/)).toBeNull();
 });
 
 it.each(['arcade','async'] as const)('shakes a rejected %s word, plays its original cue and retains the editable draft',async mode=>{
@@ -173,11 +175,11 @@ it('queues a delivered opponent review while Word Results is open, then releases
  const shared={...solved,revision:3,segment:2,reviewRevision:3,wordReviews:[{id:'saved-word-review',round:1,seen:false}],view:{...solved.view,ownScore:800,opponentScore:392,revealed:[{own:result,opponent:{...result,score:392,guesses:[{word:'',feedback:[]},{word:'',feedback:[]},apple]}}]}};
  request.mockResolvedValue(waiting);
  const mounted=render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
- await screen.findByText(/Waiting for the other player/);
- fireEvent.click(screen.getByRole('button',{name:/^Word Results$/}));
- expect(screen.getByText('Opponent: Waiting')).toBeTruthy();
+ await screen.findByText(/Waiting on opponent./);
+ fireEvent.click(screen.getByRole('button',{name:/^View Words$/}));
+ expect(screen.getByText('Opponent: Pending')).toBeTruthy();
  request.mockResolvedValue(shared);await act(async()=>updates[0]());
- expect(screen.getByText(/Opponent: 3 guesses/)).toBeTruthy();
+ expect(screen.getByText(/Opponent: Solved in 3 guesses/)).toBeTruthy();
  expect(screen.queryByTestId('opponent-review')).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:/^Close$/}));
  expect((await screen.findByTestId('opponent-review')).textContent).toBe('saved-word-review');

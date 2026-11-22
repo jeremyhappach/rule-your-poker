@@ -3412,3 +3412,11 @@ gate is deferred. The immutable Chess roster authorizes read-only final-board
 History after departure; the history RPC never calls gameplay sync. Existing
 initial/per-move FEN and move records remain replay source data. Full replay is
 queued. Check, heartbeat and mate cues use the canonical global audio owner.
+
+## 2026-11-22 — Five Alive completed-word disclosure
+
+Jeremy requested sequential opponent guesses after mutual completion. Async now
+releases all guesses for mutually completed words, replacing permanent masking
+of earlier guesses. Active opponent words remain sealed; passive View Words
+history never consumes review receipts or invokes settlement. See
+[FIVE_ALIVE_ASYNC_SMOKE_POLISH.md](FIVE_ALIVE_ASYNC_SMOKE_POLISH.md).

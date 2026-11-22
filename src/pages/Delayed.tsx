@@ -6,6 +6,7 @@ import {CompletedMatchRecord} from '@/components/delayed/CompletedMatchRecord';
 import {ChessTurn} from '@/components/delayed/ChessTurn';
 import {GameplaySoundButton} from '@/components/GameplaySoundButton';
 import {FiveAliveSession} from '@/components/fiveAlive/FiveAliveSession';
+import {FiveAliveMatchWords} from '@/components/fiveAlive/FiveAliveMatchWords';
 import {PlayingNow} from '@/components/delayed/PlayingNow';
 import {AsyncSessionName} from '@/components/delayed/AsyncSessionName';
 import {RealMoneyWarningDialog} from '@/components/RealMoneyWarningDialog';
@@ -122,12 +123,13 @@ function MatchHome({id,userId}:{id:string;userId:string}){
      <span className={'async-completed-outcome '+(c.result&&c.result.delta>0?'delayed-win':c.result&&c.result.delta<0?'delayed-loss':'')}>
       {c.result?<>{c.result.delta>0?'W':c.result.delta<0?'L':'T'} {money(Math.abs(c.result.delta)).replace('+','')}</>:'Result unavailable'}
      </span>}}/>
-     <div id={panelId} hidden={!expanded} className="async-completed-details">{scores}{c.game==='chess'&&<ChessHistoryButton mode="async" matchId={id} id={c.id}/>} {timeoutLabel&&<p>{timeoutLabel}</p>}</div>
+     <div id={panelId} hidden={!expanded} className="async-completed-details">{scores}{c.game==='five-alive'&&expanded&&<FiveAliveMatchWords key={c.id} childId={c.id} revision={c.revision} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'}/>}{c.game==='chess'&&<ChessHistoryButton mode="async" matchId={id} id={c.id}/>} {timeoutLabel&&<p>{timeoutLabel}</p>}</div>
     </>:<><AsyncGameHeader game={c.game} name={gameName(c.game)} stake={c.stake}/>
     {scores}
+    {c.game==='five-alive'&&home.acceptedAt&&<FiveAliveMatchWords key={c.id} childId={c.id} revision={c.revision} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'}/>}
     {needsChildReview(c,userId)&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
     {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{timeoutLabel?' · '+timeoutLabel:''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:
-     home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
+     home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):c.game==='five-alive'?'Waiting on opponent.':"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
       {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}
@@ -161,6 +163,6 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const child=home?.lineup.find(c=>c.id===childId);
  useUpdates(userId,refresh,child?.game!=='ptown-words');
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
- if(child.game==='five-alive')return <FiveAliveSession key={userId+':'+childId} mode="async" id={childId} userId={userId} matchId={matchId}/>;
+ if(child.game==='five-alive')return <FiveAliveSession key={userId+':'+childId} mode="async" id={childId} userId={userId} matchId={matchId} opponentName={home!.players.find(p=>p.id!==userId)?.name??'Opponent'}/>;
  return child.game==='chess'?<ChessTurn childId={childId} matchId={matchId} userId={userId}/>:child.game==='ptown-words'?<WordsTurn key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

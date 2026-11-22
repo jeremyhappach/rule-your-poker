@@ -7,7 +7,7 @@ export interface FiveAliveGuess {word:string; feedback:FiveAliveColor[]}
 export interface FiveAliveRoundView {completed:boolean; waiting?:boolean; guesses?:FiveAliveGuess[]; nextBase?:number}
 export interface FiveAliveReveal {id:string;row:number;helper?:{base:number;nextBase?:number}}
 export interface FiveAliveBoardProps {
-  mode:'arcade'|'async'; round:number; score:number; opponentScore?:number;
+  mode:'arcade'|'async'; round:number; score:number; opponentScore?:number; opponentName?:string;
   current:FiveAliveRoundView|null; pending:boolean; error?:string;
   onSubmit:(word:string)=>void; onBack:()=>void; onRules:()=>void; onAbandon?:()=>void;
   /** An admitted, newly committed wrong guess; presentation audio only. */
@@ -22,7 +22,7 @@ const EMPTY_GUESSES:FiveAliveGuess[]=[];
 const PRIORITY:Record<FiveAliveColor,number>={absent:1,present:2,correct:3};
 
 /** View only: no answer, score, progression, or persistence authority. */
-export function FiveAliveBoard({mode,round,score,opponentScore,current,pending,error,onSubmit,onBack,onRules,onAbandon,onWrongGuess,onHelperDrop,invalidAttempt,notice,summary,award,scoreRef,onReconnect,reveal,onRevealComplete}:FiveAliveBoardProps){
+export function FiveAliveBoard({mode,round,score,opponentScore,opponentName='Opponent',current,pending,error,onSubmit,onBack,onRules,onAbandon,onWrongGuess,onHelperDrop,invalidAttempt,notice,summary,award,scoreRef,onReconnect,reveal,onRevealComplete}:FiveAliveBoardProps){
   const [draft,setDraft]=useState('');
   const [flip,setFlip]=useState<{id:string;column:number;phase:'close'|'open'}|null>(null);
   const finished=useRef<string|null>(null);
@@ -71,7 +71,7 @@ export function FiveAliveBoard({mode,round,score,opponentScore,current,pending,e
     };
     window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
   },[canPlay,press]);
-  return <section className="five-alive" aria-label="Five Alive" ref={surface}>
+  return <section className="five-alive" aria-label="Five Alive" data-finished={current?.completed||!!summary||undefined} ref={surface}>
     <header className="five-alive-header"><button type="button" onClick={onBack}>{mode==='async'?'‹ Match':'‹ Arcade'}</button>
       <button type="button" onClick={onRules} aria-label="Rules and information">ⓘ</button>
       {mode==='arcade'?<button type="button" onClick={onAbandon} disabled={!onAbandon}>Abandon</button>:<span aria-hidden="true"/>}</header>
@@ -79,9 +79,9 @@ export function FiveAliveBoard({mode,round,score,opponentScore,current,pending,e
       <div className="five-alive-title"><span>P-Town Originals</span><h1>Five Alive</h1></div>
       <div className="five-alive-scores"><div className="five-alive-score" ref={scoreRef}><span>You</span><strong>{score.toLocaleString()}</strong></div>
         <div className="five-alive-round">Word {round} of 3<div className="five-alive-dots" aria-hidden="true">{[1,2,3].map(i=><i key={i} data-active={i===round}/>)}</div></div>
-        {mode==='async'?<div className="five-alive-score"><span>Opponent</span><strong>{(opponentScore??0).toLocaleString()}</strong></div>:<span/>}</div>
+        {mode==='async'?<div className="five-alive-score" data-opponent-score><span>{opponentName}</span><strong>{(opponentScore??0).toLocaleString()}</strong></div>:<span/>}</div>
       {notice}
-      {waiting&&<div className="five-alive-wait" role="status">Waiting for the other player.</div>}
+      {waiting&&<div className="five-alive-wait" role="status">Waiting on opponent.</div>}
       {error&&<p className="five-alive-error" role="alert">{error} {onReconnect&&<button type="button" onClick={onReconnect}>Reconnect</button>}</p>}
       {summary?summary:<div className="five-alive-grid" aria-label="Guess board">
         {Array.from({length:6},(_,row)=>{
@@ -117,13 +117,13 @@ export function FiveAliveBoard({mode,round,score,opponentScore,current,pending,e
                       if(reveal.helper){setHelper({id:reveal.id,phase:'burst'});return;}
                     }
                     onRevealComplete?.(reveal.id);
-                  }}>{guess?.word[column]??(active?draft[column]:'')}</div>;})}
+                  }}><span>{guess?.word[column]??(active?draft[column]:'')}</span></div>;})}
             </div>
           </div>;
         })}
       </div>}
 
-      {!waiting&&!summary&&<div className="five-alive-keyboard" aria-label="Keyboard">{KEYS.map((line,index)=><div className="five-alive-keys" key={line}>
+      {!!current&&!current.completed&&!waiting&&!summary&&<div className="five-alive-keyboard" aria-label="Keyboard">{KEYS.map((line,index)=><div className="five-alive-keys" key={line}>
         {index===2&&<button type="button" onClick={()=>press('ENTER')} disabled={!canPlay} className="five-alive-key-wide">Enter</button>}
         {[...line].map(key=><button type="button" key={key} data-color={keyColors[key]??''} onClick={()=>press(key)} disabled={!canPlay}>{key}</button>)}
         {index===2&&<button type="button" onClick={()=>press('BACKSPACE')} disabled={!canPlay} className="five-alive-key-wide" aria-label="Delete letter">⌫</button>}

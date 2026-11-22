@@ -101,7 +101,7 @@ function WordResults({record,home}:{record:GameRecord;home:Home}){
   {(record.words!.rounds[index]??[]).map((round,i)=>{
    const result=compatible?ownRoundProjection(round):null;
    return <article className="record-word" key={i}><h5>Word {i+1}: {round.answer}</h5>
-    <p>{fiveAliveTiers[round.difficulty]??'Unknown difficulty'} · {round.guesses.length} guesses used</p>
+    <p>{fiveAliveTiers[round.difficulty]??'Unknown difficulty'} · {round.completed&&result?`${result.solved?'Solved':'Failed'} in ${round.guesses.length} ${round.guesses.length===1?'guess':'guesses'}`:`${round.guesses.length} guesses used`}</p>
     {round.completed&&result?<p>Base score {number(result.solved?record.config.baseScores[round.guesses.length-1]:0)} × multiplier {number(record.config.multipliers[round.difficulty-1]/100)} = final score {number(result.score)}</p>:
      <p>{round.completed?'Scoring breakdown unavailable for this rules version.':round.guesses.length?'Unfinished when the game ended':'Not played'}</p>}
     <ol className="record-guesses" aria-label={'Word '+(i+1)+' guesses'}>{round.guesses.map((guess,j)=><li key={j}>{[...guess.word].map((letter,k)=><span key={k} data-feedback={guess.feedback[k]} aria-label={letter+' '+guess.feedback[k]}>{letter}</span>)}</li>)}</ol>

@@ -140,13 +140,13 @@ export function ChildResults({childId,matchId,userId}:Identity){
   .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[reviewingFiveAlive,historyOpen,overlay,play.done,final,home,matchId,navigate]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
- if(reviewingFiveAlive)return <FiveAliveSession mode="async" id={childId} matchId={matchId} userId={userId} reviewOnly onReviewsComplete={finishFiveAlive}/>;
+ if(reviewingFiveAlive)return <FiveAliveSession mode="async" id={childId} matchId={matchId} userId={userId} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'} reviewOnly onReviewsComplete={finishFiveAlive}/>;
  if(chessReview&&!chessContinued)return <ChessFinalReview view={chessReview} matchId={matchId} onContinue={()=>{setChessContinued(true);setOverlay(true);}}/>;
  const event=wordsReview?.event??state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
  if(!overlay&&event)return <AttemptReview key={event.id} events={state.events} home={home} {...{childId,matchId,userId,event}} acknowledgeEvents={wordsReview?.acknowledge} onDone={()=>{played.current=true;return load();}}/>;
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<>{child.game==='chess'&&<ChessHistoryButton mode="async" matchId={matchId} onOpenChange={setHistoryOpen}/>}<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link></>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
   {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>{child.game==='chess'&&(final?.receipt.reason??child.result?.reason)==='timeout_forfeit'&&<p>{home.players.find(p=>p.id!==winner)?.name??'Player'} timed out</p>}
-  <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+' banked the $'+child.stake+' stake':'Tie · $0'}</strong>
+  <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+(child.game==='five-alive'?' won the $':' banked the $')+child.stake+' stake':'Tie · $0'}</strong>
   {child.game==='mega-card-golf'&&<MegaCompetitionScorecard course={(child.config as any).course.name} holes={(child.config as any).course.holes} hole={(child.config as any).course.holes} players={home.players} results={child.holeResults??[]}/>}
  </div></FullscreenGameShell></div>;
 }

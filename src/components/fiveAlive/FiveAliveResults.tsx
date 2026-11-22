@@ -5,8 +5,9 @@ export interface FiveAliveWordResult {answer?:string;difficulty?:number;score?:n
 export type FiveAliveRevealedWord=FiveAliveWordResult|{own:FiveAliveWordResult;opponent:FiveAliveWordResult};
 export const fiveAliveTiers=['','Very Easy','Easy','Medium','Hard','Very Hard'];
 export function fiveAliveBase(result:FiveAliveWordResult){return result.solved?FIVE_ALIVE_RULES.baseScores[(result.guesses?.length??1)-1]:0;}
+export function fiveAliveOutcome(result:FiveAliveWordResult){const count=result.guesses?.length??0;return `${result.solved?'Solved':'Failed'} in ${count} ${count===1?'guess':'guesses'}`;}
 export function FiveAliveScoreLine({label,result}:{label:string;result?:FiveAliveWordResult}){
- return <p>{label}: {result?<>{result.guesses?.length??0} guesses · {fiveAliveBase(result).toLocaleString()} × {((FIVE_ALIVE_RULES.multipliers[(result.difficulty??1)-1])/100).toFixed(1)} = {(result.score??0).toLocaleString()}</>:'Waiting'}</p>;
+ return <p>{label}: {result?<>{fiveAliveOutcome(result)} · {(result.score??0).toLocaleString()} points{result.difficulty!=null&&<span className="five-alive-calculation">{fiveAliveBase(result).toLocaleString()} × {(FIVE_ALIVE_RULES.multipliers[result.difficulty-1]/100).toFixed(1)} = {(result.score??0).toLocaleString()}</span>}</>:'Pending'}</p>;
 }
 export function FiveAliveResults({rounds,waiting}:{rounds:FiveAliveRevealedWord[];waiting?:FiveAliveWordResult}){
  const words:FiveAliveRevealedWord[]=[...rounds,...(waiting?[waiting]:[])];

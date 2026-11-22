@@ -183,8 +183,8 @@ export function sealedProjection(game: SealedGame, player: string) {
   const revealed = game.rounds[index].slice(0, game.current).map((round, i) => ({
     own: ownRoundProjection(round), opponent: {
       ...ownRoundProjection(game.rounds[other][i]),
-      // Mutual completion permits the result, never the opponent's earlier strategy.
-      guesses: game.rounds[other][i].guesses.map((guess,j,all)=>j===all.length-1?guess:{word:'',feedback:[] as LetterFeedback[]}),
+      // Only mutually completed rounds enter this projection. Active guesses stay private.
+      guesses: game.rounds[other][i].guesses,
     },
   }));
   return {
@@ -192,6 +192,8 @@ export function sealedProjection(game: SealedGame, player: string) {
     round: Math.min(game.current + 1, FIVE_ALIVE_RULES.rounds),
     ownScore: game.sharedScores[index],
     opponentScore: game.sharedScores[other],
+    ownFinished: game.rounds[index].filter(round => round.completed).length,
+    opponentFinished: game.rounds[other].filter(round => round.completed).length,
     current: game.current < FIVE_ALIVE_RULES.rounds
       ? game.rounds[index][game.current].completed
         ? {completed: true, waiting: true}

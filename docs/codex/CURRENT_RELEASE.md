@@ -1,3 +1,15 @@
+# Five Alive Async smoke polish — November 22, 2026 — local qualification; physical smoke pending
+
+Shared setup/match branding, finished progress, immediate View Words history,
+explicit six-guess failure with five-second hold, responsive completed boards,
+outcome-specific copy and sequential opponent replay now lead into the existing
+Async child result and boxer finale. Opponent guesses become available only
+after mutual word completion. Rules and settlement writers are unchanged.
+
+Full release build and local Chrome presentation checks pass. Physical iPhone/PWA
+and a fresh live $1 settlement remain owner acceptance. See
+[scope, evidence and smoke limits](FIVE_ALIVE_ASYNC_SMOKE_POLISH.md).
+
 # P-Town Words invalid-word overlay — November 22, 2026 — owner smoke pending
 
 The shared Words view restores the original centered board overlay, dark

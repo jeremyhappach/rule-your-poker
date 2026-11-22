@@ -8,7 +8,7 @@ export function AsyncGameHeader({game,name,ordinal,stake,disclosure}:{game:strin
  disclosure?:{expanded:boolean;controls:string;onToggle:()=>void;summary:ReactNode}}){
   const brand=ASYNC_GAME_BRANDING[game];
   const title=name===game?findGame(game)?.name??name:name;
-  const titleContent=<BrandTitle key={game} name={title} logo={brand?.logo} letterTiles={brand?.letterTiles}/>;
+  const titleContent=<AsyncGameTitle key={game} game={game} name={title}/>;
   return <div className="delayed-game-heading async-brand-heading" data-brand={game} data-collapsible={!!disclosure||undefined}
     style={{'--async-brand-theme':brand?.theme??'#1a2a39'} as CSSProperties}>
     {brand?.motif&&<img className="async-brand-motif" src={brand.motif} alt="" aria-hidden="true"/>}
@@ -19,9 +19,10 @@ export function AsyncGameHeader({game,name,ordinal,stake,disclosure}:{game:strin
   </div>;
 }
 
-function BrandTitle({name,logo,letterTiles}:{name:string;logo?:string;letterTiles?:boolean}){
+export function AsyncGameTitle({game,name}:{game:string;name:string}){
+  const {logo,letterTiles}=ASYNC_GAME_BRANDING[game]??{};
   const [loaded,setLoaded]=useState(false);
-  return <span className="async-brand-title" data-loaded={loaded||undefined} data-words={letterTiles||undefined}>
+  return <span className="async-brand-title" data-game={game} data-loaded={loaded||undefined} data-words={letterTiles||undefined}>
     <span className="async-brand-name">{name}</span>
     {logo&&<img className="async-brand-logo" src={logo} alt="" aria-hidden="true"
       onLoad={()=>setLoaded(true)} onError={()=>setLoaded(false)}/>}

@@ -9,6 +9,9 @@ const artwork=(id:string,theme:string):AsyncGameBrand=>({
   theme,logo:`/game-branding/async-v1/${id}-logo.webp`,motif:`/game-branding/async-v1/${id}-motif.webp`,
 });
 export const ASYNC_GAME_BRANDING:Readonly<Record<string,AsyncGameBrand>>={
+  'five-alive':{theme:'#003b2d'},
+  'chucky-showdown':{theme:'#472b24',motif:'/arcade/approved-v1/chucky-portrait.webp'},
+  'crib-lab':{theme:'#173e39'},
   'chess':{theme:'#18352b'},
   'ptown-words':{theme:'#123f58',letterTiles:true},
   run21:artwork('run21','#123c2b'),

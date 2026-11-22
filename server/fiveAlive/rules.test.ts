@@ -78,16 +78,17 @@ test('solo and sealed modes share scoring and exactly three distinct words', () 
   assert.throws(() => submitSoloGuess(solo, 'APPLE', () => true), /game_complete/);
 });
 
-test('opponent strategy stays redacted after mutual completion, including a sixth miss',()=>{
+test('opponent guesses become public only after mutual completion, including a sixth miss',()=>{
  const words=[{word:'APPLE',difficulty:1},{word:'BREAD',difficulty:2},{word:'CLOUD',difficulty:3}] as const;
  let game=createSealedGame(['alice','bob'],words);
  game=submitSealedGuess(game,'alice','APPLE',()=>true);
  for(let i=0;i<6;i++)game=submitSealedGuess(game,'bob',i===5?'PLANT':'STONE',()=>true);
  const a=sealedProjection(game,'alice'),b=sealedProjection(game,'bob');
  assert.equal(a.revealed[0].opponent.guesses.length,6);
- assert.deepEqual(a.revealed[0].opponent.guesses.slice(0,5),Array.from({length:5},()=>({word:'',feedback:[]})));
+ assert.deepEqual(a.revealed[0].opponent.guesses,game.rounds[1][0].guesses);
+ assert.equal(a.ownFinished,1);assert.equal(a.opponentFinished,1);
  assert.equal(a.revealed[0].opponent.guesses[5].word,'PLANT');
- assert.equal(JSON.stringify(a).includes('STONE'),false);
+ assert.equal(JSON.stringify(a).includes('STONE'),true);
  assert.equal(b.revealed[0].own.guesses[0].word,'STONE');
  assert.equal(a.revealed[0].opponent.score,0);
 });

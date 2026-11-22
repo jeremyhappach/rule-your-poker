@@ -40,7 +40,7 @@ export function FiveAliveAward({event,userId,target,onDone,onScore}:{event:FiveA
   return()=>{cancelAnimationFrame(frame);onScore(null);};
  },[phase,onDone,onScore]);
  return <div className="five-alive-award" data-solve={event.guessCount??3} role="status"><div className="five-alive-award-tiles">{[...event.word].map((letter,i)=><span key={i}>{letter}</span>)}</div>
-  {event.guessCount!=null&&<strong>You completed in {event.guessCount}</strong>}
+  {event.guessCount!=null&&<strong>Solved in {event.guessCount} {event.guessCount===1?'guess':'guesses'}</strong>}
   <div className="five-alive-award-calculation">{event.base.toLocaleString()} base × {multipliers[event.difficulty]} · {tiers[event.difficulty]}</div>
   <strong className="five-alive-award-total" ref={total}>+{event.points.toLocaleString()}</strong></div>;
 }
