@@ -1,0 +1,179 @@
+{
+  "verificationDate": "2026-11-22",
+  "candidateRollbackChecks": [
+    "non-admin rejection",
+    "injected failure rolls back reversals, chip transfers, board, money mode and guard",
+    "exact linked reversals and preserved nine-move board",
+    "duplicate and stale requests fenced; ordinary money-mode guard restored",
+    "both participants see active play-money match",
+    "future outcome -1: fake settlement, canonical chips, balanced transfers, snapshots, replay and continuation",
+    "future outcome 0: fake settlement, canonical chips, balanced transfers, snapshots, replay and continuation",
+    "future outcome 1: fake settlement, canonical chips, balanced transfers, snapshots, replay and continuation"
+  ],
+  "installed": {
+    "child": {
+      "id": "b1795d0c-51a3-47b8-a6b8-1e324b3f34d8",
+      "fen": "rn1qkbnr/ppp1p2p/3p1p2/6p1/2B1P1b1/N4P2/PPPP2PP/R1B1K1NR b KQkq - 0 5",
+      "actor": "201d2c6b-a58e-4b6a-a21d-8cda3360c860",
+      "moves": 9,
+      "opened": false,
+      "segment": 11,
+      "revision": 23,
+      "terminal": false,
+      "expiresAt": "2026-11-25T23:31:27.728079+00:00",
+      "gameplayDueAt": null
+    },
+    "chips": {
+      "201d2c6b-a58e-4b6a-a21d-8cda3360c860": 0,
+      "d7dc1928-3727-4351-b0ff-0e80c81c2953": 0
+    },
+    "match": {
+      "id": "0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15",
+      "status": "active",
+      "revision": 26,
+      "realMoney": false
+    },
+    "checks": [
+      "future outcome -1: fake settlement, canonical chips, balanced transfers, snapshots, replay and continuation",
+      "future outcome 0: fake settlement, canonical chips, balanced transfers, snapshots, replay and continuation",
+      "future outcome 1: fake settlement, canonical chips, balanced transfers, snapshots, replay and continuation"
+    ],
+    "entries": [
+      {
+        "id": "28d1e2f5-5966-42da-87f8-8a4746047510",
+        "type": "SessionResult",
+        "actor": null,
+        "notes": "Delayed Head-to-Head",
+        "amount": 5,
+        "profileId": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "reversalOf": null
+      },
+      {
+        "id": "8990e706-c2e7-4362-9b16-bef321ec252f",
+        "type": "SessionResult",
+        "actor": null,
+        "notes": "Delayed Head-to-Head",
+        "amount": -5,
+        "profileId": "201d2c6b-a58e-4b6a-a21d-8cda3360c860",
+        "reversalOf": null
+      },
+      {
+        "id": "a708ecb7-444d-4127-a06d-5c856d83c4c9",
+        "type": "Reversal",
+        "actor": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "notes": "Jeremy approved correcting the unintended $5 real-money Hap/Bobbalouie Chess match to play money on 2026-11-22; reverse the real-money timeout settlement and preserve the saved nine-move board with Bobbalouie to move. Original financial records remain immutable.",
+        "amount": 5,
+        "profileId": "201d2c6b-a58e-4b6a-a21d-8cda3360c860",
+        "reversalOf": "8990e706-c2e7-4362-9b16-bef321ec252f"
+      },
+      {
+        "id": "b80ff784-f0ae-4015-97ec-e77f28d391f6",
+        "type": "Reversal",
+        "actor": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "notes": "Jeremy approved correcting the unintended $5 real-money Hap/Bobbalouie Chess match to play money on 2026-11-22; reverse the real-money timeout settlement and preserve the saved nine-move board with Bobbalouie to move. Original financial records remain immutable.",
+        "amount": -5,
+        "profileId": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+        "reversalOf": "28d1e2f5-5966-42da-87f8-8a4746047510"
+      }
+    ],
+    "wallets": {
+      "201d2c6b-a58e-4b6a-a21d-8cda3360c860": 0,
+      "d7dc1928-3727-4351-b0ff-0e80c81c2953": -79
+    },
+    "guardMd5": "6313bed360158a4e583737a3bdd99a30",
+    "migration": "20261122233123",
+    "transfers": [
+      {
+        "id": "c2583e80-e347-40a5-b26f-3a765dfead4a",
+        "cursor": 1,
+        "reason": "win",
+        "game_id": "0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15",
+        "transfers": [
+          {
+            "id": "0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15:1:1",
+            "to": {
+              "kind": "player",
+              "playerId": "ba24556d-959e-4a58-8350-e1e01efeea99"
+            },
+            "from": {
+              "kind": "player",
+              "playerId": "fdc4e1d5-f7d7-47c5-b4d8-8d8e5786f283"
+            },
+            "amount": 5
+          }
+        ],
+        "created_at": "2026-11-22T22:36:33.646139+00:00",
+        "dealer_game_id": "4a375253-134d-4415-8845-7557bfbf7c6c",
+        "source_round_id": null,
+        "closing_balances": {
+          "player:ba24556d-959e-4a58-8350-e1e01efeea99": 5,
+          "player:fdc4e1d5-f7d7-47c5-b4d8-8d8e5786f283": -5
+        },
+        "opening_balances": {
+          "player:ba24556d-959e-4a58-8350-e1e01efeea99": 0,
+          "player:fdc4e1d5-f7d7-47c5-b4d8-8d8e5786f283": 0
+        },
+        "unmatched_deltas": {},
+        "successor_round_id": null
+      },
+      {
+        "id": "e5bb14da-03e2-4109-8e23-aa496d964199",
+        "cursor": 2,
+        "reason": "transfer",
+        "game_id": "0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15",
+        "transfers": [
+          {
+            "id": "0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15:2:1",
+            "to": {
+              "kind": "player",
+              "playerId": "fdc4e1d5-f7d7-47c5-b4d8-8d8e5786f283"
+            },
+            "from": {
+              "kind": "player",
+              "playerId": "ba24556d-959e-4a58-8350-e1e01efeea99"
+            },
+            "amount": 5
+          }
+        ],
+        "created_at": "2026-11-22T23:31:23.875765+00:00",
+        "dealer_game_id": "4a375253-134d-4415-8845-7557bfbf7c6c",
+        "source_round_id": null,
+        "closing_balances": {
+          "player:ba24556d-959e-4a58-8350-e1e01efeea99": 0,
+          "player:fdc4e1d5-f7d7-47c5-b4d8-8d8e5786f283": 0
+        },
+        "opening_balances": {
+          "player:ba24556d-959e-4a58-8350-e1e01efeea99": 5,
+          "player:fdc4e1d5-f7d7-47c5-b4d8-8d8e5786f283": -5
+        },
+        "unmatched_deltas": {},
+        "successor_round_id": null
+      }
+    ],
+    "correction": {
+      "id": "5a61e531-b2b0-46ac-8876-7f043d9a3d38",
+      "actor": "d7dc1928-3727-4351-b0ff-0e80c81c2953",
+      "reason": "Jeremy approved correcting the unintended $5 real-money Hap/Bobbalouie Chess match to play money on 2026-11-22; reverse the real-money timeout settlement and preserve the saved nine-move board with Bobbalouie to move. Original financial records remain immutable.",
+      "child_id": "b1795d0c-51a3-47b8-a6b8-1e324b3f34d8",
+      "match_id": "0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15",
+      "created_at": "2026-11-22T23:31:27.728079+00:00",
+      "generation": 1,
+      "fingerprint": {
+        "child": "b1795d0c-51a3-47b8-a6b8-1e324b3f34d8",
+        "reason": "Jeremy approved correcting the unintended $5 real-money Hap/Bobbalouie Chess match to play money on 2026-11-22; reverse the real-money timeout settlement and preserve the saved nine-move board with Bobbalouie to move. Original financial records remain immutable.",
+        "revision": 22,
+        "outcomeHash": "5bdda8f52dc85bff0bbcc02987be706e"
+      },
+      "reversal_ids": [
+        "b80ff784-f0ae-4015-97ec-e77f28d391f6",
+        "a708ecb7-444d-4127-a06d-5c856d83c4c9"
+      ],
+      "executor_role": "postgres",
+      "transaction_id": 291908916,
+      "financial_game_id": "77fc01f5-bcf1-4d58-87b8-37d272efce55"
+    },
+    "currentOutcomes": 0,
+    "currentSettlements": 0
+  }
+}
+

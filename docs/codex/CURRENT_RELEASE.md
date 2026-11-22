@@ -1,3 +1,18 @@
+# Hap–Bobbalouie Chess restored as play money — November 22, 2026 — production database verified
+
+The unintended $5 real-money timeout settlement was reversed through the
+existing admin correction path, preserving original financial history.
+Hap received a linked −$5 reversal and Bobbalouie +$5; verified wallet totals
+are −$79 and $0. The same nine-move board is active as play money with
+Bobbalouie to move and the gameplay clock unopened.
+
+Migration `20261122233123` changes only this approved match. Complete rollback
+and installed financial proofs pass for either winner and a draw, including
+canonical chips, balanced transfers, immutable snapshots, replay and finale
+continuation. No persistent RPC, frontend or timer-policy changes.
+See [identities, accounting and proof](BOBBALOUIE_PLAY_MONEY_RESTORATION.md).
+Checkpoint: bobbalouie-play-money-restoration-20261122. Owner smoke pending.
+
 # Five Alive APPLE harness cleanup — November 22, 2026 — production database verified
 
 The temporary runtime override, switch and allocation receipts are removed.
