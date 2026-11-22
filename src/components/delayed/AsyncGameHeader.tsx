@@ -2,6 +2,8 @@ import {useState,type CSSProperties,type ReactNode} from 'react';
 import {ChevronDown} from 'lucide-react';
 import {ASYNC_GAME_BRANDING} from '@/lib/delayed/gameBranding';
 import {findGame} from '@/lib/gameCatalog';
+import {FiveAliveLogo} from '@/components/fiveAlive/FiveAliveLogo';
+import {AsyncWordsLogo} from './AsyncWordsLogo';
 import './asyncGameHeader.css';
 
 export function AsyncGameHeader({game,name,ordinal,stake,disclosure}:{game:string;name:string;ordinal?:number;stake?:number;
@@ -19,11 +21,13 @@ export function AsyncGameHeader({game,name,ordinal,stake,disclosure}:{game:strin
   </div>;
 }
 
-export function AsyncGameTitle({game,name}:{game:string;name:string}){
+export function AsyncGameTitle({game,name,placement='header'}:{game:string;name:string;placement?:'picker'|'header'}){
   const {logo,letterTiles}=ASYNC_GAME_BRANDING[game]??{};
   const [loaded,setLoaded]=useState(false);
+  if(game==='five-alive')return <span className="async-brand-title" data-game={game}><FiveAliveLogo stacked={placement==='picker'}/></span>;
+  if(game==='ptown-words'&&placement==='picker')return <span className="async-brand-title" data-game={game}><AsyncWordsLogo/></span>;
   return <span className="async-brand-title" data-game={game} data-loaded={loaded||undefined} data-words={letterTiles||undefined}>
-    <span className="async-brand-name">{name}</span>
+    <span className="async-brand-name">{game==='chess'&&placement==='picker'?<><span className="async-chess-title-line">P-Town</span>{' '}<span className="async-chess-title-line">Chess</span></>:name}</span>
     {logo&&<img className="async-brand-logo" src={logo} alt="" aria-hidden="true"
       onLoad={()=>setLoaded(true)} onError={()=>setLoaded(false)}/>}
     {letterTiles&&<span className="async-brand-letters" aria-hidden="true"><i>A</i><i>B</i><i>C</i></span>}

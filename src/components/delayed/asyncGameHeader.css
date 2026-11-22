@@ -6,11 +6,10 @@
 .async-brand-heading h3{position:relative;display:flex;align-items:center;gap:.4rem;min-width:0;line-height:1.15}
 .async-brand-ordinal{flex:none;color:#ffedb0;font-size:1rem}
 .async-brand-title{position:relative;display:flex;align-items:center;min-width:0;min-height:2.25rem;width:100%;max-width:16rem}
-.async-brand-title[data-game=five-alive] .async-brand-name{font-family:Georgia,serif;font-style:italic;text-transform:uppercase;letter-spacing:.03em;color:#ffe3a2;text-shadow:0 2px #8f6200;font-size:1.5rem}
 .async-brand-title[data-game=chucky-showdown] .async-brand-name{font-family:Georgia,serif;text-transform:uppercase;color:#ffdf8b;text-shadow:1px 2px #522013;font-size:1.3rem}
 .async-brand-title[data-game=crib-lab] .async-brand-name,.async-brand-title[data-game=chess] .async-brand-name{font-family:Georgia,serif;font-size:1.3rem;letter-spacing:.04em}
 .midnight-config-card .async-brand-heading{margin:0;border-radius:.7rem}
-.async-brand-name{position:relative;overflow-wrap:anywhere;color:#ffdf8b;font-weight:800;text-shadow:0 1px 2px #000}
+.async-brand-name{position:relative;overflow-wrap:normal;word-break:normal;hyphens:none;color:#ffdf8b;font-weight:800;text-shadow:0 1px 2px #000}
 .async-brand-logo{position:absolute;inset:0 auto 0 0;width:100%;height:100%;object-fit:contain;object-position:left center;opacity:0}
 .async-brand-title[data-loaded] .async-brand-logo{opacity:1}
 .async-brand-title[data-loaded] .async-brand-name{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -32,3 +31,28 @@
   .delayed-game-card .delayed-turn-status time{justify-content:flex-start}
 }
 @media(forced-colors:active){.async-brand-logo,.async-brand-motif,.async-brand-letters{display:none}.async-brand-title[data-loaded] .async-brand-name{position:static;width:auto;height:auto;margin:0;overflow:visible;clip-path:none;white-space:normal}.async-brand-heading .async-brand-name,.async-brand-ordinal{color:CanvasText;text-shadow:none}.delayed-game-heading>.async-brand-stake{border-color:CanvasText}}
+
+/* Async picker dimensions belong to the grid, independent of each title. */
+.midnight-invite .async-picker-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:6rem}
+.midnight-invite .async-picker-grid .midnight-tile{height:100%;min-height:0;width:100%;padding:.5rem;container-type:inline-size;display:grid;place-items:center}
+.midnight-invite .async-picker-grid .async-brand-title{width:100%;max-width:none;height:100%;min-height:0;justify-content:center;text-align:center}
+.midnight-invite .async-picker-grid .async-brand-name{font-size:clamp(.65rem,13cqi,1.8rem);line-height:1.08;max-width:100%;letter-spacing:0;white-space:normal}
+.async-picker-grid .async-brand-logo{object-position:center}
+.async-picker-grid .async-brand-letters{display:none}
+
+.async-words-logo{display:block;width:100%;height:auto;max-height:100%}
+.async-picker-grid [data-picker-game=ptown-words]>.midnight-art,.async-picker-grid [data-picker-game=five-alive]>.midnight-art{display:none}
+.async-picker-grid :is([data-picker-game=ptown-words],[data-picker-game=five-alive],[data-picker-game=chess])::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none}
+.async-picker-grid [data-picker-game=ptown-words]::before{background:url('../../assets/peoria-bridge-mobile.jpg') center 60%/cover;opacity:.58}
+.async-picker-grid [data-picker-game=five-alive]::before{background:url('../../assets/peoria-skyline.jpg') center calc(50% - .9rem)/cover no-repeat;opacity:.58;mask-image:linear-gradient(#000 60%,transparent 87%)}
+.async-picker-grid :is([data-picker-game=ptown-words],[data-picker-game=five-alive]) .async-brand-title{filter:drop-shadow(0 2px 3px #000b)}
+.async-picker-grid [data-picker-game=chess]::before{background:repeating-conic-gradient(#d8c7a6 0% 25%,#163047 0% 50%) center/25% 25%;opacity:.18}
+.midnight-invite .async-picker-grid [data-picker-game=chess] .async-brand-title{align-items:flex-start;justify-content:flex-start;text-align:left}
+.midnight-invite .async-picker-grid [data-picker-game=chess] .async-brand-name{font-size:clamp(.75rem,13cqi,1.45rem);line-height:1.12;text-shadow:0 1px 3px #000,0 0 5px #06111f}
+.async-chess-title-line{display:block;white-space:nowrap}
+.async-picker-grid [data-picker-game=chess]>.midnight-art{width:60%;height:86%;top:auto;bottom:0;right:0;opacity:1;object-position:right bottom;filter:brightness(1.6) drop-shadow(0 2px 3px #0008)}
+.midnight-invite .async-picker-grid :is([data-picker-game=crib-lab],[data-picker-game=chucky-showdown]) .async-brand-title{align-items:flex-start;justify-content:flex-start;text-align:left}
+.midnight-invite .async-picker-grid :is([data-picker-game=crib-lab],[data-picker-game=chucky-showdown]) .async-brand-name{font-size:clamp(.75rem,11.5cqi,1.35rem);text-shadow:0 1px 3px #000,0 0 5px #06111f}
+.midnight-invite .async-picker-grid [data-picker-game=chucky-showdown] .async-brand-name{max-width:100%;font-size:clamp(.7rem,10.7cqi,1.2rem)}
+.async-picker-grid [data-picker-game=crib-lab]>.midnight-art{width:96%;height:74%;top:auto;bottom:0;right:0;opacity:.95;object-position:right bottom;filter:brightness(1.3) drop-shadow(0 3px 3px #0005)}
+.async-picker-grid [data-picker-game=chucky-showdown]>.midnight-art{width:66%;height:100%;right:0;opacity:.86;object-position:right bottom;filter:drop-shadow(0 3px 3px #0005)}

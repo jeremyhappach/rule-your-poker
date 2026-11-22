@@ -13,9 +13,9 @@ export function FiveAliveIntro({identity,title,matchId,userId,bell=false,onDone}
 }
 
 /** Local accepted-result presentation; it never submits or settles a game. */
-export function FiveAliveFailure({identity,answer,userId,onDone}:{identity:string;answer:string;userId:string;onDone:()=>void}){
+export function FiveAliveFailure({identity,answer,userId,onDone,replay=false}:{identity:string;answer:string;userId:string;onDone:()=>void;replay?:boolean}){
  const play=usePlayback(5000,identity);
  useEffect(()=>{if(!document.hidden)return platformAudio.request({userId,id:'five-alive-failure:'+identity,expiresAt:performance.now()+1100,cue:run21FailureCueAt(0,1100)});},[identity,userId]);
  useEffect(()=>{if(play.done)onDone();},[play.done,onDone]);
- return <div className="five-alive-award five-alive-failure" role="status"><h2>You failed!</h2><p>The answer was <strong>{answer}</strong></p><p>Failed in 6 guesses · 0 points</p><small>Returning to Async matches…</small></div>;
+ return <div className="five-alive-award five-alive-failure" role="status"><h2>You failed!</h2><p>The answer was <strong>{answer}</strong></p><p>Failed in 6 guesses · 0 points</p>{!replay&&<small>Returning to Async matches…</small>}</div>;
 }

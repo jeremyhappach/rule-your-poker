@@ -144,7 +144,7 @@ export function FiveAliveSession({mode,id,userId,matchId,opponentName='Opponent'
    <p>Guess each five-letter word in six valid tries. Green marks the right letter and place; yellow marks a letter in another place; gray means that copy is absent.</p>
    <p>Base scores are 1,000, 700, 490, 343, 240 and 168. A hidden difficulty multiplier is revealed after each completed word. Three word scores make your total.</p>
   </DialogContent></Dialog>
-  <Dialog open={history} onOpenChange={setHistory}><DialogContent className="five-alive-history-dialog"><DialogTitle>Word Results</DialogTitle><DialogDescription>Completed words and scores. Opponent results remain sealed until both finish.</DialogDescription><FiveAliveResults rounds={snapshot?.view.revealed??[]} waiting={snapshot?.view.ownResult}/></DialogContent></Dialog>
+  <Dialog open={history} onOpenChange={setHistory}><DialogContent className="five-alive-history-dialog"><DialogTitle>Word Results</DialogTitle><DialogDescription>Completed words and scores. Opponent results remain sealed until both finish.</DialogDescription><FiveAliveResults rounds={snapshot?.view.revealed??[]} waiting={snapshot?.view.ownResult} opponentName={opponentName}/></DialogContent></Dialog>
   <AlertDialog open={abandon} onOpenChange={setAbandon}><AlertDialogContent><AlertDialogTitle>Abandon this game?</AlertDialogTitle><AlertDialogDescription>Your score will not enter the leaderboard.</AlertDialogDescription><AlertDialogFooter><AlertDialogCancel>Keep Playing</AlertDialogCancel><AlertDialogAction disabled={pending} onClick={()=>{setAbandon(false);void act({type:'abandon'}).then(ok=>{if(ok)navigate('/arcade/five-alive');});}}>Abandon Game</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </div>;
 }

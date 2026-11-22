@@ -28,8 +28,8 @@ it('introduces the exact word, reveals each row, holds calculations, counts both
 });
 it.each([true,false])('distinguishes sixth-guess solve=%s and retains zero on a failure',async solved=>{
  vi.useFakeTimers();rpc.mockResolvedValue({seen:false});const ui=mount({...result,solved,score:solved?134:0,guesses:[...Array(5).fill(wrong),solved?right:wrong]});await act(async()=>{});await act(async()=>vi.advanceTimersByTime(1800));
- expect(screen.getByText('Hap: '+(solved?'Solved':'Failed')+' in 6 guesses')).toBeTruthy();for(let i=0;i<6;i++)row(ui.container);
- expect(screen.getByText(new RegExp('Opponent: '+(solved?'Solved':'Failed')+' in 6 guesses · '+(solved?134:0)+' points'))).toBeTruthy();
+ expect(screen.getByText('Hap: '+(solved?'6 guesses':'Failed'))).toBeTruthy();for(let i=0;i<6;i++)row(ui.container);
+ expect(screen.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent===(solved?'Hap: 6 guesses = 168 × 0.8 very easy = 134 points':'Hap: Failed = 0'))).toBeTruthy();
 });
 it('does not acknowledge interruption and skips an already seen receipt',async()=>{
  rpc.mockResolvedValue({seen:false});const ui=mount();await act(async()=>{});ui.unmount();expect(rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);

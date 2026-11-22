@@ -38,11 +38,11 @@ function ReviewPlayback({event,own,opponent,prior,userId,matchId,opponentName='O
  return <FiveAliveBoard mode="async" round={event.round} score={scores[0]} opponentScore={scores[1]} opponentName={opponentName} current={{completed:true,guesses}} pending onSubmit={()=>{}} onBack={onBack} onRules={onRules}
   notice={<div className="five-alive-review-label" role="status"><strong>Word {event.round} results</strong><p>{opponentName}: {fiveAliveOutcome(opponent)}</p><p>You: {fiveAliveOutcome(own)}</p></div>}
   reveal={!finalDone?{id:event.id+':row:'+row,row}:undefined} onRevealComplete={finish}
-  award={finalDone?<PairScores id={event.id} own={own} opponent={opponent} prior={prior} userId={userId} onScores={setScores} onDone={onComplete}/>:undefined}
+  award={finalDone?<PairScores opponentName={opponentName} id={event.id} own={own} opponent={opponent} prior={prior} userId={userId} onScores={setScores} onDone={onComplete}/>:undefined}
   error={error} onReconnect={error?()=>void onComplete():undefined}/>;
 }
 
-function PairScores({id,own,opponent,prior,userId,onScores,onDone}:{id:string;own:FiveAliveWordResult;opponent:FiveAliveWordResult;prior:[number,number];userId:string;onScores:(scores:[number,number])=>void;onDone:()=>Promise<void>}){
+function PairScores({id,own,opponent,prior,userId,opponentName,onScores,onDone}:{opponentName:string;id:string;own:FiveAliveWordResult;opponent:FiveAliveWordResult;prior:[number,number];userId:string;onScores:(scores:[number,number])=>void;onDone:()=>Promise<void>}){
  const [phase,setPhase]=useState<{startedAt:number;endsAt:number}|null>(null),done=useRef(false);
  const awards=useRef<HTMLDivElement>(null);
  useEffect(()=>{const startedAt=performance.now()+5000;setPhase({startedAt,endsAt:startedAt+700});},[id]);
@@ -62,5 +62,5 @@ function PairScores({id,own,opponent,prior,userId,onScores,onDone}:{id:string;ow
   if(progress<1)frame=requestAnimationFrame(tick);else if(!done.current){done.current=true;void onDone();}
  };frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
  },[phase,prior,own.score,opponent.score,onScores,onDone]);
- return <div className="five-alive-award" role="status" ref={awards}><h2>Word scores</h2><FiveAliveScoreLine label="You" result={own}/><strong data-award-points>+{own.score??0}</strong><FiveAliveScoreLine label="Opponent" result={opponent}/><strong data-award-points>+{opponent.score??0}</strong></div>;
+ return <div className="five-alive-award" role="status" ref={awards}><h2>Word scores</h2><FiveAliveScoreLine label="You" result={own}/><strong data-award-points>+{own.score??0}</strong><FiveAliveScoreLine label={opponentName} result={opponent}/><strong data-award-points>+{opponent.score??0}</strong></div>;
 }

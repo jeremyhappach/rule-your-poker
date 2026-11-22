@@ -1,3 +1,38 @@
+# Five Alive Async polish - November 22, 2026 - approved release; owner smoke pending
+
+Jeremy approved the revised mobile previews and publication, superseding the
+previous local hold. The candidate is on `codex/five-alive-tiles-replay`;
+release checkpoint: `five-alive-async-polish-approved-20261122`.
+
+Uniform picker tiles use Scrabble-style P-Town Words lettering, the stacked
+5/ALIVE mark, translucent Peoria bridge/skyline backgrounds, upper-left Crib Lab
+and Chucky titles, and two-line Chess lettering beside a visible knight and
+faint board. The Five Alive skyline is raised so buildings remain visible.
+Match tiles retain completed counts and open passive View Last Word playback.
+Word Results omits "Solved in", wraps at sensible calculation boundaries,
+and consistently uses the opponent's name, including Pending rows.
+Existing failure, opponent review, next-word and canonical finale owners remain.
+
+The refreshed Chrome layout proof covers 320/375/390/430/585px picker widths,
+six result-modal cases with long labels and the maximum 1,600-point word score,
+uniform dimensions, readable text and no clipping. All 87 focused tests pass.
+The full push-enabled production build also passes TypeScript, 4,378 application
+tests, 241 harness tests, 46 release-tooling tests and the unchanged size gate.
+Saved-word playback only reads permitted state; history does not begin or ACK
+turns. Live-flow presentation checks cover waiting/history, sixth-guess solve,
+six misses with a 5,014ms failure hold, and opponent replay into Word 3.
+Both winner/loser final-word routes show the authoritative stake winner before
+the boxer sequence; refresh retains the existing three presentation receipts.
+These are local isolated transport proofs, not new live financial mutations.
+
+Release evidence: `qualification.local/five-alive/approved-release-build.log`,
+`approved-replay-proof.log`, `approved-flow-proof.log`, `approved-ending-proof.log`
+and the `revised-preview/` screenshots/report. Repeatable browser scripts live
+under `dev/five-alive/presentation/`. Production verification and the exact
+published SHA are reported at delivery. Physical iPhone/PWA and a fresh $1
+match remain Jeremy's smoke acceptance. No database change is part of this
+release. The temporary APPLE harness below remains enabled.
+
 # Temporary Five Alive APPLE harness — November 22, 2026 — enabled
 
 Jeremy requested an immediately enabled, server-only smoke harness. New Five

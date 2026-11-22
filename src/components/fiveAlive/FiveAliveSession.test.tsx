@@ -44,7 +44,7 @@ it('shows a completed run and returns to its leaderboard receipt',async()=>{
  render(<FiveAliveSession mode="arcade" id="run" userId="user"/>);
  expect(await screen.findByText('Game Over')).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'View Words'}));
- expect(screen.getAllByText(/You: Solved in 1 guess · 800 points/)[0]).toBeTruthy();
+ expect(screen.getAllByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent==='You: 1 guess = 1,000 × 0.8 very easy = 800 points')[0]).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'Close'}));
  fireEvent.click(screen.getByRole('button',{name:'View Leaderboard'}));
  expect(navigate).toHaveBeenCalledWith('/arcade/five-alive?result=run');
@@ -55,7 +55,7 @@ it('shows the player their private completed word while waiting',async()=>{
  render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
  expect(await screen.findByText(/Waiting on opponent./)).toBeTruthy();
  expect(screen.queryByText(/APPLE · Very Easy/)).toBeNull();
- fireEvent.click(screen.getByRole('button',{name:'View Words'}));expect(screen.getByLabelText('Answer APPLE')).toBeTruthy();expect(screen.getByText('Opponent: Pending')).toBeTruthy();
+ fireEvent.click(screen.getByRole('button',{name:'View Words'}));expect(screen.getByLabelText('Answer APPLE')).toBeTruthy();expect(screen.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent==='Opponent: Pending')).toBeTruthy();
  expect(screen.queryByLabelText('Keyboard')).toBeNull();
 });
 
@@ -154,7 +154,7 @@ it('restores only own completed guesses while the opponent is sealed, then admit
  request.mockResolvedValue({...solved,revision:3,segment:2,view:{...solved.view,ownScore:800,opponentScore:0,revealed:[{own:result,opponent:{...result,solved:false,score:0,guesses:[{word:'STONE',feedback:['absent','absent','present','absent','correct']}]}}]}});
  await act(async()=>updates[0]());
  fireEvent.click(await screen.findByRole('button',{name:'View Words'}));
- expect(screen.getByText(/Opponent: Failed in 1 guess · 0 points/)).toBeTruthy();expect(screen.queryByText(/STONE/)).toBeNull();
+ expect(screen.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent==='Opponent: Failed = 0')).toBeTruthy();expect(screen.queryByText(/STONE/)).toBeNull();
 });
 
 it.each(['arcade','async'] as const)('shakes a rejected %s word, plays its original cue and retains the editable draft',async mode=>{
@@ -177,9 +177,9 @@ it('queues a delivered opponent review while Word Results is open, then releases
  const mounted=render(<FiveAliveSession mode="async" id="run" userId="user" matchId="match"/>);
  await screen.findByText(/Waiting on opponent./);
  fireEvent.click(screen.getByRole('button',{name:/^View Words$/}));
- expect(screen.getByText('Opponent: Pending')).toBeTruthy();
+ expect(screen.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent==='Opponent: Pending')).toBeTruthy();
  request.mockResolvedValue(shared);await act(async()=>updates[0]());
- expect(screen.getByText(/Opponent: Solved in 3 guesses/)).toBeTruthy();
+ expect(screen.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&!!el.textContent?.startsWith('Opponent: 3 guesses'))).toBeTruthy();
  expect(screen.queryByTestId('opponent-review')).toBeNull();
  fireEvent.click(screen.getByRole('button',{name:/^Close$/}));
  expect((await screen.findByTestId('opponent-review')).textContent).toBe('saved-word-review');

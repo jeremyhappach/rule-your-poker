@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,type ReactNode,type RefObject} from 'react';
 import {presentSound} from '@/lib/audio/presentationSound';
+import {FiveAliveLogo} from './FiveAliveLogo';
 import './fiveAlive.css';
 
 export type FiveAliveColor = 'correct' | 'present' | 'absent';
@@ -9,7 +10,7 @@ export interface FiveAliveReveal {id:string;row:number;helper?:{base:number;next
 export interface FiveAliveBoardProps {
   mode:'arcade'|'async'; round:number; score:number; opponentScore?:number; opponentName?:string;
   current:FiveAliveRoundView|null; pending:boolean; error?:string;
-  onSubmit:(word:string)=>void; onBack:()=>void; onRules:()=>void; onAbandon?:()=>void;
+  onSubmit:(word:string)=>void; onBack:()=>void; onRules?:()=>void; onAbandon?:()=>void;
   /** An admitted, newly committed wrong guess; presentation audio only. */
   onWrongGuess?:()=>void;
   onHelperDrop?:()=>void; invalidAttempt?:string;
@@ -73,10 +74,10 @@ export function FiveAliveBoard({mode,round,score,opponentScore,opponentName='Opp
   },[canPlay,press]);
   return <section className="five-alive" aria-label="Five Alive" data-finished={current?.completed||!!summary||undefined} ref={surface}>
     <header className="five-alive-header"><button type="button" onClick={onBack}>{mode==='async'?'‹ Match':'‹ Arcade'}</button>
-      <button type="button" onClick={onRules} aria-label="Rules and information">ⓘ</button>
+      {onRules?<button type="button" onClick={onRules} aria-label="Rules and information">ⓘ</button>:<span/>}
       {mode==='arcade'?<button type="button" onClick={onAbandon} disabled={!onAbandon}>Abandon</button>:<span aria-hidden="true"/>}</header>
     <div className="five-alive-body">
-      <div className="five-alive-title"><span>P-Town Originals</span><h1>Five Alive</h1></div>
+      <div className="five-alive-title"><span>P-Town Originals</span><h1><FiveAliveLogo/></h1></div>
       <div className="five-alive-scores"><div className="five-alive-score" ref={scoreRef}><span>You</span><strong>{score.toLocaleString()}</strong></div>
         <div className="five-alive-round">Word {round} of 3<div className="five-alive-dots" aria-hidden="true">{[1,2,3].map(i=><i key={i} data-active={i===round}/>)}</div></div>
         {mode==='async'?<div className="five-alive-score" data-opponent-score><span>{opponentName}</span><strong>{(opponentScore??0).toLocaleString()}</strong></div>:<span/>}</div>

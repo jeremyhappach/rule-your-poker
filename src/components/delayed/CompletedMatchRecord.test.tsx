@@ -61,7 +61,7 @@ it('shows every word scoring field for both players, including exact canonical a
  expect(await screen.findByText('Base score 1,000 × multiplier 1.4 = final score 1,400')).toBeTruthy();
  expect(screen.getByText('Base score 700 × multiplier 1.4 = final score 980')).toBeTruthy();
  expect(screen.getAllByText('Word 1: APPLE')).toHaveLength(2);
- expect(screen.getByText('Hard · Solved in 1 guess')).toBeTruthy();expect(screen.getByText('Hard · Solved in 2 guesses')).toBeTruthy();
+ expect(screen.getByText('Hard · 1 guess')).toBeTruthy();expect(screen.getByText('Hard · 2 guesses')).toBeTruthy();
 });
 it.each(['run21','tri-towers','quintzee'] as const)('%s shows both players by round and detailed breakdowns',async game=>{
  mount(matchRecordPath('match',game));const table=await screen.findByRole('table',{name:gameName(game)+' scores by round'});

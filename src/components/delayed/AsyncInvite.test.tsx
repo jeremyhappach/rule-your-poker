@@ -15,7 +15,7 @@ beforeEach(()=>{mock.real=true;mock.fail=false;mock.max=32;mock.rpc.mockReset();
 afterEach(cleanup);
 function Path(){const location=useLocation();return <output data-testid="path">{location.pathname}</output>;}
 async function mount(){render(<MemoryRouter initialEntries={['/delayed/new']}><AsyncInvite/><Path/></MemoryRouter>);await screen.findByRole('button',{name:'Run21'});}
-function pick(game='ptown-words'){fireEvent.click(screen.getByRole('button',{name:findGame(game)!.name}));}
+function pick(game='ptown-words'){fireEvent.click(screen.getByRole('button',{name:game==='ptown-words'?'P-Town Words':findGame(game)!.name}));}
 function ok(){fireEvent.click(screen.getByRole('button',{name:'OK'}));}
 function opponent(){fireEvent.click(screen.getByRole('button',{name:'Choose Opponent'}));fireEvent.change(screen.getByLabelText('Opponent'),{target:{value:'b'}});}
 const sends=()=>mock.rpc.mock.calls.filter(c=>c[0]==='delayed_create');
