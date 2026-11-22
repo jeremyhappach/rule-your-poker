@@ -15,13 +15,16 @@ The preview is read-only; commands retain exact state/turn/revision/receipt and
 financial ownership. Words has Multiplayer and Async adapters, not Arcade.
 
 Full qualification passed: 4,375 source tests, 241 harness tests, 46 release
-tooling tests, TypeScript and the push-enabled production build. Output is
-89,998,824 bytes, below the unchanged 90 MB gate. Ten phone/desktop layouts,
+tooling tests, TypeScript and the push-enabled production build. After lossless
+recompression of one existing background, output is 89,815,511 bytes (production)
+and 89,823,018 bytes (preview), below the unchanged 90 MB gate. This corrects the
+first hosted preview's 2,104-byte budget overrun with identical artwork pixels.
+Ten phone/desktop layouts,
 90 native touch pan starts, pinch/reset, rack movement, SQL-backed score/error
 feedback, local/opponent/bot artifacts and Async highlighting/refresh passed.
 Physical iPhone/PWA smoke remains pending. See
 [root causes, scope and evidence](SIX_ITEM_GAMEPLAY_POLISH.md).
-Release checkpoint: `six-item-gameplay-polish-20261122`; exact production
+Release checkpoint: `six-item-gameplay-polish-20261122-r2`; exact production
 deployment and commit verification are recorded in the delivery report.
 
 # Blue Hour waiting table — November 21, 2026 — production live; mobile smoke pending

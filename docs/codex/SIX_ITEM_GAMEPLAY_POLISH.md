@@ -54,3 +54,19 @@ consumers.
 Physical iPhone/PWA acceptance remains Jeremy's production smoke. Check the
 bottom-left viewport plus all corners, repeated rack drags, invalid crosswords,
 white dice/HUD and actionable cards after acting/reopening the lobby.
+
+## Build-size correction
+
+The first hosted preview was 90,002,104 bytes and correctly failed the unchanged
+90 MB gate; its existing additional Chess entry point was absent from the local
+production build. The pending production deployment was canceled. Lossless
+recompression of `public/mega-card-golf/sunny-meadows-v2.png` with the existing
+encoder saves 183,313 bytes. Decoded RGBA pixels, dimensions and metadata match
+the committed original; artwork, URLs and runtime code are unchanged. The proof
+is in `evidence/six-item-payload-proof-20261122.json`. Preview and production
+builds are checked separately before the corrected publication.
+
+The six encoder/report tests pass. The additional legacy `test:storage` audit
+hits a pre-existing stale byte hash for `server/arcade/service.ts`; that source
+is identical at the task baseline and this release. Its historical baseline
+and all release gates remain unchanged.
