@@ -1,22 +1,6 @@
-## Queued — Words saved-turn replay shows false final-result text — November 24, 2026
+## Implemented — Canonical async lifecycle correction — November 24, 2026
 
-Authenticated production validation of Jeremy's async result-access report at
-`fe201899551e8bf850fd07f1683e869fcade2e13` exposed `tie` and `Final rack deductions
-applied` during saved opponent turns in both reported active Words matches.
-The review queues completed, scores reconciled and authoritative state stayed
-unchanged; the terminal message is presentation-only and still incorrect.
-
-Owner: `SavedBoard` in `src/components/delayed/ResultReview.tsx` forces
-`phase: 'complete'` to lock replay input. The actions branch in
-`src/components/ptownWords/PtownWordsView.tsx` interprets that synthetic phase as
-a final result and defaults missing terminal winners to `tie`.
-Recommended correction: give saved-turn replay an explicit presentation state,
-retain its input lock and reveal/count-up, and reserve terminal outcome text for
-an actual authoritative terminal result. Preserve completed-game review, live
-Words, board inspection, ACK timing, score projection, clocks and finances.
-Add rendered Words attempt and genuine-terminal regression cases, then validate
-the replay UI. Product changes await Jeremy's approval of this follow-up.
-Evidence: [November 24 receipt](evidence/async-result-revalidation-20261124.json).
+Jeremy approved the complete correction, including completed-only result obligations, latest-only Take Turn reveal, direct playable handoff, correct score disclosure and historical snapshots. This supersedes the earlier narrow false-tie follow-up and the rejected active-result queue behavior. Implementation and qualification are recorded in [CURRENT_RELEASE.md](CURRENT_RELEASE.md) and [the evidence receipt](evidence/async-canonical-lifecycle-20261124.json). Production publication and Jeremy gameplay smoke are release follow-through, not a request for another product approval.
 
 ## Resolved — Vercel production publication delay — November 23, 2026
 

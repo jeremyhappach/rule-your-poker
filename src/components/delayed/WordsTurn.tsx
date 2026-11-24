@@ -1,3 +1,5 @@
+import {ReviewGate} from './ResultReview';
+import type {Home} from '@/lib/delayed/client';
 import {WordsConnectionStatus} from '@/components/ptownWords/WordsConnectionStatus';
 import {turnLabel} from '@/lib/ptownWords/turnPresentation';
 import {AsyncSessionName} from './AsyncSessionName';
@@ -16,7 +18,7 @@ import {ASYNC_SCORE_HOLD_MS} from '@/lib/delayed/reviewPresentation';
 import {wordsRpc} from '@/lib/ptownWords/client';
 import type {Reviews} from '@/lib/delayed/reviews';
 type View=WordsSnapshot&{outcome?:{reason:string;winner:string|null;delta:number};error?:string};
-type WordsTurnProps={childId:string;matchId:string;userId:string;realMoney?:boolean;sessionName?:string};
+type WordsTurnProps={reviewHome?:Home;childId:string;matchId:string;userId:string;realMoney?:boolean;sessionName?:string};
 // Entry must not mount command recovery until a fresh, side-effect-free read
 // establishes ownership. A saved command from another visit is not viewing.
 export function WordsTurn(props:WordsTurnProps){
@@ -32,7 +34,7 @@ export function WordsTurn(props:WordsTurnProps){
  },[childId,matchId,userId,attempt]);
  if(!entry)return <main className="delayed-page"><Link to={'/delayed/'+matchId}>Match Home</Link><p role="status">{error||'Restoring Words…'}</p>{error&&<button onClick={()=>setAttempt(n=>n+1)}>Retry</button>}</main>;
  return entry.phase==='playing'&&!entry.finished&&entry.activePlayerId!==entry.viewerId
-  ?<WordsInspection {...props} snapshot={entry}/>:<ActiveWordsTurn {...props}/>;
+  ?<WordsInspection {...props} snapshot={entry}/>:props.reviewHome&&!entry.finished?<ReviewGate key={userId+':'+childId+':'+entry.turn} home={props.reviewHome} childId={childId} matchId={matchId} userId={userId}>{()=> <ActiveWordsTurn {...props}/>}</ReviewGate>:<ActiveWordsTurn {...props}/>;
 }
 function WordsInformation({view:v,matchId}:{view:View;matchId:string}){
  return <><Link to={'/delayed/'+matchId}>Match Home</Link><p>72 hours per turn. Last Call after 48 hours. Deadline expiry passes the turn. {v.rules.timeBankUses ? `On entry you have ${v.rules.turnMs/60000} minutes and two +3-minute banks per player per game. Running out of playable time passes the turn.` : "This match retains its earlier rules without an active-turn clock or time banks. New matches use the five-minute clock and two banks."}</p><p>ENABLE2K dictionary. Blanks score zero. Exchange needs seven tiles in the bag. Four consecutive passes end the game; final rack deductions and the standard tie comparison apply.</p>{v.moves.map(m=><p key={m.turn}>{v.players.find(p=>p.id===m.playerId)?.name}: {turnLabel(m)} · {m.points}</p>)}</>;

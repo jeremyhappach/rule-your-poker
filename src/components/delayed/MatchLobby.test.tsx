@@ -34,12 +34,10 @@ beforeEach(()=>{
  mock.rpc.mockImplementation(async(name)=>name==='delayed_home'?mock.home:name==='notification_preferences'?{}:false);
 });
 afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();vi.unstubAllGlobals();});
-it.each(['me','other'])('active Words exposes green result review independently of actor %s',async actor=>{
+it.each(['me','other'])('active Words never exposes View Result during actor %s',async actor=>{
  const child=mock.home.lineup[1];Object.assign(child,{actor,scores:{me:250,other:195},pendingResults:{other:2},reviewCount:2});
- const ui=mount();await flush();const card=ui.container.querySelector('[data-reviewable="true"]')!;
- const link=within(card as HTMLElement).getByRole('link',{name:'View results (2)'});
- expect(link.classList.contains('delayed-primary')).toBe(true);
- expect(link.getAttribute('href')).toBe('/delayed/match?results=opponent');
+ const ui=mount();await flush();const card=[...ui.container.querySelectorAll('.delayed-game-card')].find(c=>c.textContent?.includes('195'))!;
+ expect(within(card as HTMLElement).queryByRole('link',{name:/View Result/i})).toBeNull();
  expect(card.textContent).toContain('195');expect(card.textContent).toContain('Pending');
  expect(within(card as HTMLElement).getByRole('link',{name:actor==='me'?'Take Turn':'View board'})).toBeTruthy();
  expect(mock.rpc.mock.calls.some(([name])=>name.includes('ack'))).toBe(false);
@@ -52,12 +50,12 @@ it('sorts presentation by actionability with stable ordinals and leaves canonica
  expect(orderedLobbyGames({...h,held:true},'me',Date.now())[0].id).toBe('unreviewed');
  expect(orderedLobbyGames(h,'me',Date.now()+200000)[0].id).toBe('unreviewed');
 });
-it('requires explicit completion and this viewer ACK plus no unseen opponent attempts',()=>{
+it('requires completion and this viewer final ACK independently of unread turns',()=>{
  const c=mock.home.lineup[0];
  expect(isReviewedGame({...c,terminal:false},'me')).toBe(false);
  expect(isReviewedGame({...c,viewed:undefined},'me')).toBe(false);
  expect(isReviewedGame({...c,viewed:false},'me')).toBe(false);
- expect(isReviewedGame({...c,pendingResults:{other:1}},'me')).toBe(false);
+ expect(isReviewedGame({...c,pendingResults:{other:1}},'me')).toBe(true);
  expect(isReviewedGame({...c,pendingResults:{me:1}},'me')).toBe(true);
 });
 it('shows compact metadata, dynamic dialog and no numbering; opening lobby does not ACK',async()=>{
@@ -72,7 +70,7 @@ it('shows compact metadata, dynamic dialog and no numbering; opening lobby does 
 });
 it('keeps review prominent, uses actual delta, expands one at a time and resets on reentry',async()=>{
  let ui=mount();await flush();
- expect(screen.getByRole('link',{name:'View Results'}).getAttribute('href')).toBe('/delayed/match?review=unreviewed');
+ expect(screen.getByRole('link',{name:'View Result'}).getAttribute('href')).toBe('/delayed/match?review=unreviewed');
  const win=screen.getByRole('button',{name:/Run 21.*W.*\$3/}),tie=screen.getByRole('button',{name:/Quintzee.*T.*\$0/});
  expect(win.getAttribute('aria-expanded')).toBe('false');expect(win.querySelector('.delayed-win')).toBeTruthy();
  fireEvent.click(win);expect(win.getAttribute('aria-expanded')).toBe('true');
@@ -86,9 +84,9 @@ it.each([true,false])('refresh uses persisted viewer projection and actual loss 
  mock.home={...mock.home,revision:2,lineup:mock.home.lineup.map((c:any)=>c.id==='unreviewed'?{...c,viewed:true,result:{winner:'other',delta:-2.5,reason:'normal',at:''}}:c)};
  await act(async()=>window.dispatchEvent(new Event('online')));await flush();
  const loss=screen.getByRole('button',{name:/Tri Towers.*L.*\$2.5/});expect(loss.querySelector('.delayed-loss')).toBeTruthy();
- expect(screen.queryByRole('link',{name:'View Results'})).toBeNull();ui.unmount();
+ expect(screen.queryByRole('link',{name:'View Result'})).toBeNull();ui.unmount();
  // A separate authenticated viewer receives their independent server projection.
  mock.user='other';mock.home={...mock.home,lineup:mock.home.lineup.map((c:any)=>({...c,viewed:false,result:null}))};
- mount();await flush();expect(screen.queryByRole('button',{name:'Tri Towers L $2.5'})).toBeNull();expect(screen.getAllByRole('link',{name:'View Results'})).toHaveLength(3);
+ mount();await flush();expect(screen.queryByRole('button',{name:'Tri Towers L $2.5'})).toBeNull();expect(screen.getAllByRole('link',{name:'View Result'})).toHaveLength(3);
  expect(mock.rpc.mock.calls.some(([name])=>name.includes('ack'))).toBe(false);
 });

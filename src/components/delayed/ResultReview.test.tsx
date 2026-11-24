@@ -11,7 +11,7 @@ vi.setConfig({testTimeout:20_000});
 import {useState} from 'react';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
-import {ReviewGate,PendingResults,ChildResults,MatchFinale} from './ResultReview';
+import {ReviewGate,ChildResults,MatchFinale} from './ResultReview';
 import {TooltipProvider} from '@/components/ui/tooltip';
 import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 const mock=vi.hoisted(()=>({rpc:vi.fn(),change:()=>{},state:null as any,home:null as any}));
@@ -38,39 +38,28 @@ const savedChucky=(score=2500,lives=1)=>{
    player:[{rank:'A',suit:'hearts'}],community:[{rank:'K',suit:'clubs'}],chucky:[{rank:'Q',suit:'diamonds'}]}}];
  mock.home.lineup[0].game='chucky-showdown';
 };
-it.each(['me','other'])('explicit result review works during %s turn and returns without starting gameplay',async actor=>{
- savedChucky();mock.home.status='active';mock.home.lineup[0].terminal=false;mock.state.actor=actor;
- mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();
- await advance(3100);expect(screen.getByRole('region',{name:'Opponent round results'})).toBeTruthy();
- expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
- await advance(8000);expect(screen.getByText('Match home destination')).toBeTruthy();
- expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event)).toEqual(['event']);
- expect(mock.rpc.mock.calls.every(c=>['delayed_home','delayed_reviews','delayed_review_begin','delayed_review_ack'].includes(c[0]))).toBe(true);
-});
-it('explicit review drains multiple events one at a time and reconciles after each ACK',async()=>{
- savedChucky();mock.home.lineup[0].terminal=false;
- mock.state.events.push({...structuredClone(mock.state.events[0]),id:'next',round:3});
- mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();
- await advance(11000);expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event)).toEqual(['event']);
+it('Take Turn reveals only the latest opponent play and enters gameplay without a home detour',async()=>{
+ savedChucky();mock.home.status='active';mock.home.lineup[0].terminal=false;
+ mock.state.events.push({...structuredClone(mock.state.events[0]),id:'latest',round:3});
+ mount(gate());await flush();await advance(14000);await advance(2100);
+ expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event)).toEqual(['latest']);
+ expect(mock.state.events[0].seen).toBe(false);
+ expect(screen.getByText('Gameplay owner')).toBeTruthy();
  expect(screen.queryByText('Match home destination')).toBeNull();
- await advance(11000);expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event)).toEqual(['event','next']);
- expect(screen.getByText('Match home destination')).toBeTruthy();
 });
-it('interrupted explicit review restarts even when persisted elapsed time exceeds the animation',async()=>{
- savedChucky();mock.home.lineup[0].terminal=false;
- const original=mock.rpc.getMockImplementation()!;
+it('already disclosed latest play never falls back to an unread historical turn',async()=>{
+ savedChucky();mock.state.events.push({...structuredClone(mock.state.events[0]),id:'latest',round:3,seen:true});
+ mount(gate());await flush();expect(screen.getByText('Gameplay owner')).toBeTruthy();
+ expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_begin')).toBe(false);
+});
+it('refresh resumes only the interrupted latest reveal',async()=>{
+ savedChucky();const original=mock.rpc.getMockImplementation()!;
  mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'?Promise.resolve({elapsed:50000,seen:false}):original(name,args));
- let ui=mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();await advance(4000);ui.unmount();
+ let ui=mount(gate());await flush();await advance(1000);ui.unmount();
  expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
- ui=mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();await advance(4000);
+ ui=mount(gate());await flush();await advance(1000);
  expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
- await advance(7000);expect(screen.getByText('Match home destination')).toBeTruthy();
-});
-it('missing replay data cannot silently consume an explicit pending result',async()=>{
- mock.home.lineup[0].terminal=false;
- mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();await advance(20000);
- expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
- expect(screen.getByText('Historic board replay is unavailable.')).toBeTruthy();
+ await advance(4000);await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();
 });
 it('Chucky reviews show recorded lives and Fold/Stay levels without cards, count the round score, then hand off once',async()=>{
  savedChucky();const ui=mount(gate());await flush();await advance(3100);
@@ -128,8 +117,8 @@ it('failed finale loading retains a working return link without an invented mone
  fireEvent.click(screen.getByRole('link',{name:'Match home'}));expect(screen.getByRole('heading',{name:'Match home destination'})).toBeTruthy();
 });
 it('shows pending result and automatically hands off only after ACK; no Continue',async()=>{mount(gate());await flush();expect(screen.queryByText('Gameplay owner')).toBeNull();expect(screen.queryByRole('button',{name:/continue/i})).toBeNull();await advance(13100);expect(screen.getByText('Your turn!')).toBeTruthy();await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);});
-it('resumes an already-started attempt immediately without covering its clock',async()=>{mock.state.started=true;mount(gate());await flush();expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_begin')).toBe(false);});
-it('another device starting ends the reveal and hands off to the existing owner',async()=>{mount(gate());await flush();mock.state.started=true;await act(async()=>mock.change());expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);});
+it('resumes an already-started attempt immediately without covering its clock',async()=>{mock.state.started=true;mock.state.events[0].seen=true;mount(gate());await flush();expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_begin')).toBe(false);});
+it('another device starting ends the reveal and hands off to the existing owner',async()=>{mount(gate());await flush();mock.state.started=true;mock.state.events[0].seen=true;await act(async()=>mock.change());expect(screen.getByText('Gameplay owner')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);});
 it('expiry during reveal prevents handoff',async()=>{mount(gate());await flush();mock.state.serverAt=Date.parse(mock.state.expiresAt);await advance(13100);expect(screen.getByText('Match home destination')).toBeTruthy();expect(screen.queryByText('Gameplay owner')).toBeNull();});
 it('offline presentation never acknowledges or hands off',async()=>{mount(gate());await flush();Object.defineProperty(navigator,'onLine',{configurable:true,value:false});await act(async()=>window.dispatchEvent(new Event('offline')));await advance(6000);expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);expect(screen.queryByText('Gameplay owner')).toBeNull();});
 it('unmounted presentation cannot submit a delayed ACK',async()=>{const view=mount(gate());await flush();view.unmount();await advance(6000);expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);});
@@ -221,7 +210,7 @@ it('Words keeps the reviewed actor through countup/hold, then admits the actual 
  const active=(id:string)=>ui.container.querySelector(`[data-score-player="${id}"]`)?.getAttribute('data-active');
  expect(active(opponent)).toBe('true');expect(active(viewer)).toBe('false');
  await advance(2450);expect(active(opponent)).toBe('true');expect(ui.container.querySelectorAll('.words-rack button:not([disabled])')).toHaveLength(0);
- await advance(5249);expect(active(opponent)).toBe('true');expect(screen.queryByText('Your turn!')).toBeNull();
+ await advance(5249);expect(ui.container.querySelector('.words-result')).toBeNull();expect(screen.queryByText('Final rack deductions applied')).toBeNull();expect(active(opponent)).toBe('true');expect(screen.queryByText('Your turn!')).toBeNull();
  await advance(101);expect(screen.getByText('Your turn!')).toBeTruthy();expect(active(viewer)).toBeUndefined();
  await advance(2100);expect(active(viewer)).toBe('true');expect(active(opponent)).toBe('false');expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack')).toHaveLength(1);
 });

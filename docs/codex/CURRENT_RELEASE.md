@@ -1,4 +1,20 @@
-# Async result access and disclosed Words scores — November 23, 2026 — owner smoke pending
+# Canonical async turn entry and completed results — November 24, 2026 — owner smoke pending
+
+Jeremy explicitly approved the complete lifecycle correction on November 24. View Result and lobby result counts now mean exactly one unseen final outcome per completed game. Ordinary opponent turns never create result obligations or duplicate primary actions.
+
+Take Turn presents only the latest eligible opponent play, acknowledges that exact presentation and continues into the existing playable owner on the same route. Words retains its fresh ownership inspection before turn admission; opponent-owned Words remains read-only. Five Alive retains its own mutually completed-word reveal and same-deal protections. Chess remains final-only. Historical receipts are retained and are not bulk acknowledged.
+
+Active Words replay has an explicit presentation mode and never borrows terminal messaging. Completed-game review retains final scores/outcomes, acknowledges the final outcome and returns to Match Home. Match finale admission depends on final child acknowledgements, not historical turns. Words history retains snapshot-time before/after scores; active presentation uses the last disclosed cumulative baseline. Generic round totals advance through the latest acknowledged round. Five Alive displays only the disclosed opponent cumulative score before its latest-word reveal.
+
+Migration 20261124164546 changes review/read projections only. Candidate/idempotence and installed rollback proofs pass the existing financial, winner/tie, duplicate/replay, late replay, authorization, continuation and terminal suite plus corrected result classification and historical-score checks. No gameplay state, scoring rules, financial writers, stakes, balances or historical production rows were repaired. Both reported Words child state hashes, revisions, actors and unopened clocks remain unchanged.
+
+Qualification: production auth guard with isolated bearer-authenticated HTTP browser fixtures, plus separate authoritative rollback SQL proof. The browser fixtures are not hosted Supabase sessions; this distinction is preserved in the evidence. Real authenticated production card checks follow publication. Full local qualification: 4,425 application tests, 241 harness tests, 46 release-tool tests, typecheck, production build and size gate. See [qualification receipt](evidence/async-canonical-lifecycle-20261124.json). Release checkpoint tag: async-canonical-lifecycle-20261124. Jeremy gameplay smoke remains the acceptance gate.
+
+## Superseded November 23 result-access interpretation
+
+The section below records the rejected implementation and its observations, not acceptance. Replaying historical turns and clearing their acknowledgements did not satisfy the product contract. The separate tie-message follow-up was absorbed into the full correction above.
+
+### Async result access and disclosed Words scores — November 23, 2026 — owner smoke pending
 
 Approved correction restores a green active-game View result action independently
 of turn ownership. Lobby counts and cards share the server's eligible unread-event

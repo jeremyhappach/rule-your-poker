@@ -20,7 +20,7 @@ function home(){
  return {id:'match',status:'settled',revision:mock.revision,organizer:'me',opponent:'other',realMoney:false,
   players:[{id:'me',name:'Owner'},{id:'other',name:'Opponent'}],net:-3,receipt:{match_id:'match'},completed:3,exposure:7,unsettled:0,
   serverAt:Date.now(),createdAt:new Date().toISOString(),acceptedAt:new Date().toISOString(),finaleViewed:mock.finaleSeen,
-  reviewsComplete:Object.values(mock.events).flat().every(e=>e.seen),
+  reviewsComplete:Object.values(mock.events).flat().filter(e=>e.kind==='child').every(e=>e.seen),
   lineup:['run','tri','quint'].map((id,i)=>({id,ordinal:i+1,game:mock.fiveAlive&&i===0?'five-alive':['run21','tri-towers','quintzee'][i],stake:[1,5,1][i],terminal:true,
    viewed:mock.events[id].find(e=>e.kind==='child').seen,pendingResults:{other:mock.events[id].filter(e=>e.kind==='attempt'&&!e.seen).length},
    scores:{me:100,other:mock.events[id].every(e=>e.seen)?90:null},result:mock.events[id].find(e=>e.kind==='child').seen?{winner:i===1?'other':'me',delta:i===1?-5:1}:null}))};
@@ -51,24 +51,23 @@ beforeEach(()=>{
  });
 });
 afterEach(()=>{cleanup();vi.useRealTimers();});
-it('reproduces three children: selected Tri replay precedes home, final Run replay precedes finale',async()=>{
- mount();await flush();expect(screen.getAllByRole('link',{name:'View Results'})).toHaveLength(2);
+it('reproduces three children: each final outcome returns home without an automatic finale',async()=>{
+ mount();await flush();expect(screen.getAllByRole('link',{name:'View Result'})).toHaveLength(2);
  expect(document.querySelectorAll('[data-completed]')).toHaveLength(1);
- fireEvent.click(screen.getAllByRole('link',{name:'View Results'})[1]);await flush();
+ fireEvent.click(screen.getAllByRole('link',{name:'View Result'})[1]);await flush();
  expect(screen.getByText("Showing Opponent's results")).toBeTruthy();expect(screen.queryByRole('img',{name:/wins the match/})).toBeNull();
  await advance(16000);await advance(6100);expect(acks()).toEqual(['tri-attempt','tri-child']);
- expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(screen.getAllByRole('link',{name:'View Results'})).toHaveLength(1);
+ expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(screen.getAllByRole('link',{name:'View Result'})).toHaveLength(1);
  expect(document.querySelectorAll('[data-completed]')).toHaveLength(2);
  expect(screen.getByRole('button',{name:/Tri Towers.*L.*\$5/}).getAttribute('aria-expanded')).toBe('false');
  expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_finale_ack')).toBe(false);
- fireEvent.click(screen.getByRole('link',{name:'View Results'}));await flush();await advance(16000);await advance(6100);
+ fireEvent.click(screen.getByRole('link',{name:'View Result'}));await flush();await advance(16000);await advance(6100);
  expect(acks()).toEqual(['tri-attempt','tri-child','run-attempt','run-child']);
- expect(screen.getByTestId('path').textContent).toBe('/delayed/match?finale=1');fireEvent.load(screen.getByRole('img',{name:'Opponent wins the match'}));await advance(7600);
- expect(mock.finaleSeen).toBe(true);expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_finale_ack')).toHaveLength(1);
+ expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(mock.finaleSeen).toBe(false);expect(home().reviewsComplete).toBe(true);
 });
 it.each([false,true])('direct finale/reload blocks outstanding reviews despite old finale ACK=%s',async oldAck=>{
  mock.finaleSeen=oldAck;const ui=mount('/delayed/match?finale=1');await flush();
- expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(screen.getAllByRole('link',{name:'View Results'})).toHaveLength(2);ui.unmount();
+ expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(screen.getAllByRole('link',{name:'View Result'})).toHaveLength(2);ui.unmount();
  mount('/delayed/match?finale=1');await flush();await advance(15000);expect(screen.queryByRole('img',{name:/wins the match/})).toBeNull();expect(acks()).toEqual([]);
  expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_finale_ack')).toBe(false);
 });
@@ -76,15 +75,15 @@ it('archive See Results opens a passive record without acknowledging pending liv
  mount('/archive');await flush();fireEvent.click(screen.getByRole('link',{name:'See Results'}));await flush();
  expect(screen.getByTestId('path').textContent).toBe('/delayed/match?history=1');
  expect(screen.getByRole('list',{name:'Completed match games'})).toBeTruthy();
- expect(screen.queryByRole('link',{name:'View Results'})).toBeNull();
+ expect(screen.queryByRole('link',{name:'View Result'})).toBeNull();
  await advance(20000);expect(acks()).toEqual([]);expect(mock.finaleSeen).toBe(false);
 });
-it('finished query cannot skip unseen attempts even if the child and finale were previously acknowledged',async()=>{
+it('finished entry does not turn historical attempts into obligations',async()=>{
  mock.finaleSeen=true;mock.events.run[1].seen=true;mount('/delayed/match?review=run&finished=1');await flush();
- expect(screen.getByText("Showing Opponent's results")).toBeTruthy();expect(screen.queryByText('Game Complete')).toBeNull();await advance(16000);expect(acks()).toEqual(['run-attempt']);
+ expect(screen.getByText('Game Complete')).toBeTruthy();await advance(6100);expect(acks()).toEqual(['run-child']);expect(mock.events.run[0].seen).toBe(false);
 });
-it('a pending attempt retains View Results when its child ACK already exists',async()=>{
- mock.events.run[1].seen=true;mount();await flush();expect(screen.getAllByRole('link',{name:'View Results'})).toHaveLength(2);
+it('an unread historical attempt does not restore a completed outcome obligation',async()=>{
+ mock.events.run[1].seen=true;mount();await flush();expect(screen.getAllByRole('link',{name:'View Result'})).toHaveLength(1);
  expect(screen.queryByRole('link',{name:'Replay match finale'})).toBeNull();
 });
 it.each(['tri-attempt','tri-child'])('failed %s ACK cannot trigger finale; reload retries the remaining review',async event=>{
@@ -99,7 +98,7 @@ it('failed post-ACK refresh stays out of finale until fresh authoritative state 
 it('refresh after ACK observes another tab completing the remaining child',async()=>{
  mount('/delayed/match?review=tri');await flush();await advance(16000);
  mock.events.run.forEach(e=>e.seen=true);mock.revision++;await advance(6100);
- expect(screen.getByTestId('path').textContent).toBe('/delayed/match?finale=1');expect(screen.getByRole('img',{name:'Opponent wins the match'})).toBeTruthy();
+ expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(home().reviewsComplete).toBe(true);
 });
 it('missing server qualification fails closed',async()=>{
  const rpc=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_history_detail'?Promise.resolve({...home(),reviewsComplete:undefined}):rpc(name,args));

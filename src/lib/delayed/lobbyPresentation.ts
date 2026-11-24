@@ -21,8 +21,7 @@ export function orderedLobbyGames(home:Home,userId:string,now:number){
 
 export function matchLobbyStatus(home:Home,userId:string,now:number){
  const opponent=home.players.find(player=>player.id!==userId);
- // Intermediate opponent results are outstanding even before the child ends.
- // Keep terminal-review admission in needsChildReview unchanged.
+ // Only unseen completed-game outcomes are results to view.
  const results=home.lineup.reduce((count,child)=>count+pendingReviewCount(child,userId),0);
  // playable is viewer-specific; an opponent-owned turn deliberately has false.
  const turns=home.status==='active'&&!home.held&&!home.removedAt

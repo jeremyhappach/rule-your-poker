@@ -7,7 +7,7 @@ import {FiveAliveScoreLine,fiveAliveOutcome,type FiveAliveWordResult} from './Fi
 import {FiveAliveIntro} from './FiveAliveInterlude';
 
 export interface FiveAliveWordReview {id:string;round:number;seen:boolean}
-interface Props {event:FiveAliveWordReview;own:FiveAliveWordResult;opponent:FiveAliveWordResult;prior:[number,number];userId:string;matchId?:string;opponentName?:string;onDone:()=>Promise<unknown>;onBack:()=>void;onRules:()=>void}
+interface Props {scoreAfter?:[number,number];event:FiveAliveWordReview;own:FiveAliveWordResult;opponent:FiveAliveWordResult;prior:[number,number];userId:string;matchId?:string;opponentName?:string;onDone:()=>Promise<unknown>;onBack:()=>void;onRules:()=>void}
 
 /** The existing Async begin/ACK receipts own completion across devices. */
 export function FiveAliveOpponentReview(props:Props){
@@ -28,7 +28,7 @@ export function FiveAliveOpponentReview(props:Props){
  return <ReviewPlayback {...props} onComplete={complete} error={error}/>;
 }
 
-function ReviewPlayback({event,own,opponent,prior,userId,matchId,opponentName='Opponent',onBack,onRules,onComplete,error}:Props&{onComplete:()=>Promise<void>;error:string}){
+function ReviewPlayback({scoreAfter,event,own,opponent,prior,userId,matchId,opponentName='Opponent',onBack,onRules,onComplete,error}:Props&{onComplete:()=>Promise<void>;error:string}){
  const count=opponent.guesses?.length??0,[introduced,setIntroduced]=useState(false),[row,setRow]=useState(0),[scores,setScores]=useState<[number,number]>(prior);
  const finalDone=row>=count;
  const guesses:FiveAliveGuess[]=(opponent.guesses??[]).slice(0,row+1).map((guess,index)=>({
@@ -41,17 +41,17 @@ function ReviewPlayback({event,own,opponent,prior,userId,matchId,opponentName='O
  return <FiveAliveBoard mode="async" opponentReview round={event.round} score={scores[0]} opponentScore={scores[1]} opponentName={opponentName} current={{completed:true,guesses}} pending onSubmit={()=>{}} onBack={onBack} onRules={onRules}
   notice={<div className="five-alive-review-label" role="status"><strong>Word {event.round} results</strong><p>{opponentName}: {finalDone?fiveAliveOutcome(opponent):'Revealing…'}</p><p>You: {fiveAliveOutcome(own)}</p></div>}
   reveal={!finalDone?{id:event.id+':row:'+row,row}:undefined} onRevealComplete={finish}
-  award={finalDone?<PairScores opponentName={opponentName} id={event.id} own={own} opponent={opponent} prior={prior} userId={userId} onScores={setScores} onDone={onComplete}/>:undefined}
+  award={finalDone?<PairScores scoreAfter={scoreAfter} opponentName={opponentName} id={event.id} own={own} opponent={opponent} prior={prior} userId={userId} onScores={setScores} onDone={onComplete}/>:undefined}
   error={error} onReconnect={error?()=>void onComplete():undefined}/>;
 }
 
-function PairScores({id,own,opponent,prior,userId,opponentName,onScores,onDone}:{opponentName:string;id:string;own:FiveAliveWordResult;opponent:FiveAliveWordResult;prior:[number,number];userId:string;onScores:(scores:[number,number])=>void;onDone:()=>Promise<void>}){
+function PairScores({scoreAfter,id,own,opponent,prior,userId,opponentName,onScores,onDone}:{scoreAfter?:[number,number];opponentName:string;id:string;own:FiveAliveWordResult;opponent:FiveAliveWordResult;prior:[number,number];userId:string;onScores:(scores:[number,number])=>void;onDone:()=>Promise<void>}){
  const [phase,setPhase]=useState<{startedAt:number;endsAt:number}|null>(null),done=useRef(false);
  const awards=useRef<HTMLDivElement>(null);
  useEffect(()=>{const startedAt=performance.now()+5000;setPhase({startedAt,endsAt:startedAt+700});},[id]);
  const now=performance.now();
- useFiveAliveScoreAudio(userId,phase?id+':own':null,phase?{...phase,from:prior[0],to:prior[0]+(own.score??0)}:null,now);
- useFiveAliveScoreAudio(userId,phase?id+':opponent':null,phase?{...phase,from:prior[1],to:prior[1]+(opponent.score??0)}:null,now);
+ useFiveAliveScoreAudio(userId,phase?id+':own':null,phase?{...phase,from:prior[0],to:scoreAfter?.[0]??prior[0]+(own.score??0)}:null,now);
+ useFiveAliveScoreAudio(userId,phase?id+':opponent':null,phase?{...phase,from:prior[1],to:scoreAfter?.[1]??prior[1]+(opponent.score??0)}:null,now);
  useEffect(()=>{if(!phase||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
   const root=awards.current,targets=root?.closest('.five-alive')?.querySelectorAll('.five-alive-score'),animations:Animation[]=[];
   root?.querySelectorAll<HTMLElement>('[data-award-points]').forEach((element,index)=>{const target=targets?.[index];if(!target||!element.animate)return;
@@ -61,7 +61,7 @@ function PairScores({id,own,opponent,prior,userId,opponentName,onScores,onDone}:
  },[phase]);
  useEffect(()=>{if(!phase)return;let frame=0;const tick=(at:number)=>{
   const progress=Math.max(0,Math.min(1,(at-phase.startedAt)/700));
-  onScores([prior[0]+Math.round((own.score??0)*progress),prior[1]+Math.round((opponent.score??0)*progress)]);
+  onScores([prior[0]+Math.round(((scoreAfter?.[0]??prior[0]+(own.score??0))-prior[0])*progress),prior[1]+Math.round(((scoreAfter?.[1]??prior[1]+(opponent.score??0))-prior[1])*progress)]);
   if(progress<1)frame=requestAnimationFrame(tick);else if(!done.current){done.current=true;void onDone();}
  };frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
  },[phase,prior,own.score,opponent.score,onScores,onDone]);

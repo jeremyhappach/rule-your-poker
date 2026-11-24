@@ -22,7 +22,7 @@ import {celebrateCanonicalWinner} from '@/lib/canonicalShell/winnerCelebration';
 import {Component,useCallback,useEffect,useMemo,useRef,useState,type ReactNode,type CSSProperties} from 'react';
 import {Link,useLocation,useNavigate,useSearchParams} from 'react-router-dom';
 import {delayedRpc,type Home} from '@/lib/delayed/client';
-import {money,mayViewFinale,type ReviewEvent,type Reviews} from '@/lib/delayed/reviews';
+import {money,mayViewFinale,latestTurnReview,type ReviewEvent,type Reviews} from '@/lib/delayed/reviews';
 import {FullscreenGameShell} from '@/lib/canonicalShell/FullscreenGameShell';
 import {Run21Felt} from '@/components/run21/Run21Felt';
 import {TriScorePill} from '@/components/triTowers/TriTowersPresentation';
@@ -53,49 +53,20 @@ export function ReviewGate({childId,matchId,userId,home,children}:Identity&{home
  const handoffPlay=usePlayback(2000,handoff?'your-turn:'+childId:'waiting');
  const load=useCallback(async(release=false)=>{if(released.current)return;const g=++generation.current;try{const value=await delayedRpc<Reviews>('delayed_reviews',{p_child:childId});if(g!==generation.current)return;
   if(value.terminal||value.actor!==userId||Date.parse(value.expiresAt)<=value.serverAt){navigate('/delayed/'+matchId,{replace:true});return;}
-  setState(value);setError('');const pending=value.events.some(e=>!e.seen&&e.kind==='attempt');
-  released.current=value.started||!pending&&(!reviewed.current||release);setReady(released.current);setHandoff(!released.current&&!pending);
+  setState(value);setError('');const pending=!!latestTurnReview(value);
+  released.current=!pending&&(value.started||!reviewed.current||release);setReady(released.current);setHandoff(!released.current&&!pending);
  }catch{if(g===generation.current)setError('Unable to verify this turn.');}},[childId,matchId,userId,navigate]);
  useEffect(()=>{if(handoff&&handoffPlay.done&&!error)void load(true);},[handoff,handoffPlay.done,error,load]);
  useEffect(()=>{if(active)void load();return()=>{generation.current++;};},[active,load]);
  useEffect(()=>{const channel=supabase.channel('review-gate:'+childId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>void load()).subscribe();return()=>{void supabase.removeChannel(channel);};},[childId,userId,load]);
  useEffect(()=>{if(ready&&location.state?.asyncEntry)navigate(location.pathname+location.search,{replace:true,state:{...location.state,asyncEntry:undefined}});},[ready,location.state,location.pathname,location.search,navigate]);
- const event=state?.events.find(e=>e.kind==='attempt'&&!e.seen);
+ const event=state?latestTurnReview(state):undefined;
  if(ready)return <>{children()}</>;
- return error?<AsyncTurnStage matchId={matchId} title={error}><button onClick={()=>void load()}>Retry</button></AsyncTurnStage>:handoff?<AsyncTurnStage matchId={matchId} title="Your turn!"/>:event&&home?<AttemptReview key={event.id} event={event} events={state!.events} home={home} {...{childId,matchId,userId}} onDone={()=>{reviewed.current=true;return load();}}/>:<AsyncTurnStage matchId={matchId} title={home.players.some(p=>p.id!==userId&&home.lineup.find(c=>c.id===childId)?.pendingResults?.[p.id])?'Showing '+home.players.find(p=>p.id!==userId)!.name+"'s results":undefined}/>;
+ return error?<AsyncTurnStage matchId={matchId} title={error}><button onClick={()=>void load()}>Retry</button></AsyncTurnStage>:handoff?<AsyncTurnStage matchId={matchId} title="Your turn!"/>:event&&home?<AttemptReview activeTurn key={event.id} event={event} events={state!.events} home={home} {...{childId,matchId,userId}} onDone={()=>{reviewed.current=true;return load();}}/>:<AsyncTurnStage matchId={matchId} title={home.players.some(p=>p.id!==userId&&home.lineup.find(c=>c.id===childId)?.pendingResults?.[p.id])?'Showing '+home.players.find(p=>p.id!==userId)!.name+"'s results":undefined}/>;
 }
 
-// Reviewing a result never admits a gameplay clock or depends on the current actor.
-export function PendingResults({childId,matchId,userId,resumeTurn=false,onReviewed}:Identity&{resumeTurn?:boolean;onReviewed?:(home:Home)=>void}){
- const [home,setHome]=useState<Home|null>(null),[state,setState]=useState<Reviews|null>(null),[error,setError]=useState('');
- const navigate=useNavigate(),generation=useRef(0),visible=useVisible();
- const load=useCallback(async()=>{
-  const version=++generation.current;
-  try{
-   const [h,r]=await Promise.all([delayedRpc<Home>('delayed_home',{p_match:matchId}),delayedRpc<Reviews>('delayed_reviews',{p_child:childId})]);
-   if(version!==generation.current)return;
-   const child=h.lineup.find(c=>c.id===childId);
-   if(h.id!==matchId||!h.players.some(p=>p.id===userId)||!child||h.removedAt)throw Error('Result identity unavailable.');
-   if(child.terminal){navigate('/delayed/'+matchId+'?review='+childId,{replace:true});return;}
-   if(!r.events.some(e=>e.kind==='attempt'&&!e.seen)){
-    const resume=resumeTurn&&!h.held&&child.actor===userId&&Date.parse(child.expiresAt??'')>h.serverAt;
-    if(resume&&onReviewed){onReviewed(h);return;}
-    navigate('/delayed/'+matchId+(resume?'/play/'+childId:''),{replace:true});return;
-   }
-   setHome(h);setState(r);setError('');
-  }catch{if(version===generation.current)setError('Unable to load saved results. Retry safely.');}
- },[childId,matchId,userId,resumeTurn,onReviewed,navigate]);
- useEffect(()=>{if(visible)void load();return()=>{generation.current++;};},[load,visible]);
- useEffect(()=>{const channel=supabase.channel('pending-results:'+childId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>void load()).subscribe();return()=>{void supabase.removeChannel(channel);};},[childId,userId,load]);
- const event=state?.events.find(e=>e.kind==='attempt'&&!e.seen);
- if(error)return <main className="delayed-page"><p role="alert">{error}</p><button onClick={()=>void load()}>Retry</button><Link to={'/delayed/'+matchId}>Match home</Link></main>;
- if(!home||!state||!event)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
- if(home.lineup.find(c=>c.id===childId)?.game==='five-alive')return <FiveAliveSession mode="async" id={childId} matchId={matchId} userId={userId} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'} reviewOnly onReviewsComplete={load}/>;
- return <AttemptReview key={event.id} event={event} events={state.events} home={home} {...{childId,matchId,userId}} restart onDone={load}/>;
-}
-
-function AttemptReview({event,events,home,onDone,childId,matchId,userId,acknowledgeEvents,restart=false}:Identity&{event:ReviewEvent;events:ReviewEvent[];home:Home;onDone:()=>void|Promise<void>;acknowledgeEvents?:string[];restart?:boolean}){
- const [scores]=useState(()=>reviewScoreContext(event,events,home,childId,userId));
+function AttemptReview({event,events,home,onDone,childId,matchId,userId,acknowledgeEvents,restart=false,activeTurn=false}:Identity&{event:ReviewEvent;events:ReviewEvent[];home:Home;onDone:()=>void|Promise<void>;acknowledgeEvents?:string[];restart?:boolean;activeTurn?:boolean}){
+ const [scores]=useState(()=>reviewScoreContext(event,events,home,childId,userId,activeTurn));
  const [boardFailed,setBoardFailed]=useState(false);
  const schedule=reviewSchedule(event),reduced=useReduced(),intro=event.receipt.game==='ptown-words'?0:3000,total=intro+(reduced?0:schedule.presentationEnd)+ASYNC_SCORE_HOLD_MS,[prior,setPrior]=useState<number|null>(null),activeView=useVisible(),duration=prior===null?total:Math.max(ASYNC_SCORE_HOLD_MS,total-prior),{elapsed,done,active}=usePlayback(duration,event.id+':'+prior),busy=useRef(false),[error,setError]=useState(''),[beginRetry,setBeginRetry]=useState(0);
  useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(restart||event.seen||event.receipt.game==='mega-card-golf'?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry,restart]);
@@ -110,15 +81,15 @@ function AttemptReview({event,events,home,onDone,childId,matchId,userId,acknowle
  return <div className="async-result-review async-turn"><div className="delayed-turn-nav"><Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link><span>{event.receipt.game==='ptown-words'?(event.receipt.move?`${event.actorName??'Opponent'} · ${turnLabel(event.receipt.move)} · `:'Final board'): <>{event.actorName??'Opponent'} · {event.receipt.game==='mega-card-golf'?'Hole':'Round'} {event.round} · </>}{(event.receipt.game!=='ptown-words'||event.receipt.move?.action==='place')&&Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
   {event.receipt.game==='mega-card-golf'&&<button className="delayed-secondary" disabled={!active} onClick={()=>void acknowledge()}>Skip Animation</button>}
   {!active&&<p role="status">Return online to finish reviewing.</p>}{error&&<p role="alert">{error}<button onClick={()=>void acknowledge()}>Retry</button></p>}
-  <SnapshotBoundary onFailure={()=>setBoardFailed(true)}><SavedBoard key={event.id+':'+prior} event={event} scores={scores} holeResults={home.lineup.find(c=>c.id===childId)?.holeResults??[]} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
+  <SnapshotBoundary onFailure={()=>setBoardFailed(true)}><SavedBoard activeTurn={activeTurn} key={event.id+':'+prior} event={event} scores={scores} holeResults={home.lineup.find(c=>c.id===childId)?.holeResults??[]} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
  </div>;
 }
 
-function SavedBoard({event,scores,childId,userId,elapsed,holeResults}:{holeResults:{actor:string;hole:number;score:number;at:number}[];event:ReviewEvent;scores:ReturnType<typeof reviewScoreContext>;childId:string;userId:string;elapsed:number}){
+function SavedBoard({activeTurn,event,scores,childId,userId,elapsed,holeResults}:{activeTurn:boolean;holeResults:{actor:string;hole:number;score:number;at:number}[];event:ReviewEvent;scores:ReturnType<typeof reviewScoreContext>;childId:string;userId:string;elapsed:number}){
  const scoreRoot=useRef<HTMLDivElement>(null);
  const [tab,setTab]=useState<ShellTabId>('cards'),[playId]=useState(()=>crypto.randomUUID()),actor=event.actor??userId,name=event.actorName??'Opponent',scope='review:'+event.id+':'+playId,schedule=reviewSchedule(event),active=useVisible();
  const origin=1_000_000,now=origin+elapsed;
- const board=useMemo(()=>{const saved=rebaseReviewBoard(event,origin,scores.before);
+ const board=useMemo(()=>{const saved=rebaseReviewBoard(event,origin,scores.before,scores.after);
   return saved&&event.receipt.game==='ptown-words'?{...saved,scores:{...saved.scores,[userId]:scores.players.find(p=>p.id===userId)?.score??0}}:saved;
  },[event,scores,userId]);
  const runView=event.receipt.game==='run21'&&board?{config:event.receipt.rules,roundId:scope,roundNumber:event.round,viewerId:userId,boards:{[actor]:board},players:scores.players,active_player_id:null,liveBoards:true,revealed:true,cumulative:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),scorePresentation:{playerId:actor,startedAt:origin+schedule.countStart,endsAt:origin+schedule.countEnd,from:scores.before,to:scores.after},presentationKey:scope}:undefined;
@@ -141,9 +112,8 @@ function SavedBoard({event,scores,childId,userId,elapsed,holeResults}:{holeResul
  if(event.receipt.game==='quintzee')return <QuintzeeView replay {...base} actor={userId} userId={userId} now={now} snapshot={{id:childId,revision:1,scope,serverAt:origin,theme:'modern',pausedAt:null,status:'completed',outcome:'active',playerNames:Object.fromEntries(scores.players.map(p=>[p.id,p.name])),state:{rules:board.rules,players,scores:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),round:event.round,turnIndex:players.indexOf(actor),qualified:[],results:[],finished:false,board}} as any}/>;
  if(event.receipt.game==='take-two')return <TakeTwoView replay {...base} userId={userId} now={now} epoch={0} view={{id:childId,revision:1,scope,serverAt:origin,round:event.round,board,canAct:false,paused:false,finished:false,settled:false,solo:false,players:scores.players}}/>;
  if(event.receipt.game==='boxdrop')return <BoxdropView replay {...base} userId={userId} now={now} epoch={0} view={{id:childId,revision:1,scope,serverAt:origin,round:event.round,board,canAct:false,paused:false,pausedAt:null,finished:false,settled:false,solo:false,players:scores.players} as any}/>;
- // Presentation-only replay admits the saved final reveal; complete phase and
- // canAct=false retain the terminal input lock. Isolate receipts from live play.
- if(event.receipt.game==='ptown-words')return <><Dialog open={!!event.receipt.move&&!!nonWordTurn(event.receipt.move)}><DialogContent className="words-dialog words-turn-dialog" showCloseButton={false} onEscapeKeyDown={e=>e.preventDefault()} onPointerDownOutside={e=>e.preventDefault()}><DialogTitle>{name} {event.receipt.move&&nonWordTurn(event.receipt.move)?.description}</DialogTitle><DialogDescription>Recorded turn</DialogDescription></DialogContent></Dialog><PtownWordsView reviewPlayerId={actor} gameplay={false} view={{...board,identity:{sessionId:board.identity?.sessionId??childId,dealerGameId:scope,roundId:scope},revision:1,viewerId:userId,serverAt:origin,canAct:false,paused:false,finished:false,phase:'complete',rack:[],rackCounts:{},financial:{balances:{}}} as any} now={now} pending={false} connected={true} error="" activeTab={tab} setActiveTab={setTab} panel={<p>Saved public board. Private racks are not included.</p>} sessionEnded={false} onIntent={async()=>false} onReconnect={noop}/></>;
+ // Saved turns have their own input lock and never borrow terminal messaging.
+ if(event.receipt.game==='ptown-words')return <><Dialog open={!!event.receipt.move&&!!nonWordTurn(event.receipt.move)}><DialogContent className="words-dialog words-turn-dialog" showCloseButton={false} onEscapeKeyDown={e=>e.preventDefault()} onPointerDownOutside={e=>e.preventDefault()}><DialogTitle>{name} {event.receipt.move&&nonWordTurn(event.receipt.move)?.description}</DialogTitle><DialogDescription>Recorded turn</DialogDescription></DialogContent></Dialog><PtownWordsView replay={activeTurn} reviewScoreBefore={activeTurn?scores.before:undefined} reviewPlayerId={actor} gameplay={false} view={{...board,identity:{sessionId:board.identity?.sessionId??childId,dealerGameId:scope,roundId:scope},revision:1,viewerId:userId,serverAt:origin,canAct:false,paused:false,finished:false,phase:activeTurn?'playing':'complete',rack:[],rackCounts:{},financial:{balances:{}}} as any} now={now} pending={false} connected={true} error="" activeTab={tab} setActiveTab={setTab} panel={<p>Saved public board. Private racks are not included.</p>} sessionEnded={false} onIntent={async()=>false} onReconnect={noop}/></>;
  return <FullscreenGameShell gameplay={false} className={event.receipt.game==='tri-towers'?'tri-scene':'run21-space-theme'} title="Saved result" description={'Round '+event.round} activeTab={tab} setActiveTab={setTab} panel={<p>Saved result · controls disabled</p>} announcement={false} scores={runView&&<div ref={scoreRoot} className="async-score-pills" aria-label="Game scores">{scores.players.map(p=><TriScorePill key={p.id} root={scoreRoot} item={p} value={p.id===actor?displayedScore(runView as any,actor,now):p.score}/>)}</div>}>
   {runView?<><Run21Felt solo layout="fullscreen" playerId={actor} now={now} view={runView as any} hideScoring={elapsed<schedule.medal}/>{active&&elapsed<schedule.medal&&<Run21ScoreCelebration userId={userId} onRetire={noop} receipt={{key:scope,audioEligible:false,aggregate:board.result.aggregate,playerName:name,durationMs:schedule.medal,startedAt:performance.now()-elapsed}}/>}</>:<div className="tri-game" data-tri-towers data-phase={board.phase}><TriTowersBoard replay view={board} canAct={false} onIntent={noop} now={now} roundKey={scope} userId={userId} result={roundResultPresentation({...board.result,id:scope,stage:event.round},board.deadline,board.rules.holdMs,now,board.rules.clearCelebrationMs??0)} scores={scores.players}/></div>}
  </FullscreenGameShell>;
@@ -160,7 +130,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
   const childGame=h.lineup.find(c=>c.id===childId)?.game,words=childGame==='ptown-words';
    let holdChess=false;if(childGame==='chess'&&!query.has('chess-reviewed')){const saved=await delayedRpc<any[]>('chess_history',{p_mode:'async',p_match:matchId,p_id:childId});if(saved[0]?.state.phase==='complete'){const v=saved[0].state;setChessReview({...v,id:childId,revision:0,serverAt:h.serverAt,canAct:false,paused:false,pausedAt:null,finished:true,settled:true,settlement:null,financial:{balances:{},resultId:null,batch:null}});holdChess=true;}}
   if(words){const snapshot=r.finalBoard??await delayedRpc<WordsSnapshot>('delayed_words_inspect',{p_child:childId});setWordsReview(wordsFinalReview(r.events,snapshot,childId,matchId,userId));}
-  setHome(h);setState(r);setOverlay(holdChess?false:words?played.current:!r.events.some(e=>e.kind==='attempt'&&!e.seen)&&(query.has('finished')||!r.events.some(e=>e.kind==='attempt')||played.current));
+  setHome(h);setState(r);setOverlay(holdChess?false:words?played.current:query.has('finished')||!r.events.some(e=>e.kind==='attempt')||played.current);
  }catch{setError('Unable to restore saved results.');}},[matchId,childId,userId,navigate,query]);
  useEffect(()=>{setChessReview(null);setChessContinued(query.has('chess-reviewed'));setHistoryOpen(false);void load();},[load]);
  const final=state?.events.find(e=>e.kind==='child'),child=home?.lineup.find(c=>c.id===childId),winner=final?.receipt.winner??child?.result?.winner,won=winner===userId;
@@ -169,13 +139,13 @@ export function ChildResults({childId,matchId,userId}:Identity){
  const reduced=useReduced(),play=usePlayback(reduced?1200:6000,overlay&&!reviewingFiveAlive?'overlay:'+childId:'waiting'),busy=useRef(false);
  useEffect(()=>{if(reviewingFiveAlive||historyOpen||!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
   .then(()=>delayedRpc<Home>('delayed_home',{p_match:matchId}))
-  .then(fresh=>navigate('/delayed/'+matchId+(mayViewFinale(fresh)?'?finale=1':''),{replace:true}))
+  .then(()=>navigate('/delayed/'+matchId,{replace:true}))
   .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[reviewingFiveAlive,historyOpen,overlay,play.done,final,home,matchId,navigate]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
  if(reviewingFiveAlive)return <FiveAliveSession mode="async" id={childId} matchId={matchId} userId={userId} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'} reviewOnly onReviewsComplete={finishFiveAlive}/>;
  if(chessReview&&!chessContinued)return <ChessFinalReview view={chessReview} matchId={matchId} onContinue={()=>{setChessContinued(true);setOverlay(true);}}/>;
- const event=wordsReview?.event??state.events.find(e=>e.kind==='attempt'&&!e.seen)??state.events.filter(e=>e.kind==='attempt').at(-1);
+ const event=wordsReview?.event??state.events.filter(e=>e.kind==='attempt').at(-1);
  if(!overlay&&event)return <AttemptReview key={event.id} events={state.events} home={home} {...{childId,matchId,userId,event}} acknowledgeEvents={wordsReview?.acknowledge} onDone={()=>{played.current=true;return load();}}/>;
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<>{child.game==='chess'&&<ChessHistoryButton mode="async" matchId={matchId} onOpenChange={setHistoryOpen}/>}<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link></>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
   {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>{child.game==='chess'&&(final?.receipt.reason??child.result?.reason)==='timeout_forfeit'&&<p>{home.players.find(p=>p.id!==winner)?.name??'Player'} timed out</p>}

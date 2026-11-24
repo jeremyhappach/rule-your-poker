@@ -14,16 +14,17 @@ const home=(lineup:ChildSummary[],patch:Partial<Home>={}):Home=>({
  settledAt:null,held:false,lineup,net:0,completed:0,exposure:5,receipt:null,serverAt:now,...patch,
 });
 describe('viewer-specific playability versus turn ownership',()=>{
- it('keeps invitations, playable turns and intermediate opponent reviews independently actionable',()=>{
+ it('makes only invitations, playable turns and unseen completed games actionable',()=>{
   expect(matchLobbyStatus(home([],{status:'invited'}),'b',now).actionable).toBe(true);
   const review=child('run21',{pendingResults:{b:2},playable:false});
-  expect(matchLobbyStatus(home([review]),'a',now)).toMatchObject({own:0,results:2,actionable:true});
+  expect(matchLobbyStatus(home([review]),'a',now)).toMatchObject({own:0,results:0,actionable:false});
   expect(matchLobbyStatus(home([{...review,pendingResults:{a:2}}]),'a',now)).toMatchObject({results:0,actionable:false});
   const own=child('boxdrop',{actor:'a',playable:true});
-  expect(matchLobbyStatus(home([review,own]),'a',now)).toMatchObject({own:1,results:2,actionable:true});
+  expect(matchLobbyStatus(home([review,own]),'a',now)).toMatchObject({own:1,results:0,actionable:true});
   expect(matchLobbyStatus(home([{...review,pendingResults:{}},own]),'a',now).actionable).toBe(true);
   expect(matchLobbyStatus(home([{...review,pendingResults:{}},{...own,actor:'b',playable:false}]),'a',now).actionable).toBe(false);
  });
+ it('counts one unseen final outcome regardless of unread historical turns',()=>{expect(matchLobbyStatus(home([child('ptown-words',{terminal:true,viewed:false,pendingResults:{b:27},reviewCount:28})]),'a',now).results).toBe(1);expect(matchLobbyStatus(home([child('ptown-words',{terminal:true,viewed:true,pendingResults:{b:27}})]),'a',now).results).toBe(0);});
  it.each(['chess','ptown-words','run21','tri-towers','quintzee','boxdrop','mega-card-golf','take-two','crib-lab','chucky-showdown'] as const)('counts the opponent-owned %s turn despite playable=false',game=>{
   expect(matchLobbyStatus(home([child(game)]),'a',now)).toMatchObject({own:0,other:1,actionable:false,nextDeadline:now+180000});
   expect(matchLobbyStatus(home([child(game,{playable:true})]),'b',now)).toMatchObject({own:1,other:0,actionable:true});

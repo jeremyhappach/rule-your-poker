@@ -1,3 +1,7 @@
+# November 24, 2026 — Completed results and latest-turn presentation are separate
+
+An Async result obligation is one unseen final outcome of a completed child game. Ordinary opponent turns are presented only on Take Turn, newest eligible turn only, followed directly by the existing playable owner. Acknowledging that latest cumulative presentation discloses scores through its chronological boundary without fabricating ACKs for historical turns. History retains original board and score chronology. Final child ACKs govern match-finale admission. This supersedes the November 23 active-result queue decision below; no gameplay or financial authority changes.
+
 # November 23, 2026 — Disclosed score and result ACK are independent
 
 An eligible saved result remains reviewable regardless of current turn ownership.

@@ -5,7 +5,7 @@ import {FiveAliveResults,type FiveAliveRevealedWord,type FiveAliveWordResult} fr
 import {FiveAliveOwnResult} from './FiveAliveOwnResult';
 import './fiveAlive.css';
 
-interface WordSnapshot {wordReviews?:{round:number;seen:boolean}[];id:string;revision:number;view:{round:number;ownFinished?:number;opponentFinished?:number;ownResult?:FiveAliveWordResult;revealed:FiveAliveRevealedWord[]}}
+interface WordSnapshot {wordReviews?:{round:number;seen:boolean}[];id:string;revision:number;view:{ownScore?:number;round:number;ownFinished?:number;opponentFinished?:number;ownResult?:FiveAliveWordResult;revealed:FiveAliveRevealedWord[]}}
 /** Reads the same permitted projection as gameplay; browsing never begins/ACKs a replay. */
 export function FiveAliveMatchWords({childId,revision,opponentName}:{childId:string;revision:number;opponentName:string}){
  const [snapshot,setSnapshot]=useState<WordSnapshot|null>(null),[history,setHistory]=useState(false),[error,setError]=useState(''),[retry,setRetry]=useState(0);
@@ -17,9 +17,11 @@ export function FiveAliveMatchWords({childId,revision,opponentName}:{childId:str
  const selectedLast=selected?.ownResult??selected?.revealed.at(-1),selectedOwn=selectedLast&&('own'in selectedLast?selectedLast.own:selectedLast);
  const round=selected?.ownResult?selected.round:selected?.revealed.length??0;
  const prior=selected?.revealed.slice(0,round-1).reduce((total,word)=>total+('own'in word?word.own.score??0:word.score??0),0)??0;
- const opponentScore=selected?.revealed.reduce((total,word)=>total+('opponent'in word?word.opponent.score??0:0),0)??0;
+ const through=Math.max(0,...(snapshot?.wordReviews??[]).filter(r=>r.seen).map(r=>r.round));
+ const opponentScore=view?.revealed.slice(0,through).reduce((total,word)=>total+('opponent'in word?word.opponent.score??0:0),0)??0;
  const close=()=>{setHistory(false);setSelected(null);};
  return <div className="five-alive-match-words">
+  {view&&<div className="delayed-scoreboard" aria-label="Game scores"><div><span>You</span><strong>{(view.ownScore??0).toLocaleString()}</strong></div><div><span>{opponentName}</span><strong>{opponentScore.toLocaleString()}</strong></div></div>}
   {view&&<p>You: {view.ownFinished??view.revealed.length+Number(!!view.ownResult)} of 3 finished · {opponentName}: {view.opponentFinished??view.revealed.length} of 3 finished</p>}
   {own&&<button className="five-alive-word-results" onClick={()=>setSelected(view!)}>View Last Word</button>}
   {error&&<p role="alert">{error} <button onClick={()=>setRetry(n=>n+1)}>Retry</button></p>}

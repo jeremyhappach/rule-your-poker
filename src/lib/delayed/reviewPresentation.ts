@@ -7,12 +7,13 @@ import type {Home} from './client';
 import {takeTwoCountWindow} from '@/lib/takeTwo/roundPresentation';
 import {savedHolePresentation} from '@/lib/megaCardGolf/presentation';
 export const ASYNC_SCORE_HOLD_MS=3000;
-/** Only acknowledged earlier contributions plus the one currently being revealed.
- * Saved board totals may include other unseen rounds and are never the baseline. */
-export function reviewScoreContext(event:ReviewEvent,events:ReviewEvent[],home:Home,childId:string,userId:string){
- const actor=event.actor!,prior=new Map(events.filter(e=>e.kind==='attempt'&&e.actor===actor&&e.seen&&e.round<event.round).map(e=>[e.id,e]));
- const before=event.beforeScore??[...prior.values()].reduce((sum,e)=>sum+(e.score??0),0),after=event.afterScore??before+(event.score??0);
- const own=home.lineup.find(c=>c.id===childId)?.scores?.[userId]??0;
+/** History keeps chronological scores; active entry starts at the last disclosed total. */
+export function reviewScoreContext(event:ReviewEvent,events:ReviewEvent[],home:Home,childId:string,userId:string,activeTurn=false){
+ const actor=event.actor!,prior=new Map(events.filter(e=>e.kind==='attempt'&&e.actor===actor&&e.round<event.round).map(e=>[e.id,e]));
+ const historicBefore=event.beforeScore??[...prior.values()].reduce((sum,e)=>sum+(e.score??0),0),after=event.afterScore??historicBefore+(event.score??0);
+ const disclosed=home.lineup.find(c=>c.id===childId)?.scores;
+ const before=activeTurn&&disclosed&&Object.hasOwn(disclosed,actor)?disclosed[actor]??0:historicBefore;
+ const own=(!activeTurn?event.board?.scores?.[userId]:undefined)??home.lineup.find(c=>c.id===childId)?.scores?.[userId]??0;
  return {before,after,players:home.players.map(p=>({...p,score:p.id===actor?after:own,active:p.id===actor}))};
 }
 /** Rebase saved timestamps only; use the frozen game's existing presentation schedule. */
@@ -46,7 +47,7 @@ export function reviewSchedule(event:ReviewEvent){
  const window=tri&&!['tri-towers/3','tri-towers/4','tri-towers/5'].includes(rules.version)?{start:0,end:2800}:triCountWindow(clear,celebration);
  return {duration:Math.max(window.end,tri?rules.holdMs+celebration:box?rules.holdMs:rules.resultMs),countStart:window.start,countEnd:window.end,presentationEnd:tri&&!['tri-towers/3','tri-towers/4','tri-towers/5'].includes(rules.version)?3100:celebration+TRI_ROUND_TIMELINE.homeAt,medal:0};
 }
-export function rebaseReviewBoard(event:ReviewEvent,origin:number,scoreBefore?:number){
+export function rebaseReviewBoard(event:ReviewEvent,origin:number,scoreBefore?:number,scoreAfter?:number){
  if(!event.board)return null;const b=structuredClone(event.board),schedule=reviewSchedule(event);
  if(event.receipt.game==='ptown-words'&&event.actor&&event.afterScore!==undefined){
   b.scores={...b.scores,[event.actor]:event.afterScore};
@@ -56,16 +57,16 @@ export function rebaseReviewBoard(event:ReviewEvent,origin:number,scoreBefore?:n
  b.deadline=origin+schedule.duration;
  if(event.receipt.game==='crib-lab'){
   b.phaseUntil=origin+schedule.duration;
-  if(b.result){b.result.scoredAt=origin;b.result.before=scoreBefore??b.result.before;b.result.cumulative=b.result.before+(event.score??0);b.score=b.result.cumulative;}
+  if(b.result){b.result.scoredAt=origin;b.result.before=scoreBefore??b.result.before;b.result.cumulative=scoreAfter??b.result.before+(event.score??0);b.score=b.result.cumulative;}
   return b;
  }
  if(event.receipt.game==='chucky-showdown'){
-  b.since=origin;b.due=origin+2350;b.score=(scoreBefore??0)+(event.score??0);
+  b.since=origin;b.due=origin+2350;b.score=scoreAfter??(scoreBefore??0)+(event.score??0);
   return b;
  }
  if(b.result){b.result.at=origin;b.result.completedAt=origin;}
  if(scoreBefore!==undefined&&event.receipt.game!=='run21'&&event.receipt.game!=='ptown-words'){
-  b.scoreBefore=scoreBefore;b.score=scoreBefore+(event.score??0);
+  b.scoreBefore=scoreBefore;b.score=scoreAfter??scoreBefore+(event.score??0);
   if(b.result){b.result.scoreBefore=scoreBefore;b.result.score=b.score;b.result.displayScore=b.score;}
  }
  if(b.celebration)b.celebration=null;

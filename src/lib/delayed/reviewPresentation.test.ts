@@ -25,9 +25,9 @@ describe('viewer-safe cumulative replay context',()=>{
   const board=rebaseReviewBoard(current,1000,context.before);
   expect(board.result).toMatchObject({scoreBefore:19803,score:39848,stageScore:20045});expect(current.board.score).toBe(999999);
  });
- it('excludes unseen earlier and future contributions and deduplicates delivered events',()=>{
+ it('retains chronological earlier contributions without future scores and deduplicates events',()=>{
   const values=[prior,prior,current,{...prior,id:'hidden',round:0,score:70000,seen:false},{...prior,id:'future',round:3,score:60000}];
-  expect(reviewScoreContext(current,values,home,'child','me').after).toBe(39848);
+  expect(reviewScoreContext(current,values,home,'child','me').after).toBe(109848);
  });
  it('replaying an acknowledged round does not add it twice',()=>{
   const seen={...current,seen:true};expect(reviewScoreContext(seen,[prior,seen],home,'child','me').after).toBe(39848);

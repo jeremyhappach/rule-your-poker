@@ -2,21 +2,25 @@ import type {ChildSummary,Home} from './client';
 
 // A historical finale ACK does not mean that all child reveals were watched.
 export const mayViewFinale=(home:Home)=>!!home.receipt&&home.reviewsComplete===true;
-export const needsChildReview=(child:ChildSummary,userId:string)=>child.terminal&&
- (child.viewed===false||Object.entries(child.pendingResults??{}).some(([actor,count])=>actor!==userId&&count>0));
+export const needsChildReview=(child:ChildSummary,_userId:string)=>child.terminal&&child.viewed===false;
 
 // Server eligibility includes same-deal embargoes. Turn ownership is independent.
-export const pendingReviewCount=(child:ChildSummary,userId:string)=>child.reviewCount??
- (Object.entries(child.pendingResults??{}).reduce((n,[actor,count])=>n+(actor!==userId?count:0),0)
-  +(child.terminal&&child.viewed===false?1:0));
+export const pendingReviewCount=(child:ChildSummary,userId:string)=>Number(needsChildReview(child,userId));
 export const hasPendingReview=(child:ChildSummary,userId:string)=>pendingReviewCount(child,userId)>0;
+
+export function latestTurnReview(value:Reviews){
+ const latest=value.turnReviewId===undefined
+  ?value.events.filter(e=>e.kind==='attempt').sort((a,b)=>a.round-b.round).at(-1)
+  :value.events.find(e=>e.id===value.turnReviewId);
+ return latest&&!latest.seen&&latest.round>(value.revealedThrough??-1)?latest:undefined;
+}
 
 export interface ReviewEvent {
  id:string;kind:'attempt'|'child';actor:string|null;actorName?:string;round:number;score:number|null;at:string;
  receipt:{game:string;rules:any;result?:any;move?:any;reason?:string;winner?:string|null;stake?:number;organizerDelta?:number;opponentDelta?:number};
  board:any;seen:boolean;beforeScore?:number;afterScore?:number;
 }
-export interface Reviews {events:ReviewEvent[];finalBoard?:import('@/lib/ptownWords/model').WordsSnapshot;terminal:boolean;actor:string;segment:number;revision:number;started:boolean;expiresAt:string;held:boolean;serverAt:number}
+export interface Reviews {turnReviewId?:string|null;revealedThrough?:number|null;events:ReviewEvent[];finalBoard?:import('@/lib/ptownWords/model').WordsSnapshot;terminal:boolean;actor:string;segment:number;revision:number;started:boolean;expiresAt:string;held:boolean;serverAt:number}
 export const money=(n:number)=>`${n<0?'−':n>0?'+':''}$${Math.abs(n).toLocaleString()}`;
 export const turnTime=(expires:string|null,now:number)=>{
  const minutes=Math.max(0,Math.ceil((Date.parse(expires??'')-now)/60000));

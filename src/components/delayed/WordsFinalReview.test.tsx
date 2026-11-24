@@ -50,20 +50,20 @@ it.each([false,true])('only final turn and crosses → count → adjusted board 
  expect(screen.getByText('Opponent wins')).toBeTruthy();
  expect(ui.container.querySelector('.words-viewport')?.getAttribute('data-zoom')).toBe('1');expect(acks()).toEqual([]);
  await advance(2999);emphasis();expect(screen.queryByText('Game Complete')).toBeNull();expect(acks()).toEqual([]);
- await advance(101);expect(screen.getByText('Game Complete')).toBeTruthy();expect(acks()).toEqual(['turn-1','turn-3','turn-5']);
- await advance(6100);expect(acks()).toEqual(['turn-1','turn-3','turn-5','child-result']);expect(screen.getByTestId('path').textContent).toBe(matchEnds?'?finale=1':'');
+ await advance(101);expect(screen.getByText('Game Complete')).toBeTruthy();expect(acks()).toEqual(['turn-5']);
+ await advance(6100);expect(acks()).toEqual(['turn-5','child-result']);expect(screen.getByTestId('path').textContent).toBe('');
 });
-it('partial acknowledgement failure cannot announce completion; retry is idempotent and never replays history',async()=>{
- failAck='turn-3';mount();await flush();await advance(7800);expect(screen.getByRole('alert')).toBeTruthy();expect(fixture.events[0].seen).toBe(true);expect(screen.queryByText('Game Complete')).toBeNull();
+it('latest-turn acknowledgement failure cannot announce completion; retry is idempotent and never replays history',async()=>{
+ failAck='turn-5';mount();await flush();await advance(7800);expect(screen.getByRole('alert')).toBeTruthy();expect(fixture.events[0].seen).toBe(false);expect(screen.queryByText('Game Complete')).toBeNull();
  failAck='';fireEvent.click(screen.getByRole('button',{name:'Retry'}));await flush();expect(screen.getByText('Game Complete')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_begin')).toHaveLength(1);
 });
 it('reload after partial acknowledgement resumes only the final turn and retains a full final-board hold',async()=>{
  fixture.events[0].seen=true;elapsed=60000;const ui=mount();await flush();expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();expect(ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent).toBe('385');
- await advance(2999);expect(acks()).toEqual([]);await advance(101);expect(acks()).toEqual(['turn-3','turn-5']);
+ await advance(2999);expect(acks()).toEqual([]);await advance(101);expect(acks()).toEqual(['turn-5']);
 });
 it('an already-viewed final turn cannot send an older pending word back into playback',async()=>{
  fixture.events[2].seen=true;mount();await flush();expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();await advance(7800);
- expect(acks()).toEqual(['turn-1','turn-3']);expect(screen.getByText('Game Complete')).toBeTruthy();
+ expect(acks()).toEqual([]);expect(screen.getByText('Game Complete')).toBeTruthy();
  expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_begin').map(c=>c[1].p_event)).toEqual(['turn-5']);
 });
 it('offline or background review cannot acknowledge results early',async()=>{

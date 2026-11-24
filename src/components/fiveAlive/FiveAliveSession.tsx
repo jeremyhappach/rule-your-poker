@@ -72,7 +72,7 @@ export function FiveAliveSession({mode,id,userId,matchId,opponentName='Opponent'
   return()=>{if(generation.current===ticket)generation.current=ticket+1;void supabase.removeChannel(channel);window.removeEventListener('online',recover);document.removeEventListener('visibilitychange',recover);};
  },[mode,id,userId,refresh,clearPresentation]);
  const act=useCallback(async(intent:{type:'guess';word:string}|{type:'abandon'})=>{
-  const current=latest.current;if(!current||busy.current||presenting.current||connectionBlocked||current.held||current.terminal||current.status!=='active'||current.wordReviews?.some(item=>!item.seen))return false;
+  const current=latest.current;if(!current||busy.current||presenting.current||connectionBlocked||current.held||current.terminal||current.status!=='active'||current.wordReviews?.at(-1)?.seen===false)return false;
   busy.current=true;setInvalidAttempt(undefined);setPending(true);setSubmission(current);const ticket=generation.current,epoch=presentationEpoch.current;
   const command=mode==='arcade'?{op:'action',requestId:crypto.randomUUID(),revision:current.revision,roundId:current.view.roundId,intent}
    :{op:'action',requestId:crypto.randomUUID(),revision:current.revision,segment:current.segment,intent};
@@ -111,7 +111,7 @@ export function FiveAliveSession({mode,id,userId,matchId,opponentName='Opponent'
  },[mode,id,userId,request,accept,refresh,connectionBlocked,showPresentation]);
  const back=()=>navigate(mode==='arcade'?'/arcade/five-alive'+(snapshot?.status==='completed'?'?result='+id:''):'/delayed/'+matchId);
  const display=presentation?.snapshot??submission??snapshot;
- const review=mode==='async'?snapshot?.wordReviews?.find(item=>!item.seen):undefined;
+ const review=mode==='async'?snapshot?.wordReviews?.at(-1)?.seen===false?snapshot.wordReviews.at(-1):undefined:undefined;
  const reviewWord=review?snapshot?.view.revealed[review.round-1]:undefined;
  const reviewDone=useCallback(async()=>{await refresh();},[refresh]);
  const failureDone=useCallback(()=>{clearPresentation();navigate('/delayed',{replace:true});},[clearPresentation,navigate]);
@@ -122,13 +122,15 @@ export function FiveAliveSession({mode,id,userId,matchId,opponentName='Opponent'
  },[mode,reviewOnly,snapshot?.terminal,review,presentation,submission,history,rules,matchId,id,navigate]);
  const prior:[number,number]=[0,0];
  if(review)for(const word of snapshot?.view.revealed.slice(0,review.round-1)??[]){if('own'in word){prior[0]+=word.own.score??0;prior[1]+=word.opponent.score??0;}}
+ const scoreAfter:[number,number]=[prior[0]+(reviewWord&&'own'in reviewWord?reviewWord.own.score??0:0),prior[1]+(reviewWord&&'own'in reviewWord?reviewWord.opponent.score??0:0)];
+ if(review){const through=Math.max(0,...(snapshot?.wordReviews??[]).filter(r=>r.seen).map(r=>r.round));prior[1]=snapshot?.view.revealed.slice(0,through).reduce((n,word)=>n+('opponent'in word?word.opponent.score??0:0),0)??0;}
  const current=display?.view.current?.waiting?{...display.view.current,guesses:display.view.ownResult?.guesses}:display?.view.current;
  const lastWord=display?.view.ownResult??display?.view.revealed.at(-1);
  const lastResult=lastWord&&('own'in lastWord?lastWord.own:lastWord);
  const needsIntro=mode==='async'&&!reviewOnly&&!review&&!presentation&&!submission&&!history&&!rules&&snapshot?.view.current&&!snapshot.view.current.completed&&snapshot.view.round>introduced;
  if(needsIntro)return <FiveAliveIntro identity={id+':word:'+snapshot.view.round} title={'Word '+snapshot.view.round} matchId={matchId} userId={userId} bell onDone={finishIntro}/>;
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen">
-  {review&&reviewWord&&'own'in reviewWord&&!presentation&&!submission&&!history&&!rules?<FiveAliveOpponentReview key={review.id} event={review} own={reviewWord.own} opponent={reviewWord.opponent} prior={prior} userId={userId} matchId={matchId} opponentName={opponentName} onDone={reviewDone} onBack={back} onRules={()=>setRules(true)}/>:display?<><FiveAliveBoard key={`${mode}:${id}:${userId}:${display.view.round}`} mode={mode} round={display.view.round} opponentName={opponentName} score={animatedScore??((display.view.ownScore??display.view.score??display.score??0)+(display.view.ownResult?.score??0))}
+  {review&&reviewWord&&'own'in reviewWord&&!presentation&&!submission&&!history&&!rules?<FiveAliveOpponentReview key={review.id} event={review} own={reviewWord.own} opponent={reviewWord.opponent} prior={prior} scoreAfter={scoreAfter} userId={userId} matchId={matchId} opponentName={opponentName} onDone={reviewDone} onBack={back} onRules={()=>setRules(true)}/>:display?<><FiveAliveBoard key={`${mode}:${id}:${userId}:${display.view.round}`} mode={mode} round={display.view.round} opponentName={opponentName} score={animatedScore??((display.view.ownScore??display.view.score??display.score??0)+(display.view.ownResult?.score??0))}
    scoreRef={scoreRef} opponentScore={display.view.opponentScore} current={current??null} pending={pending||connectionBlocked||!!display.held||!!presentation||!!award||!!review||reviewOnly||rules||history||abandon} error={error}
    reveal={presentation?.phase==='reveal'?{id:presentation.id,row:presentation.row,helper:presentation.helper}:undefined} onRevealComplete={finishReveal} invalidAttempt={invalidAttempt} onHelperDrop={helperDrop}
    notice={<>{mode==='async'&&<p className="five-alive-progress">You: {display.view.ownFinished??display.view.revealed.length+Number(!!display.view.ownResult)} of 3 finished · {opponentName}: {display.view.opponentFinished??display.view.revealed.length} of 3 finished</p>}

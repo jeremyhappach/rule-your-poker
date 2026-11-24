@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-24",
+  "approval": "Explicit full corrective scope in user message",
+  "supersedes": "async-result-revalidation-20261124.json acceptance interpretation",
+  "migration": "20261124164546",
+  "scope": "Presentation, review eligibility and read projections only",
+  "database": {
+    "candidateAndIdempotence": "passed",
+    "installedRollback": "passed",
+    "coverage": [
+      "winner",
+      "tie",
+      "duplicate",
+      "replay",
+      "late replay",
+      "authorization",
+      "continuation",
+      "terminal state",
+      "canonical financial settlement",
+      "active results count zero",
+      "temporal history scores",
+      "legacy disclosed baseline",
+      "zero point turns",
+      "no gameplay writes"
+    ],
+    "preserved": [
+      {
+        "child": "c43c5ca8-7edc-42a4-85a9-1959a00e3a6d",
+        "hash": "5cf8e5981e0e54912e6da873bed8d446",
+        "revision": 55,
+        "startedAt": null
+      },
+      {
+        "child": "a8d4272a-0b66-4f22-b712-cbad9aa89aa5",
+        "hash": "02e8b17adb2e72798de7e06dd3c63652",
+        "revision": 18,
+        "startedAt": null
+      }
+    ]
+  },
+  "browser": {
+    "authentication": "isolated bearer sessions through the production auth guard; HTTP fixture responses; database behavior proven separately in rollback SQL",
+    "checks": [
+      "Words: 13 historical turns, zero final results, sole Take Turn, latest only, no terminal copy, direct playable entry, interrupted reveal, offline recovery, refresh",
+      "quintzee: latest-only reveal reaches existing gameplay owner without Match Home",
+      "run21: latest-only reveal reaches existing gameplay owner without Match Home",
+      "tri-towers: latest-only reveal reaches existing gameplay owner without Match Home",
+      "boxdrop: latest-only reveal reaches existing gameplay owner without Match Home",
+      "Completed Words: one final-result obligation, final outcome acknowledged, return to Match Home, historical ACKs unchanged",
+      "take-two: latest-only reveal reaches existing gameplay owner without Match Home",
+      "crib-lab: latest-only reveal reaches existing gameplay owner without Match Home",
+      "chucky-showdown: latest-only reveal reaches existing gameplay owner without Match Home",
+      "mega-card-golf: latest-only reveal reaches existing gameplay owner without Match Home",
+      "Five Alive: concealed cumulative score, latest mutually completed word only, older history retained, direct playable next word"
+    ],
+    "artifacts": "qualification.local/canonical-browser"
+  },
+  "validation": {
+    "applicationTests": 4425,
+    "harnessTests": 241,
+    "releaseToolTests": 46
+  },
+  "ownerGameplayAcceptance": "pending"
+}

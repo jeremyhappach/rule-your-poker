@@ -23,19 +23,22 @@ BEGIN
  PERFORM set_config('request.jwt.claim.sub',a::text,true);
  h:=public.delayed_home(m);r:=public.delayed_reviews(c);
  PERFORM pg_temp.fa_assert(h#>>ARRAY['lineup','0','scores',b::text]='195','legacy nonzero score retained');
- PERFORM pg_temp.fa_assert(h#>>'{lineup,0,reviewCount}'='2' AND jsonb_array_length(r->'events')=2,'eligible event count independent of opponent turn');
+ PERFORM pg_temp.fa_assert(h#>>'{lineup,0,reviewCount}'='0' AND jsonb_array_length(r->'events')=2,'active game has zero result obligations and retains history');
+ PERFORM pg_temp.fa_assert(r->>'turnReviewId'=(SELECT id::text FROM private.delayed_review_events WHERE child_id=c AND round=2),'entry selects only latest opponent turn');
+ PERFORM pg_temp.fa_assert((SELECT x->>'beforeScore'='0' AND x->>'afterScore'='195' FROM jsonb_array_elements(r->'events') x WHERE x->>'round'='1'),'history retains temporal cumulative scores');
  PERFORM pg_temp.fa_assert((SELECT count(*) FROM private.delayed_review_seen)=before_seen,'no fabricated legacy ACK');
  PERFORM pg_temp.fa_assert(public.delayed_words_inspect(c)#>>ARRAY['scores',b::text]='195','inspection conceals new cumulative score');
  PERFORM pg_temp.fa_assert(jsonb_array_length(public.delayed_words_inspect(c)->'moves')=1,'inspection conceals new play history');
  SELECT state INTO before_state FROM private.delayed_children WHERE id=c;
  SELECT count(*) INTO before_commands FROM private.delayed_word_commands;
- SELECT id INTO e FROM private.delayed_review_events WHERE child_id=c AND round=1;
+ SELECT id INTO e FROM private.delayed_review_events WHERE child_id=c AND round=2;
  PERFORM public.delayed_review_begin(e);
- PERFORM pg_temp.fa_assert(public.delayed_home(m)#>>'{lineup,0,reviewCount}'='2','interrupted begin retains unread');
- PERFORM public.delayed_review_ack(e);PERFORM public.delayed_review_ack(e);
+ PERFORM pg_temp.fa_assert(public.delayed_home(m)#>>'{lineup,0,reviewCount}'='0','interrupted turn reveal is not a final result');
+ -- A late historical ACK cannot regress the previously disclosed total.
+ PERFORM public.delayed_review_ack((SELECT id FROM private.delayed_review_events WHERE child_id=c AND round=1));
  PERFORM pg_temp.fa_assert(public.delayed_home(m)#>>ARRAY['lineup','0','scores',b::text]='195','old replay does not regress disclosed total');
  SELECT id INTO e FROM private.delayed_review_events WHERE child_id=c AND round=2;
- PERFORM public.delayed_review_begin(e);PERFORM public.delayed_review_ack(e);
+ PERFORM public.delayed_review_begin(e);PERFORM public.delayed_review_ack(e);PERFORM public.delayed_review_ack(e);
  h:=public.delayed_home(m);
  PERFORM pg_temp.fa_assert(h#>>ARRAY['lineup','0','scores',b::text]='237' AND h#>>'{lineup,0,reviewCount}'='0','ACK reconciles exact score and count');
  PERFORM pg_temp.fa_assert((SELECT state=before_state AND actor=b FROM private.delayed_children WHERE id=c)
@@ -49,7 +52,7 @@ BEGIN
    jsonb_build_object('turn',(s->>'turn')::int,'playerId',b,'action',CASE WHEN label='timeout' THEN 'pass' ELSE label END,'points',0,'timeout',label='timeout','words','[]'::jsonb)));
   UPDATE private.delayed_children SET state=s,actor=a WHERE id=c;
  END LOOP;
- PERFORM pg_temp.fa_assert(public.delayed_home(m)#>>'{lineup,0,reviewCount}'='3','pass exchange timeout counted on own turn');
+ PERFORM pg_temp.fa_assert(public.delayed_home(m)#>>'{lineup,0,reviewCount}'='0','ordinary turns are never final result obligations');
  PERFORM pg_temp.fa_assert(public.delayed_home(m)#>>ARRAY['lineup','0','scores',b::text]='237','zero changes retain nonzero baseline');
  PERFORM set_config('request.jwt.claim.sub',(SELECT outsider::text FROM fa_actors),true);
  BEGIN PERFORM public.delayed_reviews(c);RAISE EXCEPTION 'unauthorized review';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
