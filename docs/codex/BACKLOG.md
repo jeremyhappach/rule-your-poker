@@ -1,6 +1,6 @@
 ## Implemented — Canonical async lifecycle correction — November 24, 2026
 
-Jeremy approved the complete correction, including completed-only result obligations, latest-only Take Turn reveal, direct playable handoff, correct score disclosure and historical snapshots. This supersedes the earlier narrow false-tie follow-up and the rejected active-result queue behavior. Implementation and qualification are recorded in [CURRENT_RELEASE.md](CURRENT_RELEASE.md) and [the evidence receipt](evidence/async-canonical-lifecycle-20261124.json). Production publication and Jeremy gameplay smoke are release follow-through, not a request for another product approval.
+Jeremy approved the complete correction, including completed-only result obligations, latest-only Take Turn reveal, direct playable handoff, correct score disclosure and historical snapshots. This supersedes the earlier narrow false-tie follow-up and the rejected active-result queue behavior. Implementation and qualification are recorded in [CURRENT_RELEASE.md](CURRENT_RELEASE.md) and [the evidence receipt](evidence/async-canonical-lifecycle-20261124.json). Commit `d560f4933` is published; exact-SHA deployment and authenticated read-only production lobby/card checks passed November 24. Jeremy gameplay smoke remains pending, not a request for another product approval.
 
 ## Resolved — Vercel production publication delay — November 23, 2026
 

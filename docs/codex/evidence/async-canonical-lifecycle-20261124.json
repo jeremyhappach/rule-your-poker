@@ -60,5 +60,27 @@
     "harnessTests": 241,
     "releaseToolTests": 46
   },
+  "production": {
+    "verifiedAt": "2026-11-24T20:50:05Z",
+    "commit": "d560f493362596820202aab809c64328f8925013",
+    "deployment": "dpl_EJeGN14K2TCU7bM9JjBV3uvGEXxX",
+    "state": "READY",
+    "domain": "https://holm357.com",
+    "manifest": {
+      "publishedAt": "2026-11-24T17:31:19.026Z",
+      "bundleFilename": "assets/index-BaChSiVV.js"
+    },
+    "authentication": "Existing signed-in Hap session in production Chrome; real hosted application and API responses, no response substitution",
+    "readOnlyChecks": [
+      "Hard-refreshed lobby: both active Words matches and active Quintzee match have zero result obligations",
+      "Hap–mcru81 Words: Take Turn only; Hap 261, opponent disclosed 275 with Pending; no View Result",
+      "Hap–TheOG Words: Take Turn only; scores 90–71; no View Result",
+      "Three-game Quintzee match: two Take Turn cards and one Opponent’s turn card; no View Result",
+      "Completed Bobbalouie Chess: one lobby result obligation and View Result card",
+      "Returned lobby retains the same result/turn classification"
+    ],
+    "productionMutations": "None: no turn entry, result acknowledgement, deletion, settlement or data repair",
+    "boundary": "Full reveal/recovery/final-ACK flows qualified with the isolated HTTP browser fixtures and rollback SQL above; production checks cover deployment, authentication, lobby classification, card actions and disclosed scores. The earlier preserved hashes describe the implementation proof checkpoint, not a claim that users have not played since."
+  },
   "ownerGameplayAcceptance": "pending"
 }
