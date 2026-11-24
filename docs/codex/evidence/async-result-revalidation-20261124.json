@@ -1,0 +1,91 @@
+{
+  "date": "2026-11-24",
+  "timezone": "America/Chicago",
+  "kind": "production_revalidation_of_existing_release",
+  "buildId": "fe201899551e8bf850fd07f1683e869fcade2e13",
+  "publishedAt": "2026-11-24T03:53:01.443Z",
+  "bundleFilename": "assets/index-BYXq98hW.js",
+  "manifestUrl": "https://holm357.com/build-manifest.json",
+  "migrationVerifiedInstalled": "20261124033635",
+  "browser": "Hap's existing authenticated Chrome session",
+  "productCodeChangesInThisRevalidation": false,
+  "databaseRepairInThisRevalidation": false,
+  "acknowledgements": "Normal application playback acknowledged each completed saved result; no direct ACK updates, bulk clearing or fabricated receipts.",
+  "matches": [
+    {
+      "opponent": "mcru81",
+      "matchId": "fb13a42a-14e5-4e5c-9a07-5505d99fef04",
+      "childId": "c43c5ca8-7edc-42a4-85a9-1959a00e3a6d",
+      "turn": 27,
+      "actor": "Hap",
+      "revisionBeforeAndAfter": 55,
+      "stateMd5BeforeAndAfter": "5cf8e5981e0e54912e6da873bed8d446",
+      "gameplayStartedAtBeforeAndAfter": null,
+      "gameplayDueAtBeforeAndAfter": null,
+      "hapScoreBeforeAndAfter": 250,
+      "opponentDisplayedBefore": 272,
+      "opponentAuthoritativeBeforeAndAfter": 275,
+      "opponentDisplayedAfter": 275,
+      "unreadBefore": 7,
+      "unreadAfter": 0,
+      "browserObserved": [
+        "Green View results (7), 272 Pending and Your turn coexist.",
+        "Saved opponent turns replay, including the recorded timeout notice.",
+        "Latest REE result shows three points and cumulative 275.",
+        "Automatic return to Match Home shows 250/275 with no pending badge.",
+        "Reload preserves 250/275; lobby no longer lists unread results for this match."
+      ]
+    },
+    {
+      "opponent": "TheOG",
+      "matchId": "678aebe0-29ff-4a0e-a4f1-0282ea622afc",
+      "childId": "a8d4272a-0b66-4f22-b712-cbad9aa89aa5",
+      "turn": 9,
+      "actor": "Hap",
+      "revisionBeforeAndAfter": 18,
+      "stateMd5BeforeAndAfter": "02e8b17adb2e72798de7e06dd3c63652",
+      "gameplayStartedAtBeforeAndAfter": null,
+      "gameplayDueAtBeforeAndAfter": null,
+      "hapScoreBeforeAndAfter": 90,
+      "opponentDisplayedBeforeAndAfter": 71,
+      "unreadBefore": 4,
+      "unreadAfterInterruptedAttempt": 4,
+      "unreadAfterCompletedPlayback": 0,
+      "browserObserved": [
+        "Green View results (4), 71 Pending and Your turn coexist.",
+        "Navigating back before completion preserves all four unread events.",
+        "Reentry replays saved boards and completes the queue.",
+        "Automatic return shows 90/71 with no pending badge.",
+        "Lobby retains 3/4 complete and Your turn with no unread-result indicator."
+      ]
+    }
+  ],
+  "newAutomatedValidation": {
+    "command1": "node node_modules/vitest/vitest.mjs run src/components/delayed/MatchLobby.test.tsx src/components/delayed/ResultReview.test.tsx src/lib/delayed/lobbyPresentation.test.ts src/lib/delayed/reviewPresentation.test.ts",
+    "command1Passed": 106,
+    "command2": "node node_modules/vitest/vitest.mjs run src/pages/Delayed.wordsInspection.test.tsx --silent",
+    "command2Passed": 8,
+    "failures": 0
+  },
+  "previousReleaseEvidence": {
+    "applicationTests": 4415,
+    "harnessTests": 241,
+    "releaseToolTestsRecorded": 46,
+    "databaseRollbackProof": "supabase/delayed/result-recovery-proof.sql, composed by dev/async-words/result-recovery-proof.mjs; prior candidate and installed execution recorded in CURRENT_RELEASE.md",
+    "reranDatabaseMutationProofThisTurn": false
+  },
+  "limitations": [
+    "Both affected matches were Hap-owned turns at validation; no production turn ownership was altered to recreate opponent-owned turns.",
+    "Browser validation used Hap's session. Opponent projections were inspected read-only, without logging in or acknowledging as either opponent.",
+    "Exact score-animation frames and offline network reconnection were not instrumented in this manual validation.",
+    "The 114 passing tests do not catch the false terminal text observed in real Words replay.",
+    "Owner physical-device gameplay smoke remains pending."
+  ],
+  "remainingPresentationDefect": {
+    "observed": "Active saved Words turns show tie and Final rack deductions applied.",
+    "adapter": "src/components/delayed/ResultReview.tsx:150 forces phase complete for saved replay.",
+    "renderer": "src/components/ptownWords/PtownWordsView.tsx:165 renders terminal copy from that phase, including a tie fallback when terminal winners are absent.",
+    "recommendedFix": "Separate saved-turn review presentation/input locking from actual terminal outcome presentation; preserve score/reveal/ACK behavior and genuine completed results.",
+    "status": "Queued; no product patch made."
+  }
+}

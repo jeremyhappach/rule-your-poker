@@ -24,8 +24,21 @@ The two reported production Words children were preserved: Hap/mcru81 turn 26,
 Hap/TheOG turn 8, 7 saved boards, scores 90/71 and 3 unread opponent events.
 These counts expose previously unacknowledged history; no events were cleared.
 Hap's authenticated browser reproduced the original 250–0 Pending/no-review
-failure before publication. Deployment and production review verification follow
-the approved main push; Jeremy's gameplay smoke remains the acceptance gate.
+failure before publication. Production build `fe201899551e8bf850fd07f1683e869fcade2e13`
+was verified on November 24. Hap's signed-in browser completed both affected
+Words review queues: mcru81 retained 272 Pending before its new three-point
+result, then showed 275; TheOG retained 71. Hap stayed at 250 and 90 respectively.
+Both returned to Match Home and the lobby with zero unread results. An interrupted
+TheOG review preserved all four unread events and resumed successfully. Game-state
+hashes, revisions, actors and unopened gameplay clocks were unchanged by review.
+
+The matches had progressed to Hap's turn before this verification; the original
+opponent-turn condition was not recreated by altering production state. The 114
+focused review/card/inspection tests passed on November 24. Browser validation
+also exposed false `tie / Final rack deductions applied` text during nonterminal
+Words replay, traced to the replay adapter forcing `phase: 'complete'`. This
+presentation follow-up is queued; complete visual acceptance and Jeremy's gameplay
+smoke remain pending. See [verification receipt](evidence/async-result-revalidation-20261124.json).
 
 Local release validation passed: 4,415 application tests, 241 harness tests,
 46 release-tool tests, typecheck and the bundle-size gate. Focused post-review
