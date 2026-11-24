@@ -12,4 +12,3 @@ for(const move of expected.moves){s=playChess(s,s.players[s.turnIndex].id,{type:
 for(const key of ['fen','moves','positions','captured','turn','turnIndex','banks'])assert.deepEqual(JSON.parse(JSON.stringify(s[key])),expected[key],key);
 const receipt={passed:true,ply:s.moves.length,fen:s.fen,actor:s.players[s.turnIndex].id,captured:s.captured,promotionWhite:promotionOptions(s,'w'),promotionBlack:promotionOptions(s,'b')};
 write('qualification.local/chess-untimed/history-replay.json',JSON.stringify(receipt,null,2));console.log(JSON.stringify(receipt));
-

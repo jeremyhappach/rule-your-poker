@@ -74,4 +74,3 @@ try{
  writeFileSync(dir+'/result.json',JSON.stringify({passed:true,authentication:'isolated bearer-authenticated HTTP fixture, not hosted Supabase',cases:['timeout auto sequence and ACK','lobby reconciliation after refresh','match finale ACK','lost ACK retry','interrupted review refresh','untimed actor/reconnect','passive opponent/no clock/no banks'],ackCalls,writeCalls,errors},null,2));
  console.log('PASS authenticated Chess route fixtures, timeout ACK/finale/retry/reconnect and untimed controls');
 }finally{await browser.close();await server.close();}
-

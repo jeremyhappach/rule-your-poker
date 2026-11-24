@@ -181,7 +181,7 @@ BEGIN
     progress:=progress||jsonb_build_object(person,CASE WHEN c.terminal OR next_round>required THEN 'Complete' ELSE 'Next Round: '||next_round END);
    END LOOP;
   END IF;
-  
+
  item:=item||jsonb_build_object('reviewCount',(SELECT count(*) FROM private.delayed_current_review_events e
   WHERE e.child_id=c.id AND c.terminal AND e.kind='child'
    AND private.delayed_take_two_review_allowed(ROW(e.*)::private.delayed_review_events,who)
@@ -495,4 +495,3 @@ DO $retime$ DECLARE parent uuid;BEGIN
  UPDATE private.chess_matches c SET state=private.chess_untimed_state(c.state),revision=c.revision+1
  FROM public.games g WHERE g.id=c.game_id AND NOT g.real_money AND NOT c.finished AND c.settlement IS NULL;
 END $retime$;
-
