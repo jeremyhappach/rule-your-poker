@@ -23,6 +23,7 @@ function Outcome({child,home}:{child:ChildSummary;home:Home}){
   {result.reason&&result.reason!=='normal'?' · '+text(result.reason):''}</span>;
 }
 function Scores({child,home}:{child:ChildSummary;home:Home}){
+ if(child.game==='chess')return null;
  return <div className="delayed-scoreboard" aria-label="Final game scores">{home.players.map(p=>
   <div key={p.id}><span>{p.name}</span><strong>{number(child.scores?.[p.id])}</strong></div>)}</div>;
 }
@@ -46,7 +47,7 @@ export function CompletedMatchRecord({matchId,userId,childId}:{matchId:string;us
    {child&&record.detail?<section aria-label={gameName(child.game)+' completed record'}>
     <AsyncGameHeader game={child.game} name={gameName(child.game)} stake={child.stake}/>
     <Scores home={home} child={child}/><p><Outcome home={home} child={child}/></p>
-    <GameDetails record={record.detail} home={home}/>
+    <GameDetails record={record.detail} home={home} userId={userId}/>
    </section>:<ul className="delayed-lineup" aria-label="Completed match games">
     {[...home.lineup].sort((a,b)=>a.ordinal-b.ordinal).map(c=><li key={c.id} className="delayed-game-card" data-completed>
      <AsyncGameHeader game={c.game} name={gameName(c.game)} stake={c.stake}/>
@@ -90,7 +91,7 @@ function SavedWords({board,home}:{board:WordsSnapshot;home:Home}){
   {home.players.map(p=><p key={p.id}>{p.name}: before adjustments {number(board.preAdjustmentScores?.[p.id])} · rack deduction {number(board.rackDeductions?.[p.id])} · final {number(board.scores?.[p.id])}</p>)}
  </section>;
 }
-function WordResults({record,home}:{record:GameRecord;home:Home}){
+function WordResults({record,home,userId}:{record:GameRecord;home:Home;userId:string}){
  if(!record.words||!Array.isArray(record.words.players)||!Array.isArray(record.words.rounds))return <p>Saved word details unavailable.</p>;
  // The frozen v1 rule core is shared with gameplay; no new scoring formula.
  const compatible=record.config.version===FIVE_ALIVE_RULES.version&&
@@ -99,12 +100,12 @@ function WordResults({record,home}:{record:GameRecord;home:Home}){
  return <section><h3>Word results</h3>{record.words.players.map((actor,index)=><section key={actor}>
   <h4>{home.players.find(p=>p.id===actor)?.name??'Player'}</h4>
   {(record.words!.rounds[index]??[]).map((round,i)=>{
-   const result=compatible?ownRoundProjection(round):null;
+   const result=compatible?ownRoundProjection({...round,guesses:round.guesses.map(g=>g.feedback.length===5&&g.feedback.every(color=>color==='correct')?{...g,word:round.answer}:g)}):null;
    return <article className="record-word" key={i}><h5>Word {i+1}: {round.answer}</h5>
     <p>{fiveAliveTiers[round.difficulty]??'Unknown difficulty'} · {round.completed&&result?result.solved?`${round.guesses.length} ${round.guesses.length===1?'guess':'guesses'}`:'Failed':`${round.guesses.length} guesses used`}</p>
     {round.completed&&result?<p>Base score {number(result.solved?record.config.baseScores[round.guesses.length-1]:0)} × multiplier {number(record.config.multipliers[round.difficulty-1]/100)} = final score {number(result.score)}</p>:
      <p>{round.completed?'Scoring breakdown unavailable for this rules version.':round.guesses.length?'Unfinished when the game ended':'Not played'}</p>}
-    <ol className="record-guesses" aria-label={'Word '+(i+1)+' guesses'}>{round.guesses.map((guess,j)=>{const masked=!guess.word;return <li key={j} aria-label={masked?'Hidden opponent guess':undefined}>{[...(masked?'•••••':guess.word)].map((letter,k)=><span key={k} data-feedback={masked?'absent':guess.feedback[k]} aria-label={masked?'Hidden letter':letter+' '+guess.feedback[k]}>{letter}</span>)}</li>;})}</ol>
+    <ol className="record-guesses" aria-label={'Word '+(i+1)+' guesses'}>{round.guesses.map((source,j)=>{const guess=actor!==userId?{word:j===0?source.word:'',feedback:j===0&&source.word!==round.answer?Array(5).fill('absent'):source.feedback}:source;const masked=!guess.word;return <li key={j} aria-label={masked?'Hidden opponent guess':undefined}>{(masked?Array<string>(5).fill(''):[...guess.word]).map((letter,k)=><span key={k} data-feedback={guess.feedback[k]} aria-label={masked?'Hidden letter '+guess.feedback[k]:letter+' '+guess.feedback[k]}>{letter}</span>)}</li>;})}</ol>
    </article>;
   })}
  </section>)}</section>;
@@ -129,9 +130,9 @@ function AttemptBoard({game,board}:{game:GameRecord['game'];board:Record<string,
 function NumberCards({cards,label}:{cards:unknown[];label:string}){
  return <div className="record-card-row"><strong>{label}</strong><div>{cards.map((card,i)=><span className="record-card" key={i}>{typeof card==='number'&&Number.isInteger(card)&&card>=0&&card<52?cardName(card):'▧'}</span>)}</div></div>;
 }
-export function GameDetails({record,home}:{record:GameRecord;home:Home}){
+export function GameDetails({record,home,userId}:{record:GameRecord;home:Home;userId:string}){
  if(record.game==='chess')return record.board?<ChessFinalPosition view={record.board as ChessSavedPosition}/>:<p>Saved final board unavailable.</p>;
- if(record.game==='five-alive')return <WordResults record={record} home={home}/>;
+ if(record.game==='five-alive')return <WordResults record={record} home={home} userId={userId}/>;
  if(record.game==='ptown-words')return record.board?<SavedWords board={record.board as WordsSnapshot} home={home}/>:<p>Saved final board unavailable.</p>;
  const rounds=[...new Set(record.attempts.map(a=>a.round))].sort((a,b)=>a-b),unit=record.game==='mega-card-golf'?'Hole':'Round';
  return <><h3>{unit}-by-{unit.toLowerCase()} results</h3>

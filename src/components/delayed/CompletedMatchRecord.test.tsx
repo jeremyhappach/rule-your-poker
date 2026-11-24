@@ -38,7 +38,7 @@ it('returns completed Async records to the Async lobby',async()=>{
 it('opens completed history into the full lineup, details and back without live owners',async()=>{
  mount('/');fireEvent.click(await screen.findByRole('link',{name:'See Results'}));
  await screen.findByRole('list',{name:'Completed match games'});
- expect(screen.getAllByLabelText('Final game scores')).toHaveLength(11);
+ expect(screen.getAllByLabelText('Final game scores')).toHaveLength(10);
  fireEvent.click(screen.getByRole('link',{name:'View completed Quintzee'}));
  await screen.findByText('Quintzee scores by round');
  fireEvent.click(screen.getByRole('link',{name:'← Match record'}));
@@ -71,10 +71,11 @@ it('shows every word scoring field for both players, including exact canonical a
 it('renders redacted opponent history as gray placeholders without losing the final score',async()=>{
  const value=recordFixture('five-alive');
  const opponent=value.detail!.words!.rounds[1][0];
- opponent.guesses[0]={word:'',feedback:[]};
+ opponent.guesses[0]={word:'STARE',feedback:Array(5).fill('absent')};
+ opponent.guesses[1]={word:'',feedback:Array(5).fill('correct')};
  mock.rpc.mockResolvedValue(value);mount(matchRecordPath('match','five-alive'));
  expect(await screen.findByLabelText('Hidden opponent guess')).toBeTruthy();
- expect(screen.getAllByLabelText('Hidden letter')).toHaveLength(5);
+ expect(screen.getAllByLabelText('Hidden letter correct')).toHaveLength(5);
  expect(screen.getByText('Base score 700 × multiplier 1.4 = final score 980')).toBeTruthy();
  expect(screen.getAllByText('Word 1: APPLE')).toHaveLength(2);
  expect(mock.request).not.toHaveBeenCalled();

@@ -26,6 +26,11 @@ export function resolveExactRunBackConfig(gameType: string, value: unknown, deal
     return rules?.version==='mega-card-golf/4'&&course&&[3,6,9,18].includes(Number(course.holes))
       ? {ante_amount:config.ante_amount,mega:{version:rules.version,course}} : null;
   }
+  if(gameType==='ptown-words'){
+    const rules=config.rules as Record<string,unknown>|undefined;
+    const enabled=config.words_timer_enabled??rules?.timerEnabled??true,seconds=config.words_turn_seconds??(typeof rules?.turnMs==='number'?rules.turnMs/1000:300);
+    return typeof enabled==='boolean'&&Number.isInteger(seconds)&&Number(seconds)>=30&&Number(seconds)<=3600?{ante_amount:config.ante_amount,words_timer_enabled:enabled,words_turn_seconds:seconds}:null;
+  }
   if (gameType === 'gin-rummy') return resolveExactGinRummyRunBackConfig(config);
   if (['crib-lab','chucky-showdown','horses', 'ship-captain-crew', 'yahtzee', 'run21', 'tri-towers','race-poker','battle-31','ptown-words','boxdrop','trip-flip','take-two', 'royal-flash', 'eleven-up'].includes(gameType)) return { ante_amount: config.ante_amount };
   if (gameType === 'cribbage') {

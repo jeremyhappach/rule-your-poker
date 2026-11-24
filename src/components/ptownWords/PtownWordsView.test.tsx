@@ -13,6 +13,14 @@ import {PtownWordsView} from './PtownWordsView';
 import {shuffleRack,isInvalidWord} from '@/lib/ptownWords/rackPresentation';
 const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,serverAt:1000,rules:{version:'ptown-words/1',dictionaryId:'enable2k/1',dictionarySha256:'hash',turnMs:180000},players:[{id:'me',userId:'u1',name:'You',seat:1,isBot:false},{id:'other',userId:'u2',name:'Pat',seat:2,isBot:true}],viewerId:'me',activePlayerId:'me',board:Array(225).fill(null),rack:[{id:1,face:'C',value:3},{id:2,face:'A',value:1},{id:3,face:'?',value:0}],scores:{me:0,other:0},turn:1,deadline:181000,canAct:true,paused:false,phase:'playing',bagCount:86,rackCounts:{me:3,other:7},pausedAt:null,finished:false,settlement:null,financial:{balances:{me:100,other:100},resultId:null,batch:null},moves:[],event:{label:'Game started',points:0}} as WordsSnapshot;
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
+it('keeps an untimed Live turn playable without clock, banks or countdown sound',()=>{
+ const untimed={...view,deadline:null,rules:{...view.rules,version:'ptown-words/5',timerEnabled:false,timeBankUses:2}};
+ const ui=render(<PtownWordsView {...props} view={untimed} now={9999999}/>);
+ expect(ui.container.querySelector('.words-clock')).toBeNull();expect(screen.queryByRole('button',{name:/Use time bank/})).toBeNull();
+ expect((screen.getByRole('button',{name:'Pass'}) as HTMLButtonElement).disabled).toBe(false);expect(countdownSound).not.toHaveBeenCalled();
+ ui.rerender(<PtownWordsView {...props} asyncDraftUserId="u1" view={{...view,rules:{...view.rules,version:'ptown-words/4',timeBankUses:2},playDeadline:181000}}/>);
+ expect(ui.container.querySelector('.words-clock')).toBeTruthy();expect(screen.getAllByRole('button',{name:/Use time bank/})).toHaveLength(2);
+});
 const hit=vi.fn<(x:number,y:number)=>Element|null>();
 beforeEach(()=>{
  localStorage.clear();sessionStorage.clear();vi.useFakeTimers();vi.stubGlobal('ResizeObserver',class {observe(){}disconnect(){}});

@@ -1,3 +1,16 @@
+# November 23, 2026 — Viewed opponent results and configurable Live Words timing
+
+Words match-card scores use existing participant review ACKs and immutable saved
+review boards. Presentation may confirm the exact viewed turn; it never advances
+scores. Five Alive discloses only opening-word letters after playback, retaining
+later feedback without letters across replay and completed history.
+
+Live Words version 5 freezes timerEnabled and turnMs at admission, using the same
+versioned reducer and unchanged scoring/dealing base. A disabled timer has a null
+authoritative deadline; banks are unavailable. Async stays on its current frozen
+rules and exposes no new timer configuration. Existing versions remain valid.
+See CURRENT_RELEASE.md and migration 20261124023654.
+
 # November 19, 2026 — Five Alive relative tiers are independent of vocabulary
 
 An immutable difficulty catalog and per-assignment tier/multiplier snapshots update new allocations while preserving the existing global shuffle and no-repeat cursor. Old assignments fall back to their original frozen bank tiers. Difficulty follows the approved relative composite ranking with tied scores grouped; familiarity remains prior eligibility, with no answers added or removed. See [qualification](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).

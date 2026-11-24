@@ -5,13 +5,13 @@ export type Intent={type:'place';items:Placement[]}|{type:'exchange';items:{tile
 export interface WordsSnapshot {
  backgroundId?:string;
  identity:{sessionId:string;dealerGameId:string;roundId:string};revision:number;serverAt:number;
- rules:{version:string;dictionaryId:string;dictionarySha256:string;turnMs:number;timeBankUses?:number;timeBankMs?:number};
+ rules:{version:string;dictionaryId:string;dictionarySha256:string;turnMs:number;timerEnabled?:boolean;timeBankUses?:number;timeBankMs?:number};
  playDeadline?:number|null;availabilityDeadline?:number;
  timeBankSpent?:Record<string,number[]>;hostUserId?:string;pauseVersion?:number;
  pauseRequest?:{id:string;playerId:string;hostUserId:string;pauseVersion:number};
  board:(Tile|null)[];rack:Tile[];rackCounts:Record<string,number>;bagCount:number;
  players:{id:string;userId:string;name:string;seat:number;isBot:boolean}[];scores:Record<string,number>;
- viewerId:string;activePlayerId:string;turn:number;deadline:number;phase:'playing'|'complete';
+ viewerId:string;activePlayerId:string;turn:number;deadline:number|null;phase:'playing'|'complete';
  canAct:boolean;paused:boolean;pausedAt:number|null;finished:boolean;settlement:Record<string,number>|null;
  financial:{balances:Record<string,number>;resultId:string|null;batch:ChipPresentationBatch|null};
  terminal?:{resultId:string;winnerIds:string[];score:number;startedAt:number;deadline:number};

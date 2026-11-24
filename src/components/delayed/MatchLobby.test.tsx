@@ -15,6 +15,10 @@ import Delayed from '@/pages/Delayed';
 import {installBrowserMedia} from '@/test/browserMedia';
 const mount=()=>render(<MemoryRouter initialEntries={['/delayed/match']}><Routes><Route path='/delayed/:matchId' element={<Delayed/>}/></Routes></MemoryRouter>);
 const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve();});
+it.each([false,true])('omits Chess numeric scores in active/completed cards (completed=%s)',async terminal=>{
+ mock.home.lineup=[{...mock.home.lineup[0],game:'chess',terminal,viewed:terminal,scores:{me:0,other:0}}];
+ const ui=mount();await flush();expect(ui.container.querySelector('.delayed-scoreboard')).toBeNull();
+});
 beforeEach(()=>{
  installBrowserMedia();localStorage.clear();sessionStorage.clear();
  Object.defineProperty(document,'hidden',{configurable:true,value:false});

@@ -85,10 +85,13 @@ test('opponent strategy stays redacted after mutual completion, including every 
  for(let i=0;i<6;i++)game=submitSealedGuess(game,'bob',i===5?'PLANT':'STONE',()=>true);
  const a=sealedProjection(game,'alice'),b=sealedProjection(game,'bob');
  assert.equal(a.revealed[0].opponent.guesses.length,6);
- assert.deepEqual(a.revealed[0].opponent.guesses,Array.from({length:6},()=>({word:'',feedback:[]})));
+ assert.equal(a.revealed[0].opponent.guesses[0].word,'STONE');
+ assert.deepEqual(a.revealed[0].opponent.guesses[0].feedback,Array(5).fill('absent'));
+ assert.deepEqual(a.revealed[0].opponent.guesses.slice(1).map(g=>g.word),Array(5).fill(''));
+ assert.deepEqual(a.revealed[0].opponent.guesses[5].feedback,feedback('APPLE','PLANT'));
  assert.equal(a.ownFinished,1);assert.equal(a.opponentFinished,1);
  assert.equal(a.revealed[0].opponent.guesses[5].word,'');
- assert.equal(JSON.stringify(a).includes('STONE'),false);
+ assert.equal(JSON.stringify(a).includes('PLANT'),false);
  assert.equal(b.revealed[0].own.guesses[0].word,'STONE');
  assert.equal(a.revealed[0].opponent.score,0);
 });
@@ -116,10 +119,11 @@ test('a completed match determines its winner from the shared round results', ()
   assert.equal(sealedProjection(game, 'alice').completed, true);
   const completed=sealedProjection(game,'alice');
   for(const round of completed.revealed){
-    assert.deepEqual(round.opponent.guesses[0],{word:'',feedback:[]});
-    assert.equal(round.opponent.guesses[1].word,round.opponent.answer);
+    assert.deepEqual(round.opponent.guesses[0],{word:'STONE',feedback:Array(5).fill('absent')});
+    assert.equal(round.opponent.guesses[1].word,'');
+    assert.deepEqual(round.opponent.guesses[1].feedback,Array(5).fill('correct'));
   }
-  assert.equal(JSON.stringify(completed).includes('STONE'),false);
+  assert.equal(JSON.stringify(completed).includes('STONE'),true);
   assert.equal(sealedProjection(game,'bob').revealed[0].own.guesses[0].word,'STONE');
   let tie = createSealedGame(['alice', 'bob'], words);
   for (const item of words) {

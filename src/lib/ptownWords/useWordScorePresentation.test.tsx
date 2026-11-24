@@ -32,3 +32,9 @@ it('does not consume an unseen opponent event while an async match is held',()=>
  const hook=renderHook(({held,now})=>useWordScorePresentation({...v,paused:held,canAct:!held},now,true),{initialProps:{held:true,now:20000}});expect(hook.result.current.frame).toBeNull();expect(sessionStorage.length).toBe(0);
  hook.rerender({held:false,now:25000});expect(hook.result.current.frame?.phase).toBe('reveal');expect(hook.result.current.visual.movePresentation?.startedAt).toBe(25000);
 });
+
+it('does not confirm a result hidden by another tab until the board is visible',()=>{
+ const done=vi.fn(),hook=renderHook(({now,visible})=>useWordScorePresentation(v,now,true,done,visible),{initialProps:{now:20000,visible:true}});
+ hook.rerender({now:30000,visible:false});expect(done).not.toHaveBeenCalled();
+ hook.rerender({now:30001,visible:true});expect(done).toHaveBeenCalledExactlyOnceWith('other',1);
+});

@@ -1,3 +1,41 @@
+# Opponent results, match cards and Live Words timer — November 23, 2026 — owner smoke pending
+
+Five Alive holds the opponent guess count and letters through the full reveal.
+Afterward only the first guess keeps letters (all gray when incorrect); later
+rows show blank tiles with their actual feedback. Unviewed word-history labels
+remain concealed. This supersedes the earlier final-correct-word-only projection.
+
+Words match cards derive the opponent score from the last acknowledged turn,
+including unread/terminal cards and return navigation. Active play acknowledges
+the exact turn after visible presentation; opening a board alone does not ACK.
+Chess cards omit the numeric score because their summary has no reliable material
+counts. Existing turn, unread and result labels remain.
+
+Words defaults and Live setup now offer a timer switch and 30–3600-second duration
+(default 300). Admission freezes version 5 settings; timer off creates no turn
+deadline or usable time banks. Runback retains those settings. Existing versions,
+Async configuration/timing, scoring, private racks, settlement and recovery remain.
+
+Migration `20261124023654` is installed. Candidate and installed rollback proofs
+cover both timer choices, saved defaults, unread/ACK scores, Five Alive privacy,
+2–4-player fake/real settlement, ties, replay, authorization, continuation and
+terminal recovery. Full build: 4,403 application tests, 241 harness tests and 46
+release-tool tests passed; focused setup/runback/Async tests (79) and Five Alive
+rule tests (10) passed. The browser proof sampled 450 reveal frames and checked
+320/390/1000-width layouts. A temporary recovery-health rejection and lock conflict
+rolled back during qualification; no guard was bypassed, and the installed proof
+subsequently passed.
+
+Reproduce SQL with `node dev/words-gameplay/opponent-results-proof.mjs --installed`
+(the generated script ends in ROLLBACK), and the browser check with
+`node dev/five-alive/presentation/opponent-results-proof.mjs`.
+Checkpoint: `opponent-results-words-timer-20261123`.
+
+Owner smoke: watch a multi-guess Five Alive result and reopen Word Results; view
+an unread Words turn and return through Match Home to Async; inspect active and
+completed Chess cards; save timer-off and a custom duration, start Live Words,
+and verify Async still uses its existing timing with no timer settings.
+
 # Five Alive confidentiality and live gear polish — November 23, 2026 — approved release; owner smoke pending
 
 Five Alive now exposes the shared default ante control, starting at $1. Async

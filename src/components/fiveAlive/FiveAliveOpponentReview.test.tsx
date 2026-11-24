@@ -21,11 +21,11 @@ it('introduces the exact word, reveals each row, holds calculations, counts both
  await act(async()=>vi.advanceTimersByTime(1800));
  expect(screen.queryByLabelText('Keyboard')).toBeNull();expect(screen.getByLabelText('Guess board').textContent).not.toContain('STARE');
  row(ui.container);expect(screen.getByLabelText('Guess board').textContent).not.toContain('STARE');
- row(ui.container);expect(screen.getByLabelText('Guess board').textContent).toBe('••••••••••');
+ row(ui.container);expect(screen.getByLabelText('Guess board').textContent).toBe('');
  const first=ui.container.querySelector('[data-reveal="close"]')!;endAnimation(first,'five-alive-flip-close');
- expect(screen.getByLabelText('Guess board').textContent).toBe('••••••••••A');endAnimation(first,'five-alive-flip-open');
+ expect(screen.getByLabelText('Guess board').textContent).toBe('');endAnimation(first,'five-alive-flip-open');
  for(let i=1;i<5;i++){const tile=ui.container.querySelector('[data-reveal="close"]')!;endAnimation(tile,'five-alive-flip-close');endAnimation(tile,'five-alive-flip-open');}
- expect(screen.getByLabelText('Guess board').textContent).toBe('••••••••••APPLE');
+ expect(screen.getByLabelText('Guess board').textContent).toBe('STARE');
  expect(screen.getByText('Word scores')).toBeTruthy();const phase=audio.mock.calls.filter(c=>c[2]).at(-1)![2];
  act(()=>frame(phase.startedAt-1));expect(rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
  await act(async()=>frame(phase.endsAt));expect([...ui.container.querySelectorAll('.five-alive-score strong')].map(el=>el.textContent)).toEqual(['1,600','882']);
@@ -33,7 +33,8 @@ it('introduces the exact word, reveals each row, holds calculations, counts both
 });
 it.each([true,false])('distinguishes sixth-guess solve=%s and retains zero on a failure',async solved=>{
  vi.useFakeTimers();rpc.mockResolvedValue({seen:false});const ui=mount({...result,solved,score:solved?134:0,guesses:[...Array(5).fill(wrong),solved?right:wrong]});await act(async()=>{});await act(async()=>vi.advanceTimersByTime(1800));
- expect(screen.getByText('Hap: '+(solved?'6 guesses':'Failed'))).toBeTruthy();for(let i=0;i<6;i++)row(ui.container);
+ expect(screen.queryByText('Hap: '+(solved?'6 guesses':'Failed'))).toBeNull();for(let i=0;i<6;i++){expect(screen.getByLabelText('Guess board').textContent).toBe('');row(ui.container);}
+ expect(screen.getByText('Hap: '+(solved?'6 guesses':'Failed'))).toBeTruthy();
  expect(screen.getByText((_text,el)=>el?.matches('.five-alive-score-line')===true&&el.textContent===(solved?'Hap: 6 guesses = 168 × 0.8 very easy = 134 points':'Hap: Failed = 0'))).toBeTruthy();
 });
 it('does not acknowledge interruption and skips an already seen receipt',async()=>{

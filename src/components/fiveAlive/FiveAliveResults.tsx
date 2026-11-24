@@ -12,10 +12,10 @@ export function FiveAliveScoreLine({label,result}:{label:string;result?:FiveAliv
   <span className="five-alive-result-total">= {(result.score??0).toLocaleString()} points</span>
  </>}</p>;
 }
-export function FiveAliveResults({rounds,waiting,opponentName='Opponent'}:{rounds:FiveAliveRevealedWord[];waiting?:FiveAliveWordResult;opponentName?:string}){
+export function FiveAliveResults({rounds,waiting,opponentName='Opponent',reviewedRounds}:{reviewedRounds?:number[];rounds:FiveAliveRevealedWord[];waiting?:FiveAliveWordResult;opponentName?:string}){
  const words:FiveAliveRevealedWord[]=[...rounds,...(waiting?[waiting]:[])];
  return <div className="five-alive-scorecard">{words.map((word,index)=>{
-  const own='own'in word?word.own:word,opponent='opponent'in word?word.opponent:undefined;
+  const own='own'in word?word.own:word,opponent='opponent'in word&&(!reviewedRounds||reviewedRounds.includes(index+1))?word.opponent:undefined;
   return <section key={index} aria-label={'Word '+(index+1)}><h3>Word {index+1}</h3>
    <div className="five-alive-answer" aria-label={'Answer '+own.answer}>{[...(own.answer??'')].map((letter,i)=><span key={i}>{letter}</span>)}</div>
    {('own'in word||waiting===word)&&<FiveAliveScoreLine label={opponentName} result={opponent}/>}

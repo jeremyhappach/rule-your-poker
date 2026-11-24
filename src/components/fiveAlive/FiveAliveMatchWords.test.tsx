@@ -9,7 +9,7 @@ afterEach(()=>{cleanup();request.mockReset();sound.mockReset();});
 it.each([true,false])('opens the complete saved board silently and closes history in place (solved=%s)',async solved=>{
  const prior={answer:'APPLE',solved:true,score:800,difficulty:1,guesses:[{word:'APPLE',feedback:Array(5).fill('correct')}]};
  const guesses=Array.from({length:6},(_,i)=>({word:solved&&i===5?'APPLE':'STARE',feedback:Array(5).fill(solved&&i===5?'correct':'absent')}));
- request.mockResolvedValue({id:'child',revision:4,view:{round:2,ownFinished:2,opponentFinished:1,ownResult:{answer:'APPLE',difficulty:1,solved,score:solved?134:0,guesses},revealed:[{own:prior,opponent:prior}]}});
+ request.mockResolvedValue({id:'child',revision:4,wordReviews:[{round:1,seen:true}],view:{round:2,ownFinished:2,opponentFinished:1,ownResult:{answer:'APPLE',difficulty:1,solved,score:solved?134:0,guesses},revealed:[{own:prior,opponent:prior}]}});
  render(<FiveAliveMatchWords childId="child" revision={4} opponentName="Hap"/>);
  expect(await screen.findByText('You: 2 of 3 finished · Hap: 1 of 3 finished')).toBeTruthy();
  expect(screen.queryByText(/APPLE|points/)).toBeNull();

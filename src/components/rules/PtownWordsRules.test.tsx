@@ -31,3 +31,11 @@ it('keeps the rules text accurate for frozen historical versions',()=>{
  expect(screen.getByText(/without a separate active-turn clock/)).toBeTruthy();
  expect(screen.queryByText(/add three minutes each/)).toBeNull();
 });
+
+it('describes the frozen Live duration and disabled timer',()=>{
+ const ui=render(<PtownWordsRules mode="multiplayer" version="ptown-words/5" config={{timerEnabled:false,turnMs:120000}}/>);
+ expect(screen.getByText(/The turn timer is off/)).toBeTruthy();
+ expect(screen.getByText(/Time banks are unavailable/)).toBeTruthy();
+ ui.rerender(<PtownWordsRules mode="multiplayer" version="ptown-words/5" config={{timerEnabled:true,turnMs:120000}}/>);
+ expect(screen.getByText(/Each turn has 120 seconds/)).toBeTruthy();
+});

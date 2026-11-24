@@ -5,7 +5,7 @@ import {FiveAliveResults,type FiveAliveRevealedWord,type FiveAliveWordResult} fr
 import {FiveAliveOwnResult} from './FiveAliveOwnResult';
 import './fiveAlive.css';
 
-interface WordSnapshot {id:string;revision:number;view:{round:number;ownFinished?:number;opponentFinished?:number;ownResult?:FiveAliveWordResult;revealed:FiveAliveRevealedWord[]}}
+interface WordSnapshot {wordReviews?:{round:number;seen:boolean}[];id:string;revision:number;view:{round:number;ownFinished?:number;opponentFinished?:number;ownResult?:FiveAliveWordResult;revealed:FiveAliveRevealedWord[]}}
 /** Reads the same permitted projection as gameplay; browsing never begins/ACKs a replay. */
 export function FiveAliveMatchWords({childId,revision,opponentName}:{childId:string;revision:number;opponentName:string}){
  const [snapshot,setSnapshot]=useState<WordSnapshot|null>(null),[history,setHistory]=useState(false),[error,setError]=useState(''),[retry,setRetry]=useState(0);
@@ -29,7 +29,7 @@ export function FiveAliveMatchWords({childId,revision,opponentName}:{childId:str
    {selectedOwn&&<FiveAliveOwnResult round={round} result={selectedOwn} prior={prior} opponentScore={opponentScore} opponentName={opponentName} waiting={!!selected?.ownResult} onClose={close} onWords={()=>setHistory(true)}/>}
    <Dialog open={history} onOpenChange={setHistory}><DialogContent className="five-alive-history-dialog z-[10001]" overlayClassName="z-[10000]">
     <DialogTitle>Word Results</DialogTitle><DialogDescription>Opponent results remain sealed until both finish.</DialogDescription>
-    <FiveAliveResults rounds={view?.revealed??[]} waiting={view?.ownResult} opponentName={opponentName}/>
+    <FiveAliveResults reviewedRounds={snapshot?.wordReviews?.filter(r=>r.seen).map(r=>r.round)??[]} rounds={view?.revealed??[]} waiting={view?.ownResult} opponentName={opponentName}/>
    </DialogContent></Dialog>
   </DialogContent></Dialog>
  </div>;

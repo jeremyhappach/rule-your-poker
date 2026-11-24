@@ -296,3 +296,8 @@ describe('Golf match-length setup',()=>{
   expect(resolveExactRunBackConfig('six-card-golf',{ante_amount:5,rules:{holes:4}})).toBeNull();
  });
 });
+
+it('keeps the frozen Words timer on runback, including timer off',()=>{
+ expect(resolveExactRunBackConfig('ptown-words',{ante_amount:7,rules:{version:'ptown-words/5',timerEnabled:false,turnMs:120000}})).toEqual({ante_amount:7,words_timer_enabled:false,words_turn_seconds:120});
+ expect(resolveExactRunBackConfig('ptown-words',{ante_amount:7,rules:{version:'ptown-words/4',turnMs:300000}})).toEqual({ante_amount:7,words_timer_enabled:true,words_turn_seconds:300});
+});

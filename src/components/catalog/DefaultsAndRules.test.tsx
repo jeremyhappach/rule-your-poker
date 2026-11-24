@@ -12,6 +12,15 @@ import {reset,writes} from '../../../dev/lobby-catalog/mockSupabase';
 beforeEach(()=>{reset();vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}});});afterEach(cleanup);
 function category(name:string){fireEvent.mouseDown(screen.getByRole('tab',{name}),{button:0,ctrlKey:false});}
 describe('defaults persistence and rules versions',()=>{
+ it('saves Live Words timer defaults and preserves the duration while off',async()=>{
+  reset([{...defaultsFixture.defaults[0],game_type:'ptown-words',words_timer_enabled:true,words_turn_seconds:300} as typeof defaultsFixture.defaults[number]]);
+  render(<GameDefaultsConfig open onOpenChange={()=>{}}/>);await screen.findByRole('combobox',{name:'Game'});category('Other');
+  fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'ptown-words'}});
+  fireEvent.change(screen.getByLabelText('Turn duration (seconds)'),{target:{value:'120'}});
+  fireEvent.click(screen.getByLabelText('Live turn timer'));expect(screen.queryByLabelText('Turn duration (seconds)')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));
+  await waitFor(()=>expect(writes).toContainEqual(expect.objectContaining({key:'ptown-words',patch:expect.objectContaining({words_timer_enabled:false,words_turn_seconds:120})})));
+ });
  it('exposes and persists the Five Alive Async ante while keeping it out of Live admission',async()=>{
   reset([{...defaultsFixture.defaults[0],game_type:'five-alive',ante_amount:1} as typeof defaultsFixture.defaults[number]]);
   render(<GameDefaultsConfig open onOpenChange={()=>{}}/>);

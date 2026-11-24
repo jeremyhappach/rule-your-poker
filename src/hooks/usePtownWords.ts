@@ -25,7 +25,7 @@ export function usePtownWords(id:string,userId:string,transport:WordsTransport,s
   return()=>{generation.current++;recovery.dispose();clearInterval(timer);};
  },[transport,accept,resolve]);
  useEffect(()=>{
-  if(!snapshot||snapshot.paused||snapshot.finished||snapshot.phase==='complete')return;
+  if(!snapshot||snapshot.paused||snapshot.finished||snapshot.phase==='complete'||snapshot.deadline===null)return;
   const at=clock.current.server+performance.now()-clock.current.local;
   return scheduleAuthoritativeBoundary(snapshot.deadline-at,()=>recoveryRef.current?.refresh());
  },[snapshot?.identity.roundId,snapshot?.deadline,snapshot?.phase,snapshot?.paused,snapshot?.finished]);

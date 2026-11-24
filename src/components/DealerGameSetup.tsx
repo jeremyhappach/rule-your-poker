@@ -1,3 +1,4 @@
+import {WORDS_TURN_SECONDS,validWordsTurnSeconds} from '@/lib/ptownWords/timerSettings';
 import {GameArtwork} from '@/components/midnight/GameArtwork';
 import {SettingRow,InlineSettingRow,AmountControl,ToggleRow} from '@/components/midnight/Settings';
 import type {ReactNode} from 'react';
@@ -315,6 +316,7 @@ const DealerGameSetupInner = ({
   }, []);
   
   // Config state - use strings for free text input with validation on save
+  const [wordsTimer,setWordsTimer]=useState(true),[wordsSeconds,setWordsSeconds]=useState('300');
   const [golfHoles,setGolfHoles] = useState<GolfHoleCount>(9);
   const [anteAmount, setAnteAmount] = useState("2");
   const [rolloverAmount, setRolloverAmount] = useState("1");
@@ -982,12 +984,13 @@ const DealerGameSetupInner = ({
       // Fetch defaults for simple ante games (dice, cribbage, gin-rummy)
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
-        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus, golf_holes')
+        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus, golf_holes, words_timer_enabled, words_turn_seconds')
         .eq('game_type', gameType)
         .single();
       if (generation !== selectionGeneration.current) return;
       
       if (gameType === 'mega-card-golf' && megaCatalog) setMegaConfig(megaCatalog.defaults);
+      if (gameType === 'ptown-words') {setWordsTimer(gameDefaults?.words_timer_enabled??true);setWordsSeconds(String(gameDefaults?.words_turn_seconds??300));}
       if (gameType === 'six-card-golf') setGolfHoles(golfHoleCount(gameDefaults?.golf_holes));
       if (gameDefaults) {
         setAnteAmount(String(gameDefaults.ante_amount));
@@ -1061,6 +1064,10 @@ const DealerGameSetupInner = ({
 
     const gameType = gameTypeToSubmit as DealerGameType;
     const dealerGameConfig: Record<string, unknown> = { ante_amount: parsedAnte };
+    if(gameType==='ptown-words'){
+      if(!validWordsTurnSeconds(Number(wordsSeconds))){toast.error('Choose a whole-number turn duration from 30 to 3600 seconds');return;}
+      dealerGameConfig.words_timer_enabled=wordsTimer;dealerGameConfig.words_turn_seconds=Number(wordsSeconds);
+    }
     if (gameType === 'mega-card-golf') {
       if (!megaConfig) throw new Error('Course configuration is unavailable');
       dealerGameConfig.mega=megaConfig;
@@ -1309,6 +1316,10 @@ const DealerGameSetupInner = ({
                 <div className="midnight-settings">
                 {inlineSetting(stakeLabel,amount(stakeLabel==='Ante'?'Ante ($)':'Match stake ($)',anteAmount,setAnteAmount))}
                 {selectedGameType==='mega-card-golf'&&megaCatalog&&megaConfig&&setting('Course',megaConfig.course.name,<MegaCompetitionSettings courses={megaCatalog.courses} value={megaConfig} onChange={setMegaConfig}/>)}
+                {selectedGameType==='ptown-words'&&<>
+                  <ToggleRow label="Turn timer" description="Limit each Live turn" checked={wordsTimer} onChange={setWordsTimer}/>
+                  {wordsTimer&&inlineSetting('Turn duration (seconds)',<Input aria-label="Turn duration (seconds)" type="number" min={WORDS_TURN_SECONDS.min} max={WORDS_TURN_SECONDS.max} step={1} value={wordsSeconds} onChange={e=>setWordsSeconds(e.target.value)}/>)}
+                </>}
                 {selectedGameType==='six-card-golf'&&inlineSetting('Match length',<select id="golf-match-length" aria-label="Match length" value={golfHoles} onChange={e=>setGolfHoles(golfHoleCount(Number(e.target.value)))}>{GOLF_HOLE_COUNTS.map(n=><option key={n} value={n}>{n} holes</option>)}</select>)}
                 {isCribbage&&<>
                   {inlineSetting('Game Mode',<select aria-label="Game Mode" value={cribbageGameMode} onChange={e=>setCribbageGameMode(e.target.value as import('@/lib/cribbageTypes').CribbageGameMode)}>{CRIBBAGE_GAME_MODES.map(mode=><option key={mode.id} value={mode.id}>{cribLabels[mode.id]} — {mode.description}</option>)}</select>)}

@@ -93,3 +93,14 @@ describe('Chess selection and submission share catalog admission',()=>{
   expect(state.configure).not.toHaveBeenCalled();
  });
 });
+
+it.each([true,false])('Words loads saved Live timer settings and submits them (enabled=%s)',async enabled=>{
+ const selected=defer('ptown-words');
+ render(<DealerGameSetup gameId="session" dealerUsername="Caller" isBot={false} dealerPlayerId="caller" dealerPosition={2} configDeadline={new Date(Date.now()+600000).toISOString()} gameSetupTimerSeconds={600} anteDecisionTimerSeconds={30} activePlayerCount={2} activeHumanCount={2} onConfigComplete={()=>{}} onSessionEnd={()=>{}}/>);
+ fireEvent.mouseDown(await screen.findByRole('tab',{name:'Other'}),{button:0,ctrlKey:false});fireEvent.click(document.querySelector('[data-dealer-game-option="ptown-words"]')!);
+ await act(async()=>selected({data:{ante_amount:7,words_timer_enabled:enabled,words_turn_seconds:120},error:null}));
+ await screen.findByLabelText('Match stake ($)');
+ if(enabled)expect((screen.getByLabelText('Turn duration (seconds)') as HTMLInputElement).value).toBe('120');else expect(screen.queryByLabelText('Turn duration (seconds)')).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Start Ptown Words'}));
+ await waitFor(()=>expect(state.configure).toHaveBeenCalledWith(expect.objectContaining({gameType:'ptown-words',config:{ante_amount:7,words_timer_enabled:enabled,words_turn_seconds:120}})));
+});

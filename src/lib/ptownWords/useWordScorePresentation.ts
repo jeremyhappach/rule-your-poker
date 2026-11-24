@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef} from 'react';
 import type {WordsSnapshot} from './model';
 import {scoreFrame} from './scorePresentation';
 /** Receipts resume elapsed presentation across reentry; they never mutate scores or deadlines. */
-export function useWordScorePresentation(v:WordsSnapshot,now:number,asynchronous:boolean,onComplete?:(playerId:string)=>void){
+export function useWordScorePresentation(v:WordsSnapshot,now:number,asynchronous:boolean,onComplete?:(playerId:string,turn:number)=>void,completionEnabled=true){
  const p=v.movePresentation,id=p?`${v.identity.dealerGameId}:${v.viewerId}:${p.turn}`:'',key=`ptown:words:score:${v.identity.dealerGameId}:${v.viewerId}`;
  const receipt=useMemo(()=>{
   if(!p||p.turn!==v.turn-1||asynchronous&&p.playerId!==v.viewerId&&!v.canAct&&!v.finished)return null;
@@ -21,6 +21,6 @@ export function useWordScorePresentation(v:WordsSnapshot,now:number,asynchronous
  // Existing live schedules remain binding, including late delivery/reconnect.
  const frame=receipt?scoreFrame(visual,v.paused?v.pausedAt??now:now,start,asynchronous?Infinity:projection?.readyAt):null;
  const completed=useRef(''),callback=useRef(onComplete);callback.current=onComplete;
- useEffect(()=>{if(frame&&!frame.active&&completed.current!==frame.id){completed.current=frame.id;callback.current?.(frame.playerId);}},[frame?.id,frame?.active]);
+ useEffect(()=>{if(completionEnabled&&frame&&!frame.active&&completed.current!==frame.id){completed.current=frame.id;callback.current?.(frame.playerId,p!.turn);}},[frame?.id,frame?.active,completionEnabled]);
  return {visual,frame:frame?.active?frame:null};
 }

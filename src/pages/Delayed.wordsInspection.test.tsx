@@ -16,6 +16,7 @@ vi.mock('@/components/delayed/PlayingNow',()=>({PlayingNow:()=>null}));
 vi.mock('@/components/delayed/AsyncInvite',()=>({AsyncInvite:()=> <p>Configure Async match</p>}));
 vi.mock('@/lib/canonicalShell/FullscreenGameShell',()=>({FullscreenGameShell:({children,actions,scores,panel,navigation}:any)=><div>{navigation}{scores}{children}{actions}{panel}</div>}));
 import Delayed from './Delayed';
+import {WordsTurn} from '@/components/delayed/WordsTurn';
 beforeEach(()=>{
  installBrowserMedia();
  sessionStorage.clear();localStorage.clear();vi.clearAllMocks();
@@ -32,6 +33,18 @@ beforeEach(()=>{
 });
 afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();vi.useRealTimers();vi.unstubAllGlobals();});
 function mount(path='/delayed/match'){return render(<MemoryRouter initialEntries={['/', '/delayed',path]}><Routes><Route path="/" element={<h1>Live lobby</h1>}/><Route path="/delayed" element={<h1>Async lobby</h1>}/><Route path="/delayed/:matchId" element={<Delayed/>}/><Route path="/delayed/:matchId/play/:childId" element={<Delayed/>}/></Routes></MemoryRouter>);}
+it('ACKs the exact opponent turn only after its score presentation finishes',async()=>{
+ const at=mock.snapshot.serverAt;
+ mock.snapshot={...mock.snapshot,activePlayerId:'me',canAct:true,playDeadline:null,moves:[{turn:3,playerId:'other',action:'place',points:24,count:1,words:[{word:'A',points:24,square:112,direction:0}]}],movePresentation:{version:1,turn:3,playerId:'other',squares:[112],startedAt:at,announceAt:at+200,readyAt:at+3800,focusMs:100,flipMs:100,noticeMs:3600}};
+ mock.rpc.mockImplementation(async(name)=>name==='delayed_reviews'?{events:[{id:'viewed-turn',kind:'attempt',actor:'other',round:3,seen:false},{id:'later-turn',kind:'attempt',actor:'other',round:5,seen:false}]}:mock.home);
+ const element=<MemoryRouter><WordsTurn childId="words" matchId="match" userId="me"/></MemoryRouter>;
+ const ui=render(element);await screen.findByRole('grid');
+ expect(mock.rpc.mock.calls.some(([name])=>name==='delayed_review_ack')).toBe(false);
+ mock.snapshot={...mock.snapshot,serverAt:at+20000};ui.rerender(<MemoryRouter><WordsTurn childId="words" matchId="match" userId="me"/></MemoryRouter>);
+ await waitFor(()=>expect(mock.rpc).toHaveBeenCalledWith('delayed_review_ack',{p_event:'viewed-turn'}));
+ expect(mock.rpc.mock.calls.filter(([name])=>name==='delayed_review_ack')).toHaveLength(1);
+ ui.unmount();
+});
 it.each(['/delayed/new','/delayed/match'])('returns directly to Async from %s despite deeper browser history',async path=>{
  mount(path);fireEvent.click(await screen.findByRole('link',{name:'Back to Lobby'}));expect(screen.getByRole('heading',{name:'Async lobby'})).toBeTruthy();expect(screen.queryByRole('heading',{name:'Live lobby'})).toBeNull();
 });

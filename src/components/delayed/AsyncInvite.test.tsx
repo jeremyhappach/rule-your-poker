@@ -21,7 +21,7 @@ function opponent(){fireEvent.click(screen.getByRole('button',{name:'Choose Oppo
 const sends=()=>mock.rpc.mock.calls.filter(c=>c[0]==='delayed_create');
 it('starts games first, defaults to real money and sends the exact ordered five-game payload',async()=>{
  await mount();expect((screen.getByRole('switch') as HTMLInputElement).checked).toBe(true);expect(screen.queryByLabelText('Opponent')).toBeNull();
- for(const [i,game] of games.entries()){if(i)fireEvent.click(screen.getByRole('button',{name:'Add Game'}));pick(game);expect((screen.getByLabelText('Stake '+(i+1)) as HTMLInputElement).value).toBe('5');ok();}
+ for(const [i,game] of games.entries()){if(i)fireEvent.click(screen.getByRole('button',{name:'Add Game'}));pick(game);if(game==='ptown-words'){expect(screen.queryByText('Turn timer')).toBeNull();expect(screen.queryByLabelText('Turn duration (seconds)')).toBeNull();}expect((screen.getByLabelText('Stake '+(i+1)) as HTMLInputElement).value).toBe('5');ok();}
  opponent();expect(screen.getByText('$25')).toBeTruthy();expect(sends()).toHaveLength(0);
  fireEvent.click(screen.getByRole('button',{name:'Send Invite'}));await waitFor(()=>expect(sends()).toHaveLength(1));
  expect(sends()[0][1].p_real_money).toBe(true);expect(sends()[0][1].p_lineup).toEqual(games.map(game=>({game,stake:5})));

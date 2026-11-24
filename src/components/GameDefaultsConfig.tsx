@@ -1,3 +1,4 @@
+import {WORDS_TURN_SECONDS,validWordsTurnSeconds} from '@/lib/ptownWords/timerSettings';
 import {GOLF_HOLE_COUNTS,isGolfHoleCount} from '@/lib/golf/matchLength';
 import {isQuintzeeRoundSeconds,QUINTZEE_ROUND_SECONDS} from '@/lib/quintzee/defaults';
 import {MegaDefaultsConnected} from '@/components/megaCardGolf/MegaDefaultsConnected';
@@ -40,6 +41,8 @@ interface GameDefaults {
   chucky_max_folds?:number;
   chucky_max_cracks?:number;
   decision_timer_seconds: number;
+  words_timer_enabled?: boolean;
+  words_turn_seconds?: number;
   chucky_second_to_last_delay_seconds: number;
   chucky_last_card_delay_seconds: number;
   holm_after_tabled_delay_ms: number;
@@ -203,6 +206,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       const ante = Number(defaultConfig.ante_amount);
       if (!Number.isFinite(ante) || ante < 1) {
         validationErrors.push(`${gameType}: Ante must be at least $1`);
+      }
+      if(gameType==='ptown-words'){
+        if(!validWordsTurnSeconds(Number(defaultConfig.words_turn_seconds??300)))validationErrors.push('Words turn duration must be a whole number from 30 to 3600 seconds.');
+        continue;
       }
       if(gameType==='chucky-showdown'){
         const seconds=Number(defaultConfig.decision_timer_seconds);
@@ -371,6 +378,11 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     setSaving(true);
     try {
       for (const defaultConfig of normalizedDefaults) {
+        if(defaultConfig.game_type==='ptown-words'){
+          const {error}=await supabase.from('game_defaults').update({ante_amount:defaultConfig.ante_amount,words_timer_enabled:defaultConfig.words_timer_enabled??true,words_turn_seconds:Number(defaultConfig.words_turn_seconds??300)}).eq('game_type','ptown-words');
+          if(error)throw error;
+          continue;
+        }
         if(defaultConfig.game_type==='chucky-showdown'){
           const {error}=await supabase.from('game_defaults').update({ante_amount:defaultConfig.ante_amount,decision_timer_seconds:defaultConfig.decision_timer_seconds,chucky_selection_seconds:Number(defaultConfig.chucky_selection_seconds??30),chucky_max_folds:Number(defaultConfig.chucky_max_folds??3),chucky_max_cracks:Number(defaultConfig.chucky_max_cracks??3)}).eq('game_type','chucky-showdown');
           if(error)throw error;
@@ -1102,6 +1114,10 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
 
     const inner = (() => {
       const entry=findGame(selectedGameType);
+      if(selectedGameType==='ptown-words'){const d=getDefaultByType('ptown-words');return d?<div className="space-y-2">
+        <Label htmlFor="words-timer">Live turn timer</Label><Switch id="words-timer" checked={d.words_timer_enabled??true} onCheckedChange={checked=>updateDefault('ptown-words','words_timer_enabled',checked)}/>
+        {(d.words_timer_enabled??true)&&<><Label htmlFor="words-duration">Turn duration (seconds)</Label><Input id="words-duration" type="number" min={WORDS_TURN_SECONDS.min} max={WORDS_TURN_SECONDS.max} step={1} value={d.words_turn_seconds??300} onChange={e=>updateDefault('ptown-words','words_turn_seconds',e.target.value)}/></>}
+        <p className="text-xs text-muted-foreground">Applies to new Live games. Async timing stays unchanged.</p></div>:null;}
       if(selectedGameType==='chess') {const d=getDefaultByType('chess');return d?<div className="space-y-2">
         <Label className="block" htmlFor="chess-bot-difficulty">Bot difficulty</Label><select className="block h-10 w-full rounded-md border border-input bg-background px-3 text-sm" id="chess-bot-difficulty" value={d.chess_bot_difficulty??'medium'} onChange={e=>updateDefault('chess','chess_bot_difficulty',e.target.value)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="expert">Expert</option></select>
         <p className="text-xs text-muted-foreground">Default: Medium. New bot games use this level; games in progress keep their starting difficulty.</p></div>:null;}
