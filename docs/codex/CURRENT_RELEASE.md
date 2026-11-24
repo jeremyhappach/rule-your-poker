@@ -1,3 +1,28 @@
+# Five Alive corrected reveal — November 23, 2026 — approved for production; owner smoke pending
+
+Every opponent guess retains its actual yellow, gray and green feedback,
+including guess 1. All letters stay hidden during the reveal. Only the
+successful final row receives answer letters, after its fifth flip finishes;
+failed rows never expose letters. Letters drop into that solved row. Existing
+count gating, reveal timing, paired scores and viewing receipts remain intact.
+Completed-game history follows the same color/letter policy.
+
+Migration `20261124025649` is installed. Candidate/idempotence and installed
+rollback proofs passed privacy, own-history preservation, wins, ties, six misses,
+duplicate/late replay, authorization, atomic rollback, continuation, terminal
+lifecycle and canonical settlement at stake 7 in both money modes. Stored games
+and financial writers are unchanged. Reproduce with
+`node dev/five-alive/corrected-reveal-proof.mjs --installed` and execute the
+resulting rollback-contained SQL in qualification.local.
+
+Jeremy approved the actual local preview: rows 1–2 retain feedback without
+letters; APPLE enters only the fully revealed green third row. Renderer/animation
+tests (13), shared rule tests (10) and typecheck passed before that preview.
+Full release build passed: 4,405 application tests, 241 harness tests, 46
+release-tool tests, typecheck and the bundle-size gate. Production owner smoke
+remains pending. Checkpoint:
+`five-alive-corrected-reveal-20261123`.
+
 # Opponent results, match cards and Live Words timer — November 23, 2026 — owner smoke pending
 
 Five Alive holds the opponent guess count and letters through the full reveal.

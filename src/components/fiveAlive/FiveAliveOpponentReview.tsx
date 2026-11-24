@@ -32,8 +32,8 @@ function ReviewPlayback({event,own,opponent,prior,userId,matchId,opponentName='O
  const count=opponent.guesses?.length??0,[introduced,setIntroduced]=useState(false),[row,setRow]=useState(0),[scores,setScores]=useState<[number,number]>(prior);
  const finalDone=row>=count;
  const guesses:FiveAliveGuess[]=(opponent.guesses??[]).slice(0,row+1).map((guess,index)=>({
-  word:finalDone&&index===0?guess.word:'',
-  feedback:index===0&&!(opponent.solved&&count===1)?Array(5).fill('absent'):guess.feedback,
+  word:finalDone&&opponent.solved&&index===count-1?guess.word:'',
+  feedback:guess.feedback,
  }));
  const finish=useCallback((receipt:string)=>{if(receipt===event.id+':row:'+row)setRow(value=>value+1);},[event.id,row]);
  const finishIntro=useCallback(()=>setIntroduced(true),[]);

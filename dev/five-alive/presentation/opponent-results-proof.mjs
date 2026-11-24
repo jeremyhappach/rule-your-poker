@@ -23,8 +23,8 @@ try{
  assert.ok(samples.filter(s=>s.revealing).length>50);
  for(const s of samples.filter(s=>s.revealing)){assert.equal(s.letters,'');assert.ok(!/Opponent: (3 guesses|Failed)/.test(s.label));}
  const rows=await page.locator('.five-alive-row').evaluateAll(rows=>rows.map(r=>({letters:r.textContent,colors:[...r.querySelectorAll('[data-color]')].map(t=>t.dataset.color)})));
- assert.equal(rows[0].letters,'PLANT');assert.deepEqual(rows[0].colors,Array(5).fill('absent'));
- assert.equal(rows[1].letters,'');assert.equal(rows[2].letters,'');assert.deepEqual(rows[2].colors,Array(5).fill('correct'));
+ assert.equal(rows[0].letters,'');assert.deepEqual(rows[0].colors,['present','present','present','absent','absent']);
+ assert.equal(rows[1].letters,'');assert.equal(rows[2].letters,'APPLE');assert.deepEqual(rows[2].colors,Array(5).fill('correct'));
  assert.ok(rows[1].colors.includes('present')||rows[1].colors.includes('correct'));
  mkdirSync('qualification.local/opponent-results',{recursive:true});
  for(const width of [320,390,1000]){await page.setViewportSize({width,height:844});await page.screenshot({path:'qualification.local/opponent-results/five-alive-'+width+'.png'});}

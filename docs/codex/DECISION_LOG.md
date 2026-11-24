@@ -1,3 +1,12 @@
+# November 23, 2026 — Approved Five Alive feedback-first reveal
+
+This supersedes the earlier opening-word disclosure decision below. Every
+opponent guess keeps its real feedback; incorrect guesses never expose letters.
+Only the successful final guess may carry answer letters in the projection.
+Presentation admits them after the fifth tile's flip-open completion, then drops
+them into that same row. Completed history uses the same projection policy.
+Score calculation, reveal timing and review ACK ownership remain unchanged.
+
 # November 23, 2026 — Viewed opponent results and configurable Live Words timing
 
 Words match-card scores use existing participant review ACKs and immutable saved

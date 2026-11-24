@@ -1,0 +1,10 @@
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+const read=p=>readFileSync(p,'utf8').replaceAll('\r\n','\n');
+const candidate=process.argv.includes('--installed')?'':read('dev/five-alive/corrected-reveal.sql');
+const before=`CASE WHEN j=jsonb_array_length(r->'guesses')-1 AND guess->>'word'=r->>'answer' THEN guess ELSE '{"word":"","feedback":[]}'::jsonb END`;
+const after=`jsonb_build_object('word',CASE WHEN j=jsonb_array_length(r->'guesses')-1 AND guess->>'word'=r->>'answer' THEN guess->>'word' ELSE '' END,'feedback',guess->'feedback')`;
+const original=read('dev/five-alive/privacy.rollback.proof.sql');
+if(!original.includes(before))throw Error('Privacy proof changed');
+const proof=original.replace('-- CANDIDATE_SQL',()=>candidate).replace('-- IDEMPOTENCE_SQL',()=>candidate).replace(before,()=>after);
+mkdirSync('qualification.local',{recursive:true});
+writeFileSync('qualification.local/five-alive-corrected-reveal.sql',proof);

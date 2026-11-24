@@ -119,7 +119,7 @@ export function FiveAliveBoard({mode,round,score,opponentScore,opponentName='Opp
                       if(reveal.helper){setHelper({id:reveal.id,phase:'burst'});return;}
                     }
                     onRevealComplete?.(reveal.id);
-                  }}><span>{opponentReview&&revealing&&column>=visibleTiles?'':guess?.word[column]??(active?draft[column]:'')}</span></div>;})}
+                  }}><span className={opponentReview&&!reveal&&guess?.word?'five-alive-revealed-answer':undefined}>{opponentReview&&revealing&&column>=visibleTiles?'':guess?.word[column]??(active?draft[column]:'')}</span></div>;})}
             </div>
           </div>;
         })}

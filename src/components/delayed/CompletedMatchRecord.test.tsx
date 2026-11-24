@@ -68,14 +68,16 @@ it('shows every word scoring field for both players, including exact canonical a
  expect(screen.getAllByText('Word 1: APPLE')).toHaveLength(2);
  expect(screen.getByText('Hard · 1 guess')).toBeTruthy();expect(screen.getByText('Hard · 2 guesses')).toBeTruthy();
 });
-it('renders redacted opponent history as gray placeholders without losing the final score',async()=>{
+it('keeps every opponent feedback color and exposes only the successful row letters',async()=>{
  const value=recordFixture('five-alive');
  const opponent=value.detail!.words!.rounds[1][0];
- opponent.guesses[0]={word:'STARE',feedback:Array(5).fill('absent')};
+ opponent.guesses[0]={word:'',feedback:['absent','absent','present','absent','correct']};
  opponent.guesses[1]={word:'',feedback:Array(5).fill('correct')};
  mock.rpc.mockResolvedValue(value);mount(matchRecordPath('match','five-alive'));
- expect(await screen.findByLabelText('Hidden opponent guess')).toBeTruthy();
- expect(screen.getAllByLabelText('Hidden letter correct')).toHaveLength(5);
+ const hidden=await screen.findByLabelText('Hidden opponent guess');
+ expect(hidden.textContent).toBe('');
+ expect([...hidden.querySelectorAll('[data-feedback]')].map(t=>t.getAttribute('data-feedback'))).toEqual(opponent.guesses[0].feedback);
+ expect(hidden.nextElementSibling?.textContent).toBe('APPLE');
  expect(screen.getByText('Base score 700 × multiplier 1.4 = final score 980')).toBeTruthy();
  expect(screen.getAllByText('Word 1: APPLE')).toHaveLength(2);
  expect(mock.request).not.toHaveBeenCalled();

@@ -183,11 +183,10 @@ export function sealedProjection(game: SealedGame, player: string) {
   const revealed = game.rounds[index].slice(0, game.current).map((round, i) => ({
     own: ownRoundProjection(round), opponent: {
       ...ownRoundProjection(game.rounds[other][i]),
-      // Only the opening word is public. Later rows retain feedback, never letters.
-      guesses: game.rounds[other][i].guesses.map((guess,j)=>({
-        word:j===0?guess.word:'',
-        feedback:j===0&&guess.word!==game.rounds[other][i].answer
-          ?Array<LetterFeedback>(5).fill('absent'):guess.feedback,
+      // Reveal every feedback row, but only the successful guess may carry letters.
+      guesses: game.rounds[other][i].guesses.map((guess,j,all)=>({
+        word:j===all.length-1&&guess.word===game.rounds[other][i].answer?guess.word:'',
+        feedback:guess.feedback,
       })),
     },
   }));
