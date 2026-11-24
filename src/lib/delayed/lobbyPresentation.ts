@@ -11,7 +11,7 @@ export function lobbyGameGroup(child:ChildSummary,home:Home,userId:string,now:nu
  if(isReviewedGame(child,userId))return 3;
  if(child.terminal)return 1;
  if(hasPendingReview(child,userId))return 0;
- if(home.status==='active'&&!home.held&&!home.removedAt&&(child.game==='five-alive'?child.playable===true:child.actor===userId)&&Date.parse(child.expiresAt??'')>now)return 0;
+ if(home.status==='active'&&!home.held&&!home.removedAt&&(child.game==='five-alive'?child.playable===true:child.actor===userId)&&(child.untimed||Date.parse(child.expiresAt??'')>now))return 0;
  return 2;
 }
 

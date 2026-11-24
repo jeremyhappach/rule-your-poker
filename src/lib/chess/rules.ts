@@ -11,7 +11,7 @@ export interface ChessState {
  bot?:{version:'ptown-chess-bot/1';difficulty:ChessBotDifficulty};
  identity:{sessionId:string;dealerGameId:string;roundId:string};rules:typeof CHESS_RULES;
  mode:'live'|'async';players:ChessPlayer[];backgroundId:string;initialFen:string;fen:string;
- phase:'playing'|'complete';turnIndex:number;turn:number;deadline:number;opened:boolean;clockDuration:number;
+ phase:'playing'|'complete';turnIndex:number;turn:number;deadline:number|null;timingPolicy?:'play-money-untimed/1';turnStartedAt?:number;opened:boolean;clockDuration:number;
  moves:ChessMove[];captured:Record<Color,CapturedPiece[]>;banks:Record<string,number[]>;
  positions:string[];scores:Record<string,number>;winnerIds:string[];reason?:string;
  movePresentation?:{readyAt:number};
@@ -27,14 +27,14 @@ export function newChess(input:Pick<ChessState,'identity'|'players'|'backgroundI
  s.positions=[chessPosition(s)];return s;
 }
 export function finishChess(s:ChessState,winner:string|null,reason:string){s.phase='complete';s.reason=reason;s.winnerIds=winner?[winner]:s.players.map(p=>p.id);s.scores=Object.fromEntries(s.players.map(p=>[p.id,winner===p.id?1:0]));return s;}
-export function chessTimeout(input:ChessState,at:number){const s=structuredClone(input);if(s.phase==='playing'&&at>=s.deadline)finishChess(s,s.players[1-s.turnIndex].id,'timeout');return s;}
+export function chessTimeout(input:ChessState,at:number){const s=structuredClone(input);if(s.phase==='playing'&&s.timingPolicy!=='play-money-untimed/1'&&s.deadline!==null&&at>=s.deadline)finishChess(s,s.players[1-s.turnIndex].id,'timeout');return s;}
 export function mayForfeitChess(s:ChessState,actor:string){return s.phase==='playing'&&s.players.some(p=>p.id===actor&&!p.isBot);}
 /** Shared server reducer. Browser may inspect legal destinations, never commit a state. */
 export function playChess(input:ChessState,actor:string,intent:ChessIntent,at:number):ChessState {
  if(intent.type==='request_pause'||intent.type==='cancel_pause_request')throw Error('chess:control_requires_authority');
  const s=structuredClone(input);
  if(s.rules.version!==CHESS_RULES.version)throw Error('chess:rules');
- if(s.phase!=='playing'||at>=s.deadline)throw Error('chess:deadline');
+ if(s.phase!=='playing'||s.timingPolicy!=='play-money-untimed/1'&&s.deadline!==null&&at>=s.deadline)throw Error('chess:deadline');
  if(intent.type==='resign'){
   if(!mayForfeitChess(s,actor))throw Error('chess:not_a_player');
   return finishChess(s,s.players.find(p=>p.id!==actor)!.id,'resignation');
@@ -42,10 +42,12 @@ export function playChess(input:ChessState,actor:string,intent:ChessIntent,at:nu
  if(s.players[s.turnIndex].id!==actor)throw Error('chess:not_your_turn');
  if(intent.type==='open'){
   if(s.mode!=='async')throw Error('chess:invalid_action');
+  if(s.timingPolicy==='play-money-untimed/1'){s.opened=true;s.deadline=null;s.clockDuration=0;return s;}
   if(!s.opened){s.opened=true;s.clockDuration=s.rules.turnMs;s.deadline=at+s.rules.turnMs;}return s;
  }
  if(!s.opened)throw Error('chess:turn_not_open');
  if(intent.type==='bank'){
+  if(s.timingPolicy==='play-money-untimed/1'||s.deadline===null)throw Error('chess:untimed');
   if(![0,1].includes(intent.slot)||s.banks[actor].includes(intent.slot))throw Error('chess:bank_used');
   s.banks[actor].push(intent.slot);s.deadline+=s.rules.timeBankMs;s.clockDuration+=s.rules.timeBankMs;return s;
  }
@@ -68,6 +70,7 @@ export function playChess(input:ChessState,actor:string,intent:ChessIntent,at:nu
  }
  if(move.isKingsideCastle()||move.isQueensideCastle())event.rook={from:`${move.isKingsideCastle()?'h':'a'}${move.from[1]}` as Square,to:`${move.isKingsideCastle()?'f':'d'}${move.from[1]}` as Square};
  s.fen=engine.fen();s.moves.push(event);s.turnIndex=engine.turn()==='w'?0:1;s.turn++;s.opened=s.mode==='live';s.clockDuration=s.rules.turnMs;s.deadline=at+(s.opened?s.rules.turnMs:s.rules.availabilityMs);
+ if(s.timingPolicy==='play-money-untimed/1'){s.deadline=null;s.clockDuration=0;s.opened=true;s.turnStartedAt=at;}
  const key=chessPosition(s);s.positions.push(key);
  if(engine.isCheckmate())finishChess(s,actor,'checkmate');
  else if(engine.isStalemate())finishChess(s,null,'stalemate');

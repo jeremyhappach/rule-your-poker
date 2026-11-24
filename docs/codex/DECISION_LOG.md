@@ -1,3 +1,7 @@
+# November 24, 2026 — Play-money Chess is untimed
+
+The authoritative money mode selects the versioned `play-money-untimed/1` timing policy for both Live and Async Chess. PostgreSQL enforces it at admission, state updates and expiration; the shared reducer and presentation consume it. Existing active games adopt the policy without gameplay changes. Completed games require a separate authorized audited restoration. Real-money timing remains unchanged. Timeout final reviews complete the existing Chess presentation before durable final ACK; result classification remains final-only.
+
 # November 24, 2026 — Completed results and latest-turn presentation are separate
 
 An Async result obligation is one unseen final outcome of a completed child game. Ordinary opponent turns are presented only on Take Turn, newest eligible turn only, followed directly by the existing playable owner. Acknowledging that latest cumulative presentation discloses scores through its chronological boundary without fabricating ACKs for historical turns. History retains original board and score chronology. Final child ACKs govern match-finale admission. This supersedes the November 23 active-result queue decision below; no gameplay or financial authority changes.

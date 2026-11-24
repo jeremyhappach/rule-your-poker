@@ -20,10 +20,9 @@ it.each(['a','b'])('automatically hands %s forfeits to normal game end after ann
  act(()=>vi.advanceTimersByTime(1850));expect(next).toHaveBeenCalledTimes(1);
  act(()=>vi.advanceTimersByTime(9000));expect(next).toHaveBeenCalledTimes(1);
 });
-it.each(['timeout','stalemate'] as const)('keeps manual final-board continuation for %s',reason=>{
+it.each(['stalemate'] as const)('keeps manual final-board continuation for %s',reason=>{
  vi.useFakeTimers();const next=vi.fn();render(<ChessFinalReview view={{...ended('a'),reason}} matchId="m" onContinue={next}/>);
  expect(screen.getByRole('img',{name:'Saved final Chess board'})).toBeTruthy();expect(document.querySelectorAll('[data-history-square]')).toHaveLength(64);
- if(reason==='timeout')expect(screen.getByText(/Alice timed out/)).toBeTruthy();
  expect(document.querySelector('[data-read-only="true"]')).toBeTruthy();
  act(()=>vi.advanceTimersByTime(10000));expect(next).not.toHaveBeenCalled();expect(screen.getByText('Continue')).toBeTruthy();
  fireEvent.click(screen.getByText('Continue'));expect(next).toHaveBeenCalledTimes(1);
@@ -35,4 +34,11 @@ it('does not advance a backgrounded review',()=>{
  act(()=>vi.advanceTimersByTime(10000));expect(next).not.toHaveBeenCalled();
  Object.defineProperty(document,'hidden',{configurable:true,value:false});act(()=>document.dispatchEvent(new Event('visibilitychange')));
  act(()=>vi.advanceTimersByTime(5200));expect(next).toHaveBeenCalledTimes(1);
+});
+
+it('automatically completes a visible timeout once without an extra Continue',()=>{
+ vi.useFakeTimers();const next=vi.fn();render(<ChessFinalReview view={{...ended('a'),reason:'timeout'}} matchId="m" onContinue={next}/>);
+ expect(screen.getByText(/Alice timed out/)).toBeTruthy();expect(screen.queryByText('Continue')).toBeNull();
+ act(()=>vi.advanceTimersByTime(5200));expect(next).toHaveBeenCalledTimes(1);
+ act(()=>vi.advanceTimersByTime(10000));expect(next).toHaveBeenCalledTimes(1);
 });

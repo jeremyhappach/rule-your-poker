@@ -38,7 +38,7 @@ function evaluate(state:ChessState, actor:string):number {
 }
 
 export function chooseChessBotMove(state:ChessState, at:number) {
-  if (state.mode!=='live'||state.phase!=='playing'||!state.players[state.turnIndex].isBot||at>=state.deadline) throw Error('chess:bot_not_due');
+  if (state.mode!=='live'||state.phase!=='playing'||!state.players[state.turnIndex].isBot||(state.deadline!==null&&at>=state.deadline)) throw Error('chess:bot_not_due');
   if (state.bot?.version!==CHESS_BOT_VERSION) throw Error('chess:bot_version');
   const difficulty=chessBotDifficulty(state.bot.difficulty),budget=budgets[difficulty];
   const actor=state.players[state.turnIndex].id,moves=chessBotMoves(state);

@@ -1,7 +1,7 @@
 import type {ChildSummary,Home} from './client';
 export type NotificationEvent={id:string;revision:number;read_revision:number;actionable:boolean};
 export const pendingNoticeKeys=(items:NotificationEvent[])=>items.filter(n=>n.actionable||n.read_revision<n.revision).map(n=>`${n.id}:${n.revision}`).sort();
-export const turnDeadline=(child:ChildSummary)=>Date.parse(child.playableDeadline??child.expiresAt??'');
+export const turnDeadline=(child:ChildSummary)=>child.untimed?Infinity:Date.parse(child.playableDeadline??child.expiresAt??'');
 export const isAvailableTurn=(child:ChildSummary,now:number)=>!child.terminal&&child.playable!==false&&turnDeadline(child)>now;
 
 export function turnDestination(home:Home,userId:string){

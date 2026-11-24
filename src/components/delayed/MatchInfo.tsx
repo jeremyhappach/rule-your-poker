@@ -6,6 +6,7 @@ import {CurrentNet} from './CurrentNet';
 import {PushPreferences} from './PushPreferences';
 
 export function MatchInfo({home,userId,historical}:{home:Home;userId:string;historical:boolean}){
+ const untimed=!home.realMoney&&home.lineup.length>0&&home.lineup.every(c=>c.game==='chess');
  const status=home.status==='settled'?'Completed':home.status.charAt(0).toUpperCase()+home.status.slice(1);
  return <section className="async-match-info" aria-label="Match Info">
   <div className="async-match-info-heading">
@@ -28,7 +29,7 @@ export function MatchInfo({home,userId,historical}:{home:Home;userId:string;hist
    </Dialog>
   </div>
   {home.acceptedAt&&<CurrentNet home={home} userId={userId}/>}
-  {!historical&&<p className="async-match-timing"><strong>72h</strong> per turn · Last Call <strong>48h</strong></p>}
+  {!historical&&<p className="async-match-timing">{untimed?'Untimed Chess':<><strong>72h</strong> per turn · Last Call <strong>48h</strong>{!home.realMoney&&home.lineup.some(c=>c.game==='chess')?' · Chess is untimed':''}</>}</p>}
   {!historical&&<PushPreferences key={userId+home.id} userId={userId} matchId={home.id}/>}
  </section>;
 }

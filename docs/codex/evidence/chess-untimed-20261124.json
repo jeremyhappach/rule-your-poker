@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-24",
+  "matchId": "0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15",
+  "childId": "b1795d0c-51a3-47b8-a6b8-1e324b3f34d8",
+  "migration": "20261124210340",
+  "candidateDatabaseProof": "passed; transaction rolled back",
+  "historyReplay": {
+    "plies": 17,
+    "actor": "Bobbalouie",
+    "fen": "rn2k1nr/pppq3p/4pp2/2bp2p1/4P1PP/NB3N2/PPPP2P1/R1B1K2R b KQkq - 0 9",
+    "exactMovesCapturesRepetitionBanks": true
+  },
+  "browserFixtures": {
+    "cases": 7,
+    "gameplayWrites": 0,
+    "errors": [],
+    "authentication": "isolated bearer-authenticated HTTP, not hosted Supabase"
+  },
+  "harnessTests": 241,
+  "releaseToolTests": 46,
+  "typecheck": "pass",
+  "buildBytes": 89841061,
+  "production": "pending compatible client, installed proof and targeted restore",
+  "ownerSmoke": "pending"
+}

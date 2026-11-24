@@ -33,8 +33,9 @@ export function useChess(id:string,userId:string,transport:ChessTransport,storag
  },[transport,accept,resolve]);
  useEffect(()=>{
   if(!snapshot||snapshot.paused||snapshot.finished)return;
+  const deadline=snapshot.terminal?.deadline??snapshot.deadline;if(deadline===null)return;
   const at=clock.current.server+performance.now()-clock.current.local;
-  return scheduleAuthoritativeBoundary((snapshot.terminal?.deadline??snapshot.deadline)-at,()=>recoveryRef.current?.refresh());
+  return scheduleAuthoritativeBoundary(deadline-at,()=>recoveryRef.current?.refresh());
  },[snapshot?.identity.roundId,snapshot?.deadline,snapshot?.phase,snapshot?.terminal?.deadline,snapshot?.paused,snapshot?.finished]);
  const act=async(intent:Intent,expectedRevision?:number)=>{const v=latest.current;if(!v||(expectedRevision!==undefined&&v.revision!==expectedRevision)||(!['request_pause','cancel_pause_request'].includes(intent.type)&&!(intent.type==='resign'?mayForfeitChess(v,v.viewerId)&&!v.finished&&!v.settled:v.canAct))||v.paused||!connected||!recoveryRef.current?.isReady()||flight.current||sessionStorage.getItem(key)||!navigator.onLine||document.hidden)return false;const requestId=crypto.randomUUID();sessionStorage.setItem(key,JSON.stringify({requestId,revision:v.revision,intent}));return resolve(requestId);};
  return {snapshot,error,errorVersion,pending,connected,now,act,reconnect:()=>recoveryRef.current?.recover()??Promise.resolve(false)};

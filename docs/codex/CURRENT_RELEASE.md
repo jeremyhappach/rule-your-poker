@@ -1,3 +1,21 @@
+# Untimed play-money Chess and targeted restoration — November 24, 2026
+
+Jeremy explicitly approved implementation, publication, and restoration of the original Hap–Bobbalouie match. Production application/restoration is pending publication of the compatible client; see the completion receipt below when recorded. Owner gameplay smoke remains pending.
+
+Play-money Chess is untimed in Live and Async. The database applies the versioned `play-money-untimed/1` policy at admission and on updates/backfill of active games. Gameplay/availability/Last Call deadlines are null; scheduler, expiry, timeout-outcome, pause/recovery, bot and push paths respect that policy. Bank actions are rejected. Real-money Chess retains its existing rules. Historical completed games are not reopened by the migration.
+
+The affected match is `0c2059c0-0d44-4e22-a2c5-d4b1eadd9f15`, child `b1795d0c-51a3-47b8-a6b8-1e324b3f34d8`. Its five-minute opened-turn clock expired at 09:03:55 Central on November 24. The frozen rule configuration still enabled that clock after the earlier audited conversion to play money. Restoration uses a separate admin-only, revision-guarded, replay-safe correction and retains the original audit/outcome rows while invalidating their current projections. Only this match's fake chip award is reversed; real accounts, stakes and historical gameplay are preserved.
+
+The verified saved position has 17 plies, last move h2–h4, Bobbalouie (black) to move, FEN `rn2k1nr/pppq3p/4pp2/2bp2p1/4P1PP/NB3N2/PPPP2P1/R1B1K2R b KQkq - 0 9`. Full legal replay reproduced every move, capture, repetition position and turn. Castling rights KQkq and promotion eligibility remain in the original state. Existing review acknowledgements are retained.
+
+Signed-in Chrome reproduced the timeout message followed by a manual Continue hold; no final ACK was issued merely by selecting View Result. Chess timeout review now uses the existing visible playback hold and automatically invokes the canonical ACK/navigation owner. Failed/lost ACKs remain retryable. The shared availability-expiry fallback also materializes Chess's completed board before creating the timeout outcome. Final-only classification from the preceding async correction remains intact; ordinary turns do not become View Result obligations.
+
+Qualification: complete rollback SQL proof exercises actual canonical finance in both money modes, winners/ties, duplicate and late replay, authorization/stake guards, rollback on failure, continuation, terminal state, repeated final ACK/finale, existing/new Live/Async untimed games, stale expiry, timeout rejection, push eligibility, pause/resume, and the exact targeted restoration. No fixtures persist. Isolated bearer-authenticated HTTP browser fixtures cover timeout ACK, lost ACK retry, interrupted review, refresh, lobby/finale and untimed controls (7 cases, zero gameplay writes). These fixtures are not hosted Supabase sessions; production Chrome verification is separate. Evidence snapshots are local and ignored under `qualification.local/chess-untimed/`.
+
+Local validation: focused Chess/async tests pass; the first full run passed 4,426/4,427 tests, with one obsolete manual-Continue expectation corrected and its 10-test file passing. Typecheck, 241 harness tests, 46 release-tool tests, production Vite build and the 90 MB size gate pass (89,841,061 bytes). Reproduction scripts: `dev/chess/untimed-proof.mjs`, `untimed-history-proof.mjs`, `untimed-browser.mjs`; migration `20261124210340`; authoritative SQL source `supabase/chess/untimed.sql`.
+
+---
+
 # Canonical async turn entry and completed results — November 24, 2026 — owner smoke pending
 
 Jeremy explicitly approved the complete lifecycle correction on November 24. View Result and lobby result counts now mean exactly one unseen final outcome per completed game. Ordinary opponent turns never create result obligations or duplicate primary actions.

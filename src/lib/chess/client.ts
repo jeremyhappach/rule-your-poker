@@ -11,7 +11,7 @@ export async function inspectAsyncChess(childId:string):Promise<ChessSnapshot>{
 export function acceptChessSnapshot(old:ChessSnapshot|null,next:ChessSnapshot,id:string){
  if(next.identity.dealerGameId!==id||!Number.isSafeInteger(next.revision)||next.players.length!==2)throw Error('chess:identity');
  if(old&&next.revision<old.revision)return old;
- if(old&&next.revision===old.revision){const stable=(v:ChessSnapshot)=>JSON.stringify([v.identity,v.rules,v.players,v.backgroundId,v.fen,v.moves,v.captured,v.banks,v.phase,v.deadline,v.clockDuration,v.opened,v.paused,v.finished,v.settlement,v.hostUserId,v.pauseVersion,v.pauseRequest]);if(stable(old)!==stable(next))throw Error('chess:conflicting_snapshot');}
+ if(old&&next.revision===old.revision){const stable=(v:ChessSnapshot)=>JSON.stringify([v.identity,v.rules,v.players,v.backgroundId,v.fen,v.moves,v.captured,v.banks,v.phase,v.deadline,v.clockDuration,v.timingPolicy,v.turnStartedAt,v.opened,v.paused,v.finished,v.settlement,v.hostUserId,v.pauseVersion,v.pauseRequest]);if(stable(old)!==stable(next))throw Error('chess:conflicting_snapshot');}
  return next;
 }
 export function chessTransport(id:string,userId:string,mode:'live'|'async'):ChessTransport{

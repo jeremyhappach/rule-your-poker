@@ -75,7 +75,7 @@ export function PushPreferences({userId,matchId,device=browser,rpc=delayedRpc,pr
   {!deviceEnabled&&matchId&&<p role="status" className="text-sm">Phone alerts are not active yet. You can save your preferences now; no notifications will be sent.</p>}
   {!matchId&&devicePanel}
   {matchId?<>
-   <p className="text-sm">Your turn alerts and 48-hour Last Call for this match. {quietDescription}</p>
+   <p className="text-sm">Your turn alerts. Timed games also receive a 48-hour Last Call. {quietDescription}</p>
    <p className="text-sm">Deadlines stay unchanged. After quiet hours, only one still-needed reminder may arrive.</p>
   </>:<>
    {preferences?.registrations!==undefined&&<label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={preferences.registrations} disabled={disabled} onChange={e=>void save({registrations:e.target.checked})}/>New User Registrations</label>}

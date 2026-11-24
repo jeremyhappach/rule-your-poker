@@ -1,3 +1,7 @@
+# Untimed Chess and audited timeout restoration
+
+`supabase/chess/untimed.sql` / migration `20261124210340` own the money-mode timing policy, admission/update triggers, expiry/push guards and admin-only audited play-money restoration. `src/lib/chess/rules.ts` remains the shared gameplay reducer; `ChessFinalReview.tsx` owns timeout playback, with the existing delayed review owner persisting ACKs and navigating. Reproduction proofs are `dev/chess/untimed-{proof,history-proof,browser}.mjs` and `supabase/chess/untimed-existing-proof.sql`.
+
 # Async pending-result access and Words disclosure
 
 `PendingResults` in `src/components/delayed/ResultReview.tsx` owns explicit active
