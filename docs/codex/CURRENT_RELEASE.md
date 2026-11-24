@@ -10,6 +10,8 @@ Migration 20261124164546 changes review/read projections only. Candidate/idempot
 
 Qualification: production auth guard with isolated bearer-authenticated HTTP browser fixtures, plus separate authoritative rollback SQL proof. The browser fixtures are not hosted Supabase sessions; this distinction is preserved in the evidence. Real authenticated production card checks follow publication. Full local qualification: 4,425 application tests, 241 harness tests, 46 release-tool tests, typecheck, production build and size gate. See [qualification receipt](evidence/async-canonical-lifecycle-20261124.json). Release checkpoint tag: async-canonical-lifecycle-20261124. Jeremy gameplay smoke remains the acceptance gate.
 
+Publication follow-through: initial commit `bdcf6480a` failed hosted typecheck because a late null-score guard used `Object.hasOwn` above the configured TypeScript library target. The follow-up uses the equivalent supported own-property check without changing score semantics. Final release checkpoint tag: `async-canonical-lifecycle-20261124-r2`.
+
 ## Superseded November 23 result-access interpretation
 
 The section below records the rejected implementation and its observations, not acceptance. Replaying historical turns and clearing their acknowledgements did not satisfy the product contract. The separate tie-message follow-up was absorbed into the full correction above.

@@ -12,7 +12,7 @@ export function reviewScoreContext(event:ReviewEvent,events:ReviewEvent[],home:H
  const actor=event.actor!,prior=new Map(events.filter(e=>e.kind==='attempt'&&e.actor===actor&&e.round<event.round).map(e=>[e.id,e]));
  const historicBefore=event.beforeScore??[...prior.values()].reduce((sum,e)=>sum+(e.score??0),0),after=event.afterScore??historicBefore+(event.score??0);
  const disclosed=home.lineup.find(c=>c.id===childId)?.scores;
- const before=activeTurn&&disclosed&&Object.hasOwn(disclosed,actor)?disclosed[actor]??0:historicBefore;
+ const before=activeTurn&&disclosed&&Object.prototype.hasOwnProperty.call(disclosed,actor)?disclosed[actor]??0:historicBefore;
  const own=(!activeTurn?event.board?.scores?.[userId]:undefined)??home.lineup.find(c=>c.id===childId)?.scores?.[userId]??0;
  return {before,after,players:home.players.map(p=>({...p,score:p.id===actor?after:own,active:p.id===actor}))};
 }
