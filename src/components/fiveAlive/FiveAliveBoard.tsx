@@ -17,13 +17,14 @@ export interface FiveAliveBoardProps {
   notice?:ReactNode; summary?:ReactNode; award?:ReactNode; scoreRef?:RefObject<HTMLDivElement>;
   onReconnect?:()=>void;
   reveal?:FiveAliveReveal; onRevealComplete?:(id:string)=>void;
+  opponentReview?:boolean;
 }
 const KEYS=['QWERTYUIOP','ASDFGHJKL','ZXCVBNM'];
 const EMPTY_GUESSES:FiveAliveGuess[]=[];
 const PRIORITY:Record<FiveAliveColor,number>={absent:1,present:2,correct:3};
 
 /** View only: no answer, score, progression, or persistence authority. */
-export function FiveAliveBoard({mode,round,score,opponentScore,opponentName='Opponent',current,pending,error,onSubmit,onBack,onRules,onAbandon,onWrongGuess,onHelperDrop,invalidAttempt,notice,summary,award,scoreRef,onReconnect,reveal,onRevealComplete}:FiveAliveBoardProps){
+export function FiveAliveBoard({mode,round,score,opponentScore,opponentName='Opponent',current,pending,error,onSubmit,onBack,onRules,onAbandon,onWrongGuess,onHelperDrop,invalidAttempt,notice,summary,award,scoreRef,onReconnect,reveal,onRevealComplete,opponentReview=false}:FiveAliveBoardProps){
   const [draft,setDraft]=useState('');
   const [flip,setFlip]=useState<{id:string;column:number;phase:'close'|'open'}|null>(null);
   const finished=useRef<string|null>(null);
@@ -72,7 +73,7 @@ export function FiveAliveBoard({mode,round,score,opponentScore,opponentName='Opp
     };
     window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
   },[canPlay,press]);
-  return <section className="five-alive" aria-label="Five Alive" data-finished={current?.completed||!!summary||undefined} ref={surface}>
+  return <section className="five-alive" aria-label="Five Alive" data-finished={(current?.completed&&(!reveal||opponentReview))||!!summary||undefined} ref={surface}>
     <header className="five-alive-header"><button type="button" onClick={onBack}>{mode==='async'?'‹ Match':'‹ Arcade'}</button>
       {onRules?<button type="button" onClick={onRules} aria-label="Rules and information">ⓘ</button>:<span/>}
       {mode==='arcade'?<button type="button" onClick={onAbandon} disabled={!onAbandon}>Abandon</button>:<span aria-hidden="true"/>}</header>
@@ -118,13 +119,13 @@ export function FiveAliveBoard({mode,round,score,opponentScore,opponentName='Opp
                       if(reveal.helper){setHelper({id:reveal.id,phase:'burst'});return;}
                     }
                     onRevealComplete?.(reveal.id);
-                  }}><span>{guess?.word[column]??(active?draft[column]:'')}</span></div>;})}
+                  }}><span>{opponentReview&&revealing&&column>=visibleTiles?'':guess?.word[column]??(active?draft[column]:'')}</span></div>;})}
             </div>
           </div>;
         })}
       </div>}
 
-      {!!current&&!current.completed&&!waiting&&!summary&&<div className="five-alive-keyboard" aria-label="Keyboard">{KEYS.map((line,index)=><div className="five-alive-keys" key={line}>
+      {!!current&&(!current.completed||!!reveal)&&!opponentReview&&!waiting&&!summary&&<div className="five-alive-keyboard" aria-label="Keyboard">{KEYS.map((line,index)=><div className="five-alive-keys" key={line}>
         {index===2&&<button type="button" onClick={()=>press('ENTER')} disabled={!canPlay} className="five-alive-key-wide">Enter</button>}
         {[...line].map(key=><button type="button" key={key} data-color={keyColors[key]??''} onClick={()=>press(key)} disabled={!canPlay}>{key}</button>)}
         {index===2&&<button type="button" onClick={()=>press('BACKSPACE')} disabled={!canPlay} className="five-alive-key-wide" aria-label="Delete letter">⌫</button>}

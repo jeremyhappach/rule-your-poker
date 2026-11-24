@@ -19,8 +19,13 @@ it('introduces the exact word, reveals each row, holds calculations, counts both
  vi.spyOn(window,'requestAnimationFrame').mockImplementation(cb=>{frame=cb;return 1;});vi.spyOn(window,'cancelAnimationFrame').mockImplementation(()=>{});
  const ui=mount();await act(async()=>{});expect(screen.getByText('Viewing Hap’s Word 2 results')).toBeTruthy();
  await act(async()=>vi.advanceTimersByTime(1800));
- expect(screen.queryByLabelText('Keyboard')).toBeNull();expect(screen.getByLabelText('Guess board').textContent).toBe('STARE');
- row(ui.container);expect(screen.getByLabelText('Guess board').textContent).toBe('STARESTARE');row(ui.container);expect(screen.getByLabelText('Guess board').textContent).toBe('STARESTAREAPPLE');row(ui.container);
+ expect(screen.queryByLabelText('Keyboard')).toBeNull();expect(screen.getByLabelText('Guess board').textContent).not.toContain('STARE');
+ row(ui.container);expect(screen.getByLabelText('Guess board').textContent).not.toContain('STARE');
+ row(ui.container);expect(screen.getByLabelText('Guess board').textContent).toBe('••••••••••');
+ const first=ui.container.querySelector('[data-reveal="close"]')!;endAnimation(first,'five-alive-flip-close');
+ expect(screen.getByLabelText('Guess board').textContent).toBe('••••••••••A');endAnimation(first,'five-alive-flip-open');
+ for(let i=1;i<5;i++){const tile=ui.container.querySelector('[data-reveal="close"]')!;endAnimation(tile,'five-alive-flip-close');endAnimation(tile,'five-alive-flip-open');}
+ expect(screen.getByLabelText('Guess board').textContent).toBe('••••••••••APPLE');
  expect(screen.getByText('Word scores')).toBeTruthy();const phase=audio.mock.calls.filter(c=>c[2]).at(-1)![2];
  act(()=>frame(phase.startedAt-1));expect(rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
  await act(async()=>frame(phase.endsAt));expect([...ui.container.querySelectorAll('.five-alive-score strong')].map(el=>el.textContent)).toEqual(['1,600','882']);

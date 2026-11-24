@@ -31,11 +31,12 @@ export function FiveAliveOpponentReview(props:Props){
 function ReviewPlayback({event,own,opponent,prior,userId,matchId,opponentName='Opponent',onBack,onRules,onComplete,error}:Props&{onComplete:()=>Promise<void>;error:string}){
  const count=opponent.guesses?.length??0,[introduced,setIntroduced]=useState(false),[row,setRow]=useState(0),[scores,setScores]=useState<[number,number]>(prior);
  const finalDone=row>=count;
- const guesses:FiveAliveGuess[]=(opponent.guesses??[]).slice(0,row+1).map(guess=>guess.word?guess:{word:'•••••',feedback:['absent','absent','absent','absent','absent']});
+ const guesses:FiveAliveGuess[]=(opponent.guesses??[]).slice(0,row+1).map((guess,index)=>
+  opponent.solved&&index===count-1&&guess.word?guess:{word:'•••••',feedback:['absent','absent','absent','absent','absent']});
  const finish=useCallback((receipt:string)=>{if(receipt===event.id+':row:'+row)setRow(value=>value+1);},[event.id,row]);
  const finishIntro=useCallback(()=>setIntroduced(true),[]);
  if(!introduced)return <FiveAliveIntro identity={event.id+':intro'} title={`Viewing ${opponentName}’s Word ${event.round} results`} matchId={matchId} userId={userId} onDone={finishIntro}/>;
- return <FiveAliveBoard mode="async" round={event.round} score={scores[0]} opponentScore={scores[1]} opponentName={opponentName} current={{completed:true,guesses}} pending onSubmit={()=>{}} onBack={onBack} onRules={onRules}
+ return <FiveAliveBoard mode="async" opponentReview round={event.round} score={scores[0]} opponentScore={scores[1]} opponentName={opponentName} current={{completed:true,guesses}} pending onSubmit={()=>{}} onBack={onBack} onRules={onRules}
   notice={<div className="five-alive-review-label" role="status"><strong>Word {event.round} results</strong><p>{opponentName}: {fiveAliveOutcome(opponent)}</p><p>You: {fiveAliveOutcome(own)}</p></div>}
   reveal={!finalDone?{id:event.id+':row:'+row,row}:undefined} onRevealComplete={finish}
   award={finalDone?<PairScores opponentName={opponentName} id={event.id} own={own} opponent={opponent} prior={prior} userId={userId} onScores={setScores} onDone={onComplete}/>:undefined}

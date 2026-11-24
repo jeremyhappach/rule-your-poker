@@ -4,6 +4,7 @@ import {MegaDefaultsConnected} from '@/components/megaCardGolf/MegaDefaultsConne
 import {canastaConfig,type CanastaMode} from '@/lib/canasta/config';
 import {lazy,Suspense} from 'react';
 import {GAME_CATALOG,findGame,type Category} from '@/lib/gameCatalog';
+import {ASYNC_RULES_GAMES} from '@/lib/gameCatalog/rulesModes';
 import {CategoryNavigation} from '@/components/catalog/CategoryNavigation';
 import '@/components/catalog/catalog.css';
 const FarkleDefaultsEditor=lazy(()=>import('@/components/farkle/FarkleDefaultsEditor').then(m=>({default:m.FarkleDefaultsEditor})));
@@ -1166,7 +1167,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             <label className="grid gap-1 text-sm font-medium">Game<select className="catalog-select" value={selectedGameType} onChange={e=>setSelectedGameType(e.target.value)}>{GAME_CATALOG.map(game=>game.category===selectedGameInfo.category&&<option key={game.id} value={game.defaultsKey}>{game.name}</option>)}</select></label>
             {/* Settings for selected game */}
             <div className="catalog-scroll space-y-3">
-              {selectedGameInfo.modes.includes('multiplayer') && selectedGameType!=='farkle' && selectedDefaults && <div className="space-y-1"><Label htmlFor="catalog-stake">Default stake / ante ($)</Label><Input id="catalog-stake" inputMode="numeric" value={selectedDefaults.ante_amount} onChange={e=>updateDefault(selectedGameType,'ante_amount',e.target.value)}/></div>}
+              {(selectedGameInfo.modes.includes('multiplayer') || selectedGameInfo.id in ASYNC_RULES_GAMES) && selectedGameType!=='farkle' && selectedDefaults && <div className="space-y-1"><Label htmlFor="catalog-stake">Default stake / ante ($)</Label><Input id="catalog-stake" inputMode="numeric" value={selectedDefaults.ante_amount} onChange={e=>updateDefault(selectedGameType,'ante_amount',e.target.value)}/></div>}
               {selectedGameType==='mega-card-golf'?<MegaDefaultsConnected/>:renderSettingsForGameType()}
               {open&&(farkleVisited||selectedGameType==='farkle')&&<div hidden={selectedGameType!=='farkle'}><Suspense fallback={<p role="status">Loading Farkle defaults…</p>}><FarkleDefaultsEditor onSaved={value=>setDefaults(rows=>rows.map(row=>row.game_type==='farkle'?{...row,...value}:row))}/></Suspense></div>}
               {selectedGameInfo.modes.includes('multiplayer') && <details className="catalog-settings-group"><summary>Advanced / QA · Session fixture</summary>            <div className="space-y-3 rounded-md border border-border p-3">

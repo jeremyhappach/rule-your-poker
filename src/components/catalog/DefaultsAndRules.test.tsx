@@ -12,6 +12,18 @@ import {reset,writes} from '../../../dev/lobby-catalog/mockSupabase';
 beforeEach(()=>{reset();vi.stubGlobal("ResizeObserver",class {observe(){} unobserve(){} disconnect(){}});});afterEach(cleanup);
 function category(name:string){fireEvent.mouseDown(screen.getByRole('tab',{name}),{button:0,ctrlKey:false});}
 describe('defaults persistence and rules versions',()=>{
+ it('exposes and persists the Five Alive Async ante while keeping it out of Live admission',async()=>{
+  reset([{...defaultsFixture.defaults[0],game_type:'five-alive',ante_amount:1} as typeof defaultsFixture.defaults[number]]);
+  render(<GameDefaultsConfig open onOpenChange={()=>{}}/>);
+  await screen.findByRole('combobox',{name:'Game'});category('Other');
+  fireEvent.change(screen.getByRole('combobox',{name:'Game'}),{target:{value:'five-alive'}});
+  const stake=screen.getByLabelText('Default stake / ante ($)');
+  expect((stake as HTMLInputElement).value).toBe('1');
+  fireEvent.change(stake,{target:{value:'7'}});
+  fireEvent.click(screen.getByRole('button',{name:'Save Defaults'}));
+  await waitFor(()=>expect(writes).toContainEqual(expect.objectContaining({key:'five-alive',patch:expect.objectContaining({ante_amount:7})})));
+  expect(screen.queryByText('Session Dealer Draw Smoke Fixture')).toBeNull();
+ });
  it('saves Chucky timing, limits and the shared multiplayer stake without unrelated defaults',async()=>{
    reset([...defaultsFixture.defaults,{...defaultsFixture.defaults[0],game_type:'chucky-showdown',decision_timer_seconds:30}]);
    render(<GameDefaultsConfig open onOpenChange={()=>{}}/>);

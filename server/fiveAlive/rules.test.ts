@@ -78,17 +78,17 @@ test('solo and sealed modes share scoring and exactly three distinct words', () 
   assert.throws(() => submitSoloGuess(solo, 'APPLE', () => true), /game_complete/);
 });
 
-test('opponent guesses become public only after mutual completion, including a sixth miss',()=>{
+test('opponent strategy stays redacted after mutual completion, including every failed guess',()=>{
  const words=[{word:'APPLE',difficulty:1},{word:'BREAD',difficulty:2},{word:'CLOUD',difficulty:3}] as const;
  let game=createSealedGame(['alice','bob'],words);
  game=submitSealedGuess(game,'alice','APPLE',()=>true);
  for(let i=0;i<6;i++)game=submitSealedGuess(game,'bob',i===5?'PLANT':'STONE',()=>true);
  const a=sealedProjection(game,'alice'),b=sealedProjection(game,'bob');
  assert.equal(a.revealed[0].opponent.guesses.length,6);
- assert.deepEqual(a.revealed[0].opponent.guesses,game.rounds[1][0].guesses);
+ assert.deepEqual(a.revealed[0].opponent.guesses,Array.from({length:6},()=>({word:'',feedback:[]})));
  assert.equal(a.ownFinished,1);assert.equal(a.opponentFinished,1);
- assert.equal(a.revealed[0].opponent.guesses[5].word,'PLANT');
- assert.equal(JSON.stringify(a).includes('STONE'),true);
+ assert.equal(a.revealed[0].opponent.guesses[5].word,'');
+ assert.equal(JSON.stringify(a).includes('STONE'),false);
  assert.equal(b.revealed[0].own.guesses[0].word,'STONE');
  assert.equal(a.revealed[0].opponent.score,0);
 });
@@ -114,6 +114,13 @@ test('a completed match determines its winner from the shared round results', ()
   }
   assert.deepEqual(completedMatchOutcome(game), {reason: 'normal', winner: 'alice'});
   assert.equal(sealedProjection(game, 'alice').completed, true);
+  const completed=sealedProjection(game,'alice');
+  for(const round of completed.revealed){
+    assert.deepEqual(round.opponent.guesses[0],{word:'',feedback:[]});
+    assert.equal(round.opponent.guesses[1].word,round.opponent.answer);
+  }
+  assert.equal(JSON.stringify(completed).includes('STONE'),false);
+  assert.equal(sealedProjection(game,'bob').revealed[0].own.guesses[0].word,'STONE');
   let tie = createSealedGame(['alice', 'bob'], words);
   for (const item of words) {
     tie = submitSealedGuess(tie, 'alice', item.word, () => true);

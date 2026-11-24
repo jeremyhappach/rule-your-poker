@@ -3,4 +3,4 @@ export default {id:'five-alive',defaultsKey:'five-alive',name:'Five Alive',categ
  family:'megatouch',modes:['arcade'],arcadeSection:'originals',players:{min:1,max:1,selection:'solo'},
  bots:'unsupported',availability:'five-alive',development:'integrated',ownerSmoke:'pending',
  rules:{kind:'versioned',key:'five-alive',fixedVersion:'five-alive/1',load:()=>import('@/components/rules/FiveAliveRules')},
- defaultsEditor:'legacy',artwork:'five-alive'} satisfies GameDescriptor;
+ defaultsEditor:'stake',artwork:'five-alive'} satisfies GameDescriptor;

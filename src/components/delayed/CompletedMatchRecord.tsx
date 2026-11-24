@@ -104,7 +104,7 @@ function WordResults({record,home}:{record:GameRecord;home:Home}){
     <p>{fiveAliveTiers[round.difficulty]??'Unknown difficulty'} · {round.completed&&result?result.solved?`${round.guesses.length} ${round.guesses.length===1?'guess':'guesses'}`:'Failed':`${round.guesses.length} guesses used`}</p>
     {round.completed&&result?<p>Base score {number(result.solved?record.config.baseScores[round.guesses.length-1]:0)} × multiplier {number(record.config.multipliers[round.difficulty-1]/100)} = final score {number(result.score)}</p>:
      <p>{round.completed?'Scoring breakdown unavailable for this rules version.':round.guesses.length?'Unfinished when the game ended':'Not played'}</p>}
-    <ol className="record-guesses" aria-label={'Word '+(i+1)+' guesses'}>{round.guesses.map((guess,j)=><li key={j}>{[...guess.word].map((letter,k)=><span key={k} data-feedback={guess.feedback[k]} aria-label={letter+' '+guess.feedback[k]}>{letter}</span>)}</li>)}</ol>
+    <ol className="record-guesses" aria-label={'Word '+(i+1)+' guesses'}>{round.guesses.map((guess,j)=>{const masked=!guess.word;return <li key={j} aria-label={masked?'Hidden opponent guess':undefined}>{[...(masked?'•••••':guess.word)].map((letter,k)=><span key={k} data-feedback={masked?'absent':guess.feedback[k]} aria-label={masked?'Hidden letter':letter+' '+guess.feedback[k]}>{letter}</span>)}</li>;})}</ol>
    </article>;
   })}
  </section>)}</section>;

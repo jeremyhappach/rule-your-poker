@@ -25,6 +25,28 @@ it('accepts touch and physical keys and only submits a complete word',()=>{
 
 const stone:FiveAliveGuess={word:'STONE',feedback:['absent','absent','present','absent','correct']};
 const ample:FiveAliveGuess={word:'AMPLE',feedback:['correct','absent','correct','correct','correct']};
+it.each(['arcade','async'] as const)('keeps %s keyboard and geometry stable until a completed row finishes revealing',mode=>{
+ for(const solved of [false,true]){
+  const done=vi.fn(),p={...props(),mode,onRevealComplete:done};
+  const guesses:FiveAliveGuess[]=solved?[{word:'APPLE',feedback:Array(5).fill('correct')}]:Array(6).fill(stone);
+  const current={completed:true,guesses},reveal={id:'completion',row:guesses.length-1};
+  const ui=render(<FiveAliveBoard {...p} current={current} reveal={reveal}/>);
+  for(let column=0;column<5;column++){
+   expect(screen.getByLabelText('Keyboard')).toBeTruthy();
+   expect((screen.getByRole('button',{name:'Enter'}) as HTMLButtonElement).disabled).toBe(true);
+   expect(ui.container.querySelector('section.five-alive')!.hasAttribute('data-finished')).toBe(false);
+   fireEvent.keyDown(window,{key:'Enter'});expect(p.onSubmit).not.toHaveBeenCalled();
+   const tile=ui.container.querySelector('[data-reveal=close]')!;
+   endAnimation(tile,'five-alive-flip-close');expect(done).not.toHaveBeenCalled();
+   endAnimation(tile,'five-alive-flip-open');
+  }
+  expect(done).toHaveBeenCalledExactlyOnceWith('completion');
+  ui.rerender(<FiveAliveBoard {...p} current={current}/>);
+  expect(screen.queryByLabelText('Keyboard')).toBeNull();
+  expect(ui.container.querySelector('section.five-alive')!.getAttribute('data-finished')).toBe('true');
+  ui.unmount();
+ }
+});
 it('flips exactly one tile at a time and commits each actual color before starting the next',()=>{
   const wrong=vi.fn(),done=vi.fn(),p={...props(),onWrongGuess:wrong,onRevealComplete:done};
   const {rerender,container}=render(<FiveAliveBoard {...p}/>);

@@ -26,6 +26,18 @@ it('starts games first, defaults to real money and sends the exact ordered five-
  fireEvent.click(screen.getByRole('button',{name:'Send Invite'}));await waitFor(()=>expect(sends()).toHaveLength(1));
  expect(sends()[0][1].p_real_money).toBe(true);expect(sends()[0][1].p_lineup).toEqual(games.map(game=>({game,stake:5})));
 });
+it('uses the Five Alive default and sends the edited ante unchanged',async()=>{
+ const original=mock.rpc.getMockImplementation()!;
+ mock.rpc.mockImplementation(async(name:string,args:any)=>name==='delayed_capabilities'
+  ?{enabled:true,fake_money_only:false,max_children:32,games:[{id:'five-alive',stake:1}]}:original(name,args));
+ render(<MemoryRouter><AsyncInvite userId="a"/></MemoryRouter>);
+ await screen.findByRole('button',{name:'Five Alive'});pick('five-alive');
+ expect((screen.getByLabelText('Stake 1') as HTMLInputElement).value).toBe('1');
+ fireEvent.change(screen.getByLabelText('Stake 1'),{target:{value:'7'}});ok();opponent();
+ fireEvent.click(screen.getByRole('button',{name:'Send Invite'}));
+ await waitFor(()=>expect(sends()).toHaveLength(1));
+ expect(sends()[0][1]).toMatchObject({p_real_money:true,p_lineup:[{game:'five-alive',stake:7}]});
+});
 it('preserves recent/alphabetical opponent ordering and the selection when games reopen',async()=>{
  await mount();pick();ok();opponent();expect(mock.rpc.mock.calls.find(c=>c[0]==='delayed_opponent_page')?.[1].p_sort).toBe('recent');
  fireEvent.click(screen.getByRole('button',{name:'Sort by username'}));await waitFor(()=>expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_opponent_page').at(-1)?.[1].p_sort).toBe('username'));

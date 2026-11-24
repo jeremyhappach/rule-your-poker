@@ -1,3 +1,19 @@
+# Five Alive confidentiality and live gear polish — November 23, 2026 — approved release; owner smoke pending
+
+Five Alive now exposes the shared default ante control, starting at $1. Async
+creation carries the selected stake through the existing canonical settlement.
+Opponent earlier guesses and feedback stay masked in the API, animated replay,
+and completed-game history; only a final correct guess is shown. Own guesses
+remain intact. The keyboard and board layout stay through the complete tile
+reveal for both success and sixth-miss outcomes. Live player options regain
+contrast on the Blue Hour header; existing actions and Blast authorization remain.
+
+The completed-history projection migration is deployed and rollback proofs pass
+before and after application. Saved games and financial authority are unchanged.
+See [implementation, validation and measured lobby timing](FIVE_ALIVE_CONFIDENTIALITY_POLISH.md).
+The Async lobby investigation remains read-only; no performance changes are included.
+Checkpoint: five-alive-confidentiality-polish-20261123. Owner smoke pending.
+
 # Hap–Bobbalouie Chess restored as play money — November 22, 2026 — production database verified
 
 The unintended $5 real-money timeout settlement was reversed through the
