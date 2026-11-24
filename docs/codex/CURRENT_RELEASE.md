@@ -1,6 +1,6 @@
 # Untimed play-money Chess and targeted restoration — November 24, 2026
 
-Jeremy explicitly approved implementation, publication, and restoration of the original Hap–Bobbalouie match. Production application/restoration is pending publication of the compatible client; see the completion receipt below when recorded. Owner gameplay smoke remains pending.
+Jeremy explicitly approved implementation, publication, and restoration of the original Hap–Bobbalouie match. Production deployment, installed rollback proof, targeted restoration and authenticated browser verification are complete. Owner gameplay smoke remains pending.
 
 Play-money Chess is untimed in Live and Async. The database applies the versioned `play-money-untimed/1` policy at admission and on updates/backfill of active games. Gameplay/availability/Last Call deadlines are null; scheduler, expiry, timeout-outcome, pause/recovery, bot and push paths respect that policy. Bank actions are rejected. Real-money Chess retains its existing rules. Historical completed games are not reopened by the migration.
 
@@ -12,7 +12,7 @@ Signed-in Chrome reproduced the timeout message followed by a manual Continue ho
 
 Qualification: complete rollback SQL proof exercises actual canonical finance in both money modes, winners/ties, duplicate and late replay, authorization/stake guards, rollback on failure, continuation, terminal state, repeated final ACK/finale, existing/new Live/Async untimed games, stale expiry, timeout rejection, push eligibility, pause/resume, and the exact targeted restoration. No fixtures persist. Isolated bearer-authenticated HTTP browser fixtures cover timeout ACK, lost ACK retry, interrupted review, refresh, lobby/finale and untimed controls (7 cases, zero gameplay writes). These fixtures are not hosted Supabase sessions; production Chrome verification is separate. Evidence snapshots are local and ignored under `qualification.local/chess-untimed/`.
 
-Local validation: focused Chess/async tests pass; the first full run passed 4,426/4,427 tests, with one obsolete manual-Continue expectation corrected and its 10-test file passing. Typecheck, 241 harness tests, 46 release-tool tests, production Vite build and the 90 MB size gate pass (89,841,061 bytes). Reproduction scripts: `dev/chess/untimed-proof.mjs`, `untimed-history-proof.mjs`, `untimed-browser.mjs`; migration `20261124210340`; authoritative SQL source `supabase/chess/untimed.sql`.
+Local validation: all 4,427 application tests pass, including the updated automatic timeout-review expectation. Typecheck, 241 harness tests, 46 release-tool tests, production Vite build and the 90 MB size gate pass (89,841,061 bytes). Reproduction scripts: `dev/chess/untimed-proof.mjs`, `untimed-history-proof.mjs`, `untimed-browser.mjs`; migration `20261124210340`; authoritative SQL source `supabase/chess/untimed.sql`.
 
 ---
 
