@@ -14,7 +14,7 @@ export function wordsFinalReview(events:ReviewEvent[],snapshot:WordsSnapshot,chi
  // Own finishes, passes, forfeits and legacy results show the final board, never
  // the last earlier placement. The server snapshot owns all adjusted totals.
  const lastAction=final.receipt.reason!=='timeout_forfeit'&&move&&nonWordTurn(move)?move:undefined;
- const event:ReviewEvent={...(attempt??final),score:attempt?move!.points:0,
+ const event:ReviewEvent={...(attempt??final),beforeScore:undefined,afterScore:undefined,score:attempt?move!.points:0,
   ...(lastAction?{actor:lastAction.playerId,actorName:snapshot.players.find(p=>p.id===lastAction.playerId)?.name}:{}),
   receipt:{...(attempt??final).receipt,game:'ptown-words',move:attempt?move:lastAction},
   board:{...snapshot,moves:attempt?[move!]:lastAction?[lastAction]:[],movePresentation:attempt?presentation:undefined}};

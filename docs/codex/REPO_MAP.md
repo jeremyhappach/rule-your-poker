@@ -1,3 +1,13 @@
+# Async pending-result access and Words disclosure
+
+`PendingResults` in `src/components/delayed/ResultReview.tsx` owns explicit active
+result review, independent of turn admission; the existing per-game saved-board
+renderers and Five Alive review owner remain responsible for presentation.
+`private.delayed_words_reveal_state` and `private.delayed_words_mask` in
+`supabase/delayed/result-recovery.sql` own viewer-specific disclosed score/board
+projections. `delayed_home.reviewCount` uses the same eligibility as
+`delayed_reviews`. Proof: `dev/async-words/result-recovery-proof.mjs`.
+
 # Five Alive relative difficulty ownership
 
 `server/fiveAlive/relativeDifficulty.ts` reproduces the approved audit in `difficulty.relative.review.json` into `difficulty.relative.v1.txt` for qualification. Runtime ownership stays in `private.five_alive_allocate`; `supabase/five-alive/difficulty-relative-v1.sql` adds immutable difficulty catalog and assignment snapshots. Existing rules/adapters consume their frozen round tiers. Proofs live in `dev/five-alive/difficulty.*`; the checkpoint is [FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md](FIVE_ALIVE_DIFFICULTY_QUALIFICATION.md).

@@ -19,9 +19,9 @@ import {AsyncInvite} from '@/components/delayed/AsyncInvite';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Link,useLocation,useNavigate,useParams,useSearchParams} from 'react-router-dom';
 import {Clock} from 'lucide-react';
-import {money,turnTime,mayViewFinale,needsChildReview} from '@/lib/delayed/reviews';
+import {money,turnTime,mayViewFinale,needsChildReview,hasPendingReview,pendingReviewCount} from '@/lib/delayed/reviews';
 import {AsyncTurnStage} from '@/components/delayed/AsyncTurnStage';
-import {ReviewGate,ChildResults,MatchFinale} from '@/components/delayed/ResultReview';
+import {ReviewGate,PendingResults,ChildResults,MatchFinale} from '@/components/delayed/ResultReview';
 import {useAuthGuard} from '@/hooks/useAuthGuard';
 import {supabase} from '@/integrations/supabase/client';
 import {delayedRpc,gameName,signed,type Home} from '@/lib/delayed/client';
@@ -35,7 +35,8 @@ export default function Delayed(){
  const {user,isReady}=useAuthGuard({pageLabel:'Delayed matches'}),{matchId,childId}=useParams(),[query]=useSearchParams();
  if(!isReady||!user)return <AsyncTurnEntry/>;
  if(matchId&&matchId!=='new'&&query.has('history'))return <CompletedMatchRecord key={user.id+':'+matchId+':'+(childId??query.get('game')??'')} matchId={matchId} userId={user.id} childId={childId??query.get('game')??undefined}/>;
- if(childId&&matchId)return <ChildTurn key={childId} childId={childId} matchId={matchId} userId={user.id}/>;
+ if(childId&&matchId)return <ChildTurn key={user.id+':'+childId} childId={childId} matchId={matchId} userId={user.id}/>;
+ if(matchId&&query.has('results'))return <PendingResults key={user.id+':'+matchId+':'+query.get('results')} childId={query.get('results')!} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('review'))return <ChildResults key={matchId+':'+query.get('review')} childId={query.get('review')!} matchId={matchId} userId={user.id}/>;
  if(matchId&&query.has('finale'))return <MatchFinale key={user.id+':'+matchId} matchId={matchId} userId={user.id}/>;
  return <main className="delayed-page delayed-match-page"><header><Link to="/delayed">Back to Lobby</Link><h1>Async Matches</h1><GameplaySoundButton/><NotificationBell/></header>
@@ -118,7 +119,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
    const reviewed=isReviewedGame(c,userId),expanded=expandedGame===c.id,panelId='completed-game-'+c.id;
    const timeoutLabel=c.result?.reason==='timeout_forfeit'?(c.game==='chess'?(home.players.find(p=>p.id!==c.result?.winner)?.name??'Player')+' timed out':'Forfeit'):'';
    const scores=c.game!=='chess'&&home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">Pending</em>}</div></div>)}</div>;
-   return <li className="delayed-game-card" data-group={lobbyGameGroup(c,home,userId,now)} data-completed={reviewed||undefined} data-unviewed={needsChildReview(c,userId)||undefined} key={c.id}>
+   return <li className="delayed-game-card" data-group={lobbyGameGroup(c,home,userId,now)} data-completed={reviewed||undefined} data-unviewed={needsChildReview(c,userId)||undefined} data-reviewable={hasPendingReview(c,userId)||undefined} key={c.id}>
     {reviewed?<><AsyncGameHeader game={c.game} name={gameName(c.game)} disclosure={{expanded,controls:panelId,onToggle:()=>setExpandedGame(old=>old===c.id?null:c.id),summary:
      <span className={'async-completed-outcome '+(c.result&&c.result.delta>0?'delayed-win':c.result&&c.result.delta<0?'delayed-loss':'')}>
       {c.result?<>{c.result.delta>0?'W':c.result.delta<0?'L':'T'} {money(Math.abs(c.result.delta)).replace('+','')}</>:'Result unavailable'}
@@ -127,7 +128,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
     </>:<><AsyncGameHeader game={c.game} name={gameName(c.game)} stake={c.stake}/>
     {scores}
     {c.game==='five-alive'&&home.acceptedAt&&<FiveAliveMatchWords key={c.id} childId={c.id} revision={c.revision} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'}/>}
-    {needsChildReview(c,userId)&&!home.removedAt&&<Link to={'/delayed/'+id+'?review='+c.id}>View Results</Link>}
+    {hasPendingReview(c,userId)&&!home.removedAt&&<Link className="delayed-primary" to={'/delayed/'+id+(c.terminal?'?review=':'?results=')+c.id}>{c.terminal?'View Results':'View result'+(pendingReviewCount(c,userId)>1?'s ('+pendingReviewCount(c,userId)+')':'')}</Link>}
     {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{timeoutLabel?' · '+timeoutLabel:''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:
      home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):c.game==='five-alive'?'Waiting on opponent.':"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
       <time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>
@@ -163,6 +164,7 @@ function ChildTurn({childId,matchId,userId}:{childId:string;matchId:string;userI
  const child=home?.lineup.find(c=>c.id===childId);
  useUpdates(userId,refresh,child?.game!=='ptown-words');
  if(!child)return error?<AsyncTurnStage matchId={matchId} title={error}/>:<AsyncTurnEntry/>;
+ if(child.game==='ptown-words'&&child.actor===userId&&!child.startedAt&&hasPendingReview(child,userId))return <PendingResults key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} resumeTurn onReviewed={setHome}/>;
  if(child.game==='five-alive')return <FiveAliveSession key={userId+':'+childId} mode="async" id={childId} userId={userId} matchId={matchId} opponentName={home!.players.find(p=>p.id!==userId)?.name??'Opponent'}/>;
  return child.game==='chess'?<ChessTurn childId={childId} matchId={matchId} userId={userId}/>:child.game==='ptown-words'?<WordsTurn key={userId+':'+childId} childId={childId} matchId={matchId} userId={userId} sessionName={home!.players.map(p=>p.name).join(' vs. ')} realMoney={home!.realMoney}/>:<ReviewGate home={home!} childId={childId} matchId={matchId} userId={userId}>{()=> <DelayedTurn childId={childId} matchId={matchId} userId={userId} players={home!.players} realMoney={home!.realMoney} autoStart/>}</ReviewGate>;
 }

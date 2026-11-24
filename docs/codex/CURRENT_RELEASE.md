@@ -1,3 +1,38 @@
+# Async result access and disclosed Words scores — November 23, 2026 — owner smoke pending
+
+Approved correction restores a green active-game View result action independently
+of turn ownership. Lobby counts and cards share the server's eligible unread-event
+count. Review uses saved boards, acknowledges only completed presentations, reloads
+after each ACK, and can restart interrupted playback without starting a turn.
+Five Alive retains its specialized review owner and same-deal embargoes remain.
+
+Words now projects the last disclosed opponent total independently from unread
+receipts. Historical unversioned command responses preserve already disclosed
+totals; new versioned responses cannot advance that baseline. No historical ACKs
+are fabricated. Inspection masks new scores/plays until review, while explicit
+completed-game review retains final adjusted totals. Live Words ACKs only the
+exact presented turn. Rules, financial writers and gameplay progression are unchanged.
+
+Migration `20261124033635` is installed. Candidate/idempotence and installed
+rollback proofs passed the new result-access/privacy cases plus the existing
+winner/tie, duplicate/late replay, authorization, continuation, terminal and
+canonical financial settlement suite. Reproduce with
+`node dev/async-words/result-recovery-proof.mjs --installed`.
+
+The two reported production Words children were preserved: Hap/mcru81 turn 26,
+25 saved boards, projected scores 250/272 and 12 unread opponent events;
+Hap/TheOG turn 8, 7 saved boards, scores 90/71 and 3 unread opponent events.
+These counts expose previously unacknowledged history; no events were cleared.
+Hap's authenticated browser reproduced the original 250–0 Pending/no-review
+failure before publication. Deployment and production review verification follow
+the approved main push; Jeremy's gameplay smoke remains the acceptance gate.
+
+Local release validation passed: 4,415 application tests, 241 harness tests,
+46 release-tool tests, typecheck and the bundle-size gate. Focused post-review
+component checks passed all 71 tests. Shared review admission covers Run21,
+Tri-Towers, Quintzee, Boxdrop, Chucky, Crib Lab, Take Two, Mega Card Golf and
+Words; Five Alive keeps its own playback and Chess keeps final-only review.
+
 # Five Alive corrected reveal — November 23, 2026 — published; owner smoke pending
 
 Published app commit `2f2d18c8244c86fc5ff5f1595d2ac5df12ad23b8`.

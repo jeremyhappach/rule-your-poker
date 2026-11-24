@@ -13,6 +13,12 @@ describe('viewer-safe cumulative replay context',()=>{
  const home={players:[{id:'me',name:'Me'},{id:'opponent',name:'Opponent'}],lineup:[{id:'child',scores:{me:80000,opponent:999999}}]} as any;
  const current={...event('quintzee',{score:999999,result:{scoreBefore:979954,score:999999,stageScore:20045}}),round:2,score:20045};
  const prior={...current,id:'prior',round:1,score:19803,seen:true};
+ it.each([[195,237],[0,42],[237,237]])('Words uses disclosed cumulative range %s → %s', (before,after)=>{
+  const words={...event('ptown-words',{scores:{opponent:after},movePresentation:{startedAt:1,announceAt:2,readyAt:3}}),beforeScore:before,afterScore:after};
+  const context=reviewScoreContext(words,[],home,'child','me');expect(context).toMatchObject({before,after});
+  const board=rebaseReviewBoard(words,1000,context.before);expect(board.scores.opponent).toBe(after);
+  if(before===after)expect(board.movePresentation).toBeUndefined();
+ });
  it('counts the round award onto acknowledged prior contributions, never the saved cumulative total',()=>{
   const context=reviewScoreContext(current,[prior,current],home,'child','me');
   expect(context).toMatchObject({before:19803,after:39848,players:[{id:'me',score:80000},{id:'opponent',score:39848}]});

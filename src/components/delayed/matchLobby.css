@@ -33,3 +33,4 @@
 @media(prefers-reduced-motion:reduce){.async-completed-toggle>svg{transition:none}}
 
 .delayed-game-mix{font-size:.82rem;line-height:1.35}
+.delayed-game-card[data-reviewable]{border-color:#4baf77;background:#163c2c}

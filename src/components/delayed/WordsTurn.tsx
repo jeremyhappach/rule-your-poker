@@ -49,7 +49,7 @@ function ActiveWordsTurn({childId,matchId,userId,realMoney=false,sessionName='Ma
  const confirmViewed=async(turn:number)=>{
   try{
    const reviews=await delayedRpc<Reviews>('delayed_reviews',{p_child:childId});
-   for(const event of reviews.events.filter(e=>e.kind==='attempt'&&e.actor!==userId&&e.round<=turn&&!e.seen))
+   for(const event of reviews.events.filter(e=>e.kind==='attempt'&&e.actor!==userId&&e.round===turn&&!e.seen))
     await delayedRpc('delayed_review_ack',{p_event:event.id});
    setUnconfirmed(null);
   }catch{setUnconfirmed(turn);}

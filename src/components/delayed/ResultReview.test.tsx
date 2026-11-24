@@ -11,7 +11,7 @@ vi.setConfig({testTimeout:20_000});
 import {useState} from 'react';
 import {platformAudio} from '@/lib/audio/platformAudio';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
-import {ReviewGate,ChildResults,MatchFinale} from './ResultReview';
+import {ReviewGate,PendingResults,ChildResults,MatchFinale} from './ResultReview';
 import {TooltipProvider} from '@/components/ui/tooltip';
 import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 const mock=vi.hoisted(()=>({rpc:vi.fn(),change:()=>{},state:null as any,home:null as any}));
@@ -38,6 +38,40 @@ const savedChucky=(score=2500,lives=1)=>{
    player:[{rank:'A',suit:'hearts'}],community:[{rank:'K',suit:'clubs'}],chucky:[{rank:'Q',suit:'diamonds'}]}}];
  mock.home.lineup[0].game='chucky-showdown';
 };
+it.each(['me','other'])('explicit result review works during %s turn and returns without starting gameplay',async actor=>{
+ savedChucky();mock.home.status='active';mock.home.lineup[0].terminal=false;mock.state.actor=actor;
+ mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();
+ await advance(3100);expect(screen.getByRole('region',{name:'Opponent round results'})).toBeTruthy();
+ expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
+ await advance(8000);expect(screen.getByText('Match home destination')).toBeTruthy();
+ expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event)).toEqual(['event']);
+ expect(mock.rpc.mock.calls.every(c=>['delayed_home','delayed_reviews','delayed_review_begin','delayed_review_ack'].includes(c[0]))).toBe(true);
+});
+it('explicit review drains multiple events one at a time and reconciles after each ACK',async()=>{
+ savedChucky();mock.home.lineup[0].terminal=false;
+ mock.state.events.push({...structuredClone(mock.state.events[0]),id:'next',round:3});
+ mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();
+ await advance(11000);expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event)).toEqual(['event']);
+ expect(screen.queryByText('Match home destination')).toBeNull();
+ await advance(11000);expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_ack').map(c=>c[1].p_event)).toEqual(['event','next']);
+ expect(screen.getByText('Match home destination')).toBeTruthy();
+});
+it('interrupted explicit review restarts even when persisted elapsed time exceeds the animation',async()=>{
+ savedChucky();mock.home.lineup[0].terminal=false;
+ const original=mock.rpc.getMockImplementation()!;
+ mock.rpc.mockImplementation((name,args)=>name==='delayed_review_begin'?Promise.resolve({elapsed:50000,seen:false}):original(name,args));
+ let ui=mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();await advance(4000);ui.unmount();
+ expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
+ ui=mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();await advance(4000);
+ expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
+ await advance(7000);expect(screen.getByText('Match home destination')).toBeTruthy();
+});
+it('missing replay data cannot silently consume an explicit pending result',async()=>{
+ mock.home.lineup[0].terminal=false;
+ mount(<PendingResults childId='child' matchId='match' userId='me'/>);await flush();await advance(20000);
+ expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);
+ expect(screen.getByText('Historic board replay is unavailable.')).toBeTruthy();
+});
 it('Chucky reviews show recorded lives and Fold/Stay levels without cards, count the round score, then hand off once',async()=>{
  savedChucky();const ui=mount(gate());await flush();await advance(3100);
  const results=screen.getByRole('region',{name:'Opponent round results'});

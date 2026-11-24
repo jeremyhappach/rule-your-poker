@@ -11,7 +11,7 @@ export const ASYNC_SCORE_HOLD_MS=3000;
  * Saved board totals may include other unseen rounds and are never the baseline. */
 export function reviewScoreContext(event:ReviewEvent,events:ReviewEvent[],home:Home,childId:string,userId:string){
  const actor=event.actor!,prior=new Map(events.filter(e=>e.kind==='attempt'&&e.actor===actor&&e.seen&&e.round<event.round).map(e=>[e.id,e]));
- const before=[...prior.values()].reduce((sum,e)=>sum+(e.score??0),0),after=before+(event.score??0);
+ const before=event.beforeScore??[...prior.values()].reduce((sum,e)=>sum+(e.score??0),0),after=event.afterScore??before+(event.score??0);
  const own=home.lineup.find(c=>c.id===childId)?.scores?.[userId]??0;
  return {before,after,players:home.players.map(p=>({...p,score:p.id===actor?after:own,active:p.id===actor}))};
 }
@@ -48,6 +48,11 @@ export function reviewSchedule(event:ReviewEvent){
 }
 export function rebaseReviewBoard(event:ReviewEvent,origin:number,scoreBefore?:number){
  if(!event.board)return null;const b=structuredClone(event.board),schedule=reviewSchedule(event);
+ if(event.receipt.game==='ptown-words'&&event.actor&&event.afterScore!==undefined){
+  b.scores={...b.scores,[event.actor]:event.afterScore};
+  // Previously disclosed legacy totals must not count old points a second time.
+  if(event.beforeScore===event.afterScore)delete b.movePresentation;
+ }
  b.deadline=origin+schedule.duration;
  if(event.receipt.game==='crib-lab'){
   b.phaseUntil=origin+schedule.duration;

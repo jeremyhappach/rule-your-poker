@@ -5,12 +5,18 @@ export const mayViewFinale=(home:Home)=>!!home.receipt&&home.reviewsComplete===t
 export const needsChildReview=(child:ChildSummary,userId:string)=>child.terminal&&
  (child.viewed===false||Object.entries(child.pendingResults??{}).some(([actor,count])=>actor!==userId&&count>0));
 
+// Server eligibility includes same-deal embargoes. Turn ownership is independent.
+export const pendingReviewCount=(child:ChildSummary,userId:string)=>child.reviewCount??
+ (Object.entries(child.pendingResults??{}).reduce((n,[actor,count])=>n+(actor!==userId?count:0),0)
+  +(child.terminal&&child.viewed===false?1:0));
+export const hasPendingReview=(child:ChildSummary,userId:string)=>pendingReviewCount(child,userId)>0;
+
 export interface ReviewEvent {
  id:string;kind:'attempt'|'child';actor:string|null;actorName?:string;round:number;score:number|null;at:string;
  receipt:{game:string;rules:any;result?:any;move?:any;reason?:string;winner?:string|null;stake?:number;organizerDelta?:number;opponentDelta?:number};
- board:any;seen:boolean;
+ board:any;seen:boolean;beforeScore?:number;afterScore?:number;
 }
-export interface Reviews {events:ReviewEvent[];terminal:boolean;actor:string;segment:number;revision:number;started:boolean;expiresAt:string;held:boolean;serverAt:number}
+export interface Reviews {events:ReviewEvent[];finalBoard?:import('@/lib/ptownWords/model').WordsSnapshot;terminal:boolean;actor:string;segment:number;revision:number;started:boolean;expiresAt:string;held:boolean;serverAt:number}
 export const money=(n:number)=>`${n<0?'−':n>0?'+':''}$${Math.abs(n).toLocaleString()}`;
 export const turnTime=(expires:string|null,now:number)=>{
  const minutes=Math.max(0,Math.ceil((Date.parse(expires??'')-now)/60000));

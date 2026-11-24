@@ -34,6 +34,16 @@ beforeEach(()=>{
  mock.rpc.mockImplementation(async(name)=>name==='delayed_home'?mock.home:name==='notification_preferences'?{}:false);
 });
 afterEach(()=>{cleanup();localStorage.clear();sessionStorage.clear();vi.unstubAllGlobals();});
+it.each(['me','other'])('active Words exposes green result review independently of actor %s',async actor=>{
+ const child=mock.home.lineup[1];Object.assign(child,{actor,scores:{me:250,other:195},pendingResults:{other:2},reviewCount:2});
+ const ui=mount();await flush();const card=ui.container.querySelector('[data-reviewable="true"]')!;
+ const link=within(card as HTMLElement).getByRole('link',{name:'View results (2)'});
+ expect(link.classList.contains('delayed-primary')).toBe(true);
+ expect(link.getAttribute('href')).toBe('/delayed/match?results=opponent');
+ expect(card.textContent).toContain('195');expect(card.textContent).toContain('Pending');
+ expect(within(card as HTMLElement).getByRole('link',{name:actor==='me'?'Take Turn':'View board'})).toBeTruthy();
+ expect(mock.rpc.mock.calls.some(([name])=>name.includes('ack'))).toBe(false);
+});
 it('sorts presentation by actionability with stable ordinals and leaves canonical lineup intact',()=>{
  const h=mock.home as Home,original=h.lineup.map(c=>c.id);
  expect(orderedLobbyGames(h,'me',Date.now()).map(c=>c.id)).toEqual(['own','unreviewed','opponent','reviewed-win','reviewed-tie']);

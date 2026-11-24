@@ -1,3 +1,16 @@
+# November 23, 2026 — Disclosed score and result ACK are independent
+
+An eligible saved result remains reviewable regardless of current turn ownership.
+The shared server review count, lobby indicator and game-card action describe the
+same unread events, including zero-point turns and terminal results. Same-deal
+review embargoes remain authoritative.
+
+For Words, historical command responses can prove prior score disclosure but do
+not prove a completed reveal. Read projections use those existing unversioned
+responses as a compatibility floor without inserting ACKs or changing old state.
+New responses carry `reviewProjectionVersion`; only actual review ACKs advance
+their opponent score. Opening a board never consumes a pending result.
+
 # November 23, 2026 — Approved Five Alive feedback-first reveal
 
 This supersedes the earlier opening-word disclosure decision below. Every

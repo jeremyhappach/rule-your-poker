@@ -17,10 +17,10 @@ describe('viewer-specific playability versus turn ownership',()=>{
  it('keeps invitations, playable turns and intermediate opponent reviews independently actionable',()=>{
   expect(matchLobbyStatus(home([],{status:'invited'}),'b',now).actionable).toBe(true);
   const review=child('run21',{pendingResults:{b:2},playable:false});
-  expect(matchLobbyStatus(home([review]),'a',now)).toMatchObject({own:0,results:1,actionable:true});
+  expect(matchLobbyStatus(home([review]),'a',now)).toMatchObject({own:0,results:2,actionable:true});
   expect(matchLobbyStatus(home([{...review,pendingResults:{a:2}}]),'a',now)).toMatchObject({results:0,actionable:false});
   const own=child('boxdrop',{actor:'a',playable:true});
-  expect(matchLobbyStatus(home([review,own]),'a',now)).toMatchObject({own:1,results:1,actionable:true});
+  expect(matchLobbyStatus(home([review,own]),'a',now)).toMatchObject({own:1,results:2,actionable:true});
   expect(matchLobbyStatus(home([{...review,pendingResults:{}},own]),'a',now).actionable).toBe(true);
   expect(matchLobbyStatus(home([{...review,pendingResults:{}},{...own,actor:'b',playable:false}]),'a',now).actionable).toBe(false);
  });

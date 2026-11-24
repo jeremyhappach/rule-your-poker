@@ -40,8 +40,9 @@ import {wordsFinalReview} from '@/lib/delayed/wordsFinalReview';
 type Identity={childId:string;matchId:string;userId:string};
 const noop=()=>{};
 function useReduced(){return useMemo(()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false,[]);}
-class SnapshotBoundary extends Component<{children:ReactNode},{failed:boolean}>{
+class SnapshotBoundary extends Component<{children:ReactNode;onFailure?:()=>void},{failed:boolean}>{
  state={failed:false};static getDerivedStateFromError(){return {failed:true};}
+ componentDidCatch(){this.props.onFailure?.();}
  render(){return this.state.failed?<p role="status">Board preview unavailable. The saved score is shown above.</p>:this.props.children;}
 }
 
@@ -64,14 +65,44 @@ export function ReviewGate({childId,matchId,userId,home,children}:Identity&{home
  return error?<AsyncTurnStage matchId={matchId} title={error}><button onClick={()=>void load()}>Retry</button></AsyncTurnStage>:handoff?<AsyncTurnStage matchId={matchId} title="Your turn!"/>:event&&home?<AttemptReview key={event.id} event={event} events={state!.events} home={home} {...{childId,matchId,userId}} onDone={()=>{reviewed.current=true;return load();}}/>:<AsyncTurnStage matchId={matchId} title={home.players.some(p=>p.id!==userId&&home.lineup.find(c=>c.id===childId)?.pendingResults?.[p.id])?'Showing '+home.players.find(p=>p.id!==userId)!.name+"'s results":undefined}/>;
 }
 
-function AttemptReview({event,events,home,onDone,childId,matchId,userId,acknowledgeEvents}:Identity&{event:ReviewEvent;events:ReviewEvent[];home:Home;onDone:()=>void|Promise<void>;acknowledgeEvents?:string[]}){
+// Reviewing a result never admits a gameplay clock or depends on the current actor.
+export function PendingResults({childId,matchId,userId,resumeTurn=false,onReviewed}:Identity&{resumeTurn?:boolean;onReviewed?:(home:Home)=>void}){
+ const [home,setHome]=useState<Home|null>(null),[state,setState]=useState<Reviews|null>(null),[error,setError]=useState('');
+ const navigate=useNavigate(),generation=useRef(0),visible=useVisible();
+ const load=useCallback(async()=>{
+  const version=++generation.current;
+  try{
+   const [h,r]=await Promise.all([delayedRpc<Home>('delayed_home',{p_match:matchId}),delayedRpc<Reviews>('delayed_reviews',{p_child:childId})]);
+   if(version!==generation.current)return;
+   const child=h.lineup.find(c=>c.id===childId);
+   if(h.id!==matchId||!h.players.some(p=>p.id===userId)||!child||h.removedAt)throw Error('Result identity unavailable.');
+   if(child.terminal){navigate('/delayed/'+matchId+'?review='+childId,{replace:true});return;}
+   if(!r.events.some(e=>e.kind==='attempt'&&!e.seen)){
+    const resume=resumeTurn&&!h.held&&child.actor===userId&&Date.parse(child.expiresAt??'')>h.serverAt;
+    if(resume&&onReviewed){onReviewed(h);return;}
+    navigate('/delayed/'+matchId+(resume?'/play/'+childId:''),{replace:true});return;
+   }
+   setHome(h);setState(r);setError('');
+  }catch{if(version===generation.current)setError('Unable to load saved results. Retry safely.');}
+ },[childId,matchId,userId,resumeTurn,onReviewed,navigate]);
+ useEffect(()=>{if(visible)void load();return()=>{generation.current++;};},[load,visible]);
+ useEffect(()=>{const channel=supabase.channel('pending-results:'+childId).on('postgres_changes',{event:'*',schema:'public',table:'delayed_match_updates',filter:'user_id=eq.'+userId},()=>void load()).subscribe();return()=>{void supabase.removeChannel(channel);};},[childId,userId,load]);
+ const event=state?.events.find(e=>e.kind==='attempt'&&!e.seen);
+ if(error)return <main className="delayed-page"><p role="alert">{error}</p><button onClick={()=>void load()}>Retry</button><Link to={'/delayed/'+matchId}>Match home</Link></main>;
+ if(!home||!state||!event)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
+ if(home.lineup.find(c=>c.id===childId)?.game==='five-alive')return <FiveAliveSession mode="async" id={childId} matchId={matchId} userId={userId} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'} reviewOnly onReviewsComplete={load}/>;
+ return <AttemptReview key={event.id} event={event} events={state.events} home={home} {...{childId,matchId,userId}} restart onDone={load}/>;
+}
+
+function AttemptReview({event,events,home,onDone,childId,matchId,userId,acknowledgeEvents,restart=false}:Identity&{event:ReviewEvent;events:ReviewEvent[];home:Home;onDone:()=>void|Promise<void>;acknowledgeEvents?:string[];restart?:boolean}){
  const [scores]=useState(()=>reviewScoreContext(event,events,home,childId,userId));
+ const [boardFailed,setBoardFailed]=useState(false);
  const schedule=reviewSchedule(event),reduced=useReduced(),intro=event.receipt.game==='ptown-words'?0:3000,total=intro+(reduced?0:schedule.presentationEnd)+ASYNC_SCORE_HOLD_MS,[prior,setPrior]=useState<number|null>(null),activeView=useVisible(),duration=prior===null?total:Math.max(ASYNC_SCORE_HOLD_MS,total-prior),{elapsed,done,active}=usePlayback(duration,event.id+':'+prior),busy=useRef(false),[error,setError]=useState(''),[beginRetry,setBeginRetry]=useState(0);
- useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(event.seen||event.receipt.game==='mega-card-golf'?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry]);
- const acknowledge=useCallback(async()=>{if(prior===null||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;try{
+ useEffect(()=>{if(!activeView)return;let alive=true;void delayedRpc<{elapsed:number;seen:boolean}>('delayed_review_begin',{p_event:event.id}).then(v=>{if(alive){setError('');setPrior(restart||event.seen||event.receipt.game==='mega-card-golf'?0:v.elapsed);}}).catch(()=>{if(alive)setError('Unable to begin saved-result review.');});return()=>{alive=false;};},[event.id,event.seen,activeView,beginRetry,restart]);
+ const acknowledge=useCallback(async()=>{if(prior===null||busy.current||boardFailed||restart&&!event.board||document.hidden||!navigator.onLine)return;busy.current=true;try{
   for(const id of acknowledgeEvents??[event.id]){if(document.hidden||!navigator.onLine)throw Error('Review interrupted');await delayedRpc('delayed_review_ack',{p_event:id});}
   await onDone();
- }catch{setError('Result saved. Unable to confirm viewing; retry safely.');busy.current=false;}},[event.id,acknowledgeEvents,onDone,prior]);
+ }catch{setError('Result saved. Unable to confirm viewing; retry safely.');busy.current=false;}},[event.id,event.board,restart,boardFailed,acknowledgeEvents,onDone,prior]);
  useEffect(()=>{if(prior!==null&&done&&!error)void acknowledge();},[prior,done,error,acknowledge]);
  if(prior===null)return <AsyncTurnStage matchId={matchId} title={error||'Showing '+(event.actorName??home.players.find(p=>p.id===event.actor)?.name??'')+"'s results"}>{error&&<button onClick={()=>{setError('');setBeginRetry(n=>n+1);}}>Retry</button>}</AsyncTurnStage>;
  if(elapsed+prior<intro)return <AsyncTurnStage matchId={matchId} title={'Showing '+(event.actorName??home.players.find(p=>p.id===event.actor)?.name??'')+"'s results"}/>;
@@ -79,7 +110,7 @@ function AttemptReview({event,events,home,onDone,childId,matchId,userId,acknowle
  return <div className="async-result-review async-turn"><div className="delayed-turn-nav"><Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link><span>{event.receipt.game==='ptown-words'?(event.receipt.move?`${event.actorName??'Opponent'} · ${turnLabel(event.receipt.move)} · `:'Final board'): <>{event.actorName??'Opponent'} · {event.receipt.game==='mega-card-golf'?'Hole':'Round'} {event.round} · </>}{(event.receipt.game!=='ptown-words'||event.receipt.move?.action==='place')&&Math.round((event.score??0)*(reduced?1:Math.max(0,Math.min(1,(shown-schedule.countStart)/(schedule.countEnd-schedule.countStart))))).toLocaleString()}</span></div>
   {event.receipt.game==='mega-card-golf'&&<button className="delayed-secondary" disabled={!active} onClick={()=>void acknowledge()}>Skip Animation</button>}
   {!active&&<p role="status">Return online to finish reviewing.</p>}{error&&<p role="alert">{error}<button onClick={()=>void acknowledge()}>Retry</button></p>}
-  <SnapshotBoundary><SavedBoard key={event.id+':'+prior} event={event} scores={scores} holeResults={home.lineup.find(c=>c.id===childId)?.holeResults??[]} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
+  <SnapshotBoundary onFailure={()=>setBoardFailed(true)}><SavedBoard key={event.id+':'+prior} event={event} scores={scores} holeResults={home.lineup.find(c=>c.id===childId)?.holeResults??[]} childId={childId} userId={userId} elapsed={reduced?schedule.duration:Math.min(schedule.duration,shown)}/></SnapshotBoundary>
  </div>;
 }
 
@@ -87,7 +118,9 @@ function SavedBoard({event,scores,childId,userId,elapsed,holeResults}:{holeResul
  const scoreRoot=useRef<HTMLDivElement>(null);
  const [tab,setTab]=useState<ShellTabId>('cards'),[playId]=useState(()=>crypto.randomUUID()),actor=event.actor??userId,name=event.actorName??'Opponent',scope='review:'+event.id+':'+playId,schedule=reviewSchedule(event),active=useVisible();
  const origin=1_000_000,now=origin+elapsed;
- const board=useMemo(()=>rebaseReviewBoard(event,origin,scores.before),[event,scores.before]);
+ const board=useMemo(()=>{const saved=rebaseReviewBoard(event,origin,scores.before);
+  return saved&&event.receipt.game==='ptown-words'?{...saved,scores:{...saved.scores,[userId]:scores.players.find(p=>p.id===userId)?.score??0}}:saved;
+ },[event,scores,userId]);
  const runView=event.receipt.game==='run21'&&board?{config:event.receipt.rules,roundId:scope,roundNumber:event.round,viewerId:userId,boards:{[actor]:board},players:scores.players,active_player_id:null,liveBoards:true,revealed:true,cumulative:Object.fromEntries(scores.players.map(p=>[p.id,p.score])),scorePresentation:{playerId:actor,startedAt:origin+schedule.countStart,endsAt:origin+schedule.countEnd,from:scores.before,to:scores.after},presentationKey:scope}:undefined;
  // Saved-result animation is read-only history; do not re-admit its audio.
  if(!board)return <main className="delayed-page"><p>Historic board replay is unavailable.</p><strong>{event.score?.toLocaleString()} points</strong></main>;
@@ -126,7 +159,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
  const load=useCallback(async()=>{try{const [h,r]=await Promise.all([delayedRpc<Home>('delayed_home',{p_match:matchId}),delayedRpc<Reviews>('delayed_reviews',{p_child:childId})]);if(h.removedAt||!h.lineup.some(c=>c.id===childId&&c.terminal)){navigate('/delayed/'+matchId,{replace:true});return;}
   const childGame=h.lineup.find(c=>c.id===childId)?.game,words=childGame==='ptown-words';
    let holdChess=false;if(childGame==='chess'&&!query.has('chess-reviewed')){const saved=await delayedRpc<any[]>('chess_history',{p_mode:'async',p_match:matchId,p_id:childId});if(saved[0]?.state.phase==='complete'){const v=saved[0].state;setChessReview({...v,id:childId,revision:0,serverAt:h.serverAt,canAct:false,paused:false,pausedAt:null,finished:true,settled:true,settlement:null,financial:{balances:{},resultId:null,batch:null}});holdChess=true;}}
-  if(words){const snapshot=await delayedRpc<WordsSnapshot>('delayed_words_inspect',{p_child:childId});setWordsReview(wordsFinalReview(r.events,snapshot,childId,matchId,userId));}
+  if(words){const snapshot=r.finalBoard??await delayedRpc<WordsSnapshot>('delayed_words_inspect',{p_child:childId});setWordsReview(wordsFinalReview(r.events,snapshot,childId,matchId,userId));}
   setHome(h);setState(r);setOverlay(holdChess?false:words?played.current:!r.events.some(e=>e.kind==='attempt'&&!e.seen)&&(query.has('finished')||!r.events.some(e=>e.kind==='attempt')||played.current));
  }catch{setError('Unable to restore saved results.');}},[matchId,childId,userId,navigate,query]);
  useEffect(()=>{setChessReview(null);setChessContinued(query.has('chess-reviewed'));setHistoryOpen(false);void load();},[load]);
