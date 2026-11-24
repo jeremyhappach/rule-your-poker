@@ -1,4 +1,11 @@
-# Five Alive corrected reveal — November 23, 2026 — approved for production; owner smoke pending
+# Five Alive corrected reveal — November 23, 2026 — published; owner smoke pending
+
+Published app commit `2f2d18c8244c86fc5ff5f1595d2ac5df12ad23b8`.
+Vercel production `dpl_H8wRJ3Yjr7JJedWyzw4numMsWeM5` is READY with
+holm357.com assigned and GitHub's Vercel status successful. At 9:18 p.m. Central,
+the cache-busted live manifest matched that SHA, and the published JS/CSS
+contained the corrected answer renderer and drop animation. See
+[production receipt](evidence/FIVE_ALIVE_CORRECTED_REVEAL_PRODUCTION_20261123.json).
 
 Every opponent guess retains its actual yellow, gray and green feedback,
 including guess 1. All letters stay hidden during the reveal. Only the

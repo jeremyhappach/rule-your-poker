@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-11-24T03:18:05.899Z",
+  "origin": "https://holm357.com",
+  "sha": "2f2d18c8244c86fc5ff5f1595d2ac5df12ad23b8",
+  "deploymentId": "dpl_H8wRJ3Yjr7JJedWyzw4numMsWeM5",
+  "manifest": {
+    "buildId": "2f2d18c8244c86fc5ff5f1595d2ac5df12ad23b8",
+    "publishedAt": "2026-11-24T03:16:38.463Z",
+    "bundleFilename": "assets/index-DIWwsLHH.js",
+    "deploymentId": ""
+  },
+  "scripts": [
+    "assets/FiveAliveSession-B7oOq64H.js"
+  ],
+  "styles": [
+    "assets/index-LbAoVsCw.css",
+    "assets/FiveAliveSession-DqNxeG7S.css"
+  ],
+  "correctedRenderer": true,
+  "answerAnimation": true
+}

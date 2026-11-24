@@ -1,23 +1,18 @@
-## Queued — Vercel production publication delay — November 23, 2026
+## Resolved — Vercel production publication delay — November 23, 2026
 
-Priority: P1, release blocking. Provenance: production verification after Jeremy
-approved the corrected Five Alive preview. Code and migration work are complete;
-this entry authorizes investigation only under the normal issue workflow.
+The earlier production build completed while the approved correction waited.
+The redundant queued preview `dpl_8k7raBMTgsRSEq1ZkSa2P5eiC6LZ` was
+canceled; the approved production deployment then completed its normal checks.
+No deployment infrastructure or product configuration was changed and no
+replacement deployment was created.
 
-Origin/main and checkpoint five-alive-corrected-reveal-20261123 are at
-`2f2d18c8244c86fc5ff5f1595d2ac5df12ad23b8`. Vercel production deployment
-`dpl_H8wRJ3Yjr7JJedWyzw4numMsWeM5` reports QUEUED and the GitHub Vercel
-status is pending. Earlier release `ba96a655b` also remained queued during
-verification. The cache-busted production build manifest still serves
-`473d1580339ad69b0c1ea2531a6570f41690dfe2`.
-
-The domain alias lookup confirms holm357.com belongs to the expected ptown-poker
-project `prj_ZvtOJ7ybERSObtP2WuhackqaS8Ds`, team
-`team_nQciG8fmHnUCogRJ7jaWawHq`; the connector's abbreviated project summary
-omits the custom domain. No cause is established. Inspect the existing queue,
-then verify the exact approved commit on holm357.com. Do not create redundant
-deployments or change infrastructure based on the queue status alone. Database
-migration 20261124025649 is already installed and its rollback proof passes.
+Production `dpl_H8wRJ3Yjr7JJedWyzw4numMsWeM5` is READY for app commit
+`2f2d18c8244c86fc5ff5f1595d2ac5df12ad23b8`, with holm357.com assigned.
+The live manifest, linked Five Alive renderer and answer-drop CSS were verified
+at 9:18 p.m. Central. GitHub's Vercel status is successful. Migration
+20261124025649 remains installed with its rollback proof passed. Owner gameplay
+smoke remains pending; publication is no longer blocked. Provenance: Jeremy's
+“finish it” request and the [production receipt](evidence/FIVE_ALIVE_CORRECTED_REVEAL_PRODUCTION_20261123.json).
 
 ## Queued — Remove timers from play-money games — November 22, 2026
 
