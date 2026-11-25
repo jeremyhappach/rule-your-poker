@@ -13,6 +13,16 @@ import {PtownWordsView} from './PtownWordsView';
 import {shuffleRack,isInvalidWord} from '@/lib/ptownWords/rackPresentation';
 const view={identity:{sessionId:'s',dealerGameId:'d',roundId:'r'},revision:0,serverAt:1000,rules:{version:'ptown-words/1',dictionaryId:'enable2k/1',dictionarySha256:'hash',turnMs:180000},players:[{id:'me',userId:'u1',name:'You',seat:1,isBot:false},{id:'other',userId:'u2',name:'Pat',seat:2,isBot:true}],viewerId:'me',activePlayerId:'me',board:Array(225).fill(null),rack:[{id:1,face:'C',value:3},{id:2,face:'A',value:1},{id:3,face:'?',value:0}],scores:{me:0,other:0},turn:1,deadline:181000,canAct:true,paused:false,phase:'playing',bagCount:86,rackCounts:{me:3,other:7},pausedAt:null,finished:false,settlement:null,financial:{balances:{me:100,other:100},resultId:null,batch:null},moves:[],event:{label:'Game started',points:0}} as WordsSnapshot;
 const intent=vi.fn(async()=>true),props={view,now:1000,pending:false,connected:true,error:'',activeTab:'cards' as const,setActiveTab:vi.fn(),panel:null,sessionEnded:false,onIntent:intent,onReconnect:vi.fn()};
+it('shows only tile backs beneath opponent names when the bag empties',()=>{
+ const ui=render(<PtownWordsView {...props}/>);
+ expect(ui.container.querySelector('.words-rack-count')).toBeNull();
+ ui.rerender(<PtownWordsView {...props} view={{...view,bagCount:0,rackCounts:{me:3,other:4}}}/>);
+ const count=screen.getByLabelText('Pat: 4 tiles remaining');
+ expect(count.querySelectorAll('.words-tile-back')).toHaveLength(4);expect(count.textContent).toBe('');
+ expect(ui.container.querySelector('[data-score-player="me"] .words-rack-count')).toBeNull();
+ ui.rerender(<PtownWordsView {...props} view={{...view,bagCount:0,rackCounts:{me:3,other:0}}}/>);
+ expect(screen.getByLabelText('Pat: 0 tiles remaining').querySelectorAll('.words-tile-back')).toHaveLength(0);
+});
 it('keeps an untimed Live turn playable without clock, banks or countdown sound',()=>{
  const untimed={...view,deadline:null,rules:{...view.rules,version:'ptown-words/5',timerEnabled:false,timeBankUses:2}};
  const ui=render(<PtownWordsView {...props} view={untimed} now={9999999}/>);

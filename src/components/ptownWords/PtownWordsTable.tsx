@@ -1,3 +1,5 @@
+import {WordsEndSequence} from './WordsEndSequence';
+import {usePlayback} from '@/lib/delayed/usePlayback';
 import {WordsConnectionStatus} from './WordsConnectionStatus';
 import {turnLabel} from '@/lib/ptownWords/turnPresentation';
 import {useCompletionRetry} from '@/hooks/useCompletionRetry';
@@ -27,11 +29,14 @@ function Balance({id,fallback,seat}:{id:string;fallback:number;seat:number}){con
 export function PtownWordsTable(props:Props){
  const transport=useMemo(()=>wordsTransport(props.dealerGameId),[props.dealerGameId]),game=usePtownWords(props.dealerGameId,props.userId,transport),revealed=useWordRevealTimeline(game.snapshot,game.now),v=revealed?.identity.dealerGameId===props.dealerGameId?revealed:null;
  const chat=useGameChatContext(),announcements=useAnnouncements(),[error,setError]=useState(''),[pausePending,setPausePending]=useState(false);
- const closing=useCompletionRetry(props.dealerGameId+':'+props.userId),terminal=useRef(false),winAnnounced=useRef(false),complete=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
+ const closing=useCompletionRetry(props.dealerGameId+':'+props.userId+':'+v?.adminUndoId),terminal=useRef(false),winAnnounced=useRef(false),complete=useRef(false),sawLive=useRef(false),callbacks=useRef(props);callbacks.current=props;
  const presentation=v?wordPresentation(v,game.now):null;
+ const [adjusted,setAdjusted]=useState(false),[endScores,setEndScores]=useState<Record<string,number>>({});
+ const winPlayback=usePlayback(3000,adjusted?'words-win:'+v?.terminal?.resultId:'waiting');
+ useEffect(()=>{if(!v?.settlement){setAdjusted(false);setEndScores({});}},[v?.settlement,props.dealerGameId]);
  const request=v&&!v.paused&&!v.finished&&v.phase==='playing'?v.pauseRequest:null;
  const emitNotice=announcements.emit,clearAmbient=announcements.clearAmbient;
- useEffect(()=>{terminal.current=false;winAnnounced.current=false;complete.current=false;sawLive.current=!!v&&!v.settlement;setError('');},[props.dealerGameId,props.userId]);
+ useEffect(()=>{terminal.current=false;winAnnounced.current=false;complete.current=false;sawLive.current=!!v&&!v.settlement;setError('');},[props.dealerGameId,props.userId,v?.adminUndoId]);
  useEffect(()=>{
   if(!v||!request)return;
   const name=v.players.find(p=>p.id===request.playerId)?.name??'Player';
@@ -50,25 +55,25 @@ export function PtownWordsTable(props:Props){
  useEffect(()=>{
   if(!v||props.sessionEnded)return;
   if(v.movePresentation){narrated.current=v.turn;if(!presentation?.opponent||v.paused||presentation.at<presentation.announceAt||presentation.at>=presentation.announceAt+presentation.noticeMs)return;
-   const key=`ptown:words:narrated:${v.identity.dealerGameId}:${v.viewerId}`;if(Number(sessionStorage.getItem(key))>=presentation.turn)return;
+   const key=`ptown:words:narrated:${v.identity.dealerGameId}:${v.viewerId}:${v.adminUndoId??'original'}`;if(Number(sessionStorage.getItem(key))>=presentation.turn)return;
    sessionStorage.setItem(key,String(presentation.turn));
    announcements.emit({id:`words:move:${presentation.id}`,type:'gameplay_notice',transientScope:`words:reveal:${props.dealerGameId}`,scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{title:`${v.players.find(p=>p.id===presentation.playerId)?.name??'Player'} played ${playedWord(v)?.word??v.event.label} +${presentation.move.points}`},ttlMs:presentation.announceAt+presentation.noticeMs-presentation.at});return;
   }
   if(narrated.current===null){narrated.current=v.turn;return;}if(narrated.current===v.turn)return;narrated.current=v.turn;const move=v.moves[v.moves.length-1];if(!move||v.phase==='complete')return;announcements.emit({id:`words:move:${v.identity.dealerGameId}:${move.turn}`,type:'gameplay_notice',scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{title:`${v.players.find(p=>p.id===move.playerId)?.name} · ${turnLabel(move)}${move.action==='place'?` · ${move.points}`:''}`},ttlMs:3500});
  },[v,announcements,props.sessionEnded,game.now]);
  const batch=v?.financial.batch,valid=!!batch&&!!v&&isWordsTerminalBatch(batch,v);
- const admit=useCallback((b:ChipPresentationBatch)=>b.dealer_game_id!==v?.identity.dealerGameId||!!v&&!presentation&&!props.sessionEnded&&isWordsTerminalBatch(b,v),[v,!!presentation,props.sessionEnded]);useChipTransferPresentationAdmission(admit);
+ const admit=useCallback((b:ChipPresentationBatch)=>b.dealer_game_id!==v?.identity.dealerGameId||!!v&&adjusted&&!presentation&&!props.sessionEnded&&isWordsTerminalBatch(b,v),[v,adjusted,!!presentation,props.sessionEnded]);useChipTransferPresentationAdmission(admit);
  const cursor=useChipPresentationCursorState(valid?batch.cursor:null),ready=!!v?.settlement&&(v.players.every(p=>(v.settlement![p.id]??0)===0)||valid&&['settled','reconciled'].includes(cursor));
  useEffect(()=>{if(v?.settlement&&!props.sessionEnded&&!terminal.current){terminal.current=true;callbacks.current.onTerminalActive(true);}},[v?.settlement,props.sessionEnded]);
- useEffect(()=>{if(!v?.settlement||presentation||props.sessionEnded||winAnnounced.current)return;winAnnounced.current=true;
-  if(v.terminal&&game.now<v.terminal.deadline){const names=v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>p.name);announcements.emit({id:`match_win:ptown-words:${v.terminal.resultId}`,type:'match_win',scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{text:`${names.join(' & ')} ${names.length===1?'wins':'tie'} with ${v.terminal.score}`},ttlMs:Math.max(1,v.terminal.deadline-game.now)});celebrateCanonicalWinner(v.terminal.resultId,v.viewerId,v.terminal.winnerIds,sawLive.current&&(v.settlement[v.viewerId]??0)>0);}
- },[v,!!presentation,props.sessionEnded,announcements,game.now]);
+ useEffect(()=>{if(!v?.settlement||!adjusted||presentation||props.sessionEnded||winAnnounced.current)return;winAnnounced.current=true;
+  if(v.terminal){const names=v.players.filter(p=>v.terminal!.winnerIds.includes(p.id)).map(p=>p.name);announcements.emit({id:`match_win:ptown-words:${v.terminal.resultId}`,type:'match_win',scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{text:`${names.join(' & ')} ${names.length===1?'wins':'tie'} with ${v.terminal.score}`},ttlMs:3000});celebrateCanonicalWinner(v.terminal.resultId,v.viewerId,v.terminal.winnerIds,sawLive.current&&(v.settlement[v.viewerId]??0)>0);}
+ },[v,adjusted,!!presentation,props.sessionEnded,announcements,game.now]);
  useEffect(()=>{
-  if(v?.paused)return;if(!v?.settlement||!ready||props.sessionEnded||complete.current||game.now<(v.terminal?.deadline??0))return;
+  if(v?.paused)return;if(!v?.settlement||!adjusted||!winPlayback.done||!ready||props.sessionEnded||complete.current||game.now<(v.terminal?.deadline??0))return;
   if(v.finished){complete.current=true;callbacks.current.onTerminalComplete(`ptown-words|winseq|${v.identity.sessionId}|${v.identity.dealerGameId}|1|${v.financial.resultId}|${v.identity.roundId}`);callbacks.current.onTerminalActive(false);return;}
   const receipt=closing.begin();if(!receipt)return;void wordsRpc('ptown_words_close',{p_dealer_game_id:v.identity.dealerGameId}).then(()=>receipt.succeed(()=>{setError('');void game.reconnect();})).catch(e=>receipt.fail(()=>setError((e as Error).message)));
- },[v,ready,props.sessionEnded,game.now,closing.revision]);
+ },[v,adjusted,winPlayback.done,ready,props.sessionEnded,game.now,closing.revision]);
  if(!v)return <FullscreenGameShell className="words-shell" title="Ptown Words" description="" activeTab={props.activeTab} setActiveTab={props.setActiveTab} sessionLabel={<PtownWordsRulesLabel/>} panelTitle={props.activeTab==='lobby'?'Rules':undefined} panel={<PtownWordsRules version={v?.rules.version} config={v?.rules}/>} ready={false}><WordsConnectionStatus connection={game.connection} connected={false} error={game.error} pending={game.pending} onReconnect={game.reconnect}/></FullscreenGameShell>;
  const panel=props.activeTab==='chat'?<MobileChatPanel messages={chat.allMessages} onSend={chat.sendMessage} isSending={chat.isSending} currentUserId={props.userId}/>:props.activeTab==='history'?<div>{v.moves.map(m=><p key={m.turn}>{v.players.find(p=>p.id===m.playerId)?.name} · {turnLabel(m)} · {m.points}</p>)}</div>:<PtownWordsRules version={v?.rules.version} config={v?.rules}/>;
- return <PtownWordsView onPause={()=>void togglePause()} pausePending={pausePending} view={v} now={game.now} pending={game.pending} connected={game.connected} connection={game.connection} error={error||game.error} errorVersion={game.errorVersion} activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={panel} sessionEnded={props.sessionEnded} onIntent={game.act} onReconnect={()=>{closing.reset();setError('');void game.reconnect();}} balance={id=>{const p=v.players.find(p=>p.id===id)!;return <Balance id={id} seat={p.seat} fallback={v.financial.balances[id]??0}/>;}}/>;
+ return <PtownWordsView suppressResult={!!v.settlement&&!adjusted} displayScores={v.settlement&&!adjusted&&!presentation?(Object.keys(endScores).length?endScores:v.preAdjustmentScores??v.scores):undefined} terminalContent={v.settlement&&!adjusted&&!presentation?<WordsEndSequence view={v} mode="live" active={props.activeTab==='cards'&&!v.paused} onScores={setEndScores} onComplete={()=>setAdjusted(true)}/>:undefined} onPause={()=>void togglePause()} pausePending={pausePending} view={v} now={game.now} pending={game.pending} connected={game.connected} connection={game.connection} error={error||game.error} errorVersion={game.errorVersion} activeTab={props.activeTab} setActiveTab={props.setActiveTab} panel={panel} sessionEnded={props.sessionEnded} onIntent={game.act} onReconnect={()=>{closing.reset();setError('');void game.reconnect();}} balance={id=>{const p=v.players.find(p=>p.id===id)!;return <Balance id={id} seat={p.seat} fallback={v.financial.balances[id]??0}/>;}}/>;
 }

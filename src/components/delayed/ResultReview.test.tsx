@@ -15,6 +15,7 @@ import {ReviewGate,ChildResults,MatchFinale} from './ResultReview';
 import {TooltipProvider} from '@/components/ui/tooltip';
 import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 const mock=vi.hoisted(()=>({rpc:vi.fn(),change:()=>{},state:null as any,home:null as any}));
+vi.mock('@/hooks/useIsAdmin',()=>({useIsAdmin:()=>({isAdmin:false,loading:false})}));
 vi.mock('@/lib/delayed/client',()=>({delayedRpc:mock.rpc}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:()=>{const c={on:(_a:any,_b:any,cb:()=>void)=>{mock.change=cb;return c;},subscribe:()=>c};return c;},removeChannel:vi.fn()}}));
 vi.mock('canvas-confetti',()=>({default:vi.fn()}));

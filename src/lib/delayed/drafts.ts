@@ -1,6 +1,6 @@
 import type {Placement,WordsSnapshot} from '@/lib/ptownWords/model';
 export const draftPrefix='ptown:async-words:draft:';
-export const draftIdentity=(v:WordsSnapshot)=>JSON.stringify([v.viewerId,v.identity.dealerGameId,v.turn,v.board,v.rack]);
+export const draftIdentity=(v:WordsSnapshot)=>JSON.stringify([v.viewerId,v.identity.dealerGameId,v.turn,v.board,v.rack,v.adminUndoId]);
 export function restoreDraft(raw:string|null,v:WordsSnapshot):Placement[]{
  try{const saved=JSON.parse(raw??'null');if(!v.canAct||v.phase!=='playing'||saved?.identity!==draftIdentity(v)||!Array.isArray(saved.placements)||saved.placements.length>7)return [];
  const tiles=new Set<number>(),squares=new Set<number>();

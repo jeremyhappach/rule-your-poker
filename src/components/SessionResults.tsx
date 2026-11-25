@@ -1,3 +1,4 @@
+import {AdminSessionBoardUndo} from '@/components/admin/AdminBoardUndo';
 import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -311,6 +312,7 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
             {showHistory ? 'Hand History' : showChat ? 'Chat History' : 'Session Results'}
             {session.real_money && <span className="text-green-400 ml-1">$</span>}
           </DialogTitle>
+          <AdminSessionBoardUndo sessionId={session.id} userId={currentUserId}/>
         </DialogHeader>
         {session.game_type === 'run21' && <p className="text-xs text-muted-foreground">Isolated local match · no account money transferred</p>}
         {run21Error && <p role="alert">{run21Error}</p>}

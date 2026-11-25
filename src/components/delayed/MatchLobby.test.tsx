@@ -5,6 +5,7 @@ import {MemoryRouter,Routes,Route} from 'react-router-dom';
 import type {Home,ChildSummary} from '@/lib/delayed/client';
 import {orderedLobbyGames,isReviewedGame} from '@/lib/delayed/lobbyPresentation';
 const mock=vi.hoisted(()=>({rpc:vi.fn(),user:'me',home:null as any}));
+vi.mock('@/hooks/useIsAdmin',()=>({useIsAdmin:()=>({isAdmin:false,loading:false})}));
 vi.mock('@/hooks/useAuthGuard',()=>({useAuthGuard:()=>({user:{id:mock.user},isReady:true})}));
 vi.mock('@/components/GameplaySoundButton',()=>({GameplaySoundButton:()=>null}));
 vi.mock('@/components/delayed/NotificationBell',()=>({NotificationBell:()=>null}));

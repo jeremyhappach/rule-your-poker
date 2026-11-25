@@ -17,6 +17,6 @@ export function wordsFinalReview(events:ReviewEvent[],snapshot:WordsSnapshot,chi
  const event:ReviewEvent={...(attempt??final),beforeScore:undefined,afterScore:undefined,score:attempt?move!.points:0,
   ...(lastAction?{actor:lastAction.playerId,actorName:snapshot.players.find(p=>p.id===lastAction.playerId)?.name}:{}),
   receipt:{...(attempt??final).receipt,game:'ptown-words',move:attempt?move:lastAction},
-  board:{...snapshot,moves:attempt?[move!]:lastAction?[lastAction]:[],movePresentation:attempt?presentation:undefined}};
+  board:{...snapshot,scores:snapshot.preAdjustmentScores??snapshot.scores,terminal:undefined,moves:attempt?[move!]:lastAction?[lastAction]:[],movePresentation:attempt?presentation:undefined}};
  return {event,acknowledge:attempt&&!attempt.seen?[attempt.id]:[]};
 }

@@ -1,3 +1,4 @@
+import {AdminBoardUndo} from '@/components/admin/AdminBoardUndo';
 import {useEffect,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {ChessFinalPosition,type ChessSavedPosition} from '@/components/chess/ChessHistory';
@@ -47,11 +48,13 @@ export function CompletedMatchRecord({matchId,userId,childId}:{matchId:string;us
    {child&&record.detail?<section aria-label={gameName(child.game)+' completed record'}>
     <AsyncGameHeader game={child.game} name={gameName(child.game)} stake={child.stake}/>
     <Scores home={home} child={child}/><p><Outcome home={home} child={child}/></p>
+    {(child.game==='chess'||child.game==='ptown-words')&&<AdminBoardUndo userId={userId} mode="async" game={child.game} id={child.id}/>}
     <GameDetails record={record.detail} home={home} userId={userId}/>
    </section>:<ul className="delayed-lineup" aria-label="Completed match games">
     {[...home.lineup].sort((a,b)=>a.ordinal-b.ordinal).map(c=><li key={c.id} className="delayed-game-card" data-completed>
      <AsyncGameHeader game={c.game} name={gameName(c.game)} stake={c.stake}/>
      <Scores home={home} child={c}/><p><Outcome home={home} child={c}/></p>
+     {(c.game==='chess'||c.game==='ptown-words')&&<AdminBoardUndo userId={userId} mode="async" game={c.game} id={c.id}/>}
      <Link className="delayed-secondary" to={matchRecordPath(matchId,c.id)}>View completed {gameName(c.game)}</Link>
     </li>)}
    </ul>}

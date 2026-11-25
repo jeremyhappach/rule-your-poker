@@ -5,7 +5,7 @@ import {nonWordTurn} from './turnPresentation';
 /** Local viewing receipt only; never starts a clock or submits a turn. */
 export function useNonWordTurn(v:WordsSnapshot,enabled:boolean){
  const move=v.moves.at(-1),action=move&&nonWordTurn(move);
- const key=`ptown:words:turn:${v.identity.dealerGameId}:${v.viewerId}`;
+ const key=`ptown:words:turn:${v.identity.dealerGameId}:${v.viewerId}${v.adminUndoId?':'+v.adminUndoId:''}`;
  const id=move?`${move.playerId}:${move.turn}:${move.action}:${move.reason??''}:${move.count}`:'';
  const saved=useMemo(()=>{try{return sessionStorage.getItem(key);}catch{return null;}},[key,id]);
  const [dismissed,setDismissed]=useState('');

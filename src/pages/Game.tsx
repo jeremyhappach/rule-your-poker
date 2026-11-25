@@ -610,6 +610,7 @@ interface GameData {
   pending_session_end?: boolean;
   game_over_at?: string | null;
   session_ended_at?: string | null;
+  admin_board_undo_id?: string | null;
   created_at?: string;
   total_hands?: number | null;
   game_type?: string | null;
@@ -1417,6 +1418,9 @@ const Game = () => {
   // it also fires on cleanup / unmount / publisher replacement / phase and
   // descriptor resets, which is what admitted the phase mid-celebration.
   const [sessionEndedTableAdmitted, setSessionEndedTableAdmitted] = useState(false);
+  // An audited rollback invalidates the completed local presentation generation.
+  const boardUndoSeen = useRef<{gameId:string;id:string|null}|null>(null);
+  useEffect(()=>{if(!game)return;const next={gameId:game.id,id:game.admin_board_undo_id??null},prior=boardUndoSeen.current;boardUndoSeen.current=next;if(prior?.gameId===next.gameId&&next.id&&prior.id!==next.id)window.location.reload();},[game?.id,game?.admin_board_undo_id]);
   // A route that was already participating in this session may retain the
   // canonical Session Ended table after a later server-owned lifecycle close.
   // A fresh mount has no matching live route identity and still goes straight

@@ -1816,3 +1816,5 @@ checks and record URLs. `public.delayed_match_record` is defined in
 `supabase/delayed/match-record.sql` and migration `20261118023945`.
 History bypasses the live owners in `ResultReview.tsx` and `DelayedTurn.tsx`.
 Qualification: `docs/codex/ASYNC_COMPLETED_RECORDS.md`.
+
+Admin Chess/Words undo: `supabase/admin-board-undo/` owns private checkpoints, audit, restoration and financial proof; `src/components/admin/AdminBoardUndo.tsx` owns the role-gated control. Words terminal rack presentation: `src/components/ptownWords/WordsEndSequence.tsx`, with `supabase/ptown-words/final-racks.sql` owning terminal-only disclosure.

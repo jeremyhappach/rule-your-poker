@@ -5,6 +5,7 @@ import {MemoryRouter,Route,Routes} from 'react-router-dom';
 import {installBrowserMedia} from '@/test/browserMedia';
 import {newChess,playChess} from '@/lib/chess/rules';
 const mock=vi.hoisted(()=>({rpc:vi.fn(),inspect:vi.fn(),play:vi.fn(),intent:vi.fn(),channel:vi.fn(),home:{} as any,snapshot:{} as any}));
+vi.mock('@/hooks/useIsAdmin',()=>({useIsAdmin:()=>({isAdmin:false,loading:false})}));
 vi.mock('@/hooks/useAuthGuard',()=>({useAuthGuard:()=>({user:{id:'me'},isReady:true})}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{channel:mock.channel,removeChannel:vi.fn()}}));
 vi.mock('@/lib/delayed/client',async original=>({...await original<typeof import('@/lib/delayed/client')>(),delayedRpc:mock.rpc}));

@@ -16,7 +16,7 @@ export function projectWordReveal(v:WordsSnapshot,firstObservedAt:number){
 
 /** One viewer/match receipt, shared by board and canonical word announcement. */
 export function useWordRevealTimeline(v:WordsSnapshot|null,now:number){
- const p=v?.movePresentation,id=p&&v?`${v.identity.dealerGameId}:${v.viewerId}:${p.turn}`:'',key=v?`ptown:words:reveal:${v.identity.dealerGameId}:${v.viewerId}`:'';
+ const p=v?.movePresentation,id=p&&v?`${v.identity.dealerGameId}:${v.viewerId}${v.adminUndoId?':'+v.adminUndoId:''}:${p.turn}`:'',key=v?`ptown:words:reveal:${v.identity.dealerGameId}:${v.viewerId}${v.adminUndoId?':'+v.adminUndoId:''}`:'';
  const receipt=useMemo(()=>{
   if(!p||!id)return null;
   try{const saved=JSON.parse(sessionStorage.getItem(key)??'null');if(saved?.id===id&&Number.isFinite(saved.firstAt)&&Number.isFinite(saved.startedAt))return saved as {id:string;firstAt:number;startedAt:number};}catch{}

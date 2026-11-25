@@ -3463,3 +3463,6 @@ releases all guesses for mutually completed words, replacing permanent masking
 of earlier guesses. Active opponent words remain sealed; passive View Words
 history never consumes review receipts or invokes settlement. See
 [FIVE_ALIVE_ASYNC_SMOKE_POLISH.md](FIVE_ALIVE_ASYNC_SMOKE_POLISH.md).
+
+## November 24, 2026 — exact board undo
+Admin Chess/Words rollback uses private before-images and an immutable request/frame audit. It reverses canonical account and chip entries atomically, increments authority revisions, and uses new Live posting/per-child Async correction generations for re-settlement. Missing historical private state is never reconstructed. Terminal Words racks use a separate authenticated, membership-checked read, preserving ordinary snapshot privacy. See ADMIN_UNDO_WORDS_POLISH_CHECKPOINT.md.

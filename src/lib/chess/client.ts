@@ -1,6 +1,6 @@
 import {supabase} from '@/integrations/supabase/client';
 import type {ChessIntent,ChessState} from './rules';
-export type ChessSnapshot=ChessState&{hostUserId?:string;pauseVersion?:number;id:string;revision:number;serverAt:number;viewerId:string;canAct:boolean;paused:boolean;pausedAt:number|null;finished:boolean;settled:boolean;settlement:Record<string,number>|null;financial:any};
+export type ChessSnapshot=ChessState&{adminUndoId?:string;hostUserId?:string;pauseVersion?:number;id:string;revision:number;serverAt:number;viewerId:string;canAct:boolean;paused:boolean;pausedAt:number|null;finished:boolean;settled:boolean;settlement:Record<string,number>|null;financial:any};
 export interface Command {requestId:string;revision:number;intent:ChessIntent}
 export interface ChessTransport {load:()=>Promise<ChessSnapshot>;send:(c:Command,signal?:AbortSignal)=>Promise<ChessSnapshot>;subscribe:(refresh:()=>void,status:(connected:boolean)=>void)=>()=>void}
 export async function inspectAsyncChess(childId:string):Promise<ChessSnapshot>{

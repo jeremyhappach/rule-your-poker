@@ -1,3 +1,4 @@
+vi.mock('@/hooks/useIsAdmin',()=>({useIsAdmin:()=>({isAdmin:false,loading:false})}));
 vi.mock('@/components/GameplaySoundButton',()=>({GameplaySoundButton:()=>null}));
 const presence=vi.hoisted(()=>({publish:vi.fn()}));
 vi.mock('@/lib/delayed/playingPresence',async importOriginal=>({...await importOriginal<typeof import('@/lib/delayed/playingPresence')>(),usePlayingPresence:presence.publish}));

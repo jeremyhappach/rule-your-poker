@@ -1,0 +1,2 @@
+export async function wordsRpc(name:string,args:Record<string,unknown>){const response=await fetch('/__fixture/rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,args,four:new URLSearchParams(location.search).has('four')})});if(!response.ok)throw Error('Fixture request failed');return response.json();}
+export const wordsTransport=()=>{throw Error('No gameplay in this fixture');};

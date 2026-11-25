@@ -3,7 +3,7 @@ import type {WordsSnapshot} from './model';
 import {scoreFrame} from './scorePresentation';
 /** Receipts resume elapsed presentation across reentry; they never mutate scores or deadlines. */
 export function useWordScorePresentation(v:WordsSnapshot,now:number,asynchronous:boolean,onComplete?:(playerId:string,turn:number)=>void,completionEnabled=true){
- const p=v.movePresentation,id=p?`${v.identity.dealerGameId}:${v.viewerId}:${p.turn}`:'',key=`ptown:words:score:${v.identity.dealerGameId}:${v.viewerId}`;
+ const p=v.movePresentation,id=p?`${v.identity.dealerGameId}:${v.viewerId}${v.adminUndoId?':'+v.adminUndoId:''}:${p.turn}`:'',key=`ptown:words:score:${v.identity.dealerGameId}:${v.viewerId}${v.adminUndoId?':'+v.adminUndoId:''}`;
  const receipt=useMemo(()=>{
   if(!p||p.turn!==v.turn-1||asynchronous&&p.playerId!==v.viewerId&&!v.canAct&&!v.finished)return null;
   try{const saved=JSON.parse(sessionStorage.getItem(key)??'null');if(saved?.id===id&&Number.isFinite(saved.at))return saved as {id:string;at:number};}catch{}

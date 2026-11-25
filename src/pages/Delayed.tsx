@@ -1,3 +1,4 @@
+import {AdminBoardUndo} from '@/components/admin/AdminBoardUndo';
 import {GameArtwork} from '@/components/midnight/GameArtwork';
 import {AsyncHistory} from '@/components/delayed/AsyncHistory';
 import {Tabs,TabsList,TabsTrigger,TabsContent} from '@/components/ui/tabs';
@@ -113,7 +114,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   <MatchInfo home={home} userId={userId} historical={historical}/>
   {mayViewFinale(home)?<Link className="delayed-primary" to={'/delayed/'+id+'?finale=1'}>{home.finaleViewed?'Replay match finale':'View match results'}</Link>:home.receipt&&!home.removedAt&&<p role="status">View the remaining game results below before the match finale.</p>}
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
-  {home.correction?.reversed&&<p role="status">The previous timeout result was reversed. {home.realMoney?'Chess was restored with its prior time banks. The five-minute clock starts when the player opens the restored turn.':'Chess is untimed and resumes from its saved position.'} Earlier results remain in the audit history.</p>}
+  {home.correction?.reversed&&<p role="status">The previous result was reversed and the saved game was restored. Check the game’s turn and clock below. Earlier results remain in the audit history.</p>}
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
   <ul className="delayed-lineup" aria-label="Match games">{orderedLobbyGames(home,userId,now).map(c=>{const ours=c.game==='five-alive'?c.playable===true:c.actor===userId,remaining=c.untimed?Infinity:Date.parse(c.expiresAt??'')-now;
    const reviewed=isReviewedGame(c,userId),expanded=expandedGame===c.id,panelId='completed-game-'+c.id;
@@ -135,6 +136,7 @@ function MatchHome({id,userId}:{id:string;userId:string}){
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
       {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}
       {!ours&&(c.game==='ptown-words'||c.game==='chess')&&!home.held&&<Link className="delayed-view-board" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
+   {(c.game==='chess'||c.game==='ptown-words')&&home.acceptedAt&&<AdminBoardUndo userId={userId} mode="async" game={c.game} id={c.id}/>}
    </li>;})}</ul>
   {!historical&&home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
    <p>The first player in each game is selected randomly.</p>

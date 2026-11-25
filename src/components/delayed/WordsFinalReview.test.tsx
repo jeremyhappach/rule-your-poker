@@ -11,7 +11,9 @@ import {finalWordsFixture,viewer,opponent,childId,matchId} from '@/lib/delayed/w
 import {wordsFinalReview} from '@/lib/delayed/wordsFinalReview';
 const mock=vi.hoisted(()=>({rpc:vi.fn()}));
 vi.mock('@/lib/delayed/client',async original=>({...await original<typeof import('@/lib/delayed/client')>(),delayedRpc:mock.rpc}));
+vi.mock('@/hooks/useIsAdmin',()=>({useIsAdmin:()=>({isAdmin:false,loading:false})}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{}}));
+vi.mock('@/lib/ptownWords/client',()=>({wordsRpc:async()=>({id:childId,revision:7,racks:{[viewer]:[{id:1,face:'A',value:1}],[opponent]:[]},before:fixture.snapshot.preAdjustmentScores,scores:fixture.snapshot.scores})}));
 vi.mock('@/components/GameplaySoundButton',()=>({GameplaySoundButton:()=>null}));
 vi.mock('canvas-confetti',()=>({default:vi.fn()}));
 import {ChildResults} from './ResultReview';
@@ -45,39 +47,39 @@ it.each([false,true])('only final turn and crosses → count → adjusted board 
  const score=()=>ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent;
  const emphasis=()=>{expect(ui.container.querySelector(`[data-score-player="${opponent}"]`)?.getAttribute('data-active')).toBe('true');expect(ui.container.querySelector(`[data-score-player="${viewer}"]`)?.getAttribute('data-active')).toBe('false');};
  emphasis();expect(score()).toBe('376');await advance(2450);emphasis();expect(score()).toBe('376');
- await advance(250);expect(score()).toBe('384');await advance(2000);expect(score()).toBe('385');
- expect(ui.container.querySelector(`[data-score-player="${viewer}"] strong`)?.textContent).toBe('245');
- expect(screen.getByText('Opponent wins')).toBeTruthy();
+ await advance(250);expect(score()).toBe('384');await advance(2000);expect(score()).toBe('384');
+ expect(ui.container.querySelector(`[data-score-player="${viewer}"] strong`)?.textContent).toBe('246');
+ expect(screen.queryByText('Opponent wins')).toBeNull();
  expect(ui.container.querySelector('.words-viewport')?.getAttribute('data-zoom')).toBe('1');expect(acks()).toEqual([]);
  await advance(2999);emphasis();expect(screen.queryByText('Game Complete')).toBeNull();expect(acks()).toEqual([]);
- await advance(101);expect(screen.getByText('Game Complete')).toBeTruthy();expect(acks()).toEqual(['turn-5']);
+ await advance(101);expect(screen.getByText('Remaining tiles')).toBeTruthy();expect(acks()).toEqual(['turn-5']);await advance(7600);expect(screen.getByText('Game Complete')).toBeTruthy();
  await advance(6100);expect(acks()).toEqual(['turn-5','child-result']);expect(screen.getByTestId('path').textContent).toBe('');
 });
 it('latest-turn acknowledgement failure cannot announce completion; retry is idempotent and never replays history',async()=>{
- failAck='turn-5';mount();await flush();await advance(7800);expect(screen.getByRole('alert')).toBeTruthy();expect(fixture.events[0].seen).toBe(false);expect(screen.queryByText('Game Complete')).toBeNull();
- failAck='';fireEvent.click(screen.getByRole('button',{name:'Retry'}));await flush();expect(screen.getByText('Game Complete')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_begin')).toHaveLength(1);
+ failAck='turn-5';mount();await flush();await advance(15500);expect(screen.getByRole('alert')).toBeTruthy();expect(fixture.events[0].seen).toBe(false);expect(screen.queryByText('Game Complete')).toBeNull();
+ failAck='';fireEvent.click(screen.getByRole('button',{name:'Retry'}));await flush();await advance(7600);expect(screen.getByText('Game Complete')).toBeTruthy();expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_begin')).toHaveLength(1);
 });
 it('reload after partial acknowledgement resumes only the final turn and retains a full final-board hold',async()=>{
- fixture.events[0].seen=true;elapsed=60000;const ui=mount();await flush();expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();expect(ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent).toBe('385');
+ fixture.events[0].seen=true;elapsed=60000;const ui=mount();await flush();expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();expect(ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent).toBe('384');
  await advance(2999);expect(acks()).toEqual([]);await advance(101);expect(acks()).toEqual(['turn-5']);
 });
 it('an already-viewed final turn cannot send an older pending word back into playback',async()=>{
- fixture.events[2].seen=true;mount();await flush();expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();await advance(7800);
+ fixture.events[2].seen=true;mount();await flush();expect(screen.getByText(/Opponent · UP, PA/)).toBeTruthy();await advance(7800);await advance(7600);
  expect(acks()).toEqual([]);expect(screen.getByText('Game Complete')).toBeTruthy();
  expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_review_begin').map(c=>c[1].p_event)).toEqual(['turn-5']);
 });
 it('offline or background review cannot acknowledge results early',async()=>{
  mount();await flush();Object.defineProperty(document,'hidden',{configurable:true,value:true});await act(async()=>document.dispatchEvent(new Event('visibilitychange')));await advance(20000);expect(acks()).toEqual([]);
- Object.defineProperty(document,'hidden',{configurable:true,value:false});await act(async()=>document.dispatchEvent(new Event('visibilitychange')));await advance(7800);expect(screen.getByText('Game Complete')).toBeTruthy();
+ Object.defineProperty(document,'hidden',{configurable:true,value:false});await act(async()=>document.dispatchEvent(new Event('visibilitychange')));await advance(7800);await advance(7600);expect(screen.getByText('Game Complete')).toBeTruthy();
 });
 it.each(['own','pass','forfeit'])('%s finish retains final scores without reviving an older opponent word',async reason=>{
  if(reason==='own'){fixture.snapshot.moves.at(-1)!.playerId=viewer;fixture.snapshot.movePresentation!.playerId=viewer;}
  else if(reason==='pass')fixture.snapshot.moves.push({turn:6,playerId:opponent,action:'pass',points:0,count:0,words:[]});
  else fixture.events.at(-1)!.receipt.reason='timeout_forfeit';
- const ui=mount();await flush();expect(reason==='pass'?screen.getByRole('dialog',{name:'Opponent passed'}):screen.getByText('Final board')).toBeTruthy();expect(ui.container.querySelectorAll('[data-word-highlight="true"]')).toHaveLength(0);await advance(3100);expect(screen.getByText('Game Complete')).toBeTruthy();
+ const ui=mount();await flush();expect(reason==='pass'?screen.getByRole('dialog',{name:'Opponent passed'}):screen.getByText('Final board')).toBeTruthy();expect(ui.container.querySelectorAll('[data-word-highlight="true"]')).toHaveLength(0);await advance(3100);expect(screen.getByText('Remaining tiles')).toBeTruthy();await advance(7600);expect(screen.getByText('Game Complete')).toBeTruthy();
 });
 it('reduced motion still shows final adjusted totals for three seconds',async()=>{
- window.matchMedia=vi.fn().mockReturnValue({matches:true});const ui=mount();await flush();expect(ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent).toBe('385');await advance(2999);expect(acks()).toEqual([]);await advance(101);expect(screen.getByText('Game Complete')).toBeTruthy();
+ window.matchMedia=vi.fn().mockReturnValue({matches:true});const ui=mount();await flush();expect(ui.container.querySelector(`[data-score-player="${opponent}"] strong`)?.textContent).toBe('384');await advance(2999);expect(acks()).toEqual([]);await advance(101);expect(screen.getByText('Remaining tiles')).toBeTruthy();await advance(7600);expect(screen.getByText('Game Complete')).toBeTruthy();
 });
 it('rejects foreign identity and does not mutate the saved snapshot/history',()=>{
  const before=structuredClone(fixture);const result=wordsFinalReview(fixture.events,fixture.snapshot,childId,matchId,viewer);expect(result.event.board.moves).toHaveLength(1);expect(fixture).toEqual(before);
@@ -89,5 +91,5 @@ it.each([['pass','timeout',0,'Opponent timed out','TIMED OUT'],['exchange',undef
  const ui=mount();await flush();expect(screen.getByRole('dialog',{name:title})).toBeTruthy();
  expect(ui.container.querySelector('[data-score-player="'+opponent+'"] .words-last')?.textContent).toBe('Last: '+label);
  expect(ui.container.querySelectorAll('[data-word-highlight="true"]')).toHaveLength(0);
- await advance(3100);expect(screen.getByText('Game Complete')).toBeTruthy();
+ await advance(3100);expect(screen.getByText('Remaining tiles')).toBeTruthy();await advance(7600);expect(screen.getByText('Game Complete')).toBeTruthy();
 });

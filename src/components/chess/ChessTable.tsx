@@ -21,6 +21,7 @@ export function ChessTable(props:Props){
  const transport=useMemo(()=>chessTransport(props.dealerGameId,props.userId,'live'),[props.dealerGameId,props.userId]),game=useChess(props.dealerGameId,props.userId,transport),v=game.snapshot;
  const chat=useGameChatContext(),announcements=useAnnouncements(),announced=useRef(false),sawLive=useRef(false),done=useRef(false),callbacks=useRef(props);callbacks.current=props;
  const [pausePending,setPausePending]=useState(false),[pauseError,setPauseError]=useState(''),pausing=useRef(false);
+ useEffect(()=>{announced.current=false;done.current=false;sawLive.current=false;if(v?.adminUndoId)callbacks.current.onTerminalActive(false);},[v?.adminUndoId]);
  const request=v&&!v.paused&&!v.finished&&v.phase==='playing'?v.pauseRequest:null;
  const emitNotice=announcements.emit,clearAmbient=announcements.clearAmbient;
  useEffect(()=>{if(!v||!request)return;const name=v.players.find(p=>p.id===request.playerId)?.name??'Player';emitNotice({id:`chess:pause-request:${request.id}`,type:'gameplay_notice',behavior:'ambient',scope:{dealerGameId:v.identity.sessionId,roundId:v.identity.roundId},payload:{title:`${name} is requesting a pause`}});return()=>clearAmbient('gameplay_notice');},[request?.id,emitNotice,clearAmbient]);
