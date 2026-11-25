@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-11-25T02:25:52.256Z",
+  "applicationCommit": "24a2bfce836cc0cb6b4e2c396cb2e95b9bf23ec7",
+  "tag": "admin-board-undo-words-20261124-r2",
+  "deploymentId": "dpl_G6MTzMb3xWa7Ko6AZx5wuJkbckHS",
+  "deploymentState": "READY",
+  "publicUrl": "https://holm357.com",
+  "manifest": {
+    "buildId": "24a2bfce836cc0cb6b4e2c396cb2e95b9bf23ec7",
+    "publishedAt": "2026-11-25T02:24:01.483Z",
+    "bundleFilename": "assets/index-Ba5uSngH.js"
+  },
+  "matchingScriptLoaded": true,
+  "loginVisible": true,
+  "pageErrors": [],
+  "scope": "Anonymous production bootstrap only; gameplay acceptance remains with Jeremy"
+}
