@@ -1,6 +1,6 @@
 # Admin undo and Words reveal — November 24, 2026
 
-Both requested changes are implemented on codex/chess-words-admin-undo. Production migrations 20261125015236 and 20261125015237 are installed; their installed rollback proofs pass. Client publication and Jeremy's gameplay smoke are pending at this checkpoint.
+Both requested changes are implemented on codex/chess-words-admin-undo. Production migrations 20261125015236 and 20261125015237 are installed; their installed rollback proofs pass. Implementation commit: 27c3cab4e. Installed qualification, complete local build and final browser/typecheck pass. Publication is proceeding; Jeremy's gameplay smoke remains pending.
 
 Admin undo covers Live and Async Chess/Words, with admin-only controls in the board and existing completed-match/results surfaces. Private before-images preserve boards, racks, bag order, scores, banks and turn ownership. Monotone revisions, row/advisory locks, unique request/frame audit keys and canonical account reversals protect stale/repeated requests. An expired clock receives its standard turn window; an ordinary move restores its saved remaining time. Untimed Chess remains untimed. Live undo restores the existing session and round, and an authoritative undo ID resets connected presentation state. A later dealer game or departed participant prevents unsafe Live reopening. Older moves without a private checkpoint explicitly report saved state unavailable.
 
