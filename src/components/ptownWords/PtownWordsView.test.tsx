@@ -4,6 +4,7 @@ import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import type {WordsSnapshot} from '@/lib/ptownWords/model';
 const {placementSound,countdownSound}=vi.hoisted(()=>({placementSound:vi.fn(),countdownSound:vi.fn()}));
 const previewMock=vi.hoisted(()=>vi.fn<()=>import('@/lib/ptownWords/usePlacementPreview').PlacementPreview|null>(()=>null));
+vi.mock('@/hooks/useIsAdmin',()=>({useIsAdmin:()=>({isAdmin:false,loading:false})}));
 vi.mock('@/lib/ptownWords/usePlacementPreview',()=>({usePlacementPreview:previewMock}));
 vi.mock('@/lib/audio/platformAudio',()=>({platformAudio:{getSnapshot:()=>({userId:'u1'}),present:countdownSound}}));
 vi.mock('@/lib/audio/approvedSounds',()=>({approvedCountdownBeat:vi.fn(()=>({durationMs:180,schedule:vi.fn()}))}));
