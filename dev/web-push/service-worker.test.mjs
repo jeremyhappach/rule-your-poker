@@ -1,8 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {readFileSync} from 'node:fs';
 import {createHash,webcrypto} from 'node:crypto';
-function fixture({trace=false,diagnosticWriteFails=false,now}={}){
- const handlers={},store=new Map(),shown=[],navigation=[];
- const self={location:{origin:'https://local.invalid'},addEventListener:(name,fn)=>handlers[name]=fn,
+function fixture({trace=false,diagnosticWriteFails=false,now,store=new Map()}={}){
+ const handlers={},shown=[],navigation=[],badges=[];
+ const self={navigator:{setAppBadge:async n=>badges.push(n),clearAppBadge:async()=>badges.push(0)},location:{origin:'https://local.invalid'},addEventListener:(name,fn)=>handlers[name]=fn,
   registration:{getNotifications:async()=>[],showNotification:async(title,options)=>{const previous=shown.findIndex(n=>n.tag===options.tag);if(previous>=0)shown.splice(previous,1);shown.push({title,...options});}},
   clients:{claim:async()=>{},matchAll:async()=>[],openWindow:async path=>navigation.push(path)}};
  let source=readFileSync('public/ptown-push-sw.js','utf8');
@@ -12,9 +12,64 @@ function fixture({trace=false,diagnosticWriteFails=false,now}={}){
  vm.runInNewContext(source,{self,URL,Response,TextEncoder,MessageChannel:Channel,setTimeout,clearTimeout,crypto:webcrypto,Date:class extends Date{static now(){return fixedNow??Date.now();}},caches:{open:async()=>({match:async key=>store.get(key)?.clone(),put:async(key,value)=>{if(diagnosticWriteFails&&key.endsWith('/diagnostics'))throw Error('disk unavailable');store.set(key,value);}})}});
  const fire=async(name,event)=>{let task;handlers[name]({...event,waitUntil:p=>task=p});await task;};
  const bind=value=>fire('message',{source:{url:'https://local.invalid/'},data:{type:'push-binding',value},ports:[{postMessage:()=>{}}]});
- return {fire,bind,shown,navigation,self,read:async name=>(await store.get('https://local.invalid/__push_local__/'+name)?.clone().json())};
+ const badge=(userId,count,version)=>fire('message',{source:{url:'https://local.invalid/'},data:{type:'async-app-badge',userId,snapshot:count===undefined?undefined:{count,version}},ports:[{postMessage(){}}]});
+ return {fire,bind,badge,badges,store,shown,navigation,self,read:async name=>(await store.get('https://local.invalid/__push_local__/'+name)?.clone().json())};
 }
 const payload={eventId:'11111111-1111-4111-8111-111111111111',matchId:'22222222-2222-4222-8222-222222222222',binding:'binding-a',kind:'turn',expiresAt:Date.now()+60000};
+
+test('badge persists across worker restarts and rejects pushes older than a foreground acknowledgement',async()=>{
+ const f=fixture();await f.bind({binding:payload.binding,userId:'a'});
+ await f.badge('a',3,100);assert.equal(f.badges.at(-1),3);
+ await f.badge('a',0,200);assert.equal(f.badges.at(-1),0);
+ const reopened=fixture({store:f.store});
+ await reopened.badge('a');assert.deepEqual(reopened.badges,[]);
+ await reopened.fire('push',{data:{json:()=>({...payload,badge:{count:3,version:100}})}});
+ assert.deepEqual(reopened.badges,[]);assert.equal(reopened.shown.length,1);
+ await reopened.badge('a',0,200);assert.equal(reopened.badges.at(-1),0);
+ await reopened.fire('push',{data:{json:()=>({...payload,badge:{count:4,version:300}})}});
+ assert.equal(reopened.badges.at(-1),4);
+ assert.equal((await reopened.read('app-badge')).snapshot.version,300);
+});
+
+test('badge resets on account changes and logout without accepting another account push',async()=>{
+ const f=fixture();await f.bind({binding:payload.binding,userId:'a'});await f.badge('a',5,100);
+ await f.badge('b');assert.equal(f.badges.at(-1),0);
+ await f.fire('push',{data:{json:()=>({...payload,badge:{count:9,version:500}})}});
+ assert.equal(f.badges.at(-1),0);
+ await f.badge('b',2,200);assert.equal(f.badges.at(-1),2);
+ await f.badge(null);assert.equal(f.badges.at(-1),0);
+ await f.fire('push',{data:{json:()=>({...payload,badge:{count:9,version:600}})}});
+ assert.equal(f.badges.at(-1),0);
+});
+
+test('invalid, expired, missing, conflicting and wrongly bound payloads preserve the badge',async()=>{
+ const f=fixture();await f.bind({binding:payload.binding,userId:'a'});await f.badge('a',2,100);
+ for(const extra of [{badge:{count:-1,version:200}},{badge:{count:1.5,version:200}},
+  {badge:{count:0,version:NaN}},{badge:{count:0,version:100}},
+  {badge:{count:0,version:200},expiresAt:Date.now()-1},{badge:{count:0,version:200},binding:'wrong'},{}]){
+  await f.fire('push',{data:{json:()=>({...payload,...extra})}});assert.equal(f.badges.at(-1),2);
+ }
+});
+
+test('unsupported or rejected badge APIs cannot prevent a visible notification and recover on refresh',async()=>{
+ const f=fixture();await f.bind({binding:payload.binding,userId:'a'});await f.badge('a',1,100);
+ f.self.navigator.setAppBadge=async()=>{throw Error('NotAllowedError');};
+ await f.fire('push',{data:{json:()=>({...payload,badge:{count:3,version:200}})}});
+ assert.equal(f.shown.length,1);assert.equal((await f.read('app-badge')).snapshot.version,100);
+ f.self.navigator.setAppBadge=async n=>f.badges.push(n);await f.badge('a',3,200);assert.equal(f.badges.at(-1),3);
+ delete f.self.navigator;
+ await f.fire('push',{data:{json:()=>({...payload,badge:{count:0,version:300}})}});
+ assert.equal(f.shown.length,1);assert.equal(f.badges.at(-1),3);
+});
+
+test('foreground and push writes are serialized while a platform call is pending',async()=>{
+ const f=fixture();await f.bind({binding:payload.binding,userId:'a'});await f.badge('a',1,100);
+ let release;f.self.navigator.setAppBadge=n=>new Promise(resolve=>{release=()=>{f.badges.push(n);resolve();};});
+ const push=f.fire('push',{data:{json:()=>({...payload,badge:{count:2,version:200}})}});
+ while(!release)await new Promise(resolve=>setImmediate(resolve));
+ const clear=f.badge('a',0,300);release();await Promise.all([push,clear]);
+ assert.equal(f.badges.at(-1),0);assert.equal((await f.read('app-badge')).snapshot.version,300);
+});
 
 test('scoped worker trace distinguishes binding rejection, successful display and silent retry without raw secrets',async()=>{
  const f=fixture({trace:true});await f.bind({binding:'wrong',userId:'other'});

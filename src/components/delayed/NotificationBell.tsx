@@ -14,11 +14,11 @@ import '@/lib/delayed/delayed.css';
 type Notice={id:string;match_id:string;registration_user_id?:string;kind:string;actionable:boolean;revision:number;read_revision:number;payload:{username?:string;email?:string;registeredAt?:string;opponentId:string;opponentName?:string;completionCount?:number;availableCount:number;earliestDeadline:string|null;lastCall:boolean;status:string}};
 const NotificationContext=createContext<{userId:string;items:Notice[];count:number;clock:{server:number;at:number};error:string;refresh:()=>Promise<void>;setError:(s:string)=>void}|null>(null);
 export function NotificationProvider({children}:{children:ReactNode}){
- const [userId,setUserId]=useState<string|null>(null),[items,setItems]=useState<Notice[]>([]),[count,setCount]=useState(0),[error,setError]=useState('');
+ const [userId,setUserId]=useState<string|null|undefined>(),[items,setItems]=useState<Notice[]>([]),[count,setCount]=useState(0),[error,setError]=useState('');
  const generation=useRef(0);
  const [clock,setClock]=useState(()=>({server:Date.now(),at:performance.now()}));
- useEffect(()=>{let alive=true;void supabase.auth.getSession().then(({data})=>{if(alive)setUserId(data.session?.user.id??null);});
-  const {data}=supabase.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT')clearPrivateDrafts();setUserId(session?.user.id??null);});
+ useEffect(()=>{let alive=true,changed=false;void supabase.auth.getSession().then(({data,error})=>{if(alive&&!changed&&!error)setUserId(data.session?.user.id??null);});
+  const {data}=supabase.auth.onAuthStateChange((event,session)=>{changed=true;if(event==='SIGNED_OUT')clearPrivateDrafts();setUserId(session?.user.id??null);});
   return()=>{alive=false;data.subscription.unsubscribe();};},[]);
  const refresh=useCallback(async()=>{
   const request=++generation.current;if(!userId)return;
@@ -52,7 +52,7 @@ export function NotificationProvider({children}:{children:ReactNode}){
   if(!Number.isFinite(deadline))return;const timer=setTimeout(()=>void refresh(),Math.max(0,deadline-clock.server-(performance.now()-clock.at)));
   return()=>clearTimeout(timer);
  },[userId,items,clock,refresh]);
- return <AsyncActivityProvider userId={userId}><NotificationContext.Provider value={userId?{userId,items,count,clock,error,refresh,setError}:null}>{children}</NotificationContext.Provider></AsyncActivityProvider>;
+ return <AsyncActivityProvider userId={userId??null} authResolved={userId!==undefined}><NotificationContext.Provider value={userId?{userId,items,count,clock,error,refresh,setError}:null}>{children}</NotificationContext.Provider></AsyncActivityProvider>;
 }
 export function NotificationInbox({open,onOpenChange}:{open:boolean;onOpenChange:(open:boolean)=>void}){
  const context=useContext(NotificationContext);return open&&context?<NotificationBellContent context={context} textOnly onDismiss={()=>onOpenChange(false)}/>:null;

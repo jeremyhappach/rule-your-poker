@@ -1,3 +1,14 @@
+# November 27, 2026 — Async app badges use absolute server snapshots
+
+The app icon counts pending turns and unread final game/match results using one
+private database projection shared by lobby reads and authorized push payloads.
+The existing worker serializes platform writes and persists account and server
+snapshot ordering. Badging cannot acknowledge results or become a local action
+counter. Existing alerts/preferences remain unchanged; no silent badge-only
+push is introduced. A closed device reconciles on an eligible visible push or
+reopening. The in-app Async indicator retains its existing match-based count.
+See [qualification and platform limits](ASYNC_APP_BADGE.md).
+
 # November 24, 2026 — Play-money Chess is untimed
 
 The authoritative money mode selects the versioned `play-money-untimed/1` timing policy for both Live and Async Chess. PostgreSQL enforces it at admission, state updates and expiration; the shared reducer and presentation consume it. Existing active games adopt the policy without gameplay changes. Completed games require a separate authorized audited restoration. Real-money timing remains unchanged. Timeout final reviews complete the existing Chess presentation before durable final ACK; result classification remains final-only.

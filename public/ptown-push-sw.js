@@ -16,6 +16,24 @@ async function trace(p,stage,details={}){try{
  }catch{/* Diagnostic storage must never affect delivery. */}}
 let queue=Promise.resolve();
 const serial=fn=>{const task=queue.then(fn);queue=task.catch(()=>{});return task;};
+const badgeSupported=()=>typeof self.navigator?.setAppBadge==='function'&&typeof self.navigator?.clearAppBadge==='function';
+const validBadge=v=>v&&Number.isSafeInteger(v.count)&&v.count>=0&&Number.isSafeInteger(v.version)&&v.version>0;
+async function appBadge(userId,snapshot,fromPush=false){
+ if(!badgeSupported())return;
+ let previous=await read('app-badge');
+ // An old account's push cannot replace a newer foreground account or sign-out.
+ if(fromPush&&previous&&previous.userId!==userId)return;
+ if(!previous||previous.userId!==userId){
+  previous={userId};await write('app-badge',previous);
+  await self.navigator.clearAppBadge();
+ }
+ if(!userId){await self.navigator.clearAppBadge();return;}
+ if(!validBadge(snapshot))return;
+ const old=previous.snapshot;
+ if(old&&(snapshot.version<old.version||snapshot.version===old.version&&snapshot.count!==old.count))return;
+ if(snapshot.count)await self.navigator.setAppBadge(snapshot.count);else await self.navigator.clearAppBadge();
+ await write('app-badge',{userId,snapshot});
+}
 // Push-only worker: activation does not replace a cached application shell.
 self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
@@ -31,6 +49,11 @@ function handoffMatch(target,destination){
 }
 self.addEventListener('message',event=>{
  if(!event.source?.url||new URL(event.source.url).origin!==self.location.origin)return;
+ if(event.data?.type==='async-app-badge')event.waitUntil(serial(async()=>{
+  if(event.data.userId!==null&&typeof event.data.userId!=='string')return;
+  try{await appBadge(event.data.userId,event.data.snapshot);}catch{/* Badging must not affect gameplay or notification delivery. */}
+  event.ports[0]?.postMessage({badgeSupported:badgeSupported()});
+ }));
  if(event.data?.type==='push-diagnostic-version')event.ports[0]?.postMessage(TRACE_VERSION);
  if(event.data?.type==='push-binding')event.waitUntil(serial(async()=>{
   const previous=await read('binding');
@@ -71,6 +94,8 @@ self.addEventListener('push',event=>event.waitUntil(serial(async()=>{
   data:{registrationUserId:p.registrationUserId,matchId:p.matchId,tableId:p.tableId,kind:p.kind,binding:p.binding,eventId:p.eventId},
  }).then(()=>trace(p,'show_resolved'),async error=>{await trace(p,'show_rejected',{errorName:error?.name??'Error'});throw error;});
  await write('receipts',[...receipts.filter(id=>id!==p.eventId),p.eventId].slice(-128));
+ // No silent pushes: update only alongside the existing visible notification.
+ if(!expired&&validBadge(p.badge)&&current.userId){try{await appBadge(current.userId,p.badge,true);}catch{/* Retry through the next push or foreground refresh. */}}
  await trace(p,'receipt_saved');
  }catch(error){await trace(p,'worker_error',{errorName:error?.name??'Error'});throw error;}
 })));

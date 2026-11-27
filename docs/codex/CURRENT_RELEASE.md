@@ -12838,3 +12838,24 @@ separate queued phase.
   outcomes and artifact roots are recorded in
   `docs/codex/TARGET_GAUNTLET_20260901.md`; failures remain frozen for separate
   RCA.
+
+---
+
+# Async app-icon badge — November 27, 2026 — owner iPhone smoke pending
+
+The app icon shows pending turns plus unread game and eligible match results,
+clears at zero, and reconciles after successful actions/ACKs, realtime and
+reopening. Existing visible pushes carry the same authoritative count. The
+worker persists account/version guards so older pushes cannot restore cleared
+work. Loading, failed refreshes and unsupported APIs preserve normal app behavior;
+sign-out clears the prior account. The in-app Async indicator is unchanged.
+
+Migration `20261127212304_async_app_badge` is installed. Candidate and installed
+rollback proofs pass with no remaining fixtures or new security findings.
+TypeScript, 4,459 application tests, 241 harness tests, 46 release-tool tests,
+53 push tests, native browser/worker qualification and the production build pass
+(89,855,993 bytes, below the 90 MB cap). No new notifications or permission prompts.
+Closed-device updates remain subject to visible-push delivery and existing
+notification policies; reopening corrects missed updates. Physical iPhone icon
+smoke remains acceptance truth. Checkpoint: `async-app-badge-20261127`.
+See [behavior, evidence and smoke](ASYNC_APP_BADGE.md).

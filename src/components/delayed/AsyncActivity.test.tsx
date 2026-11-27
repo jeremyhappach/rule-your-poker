@@ -3,6 +3,8 @@ import {act,cleanup,render,screen,waitFor} from '@testing-library/react';
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {MemoryRouter} from 'react-router-dom';
 const mock=vi.hoisted(()=>({homes:[] as any[],rpc:vi.fn(),changed:()=>{},fail:false}));
+const badge=vi.hoisted(()=>({sync:vi.fn(),value:undefined as {count:number;version:number}|undefined}));
+vi.mock('@/lib/webPush/appBadge',async importOriginal=>({...await importOriginal<typeof import('@/lib/webPush/appBadge')>(),syncAppBadge:badge.sync}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:{rpc:mock.rpc,channel:()=>{const c={on:(_a:any,_b:any,cb:()=>void)=>{mock.changed=cb;return c;},subscribe:()=>c};return c;},removeChannel(){}}}));
 vi.mock('@/components/delayed/AsyncHistory',()=>({AsyncHistory:()=>null}));
 vi.mock('@/components/delayed/NotificationBell',()=>({NotificationBell:()=>null}));
@@ -14,11 +16,25 @@ import {delayedRpc} from '@/lib/delayed/client';
 import {invalidateAsyncActivity} from '@/lib/delayed/activityUpdates';
 const child=(extra={})=>({id:'child',game:'run21',ordinal:1,actor:'other',playable:false,terminal:false,viewed:true,expiresAt:new Date(Date.now()+3600000).toISOString(),...extra});
 const home=(id:string,extra={})=>({id,status:'active',revision:1,organizer:'me',opponent:'other',held:false,players:[{id:'me',name:'Me'},{id:'other',name:id}],lineup:[child()],serverAt:Date.now(),receipt:null,...extra});
-beforeEach(()=>{mock.fail=false;mock.homes=[];mock.rpc.mockReset();mock.rpc.mockImplementation(async(name,args)=>{
+beforeEach(()=>{badge.sync.mockReset();badge.value=undefined;mock.fail=false;mock.homes=[];mock.rpc.mockReset();mock.rpc.mockImplementation(async(name,args)=>{
  if(name==='delayed_finale_ack'){if(mock.fail)return {error:{message:'Lost ACK'}};mock.homes=mock.homes.filter(h=>h.id!==args.p_match);}
- return {data:{serverAt:Date.now(),matches:mock.homes},error:null};
+ return {data:{serverAt:Date.now(),matches:mock.homes,badge:badge.value},error:null};
 });});afterEach(cleanup);
 function Fixture({userId='me'}:{userId?:string}){return <MemoryRouter initialEntries={['/delayed']}><AsyncActivityProvider userId={userId}><LobbyBanner/><MatchList userId={userId}/></AsyncActivityProvider></MemoryRouter>;}
+it('forwards the authoritative combined count while keeping the tab match count and preserving failed refreshes',async()=>{
+ mock.homes=[home('mixed',{lineup:[child({actor:'me',playable:true}),child({id:'two',actor:'me',playable:true}),child({terminal:true,viewed:false})]})];
+ badge.value={count:3,version:100};render(<Fixture/>);
+ await screen.findByRole('link',{name:'Async (1)'});await waitFor(()=>expect(badge.sync).toHaveBeenLastCalledWith('me',{count:3,version:100}));
+ badge.sync.mockClear();mock.rpc.mockRejectedValueOnce(Error('Offline'));await act(async()=>mock.changed());expect(badge.sync).not.toHaveBeenCalled();
+ mock.homes=[];badge.value={count:0,version:200};await act(async()=>invalidateAsyncActivity());
+ await waitFor(()=>expect(badge.sync).toHaveBeenLastCalledWith('me',{count:0,version:200}));
+});
+it('does not clear an existing badge while authentication is unresolved, then clears on confirmed sign-out',async()=>{
+ const v=render(<MemoryRouter><AsyncActivityProvider userId={null} authResolved={false}><span/></AsyncActivityProvider></MemoryRouter>);
+ expect(badge.sync).not.toHaveBeenCalled();
+ v.rerender(<MemoryRouter><AsyncActivityProvider userId={null} authResolved><span/></AsyncActivityProvider></MemoryRouter>);
+ await waitFor(()=>expect(badge.sync).toHaveBeenLastCalledWith(null,undefined));
+});
 it('shows the four waiting matches and both actual finale actions, then reconciles successful ACKs to zero',async()=>{
  mock.homes=[...Array.from({length:4},(_,i)=>home('waiting-'+i)),...['Words mcru81','Chess TheOG'].map(id=>home(id,{status:'settled',receipt:{},reviewsComplete:true,finaleViewed:false,lineup:[child({terminal:true})]}))];
  render(<Fixture/>);const label=await screen.findByRole('link',{name:'Async (2)'});

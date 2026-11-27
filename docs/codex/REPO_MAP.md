@@ -1,5 +1,11 @@
 # Async activity and folded-card continuity
 
+App-icon badging: `supabase/web-push/app-badge.sql` owns the private absolute
+turn/result count shared by lobby reads and authorized push payloads.
+`src/lib/webPush/appBadge.ts` and the existing `public/ptown-push-sw.js` serialize
+platform writes with persisted account/version guards. Qualification and
+platform limits: [ASYNC_APP_BADGE.md](ASYNC_APP_BADGE.md).
+
 `public.delayed_lobby()` in `supabase/delayed/lobby-activity.sql` projects all
 participant-owned current work. `AsyncActivity.tsx` and `matchLobbyStatus` share
 one state for LobbyBanner counts and MatchList links, including unread finales.
