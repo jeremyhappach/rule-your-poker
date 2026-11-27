@@ -140,7 +140,7 @@ it('uses the approved card flip once per tile at the feedback opening edge, with
   const tile=container.querySelector('[data-reveal=close]')!;
   start(tile,'unrelated');expect(presentSound).toHaveBeenCalledTimes(column);
   start(tile,'five-alive-flip-close');expect(presentSound).toHaveBeenCalledTimes(column);
-  endAnimation(tile,'five-alive-flip-close');start(tile,'five-alive-flip-open');expect(presentSound).toHaveBeenLastCalledWith('flip',`five-alive:flip:receipt:0:${column}`,tile);expect(presentSound).toHaveBeenCalledTimes(column+1);
+  endAnimation(tile,'five-alive-flip-close');start(tile,'five-alive-flip-open');expect(presentSound).toHaveBeenLastCalledWith('flip',`five-alive:flip:receipt:0:${column}`,tile.parentElement);expect(presentSound).toHaveBeenCalledTimes(column+1);
   endAnimation(tile,'five-alive-flip-open');
  }
  rerender(<FiveAliveBoard {...props()} current={{completed:false,nextBase:700,guesses:[stone]}}/>);

@@ -1,3 +1,33 @@
+# Five Alive tile-flip audio — November 27, 2026 — owner smoke pending
+
+Five Alive's feedback-opening callback already requested the approved card-flip
+recording, but its visibility check used the rotating tile. At exactly 90 degrees
+the tile has zero projected width, so the shared audio manager consumed the
+reveal without a sound. The callback now checks the stationary tile row while
+remaining tied to each tile's opening animation. Existing user/reveal/row/column
+receipts preserve once-only playback, global mute and silent recovery.
+
+The shared board covers active Arcade and Async guesses plus Async opponent
+review. Five Alive has no Live multiplayer admission. Rules, authoritative
+results, reveal timing, input sounds, score audio, privacy and static history
+remain unchanged; no database migration is involved.
+
+The real mixer regression failed before the change and passes after it in both
+modes, including duplicate events, StrictMode/remount, mute/unmute and hidden
+surfaces. All 71 focused tests and the full release build pass: TypeScript,
+4,455 application tests, 241 harness tests, release tooling and the 90 MB cap
+(89,852,752 bytes). Native Edge checks exercise ordinary timing
+and force the exact edge-on animation frame: five approved PCM starts for five
+flips in all four cases, within 80 ms of their opening events. Muted guesses and
+restored boards are silent. Reproduce with
+`node dev/five-alive/presentation/reveal-audio-proof.mjs`; local evidence is in
+`qualification.local/five-alive/reveal-audio/`. Physical iPhone acceptance remains
+Jeremy's smoke: evaluate a guess in Arcade and Async, hear one flip per tile,
+repeat with Sounds off, and confirm reopening saved results stays silent.
+Checkpoint: `five-alive-flip-sound-20261127`.
+
+---
+
 # Async activity and Chucky folded cards — November 27, 2026 — owner smoke pending
 
 The Async badge and lobby share one current-work projection, including unread

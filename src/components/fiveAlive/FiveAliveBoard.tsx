@@ -105,9 +105,10 @@ export function FiveAliveBoard({mode,round,score,opponentScore,opponentName='Opp
                 return <div className={'five-alive-tile'+(flipping?' five-alive-flip-'+progress.phase:'')}
                   data-color={color} data-reveal={flipping?progress.phase:undefined} key={column}
                   onAnimationStart={event=>{
-                    // The feedback face opens after the approved placement cue's short tail.
+                    // At the opening edge rotateY(90deg) can give the tile zero
+                    // width. Check its stationary row, not the edge-on face.
                     if(reveal&&flipping&&progress.phase==='open'&&event.target===event.currentTarget&&event.animationName==='five-alive-flip-open')
-                      presentSound('flip',`five-alive:flip:${reveal.id}:${row}:${column}`,event.currentTarget);
+                      presentSound('flip',`five-alive:flip:${reveal.id}:${row}:${column}`,event.currentTarget.parentElement);
                   }}
                   onAnimationEnd={event=>{
                     if(!reveal||!flipping||event.target!==event.currentTarget||event.animationName!=='five-alive-flip-'+progress.phase||finished.current===reveal.id)return;
