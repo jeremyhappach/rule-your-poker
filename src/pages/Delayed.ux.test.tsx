@@ -16,20 +16,20 @@ import Delayed from './Delayed';
 beforeEach(()=>{
  mock.home={id:'match',offerHash:'frozen-offer',status:'invited',revision:1,organizer:'other',opponent:'me',realMoney:true,held:false,players:[{id:'me',name:'Viewer'},{id:'other',name:'Opponent'}],serverAt:Date.now(),createdAt:new Date().toISOString(),invitationExpiresAt:new Date(Date.now()+86400000).toISOString(),acceptedAt:null,net:0,completed:0,exposure:15,receipt:null,
  lineup:['run21','tri-towers','quintzee'].map((game,i)=>({id:'child-'+i,ordinal:i+1,game,stake:5,terminal:false,actor:i?'other':'me',expiresAt:new Date(Date.now()+3600000).toISOString(),lastCallAt:new Date(Date.now()+1800000).toISOString()}))};
- mock.rpc.mockReset();mock.rpc.mockImplementation(async name=>name==='delayed_list'?[mock.home]:name==='delayed_respond'?null:{...mock.home});
+ mock.rpc.mockReset();mock.rpc.mockImplementation(async name=>name==='delayed_lobby'?{serverAt:Date.now(),matches:[mock.home]}:name==='delayed_respond'?null:{...mock.home});
 });
 afterEach(cleanup);
 function mount(path='/delayed/match'){return render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/delayed" element={<Delayed/>}/><Route path="/delayed/:matchId" element={<Delayed/>}/><Route path="/" element={<h1>Multiplayer lobby</h1>}/></Routes></MemoryRouter>);}
 const responses=()=>mock.rpc.mock.calls.filter(c=>c[0]==='delayed_respond');
 it('leaves a hard-deleted invitation and refreshes the list without a cancellation alert',async()=>{
  mock.home.organizer='me';mock.home.opponent='other';let cancelled=false;
- mock.rpc.mockImplementation(async name=>{if(name==='delayed_respond'){cancelled=true;return {status:'cancelled',deleted:true};}if(name==='delayed_list')return cancelled?[]:[mock.home];return mock.home;});
+ mock.rpc.mockImplementation(async name=>{if(name==='delayed_respond'){cancelled=true;return {status:'cancelled',deleted:true};}if(name==='delayed_lobby')return {serverAt:Date.now(),matches:cancelled?[]:[mock.home]};return mock.home;});
  mount();fireEvent.click(await screen.findByRole('button',{name:'Cancel invitation'}));await screen.findByText('No active async matches.');
  expect(responses()[0][1].p_action).toBe('cancel');expect(screen.queryByText('Invitation cancelled')).toBeNull();
 });
 it('returns the recipient to the list when the pending invitation is deleted remotely',async()=>{
  mount();await screen.findByRole('button',{name:'Accept lineup and stakes'});
- mock.rpc.mockImplementation(async name=>{if(name==='delayed_list')return [];throw Error('delayed:invitation_cancelled');});
+ mock.rpc.mockImplementation(async name=>{if(name==='delayed_lobby')return {serverAt:Date.now(),matches:[]};throw Error('delayed:invitation_cancelled');});
  await act(async()=>mock.changed());await screen.findByText('No active async matches.');expect(screen.queryByRole('button',{name:'Accept lineup and stakes'})).toBeNull();
 });
 it('requires the live warning for real money; cancel leaves the invitation pending',async()=>{
@@ -93,13 +93,13 @@ it('renders simultaneous turns, unseen results and local invitations in action o
  const row=(id:string,name:string,props:object)=>({...mock.home,id,createdAt,players:[{id:'me',name:'Viewer'},{id:'other',name}],...props});
  const turn=(actor:string)=>({...mock.home.lineup[0],actor,playable:actor==='me'});
  const result={...turn('other'),terminal:true,viewed:false};
- mock.rpc.mockImplementation(async()=>[
+ mock.rpc.mockImplementation(async()=>({serverAt:Date.now(),matches:[
   row('outgoing','TheOG',{organizer:'me',opponent:'other'}),
   row('both','mcru81',{status:'active',lineup:[turn('me'),turn('me'),turn('other'),result,result]}),
   row('waiting','Rival',{status:'active',lineup:[turn('other')]}),
   row('incoming','Hap',{organizer:'other',opponent:'me'}),
   row('results','Finisher',{status:'settled',lineup:[result]}),
- ]);
+ ]}));
  const {container}=mount('/delayed');
  await screen.findByText('Turns - You: 2, mcru81: 1');
  const cards=[...container.querySelectorAll('.delayed-lineup > li')];

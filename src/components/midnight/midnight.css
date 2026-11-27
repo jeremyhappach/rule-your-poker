@@ -159,3 +159,7 @@ body:has(.midnight-invite){background:#06111f}
 }
 .midnight-pending{display:block;white-space:nowrap;font-size:.9rem}
 .midnight-lobby .delayed-lineup li[data-turn=own]{background:linear-gradient(125deg,#163c2c,#0b241c);border-color:#3c8b59;box-shadow:inset 3px 0 #62ad7f}
+
+/* Crimson activity must contrast with each tab surface, across the whole label. */
+.midnight-mode-tabs a[data-activity=true]{color:#ff829b}
+.midnight-mode-tabs a.active[data-activity=true]{color:#65051f}

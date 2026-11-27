@@ -32,8 +32,18 @@ describe('connected reveal and result continuity',()=>{
  const frames=admit(seek(old,1000,true),next,2000);
  expect(frames.map(f=>f.scene.phase)).toEqual(['fold_stay','fold','round_over']);
  expect(frames[1].scene.community).toHaveLength(4);expect(frames[2].at-frames[1].at).toBe(3000);
+ expect(frames[2].scene.community).toEqual(fold.community);
+ expect(seek(next,2500)[0].scene.community).toEqual(fold.community);
  expect(admit(frames,next,2050).filter(f=>f.scene.phase==='fold')).toHaveLength(1);
 });
+ it('never borrows rabbit faces across hand identity, conflicting cards or non-fold banks',()=>{
+  const fold={...original,phase:'fold' as const,since:2000,community:[card('A'),card('2'),card('3'),card('4')]};
+  const bank={...original,phase:'round_over' as const,since:2000,reason:'folds' as const,community:fold.community.slice(0,2),lastFold:fold};
+  for(const patch of [{roundId:'other'},{hand:2},{round:2},{since:2001},{reason:'busted' as const},{community:[card('K'),card('2')]}]){
+   const next={...bank,...patch};expect(seek(next,2500)[0].scene.community).toEqual(next.community);
+  }
+  expect(seek({...bank,phase:'deal',roundId:'next'},2500)[0].scene.community).toHaveLength(2);
+ });
  it('uses the frozen run bonus table and exactly one cue for the confirmed card count',()=>{
    const bonuses=[100,250,500,800,1250,2000,3000];
    const current={...original.config,version:'chucky-showdown/3' as const,winBonuses:bonuses};

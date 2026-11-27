@@ -1,5 +1,5 @@
 import type {ChildSummary,Home} from './client';
-import {needsChildReview,pendingReviewCount,hasPendingReview} from './reviews';
+import {needsChildReview,pendingReviewCount,hasPendingReview,mayViewFinale} from './reviews';
 import {gameName} from './client';
 import {isAvailableTurn,turnDeadline} from './notifications';
 
@@ -30,9 +30,10 @@ export function matchLobbyStatus(home:Home,userId:string,now:number){
  const own=turns.filter(child=>child.game==='five-alive'?child.playable===true:child.actor===userId&&isAvailableTurn(child,now)).length;
  const other=opponent?turns.filter(child=>child.game==='five-alive'?child.opponentPlayable===true:child.actor===opponent.id).length:0;
  const invitation=home.status==='invited';
- const accepts=invitation&&home.opponent===userId;
- return {home,opponent:opponent?.name??'Opponent',own,other,results,invitation,accepts,
-  actionable:accepts||own>0||results>0,nextDeadline:Math.min(...turns.map(turnDeadline))};
+ const accepts=invitation&&home.opponent===userId&&Date.parse(home.invitationExpiresAt)>now;
+ const finale=home.status==='settled'&&!home.removedAt&&home.finaleViewed===false&&mayViewFinale(home);
+ return {home,opponent:opponent?.name??'Opponent',own,other,results,finale,invitation,accepts,
+  actionable:accepts||own>0||results>0||finale,nextDeadline:Math.min(...turns.map(turnDeadline),accepts?Date.parse(home.invitationExpiresAt):Infinity)};
 }
 
 export function matchGameMix(lineup:ChildSummary[]){

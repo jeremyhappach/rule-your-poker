@@ -92,11 +92,11 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
   const remaining=Math.max(0,s.due-(game.choice?.at??game.now));
   const canAct=same&&deciding&&remaining>0&&game.ready&&!game.pending;
   const folded=s.phase==='fold'||s.phase==='round_over'&&s.reason==='folds';
-  const nPrivate=folded?0:s.phase==='deal'?tally(elapsed,800,4):4;
+  const nPrivate=s.phase==='deal'?tally(elapsed,800,4):4;
   const nBoard=s.phase==='deal'?tally(elapsed,1550,4):4;
   // The portrait holds its own cards; a table hand starts only after level selection.
   const awaitingLevel=s.phase==='deal'||deciding||s.phase==='board_reveal';
-  const nChucky=awaitingLevel?0:s.phase==='showdown'&&!s.chucky.length?tally(elapsed,180,s.level):s.level;
+  const nChucky=folded||awaitingLevel?0:s.phase==='showdown'&&!s.chucky.length?tally(elapsed,180,s.level):s.level;
   const liveBeat=live&&!game.silent;
   const cracking=s.phase==='crack'&&liveBeat;
   const cracks=s.cracks+(cracking&&elapsed<crackLiftMs?1:0);
@@ -158,7 +158,7 @@ export function ChuckyRoundTable({v,game,userId,competitive=false,onPresentation
           data-done={!uses} data-selected={(game.choice?.level??s.level)===i+1} onClick={()=>game.act('press',i+1)}
           aria-label={'Level '+(i+1)+', '+winBonus(v.config,i+1)+' points, '+uses+' uses remaining'}><b>{i+1}</b><small>{winBonus(v.config,i+1)}</small><small>{uses} left</small></button>)}</div>}
       </section>
-      <section className="cs-band cs-player" aria-label="My cards"><h2>My cards</h2><div className="cs-cards" data-folding={s.phase==='fold'&&live||undefined}>{cards('player',s.player,nPrivate)}</div></section>
+      <section className="cs-band cs-player" aria-label="My cards"><h2>My cards{folded?' · Folded':''}</h2><div className="cs-cards" data-folded={folded||undefined}>{cards('player',s.player,nPrivate)}</div></section>
       <section className="cs-bank" aria-label="Scoring"><dl><div><dt>Completed rounds</dt><dd>{completed.toLocaleString()}</dd></div>
         <div><dt>At risk</dt><dd>{risk.toLocaleString()}</dd></div></dl>
         {game.error&&<div role="alert">{game.error} <button onClick={game.reconnect}>Reconnect</button></div>}

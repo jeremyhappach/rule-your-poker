@@ -10,7 +10,7 @@ const child=(game:ChildSummary['game'],patch:Partial<ChildSummary>={}):ChildSumm
 });
 const home=(lineup:ChildSummary[],patch:Partial<Home>={}):Home=>({
  id:'match',status:'active',revision:1,realMoney:false,offerHash:'',organizer:'a',opponent:'b',
- players:[{id:'a',name:'Same'},{id:'b',name:'Same'}],createdAt:'',invitationExpiresAt:'',acceptedAt:'',
+ players:[{id:'a',name:'Same'},{id:'b',name:'Same'}],createdAt:'',invitationExpiresAt:new Date(now+3600000).toISOString(),acceptedAt:'',
  settledAt:null,held:false,lineup,net:0,completed:0,exposure:5,receipt:null,serverAt:now,...patch,
 });
 describe('viewer-specific playability versus turn ownership',()=>{

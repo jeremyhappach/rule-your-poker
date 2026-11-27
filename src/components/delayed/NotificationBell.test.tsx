@@ -65,7 +65,9 @@ it('counts distinct actionable matches and keeps account actions in the dismissi
  mocks.items=[notice,{...notice,id:'result',kind:'results'},{...notice,id:'other',match_id:'other-match',kind:'settled'},{...notice,id:'old',match_id:'old-match',actionable:false},{...notice,id:'approval',kind:'registration',match_id:null,registration_user_id:'new-player',payload:{username:'New player'}}];
  const close=vi.fn();function Count(){return <output data-testid="count">{useAsyncActionCount()}</output>;}
  render(<MemoryRouter initialEntries={['/arcade']}><NotificationProvider><Count/><NotificationInbox open onOpenChange={close}/><Path/></NotificationProvider></MemoryRouter>);
- await waitFor(()=>expect(screen.getByTestId('count').textContent).toBe('2'));
+ // Notification records are no longer the Async badge's authority.
+ await waitFor(()=>expect(screen.getByRole('link',{name:/Approval required/})).toBeTruthy());
+ expect(screen.getByTestId('count').textContent).toBe('0');
  fireEvent.click(screen.getByRole('link',{name:/Approval required/}));
  await waitFor(()=>expect(screen.getByTestId('path').textContent).toBe('/?adminPlayer=new-player'));
  expect(close).toHaveBeenCalledWith(false);

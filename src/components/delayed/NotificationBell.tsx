@@ -2,7 +2,8 @@ import {startTransition,createContext,useContext,useCallback,useEffect,useRef,us
 import {Link,useLocation,useNavigate} from 'react-router-dom';
 import {compactTurnTime,turnDestination,turnEntryHint} from '@/lib/delayed/notifications';
 import type {Home} from '@/lib/delayed/client';
-import {distinctActionMatches} from '@/lib/delayed/inviteGroups';
+import {AsyncActivityProvider} from './AsyncActivity';
+export {useAsyncActionCount} from './AsyncActivity';
 import {Bell} from 'lucide-react';
 import {supabase} from '@/integrations/supabase/client';
 import {delayedRpc} from '@/lib/delayed/client';
@@ -51,9 +52,8 @@ export function NotificationProvider({children}:{children:ReactNode}){
   if(!Number.isFinite(deadline))return;const timer=setTimeout(()=>void refresh(),Math.max(0,deadline-clock.server-(performance.now()-clock.at)));
   return()=>clearTimeout(timer);
  },[userId,items,clock,refresh]);
- return <NotificationContext.Provider value={userId?{userId,items,count,clock,error,refresh,setError}:null}>{children}</NotificationContext.Provider>;
+ return <AsyncActivityProvider userId={userId}><NotificationContext.Provider value={userId?{userId,items,count,clock,error,refresh,setError}:null}>{children}</NotificationContext.Provider></AsyncActivityProvider>;
 }
-export function useAsyncActionCount(){return distinctActionMatches(useContext(NotificationContext)?.items??[]);}
 export function NotificationInbox({open,onOpenChange}:{open:boolean;onOpenChange:(open:boolean)=>void}){
  const context=useContext(NotificationContext);return open&&context?<NotificationBellContent context={context} textOnly onDismiss={()=>onOpenChange(false)}/>:null;
 }

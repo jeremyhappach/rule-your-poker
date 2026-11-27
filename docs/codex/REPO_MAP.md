@@ -1,3 +1,13 @@
+# Async activity and folded-card continuity
+
+`public.delayed_lobby()` in `supabase/delayed/lobby-activity.sql` projects all
+participant-owned current work. `AsyncActivity.tsx` and `matchLobbyStatus` share
+one state for LobbyBanner counts and MatchList links, including unread finales.
+`activityUpdates.ts` invalidates after successful commands/ACKs. Chucky's
+`presentationV2.ts` retains exact committed rabbit faces through banking, and
+`ChuckyRoundTable.tsx` keeps the viewer's folded faces readable in place.
+Qualification: [ASYNC_ACTIVITY_CHUCKY_POLISH.md](ASYNC_ACTIVITY_CHUCKY_POLISH.md).
+
 # Untimed Chess and audited timeout restoration
 
 `supabase/chess/untimed.sql` / migration `20261124210340` own the money-mode timing policy, admission/update triggers, expiry/push guards and admin-only audited play-money restoration. `src/lib/chess/rules.ts` remains the shared gameplay reducer; `ChessFinalReview.tsx` owns timeout playback, with the existing delayed review owner persisting ACKs and navigating. Reproduction proofs are `dev/chess/untimed-{proof,history-proof,browser}.mjs` and `supabase/chess/untimed-existing-proof.sql`.

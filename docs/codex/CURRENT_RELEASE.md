@@ -1,3 +1,22 @@
+# Async activity and Chucky folded cards — November 27, 2026 — owner smoke pending
+
+The Async badge and lobby share one current-work projection, including unread
+match finales. The two hidden Hap finales (Words–mcru81 and Chess–TheOG) now have
+reachable View Match Result actions. Nonzero labels are crimson on both tab
+surfaces; zero restores normal text. Successful commands and acknowledgements
+refresh the shared state without inventing local completion.
+
+Chucky keeps the viewer's folded hole cards face up and gray, with no Chucky hand.
+The committed rabbit faces remain through final banking in the shared Arcade /
+competitive renderer and clear on hand/screen advancement.
+
+Read-only migration `20261127192704` is installed; candidate and installed rollback
+proofs pass. Full build passes 4,450 application tests, 241 harness tests, TypeScript,
+release tooling and the 90 MB cap. Checkpoint: `async-chucky-polish-20261127`.
+See [qualification and smoke](ASYNC_ACTIVITY_CHUCKY_POLISH.md).
+
+---
+
 # Async result and bonus handoffs — November 27, 2026 — owner smoke pending
 
 Final game review now uses the post-ACK server response to enter the eligible

@@ -2,6 +2,14 @@ import type {V2Scene,V2Snapshot} from './model';
 
 export interface Frame {scene:V2Scene; at:number; hold:number; live:boolean}
 export const flipGap=720;
+// The fold receipt alone discloses rabbit cards. Retain those exact faces for
+// that hand's bank scene, including recovery, without widening gameplay views.
+function bankFaces(scene:V2Scene,fold:V2Scene|null|undefined):V2Scene{
+ if(scene.phase!=='round_over'||scene.reason!=='folds'||fold?.phase!=='fold'
+  ||scene.roundId!==fold.roundId||scene.round!==fold.round||scene.hand!==fold.hand||scene.since!==fold.since
+  ||fold.community.length!==4||!scene.community.every((card,i)=>card.rank===fold.community[i]?.rank&&card.suit===fold.community[i]?.suit))return scene;
+ return {...scene,community:fold.community};
+}
 const prefix=(s:V2Scene)=>s.phase==='board_reveal'?s.community.length:s.phase==='showdown'?s.chucky.length:0;
 function hold(s:V2Scene){
   switch(s.phase){
@@ -20,7 +28,7 @@ export function seek(s:V2Snapshot,now:number,live=false):Frame[]{
   let at=s.since;
   if(s.phase==='board_reveal'&&s.community.length>2)at+=220+(s.community.length-3)*600;
   if(s.phase==='showdown'&&s.chucky.length)at+=s.level*180+540+(s.chucky.length-1)*flipGap;
-  return [{scene:s,at:Math.min(now,at),hold:hold(s),live}];
+  return [{scene:bankFaces(s,s.lastFold),at:Math.min(now,at),hold:hold(s),live}];
 }
 export function admit(frames:Frame[],s:V2Snapshot,now:number):Frame[]{
   const active=frames.filter(f=>f.at<=now).at(-1);
@@ -52,7 +60,7 @@ export function admit(frames:Frame[],s:V2Snapshot,now:number):Frame[]{
   }
   // Historical receipts allow visible catch-up without revealing an uncommitted card.
   const scenes=[s.lastShowdown,s.lastRound,s.lastFold,s].filter((v):v is V2Scene=>!!v).sort((a,b)=>a.since-b.since||(a.phase==='fold'?-1:b.phase==='fold'?1:0));
-  for(const scene of scenes)present(scene);
+  for(const scene of scenes)present(bankFaces(scene,s.lastFold));
   return queue;
 }
 export function scoreMotion(s:V2Scene){
