@@ -6,7 +6,7 @@ vi.mock('@/lib/delayed/playingPresence',async importOriginal=>({...await importO
 // Actual async shell: these cases reproduced the sibling defects before correction.
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
-import {MemoryRouter,Route,Routes} from 'react-router-dom';
+import {MemoryRouter,Route,Routes,useLocation} from 'react-router-dom';
 import {TooltipProvider} from '@/components/ui/tooltip';
 import {ResponsiveGeometryProvider} from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import {RUN21_RULES} from '@/lib/run21/rulesets';
@@ -31,7 +31,8 @@ function finish(game:string,reason:string):any{
 }
 function words():any{return {identity:{sessionId:'match',dealerGameId:'child',roundId:'round'},revision:1,serverAt:1000,rules:{version:'ptown-words/2',dictionaryId:'enable2k/1',dictionarySha256:'hash',turnMs:129600000},players:[{id:'me',userId:'me',name:'You',seat:1,isBot:false},{id:'other',userId:'other',name:'Other',seat:2,isBot:false}],viewerId:'me',activePlayerId:'me',board:Array(225).fill(null),rack:[{id:1,face:'C',value:3},{id:2,face:'A',value:1}],scores:{me:0,other:0},turn:1,deadline:129600000,canAct:true,paused:false,phase:'playing',bagCount:86,rackCounts:{me:2,other:7},pausedAt:null,finished:false,settlement:null,financial:{balances:{me:0,other:0},resultId:null,batch:null},moves:[],event:{label:'Started',points:0}};}
 function wordFinish(){const v=words();return {...v,revision:2,serverAt:2000,turn:2,canAct:false,activePlayerId:'other',scores:{me:4,other:0},moves:[{turn:1,playerId:'me',action:'place',points:4,count:2,words:[{word:'CA',points:4}]}],movePresentation:{version:1,turn:1,playerId:'me',squares:[112,113],startedAt:2000,announceAt:2000,readyAt:5600,flipMs:100,focusMs:0,noticeMs:3600}};}
-function mount(wordsMode=false,autoStart=false,realMoney=false){return render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/turn']}><Routes><Route path="/turn" element={wordsMode?<WordsTurn childId="child" matchId="match" userId="me" realMoney={realMoney}/>:<DelayedTurn childId="child" matchId="match" userId="me" autoStart={autoStart} realMoney={realMoney}/>}/><Route path="/delayed/match" element={<h1>Match destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);}
+function Path(){const location=useLocation();return <output data-testid="bonus-path">{location.pathname+location.search}</output>;}
+function mount(wordsMode=false,autoStart=false,realMoney=false){return render(<TooltipProvider><ResponsiveGeometryProvider><MemoryRouter initialEntries={['/turn']}><Path/><Routes><Route path="/turn" element={wordsMode?<WordsTurn childId="child" matchId="match" userId="me" realMoney={realMoney}/>:<DelayedTurn childId="child" matchId="match" userId="me" autoStart={autoStart} realMoney={realMoney}/>}/><Route path="/delayed/match" element={<h1>Match destination</h1>}/></Routes></MemoryRouter></ResponsiveGeometryProvider></TooltipProvider>);}
 async function flush(){await act(async()=>{await Promise.resolve();await Promise.resolve();await Promise.resolve();});}
 async function receive(v:any){mock.snapshot=v;await act(async()=>{mock.change?.({new:{match_id:'match'}});await Promise.resolve();await Promise.resolve();});}
 async function tick(ms:number){await act(async()=>{vi.advanceTimersByTime(ms);});}
@@ -215,4 +216,52 @@ for(const game of ['run21','boxdrop'])it(game+': slow state and Start retain the
  await tick(1000);expect(ui.queryByText(/Preparing|Begin round|Availability deadline/)).toBeNull();
  await act(async()=>startReply({...initial(game),revision:2}));await flush();expect(ui.queryByText('Your turn!')).toBeNull();
  expect(mock.request.mock.calls.filter(([b])=>b.op==='action')).toHaveLength(1);
+});
+
+function pendingBonus(game:string){
+ const v=finish(game,'timeout');
+ return {...v,round:3,segment:5,actor:'me',optionalBonus:{actor:'me',choice:'pending'},totals:{me:90000,other:70000},
+  ownResults:v.ownResults.map((r:any)=>({...r,round:2}))};
+}
+for(const game of ['quintzee','boxdrop'])describe(game+' immediate bonus handoff',()=>{
+ it.each(['skip','play'])('opponent round two first: holds our score, offers choice here, then %s',async choice=>{
+  mock.snapshot={...initial(game),round:2,segment:4};mount(false,true,true);await flush();
+  await receive(pendingBonus(game));expect(screen.queryByRole('button',{name:'Skip Bonus'})).toBeNull();
+  await tick(20000);expect(screen.getByRole('button',{name:'Skip Bonus'})).toBeTruthy();
+  expect(screen.getByTestId('bonus-path').textContent).toBe('/turn');
+  expect(mock.request.mock.calls.every(([body])=>body.op==='state')).toBe(true);
+  mock.request.mockImplementation(async(body:any)=>{
+   if(body.op==='action'&&body.intent.type==='bonus_'+choice)mock.snapshot={...mock.snapshot,revision:3,
+    optionalBonus:{actor:'me',choice},terminal:choice==='skip',winner:choice==='skip'?'me':null,
+    board:choice==='play'?board(game):null};
+   return structuredClone(mock.snapshot);
+  });
+  fireEvent.click(screen.getByRole('button',{name:choice==='skip'?'Skip Bonus':'Play Bonus'}));await flush();
+  const sent=mock.request.mock.calls.filter(([body])=>body.op==='action');
+  expect(sent).toHaveLength(1);expect(sent[0][0]).toMatchObject({segment:5,revision:2,intent:{type:'bonus_'+choice}});
+  expect(screen.queryByRole('button',{name:'Skip Bonus'})).toBeNull();
+  expect(screen.getByTestId('bonus-path').textContent).toBe(choice==='skip'?'/delayed/match?review=child&finished=1':'/turn');
+ });
+ it('keeps opponent-owned bonus and unfinished opponent round two on the ordinary home path',async()=>{
+  mock.snapshot={...initial(game),round:2,segment:4};mount(false,true,true);await flush();
+  await receive({...pendingBonus(game),actor:'other',optionalBonus:{actor:'other',choice:'pending'}});
+  await tick(20000);expect(screen.queryByRole('button',{name:'Skip Bonus'})).toBeNull();
+  expect(screen.getByTestId('bonus-path').textContent).toBe('/delayed/match');
+ });
+ it('reconnects into the pending choice and retries a lost Skip with the same command',async()=>{
+  mock.snapshot=pendingBonus(game);mount(false,true,true);await flush();
+  expect(screen.getByRole('button',{name:'Skip Bonus'})).toBeTruthy();let sends=0;
+  mock.request.mockImplementation(async(body:any)=>{
+   if(body.op==='action'){mock.snapshot={...mock.snapshot,revision:3,terminal:true,winner:'me',optionalBonus:{actor:'me',choice:'skip'}};
+    if(++sends===1)throw Error('Reply lost');}
+   return structuredClone(mock.snapshot);
+  });
+  fireEvent.click(screen.getByRole('button',{name:'Skip Bonus'}));await flush();
+  expect(screen.getByRole('alert').textContent).toContain('Reply lost');
+  expect(screen.getByTestId('bonus-path').textContent).toBe('/turn');
+  fireEvent.click(screen.getByRole('button',{name:'Reconnect'}));await flush();
+  const sent=mock.request.mock.calls.filter(([body])=>body.op==='action');
+  expect(sent).toHaveLength(2);expect(sent[1][0]).toEqual(sent[0][0]);
+  expect(screen.getByTestId('bonus-path').textContent).toBe('/delayed/match?review=child&finished=1');
+ });
 });

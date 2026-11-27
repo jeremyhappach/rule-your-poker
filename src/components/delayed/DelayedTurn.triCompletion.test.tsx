@@ -1,7 +1,7 @@
 vi.mock('@/lib/delayed/playingPresence',async importOriginal=>({...await importOriginal<typeof import('@/lib/delayed/playingPresence')>(),usePlayingPresence:()=>false}));
 // @vitest-environment jsdom
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-import {act,cleanup,render} from '@testing-library/react';
+import {act,cleanup,fireEvent,render} from '@testing-library/react';
 import {MemoryRouter,Route,Routes} from 'react-router-dom';
 import {DelayedTurn} from './DelayedTurn';
 import baseRules from '@/lib/triTowers/rules-v2.json';
@@ -26,6 +26,20 @@ async function tick(ms:number){await act(async()=>{vi.advanceTimersByTime(ms);})
 beforeEach(()=>{vi.useFakeTimers({toFake:['setInterval','clearInterval','setTimeout','clearTimeout','Date','performance']});vi.clearAllMocks();mock.snapshot=initial();mock.request.mockImplementation(async()=>structuredClone(mock.snapshot));Object.defineProperty(document,'hidden',{configurable:true,value:false});Object.defineProperty(window,'matchMedia',{configurable:true,value:()=>({matches:false,addEventListener(){},removeEventListener(){}})});});
 afterEach(()=>{cleanup();vi.useRealTimers();});
 describe('async TriTowers attempt completion',()=>{
+ it('offers an owned bonus after round two without visiting home, then skips to the result',async()=>{
+  mock.snapshot={...initial(),round:2,segment:4};const ui=mount();await flush();
+  const value=finish();await receive({...value,round:3,segment:5,actor:'me',optionalBonus:{actor:'me',choice:'pending'},
+   ownResults:value.ownResults.map(r=>({...r,round:2}))});
+  expect(ui.queryByRole('button',{name:'Skip Bonus'})).toBeNull();await tick(11000);
+  expect(ui.getByRole('button',{name:'Skip Bonus'})).toBeTruthy();expect(ui.queryByText('Match destination')).toBeNull();
+  mock.request.mockImplementation(async(body:any)=>{
+   if(body.op==='action')mock.snapshot={...mock.snapshot,revision:49,terminal:true,optionalBonus:{actor:'me',choice:'skip'}};
+   return structuredClone(mock.snapshot);
+  });
+  fireEvent.click(ui.getByRole('button',{name:'Skip Bonus'}));await flush();
+  expect(ui.getByText('Match destination')).toBeTruthy();
+  expect(mock.request.mock.calls.filter(([body])=>body.op==='action')[0][0]).toMatchObject({segment:5,intent:{type:'bonus_skip'}});
+ });
  it('keeps the round identity, celebrates and counts the authoritative score before returning',async()=>{
   const ui=mount();await flush();const key=ui.container.querySelector('[data-round-key]')?.getAttribute('data-round-key');
   await receive(finish());

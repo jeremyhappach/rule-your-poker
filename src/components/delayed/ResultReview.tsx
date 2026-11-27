@@ -141,7 +141,7 @@ export function ChildResults({childId,matchId,userId}:Identity){
  const reduced=useReduced(),play=usePlayback(reduced?1200:6000,overlay&&!reviewingFiveAlive&&(!wordsReview||wordsAdjusted)?'overlay:'+childId:'waiting'),busy=useRef(false);
  useEffect(()=>{if(wordsReview&&!wordsAdjusted||reviewingFiveAlive||historyOpen||!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
   .then(()=>delayedRpc<Home>('delayed_home',{p_match:matchId}))
-  .then(()=>navigate('/delayed/'+matchId,{replace:true}))
+  .then(fresh=>navigate('/delayed/'+matchId+(mayViewFinale(fresh)?'?finale=1':''),{replace:true}))
   .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[wordsReview,wordsAdjusted,reviewingFiveAlive,historyOpen,overlay,play.done,final,home,matchId,navigate]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;

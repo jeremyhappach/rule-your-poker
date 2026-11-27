@@ -1,3 +1,24 @@
+# Async result and bonus handoffs — November 27, 2026 — owner smoke pending
+
+Final game review now uses the post-ACK server response to enter the eligible
+match finale directly. Round-two completion retains a server-owned bonus choice
+on the same route; Skip enters the normal game-over and eligible match-over
+sequence, while Play retains ordinary bonus gameplay.
+
+Migration `20261127184114` restores correct per-child outcome projection across
+multi-child restoration and later undo. The affected Hap–TheOG match's saved
+Quintzee outcomes are preserved; one missing corrected review receipt was
+materialized from its real outcome. Existing ACKs remain intact, Words stays
+active, and the repair changes no scores, turns, balances or settlement.
+
+Candidate/installed rollback proofs, 132 focused tests, 4,446 application tests,
+241 harness tests, release tooling, TypeScript, production build and size gate
+pass. Four isolated authenticated HTTP browser scenarios pass; these are separate
+from hosted SQL proof and owner gameplay smoke. Checkpoint:
+`async-flow-repair-20261127`. See [evidence and smoke](ASYNC_FLOW_REPAIR.md).
+
+---
+
 # Admin undo and Words reveal — November 24, 2026
 
 Both requested changes are published on origin/main. Production migrations 20261125015236 and 20261125015237 are installed; their installed rollback proofs pass. Implementation commit: 27c3cab4e. Released application commit: 24a2bfce836cc0cb6b4e2c396cb2e95b9bf23ec7, tagged admin-board-undo-words-20261124-r2. Vercel deployment dpl_G6MTzMb3xWa7Ko6AZx5wuJkbckHS is READY. At 2026-11-25 02:25:52 UTC (November 24, 8:25 PM Central), holm357.com served that exact build and its matching JavaScript bundle; the mobile login screen loaded without JavaScript errors. This verifies anonymous production startup, not authenticated gameplay. Jeremy's gameplay smoke remains pending. Receipt: [admin-undo-words-production.json](evidence/admin-undo-words-production.json).

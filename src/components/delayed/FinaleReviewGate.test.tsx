@@ -51,7 +51,7 @@ beforeEach(()=>{
  });
 });
 afterEach(()=>{cleanup();vi.useRealTimers();});
-it('reproduces three children: each final outcome returns home without an automatic finale',async()=>{
+it('returns home for remaining results, then goes directly from the final ACK to the match finale',async()=>{
  mount();await flush();expect(screen.getAllByRole('link',{name:'View Result'})).toHaveLength(2);
  expect(document.querySelectorAll('[data-completed]')).toHaveLength(1);
  fireEvent.click(screen.getAllByRole('link',{name:'View Result'})[1]);await flush();
@@ -63,7 +63,8 @@ it('reproduces three children: each final outcome returns home without an automa
  expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_finale_ack')).toBe(false);
  fireEvent.click(screen.getByRole('link',{name:'View Result'}));await flush();await advance(16000);await advance(6100);
  expect(acks()).toEqual(['tri-attempt','tri-child','run-attempt','run-child']);
- expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(mock.finaleSeen).toBe(false);expect(home().reviewsComplete).toBe(true);
+ expect(screen.getByTestId('path').textContent).toBe('/delayed/match?finale=1');expect(mock.finaleSeen).toBe(false);expect(home().reviewsComplete).toBe(true);
+ expect(screen.getByRole('img',{name:/wins the match/})).toBeTruthy();
 });
 it.each([false,true])('direct finale/reload blocks outstanding reviews despite old finale ACK=%s',async oldAck=>{
  mock.finaleSeen=oldAck;const ui=mount('/delayed/match?finale=1');await flush();
@@ -98,7 +99,7 @@ it('failed post-ACK refresh stays out of finale until fresh authoritative state 
 it('refresh after ACK observes another tab completing the remaining child',async()=>{
  mount('/delayed/match?review=tri');await flush();await advance(16000);
  mock.events.run.forEach(e=>e.seen=true);mock.revision++;await advance(6100);
- expect(screen.getByTestId('path').textContent).toBe('/delayed/match');expect(home().reviewsComplete).toBe(true);
+ expect(screen.getByTestId('path').textContent).toBe('/delayed/match?finale=1');expect(home().reviewsComplete).toBe(true);
 });
 it('missing server qualification fails closed',async()=>{
  const rpc=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_history_detail'?Promise.resolve({...home(),reviewsComplete:undefined}):rpc(name,args));
