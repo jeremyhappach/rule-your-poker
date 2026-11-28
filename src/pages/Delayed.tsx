@@ -1,3 +1,4 @@
+import {SEALED_POLICY,simultaneousCard,newSimultaneousCard} from '@/lib/delayed/sealedRounds';
 import {AdminBoardUndo} from '@/components/admin/AdminBoardUndo';
 import {GameArtwork} from '@/components/midnight/GameArtwork';
 import {AsyncHistory} from '@/components/delayed/AsyncHistory';
@@ -69,7 +70,7 @@ function MatchListContent({userId}:{userId:string}){
    {results>0&&<p><strong>{results} {results===1?'result':'results'} to view</strong></p>}
    <div className="delayed-actions">
     {accepts&&<Link className="delayed-primary" to={'/delayed/'+row.id}>Review Invitation</Link>}
-    {own>0&&<Link className="delayed-primary" to={turnDestination(row,userId)} state={turnEntryHint(row,turnDestination(row,userId).split('/play/')[1]??'',userId)}>Take Turn</Link>}
+    {own>0&&<Link className="delayed-primary" to={turnDestination(row,userId)} state={turnEntryHint(row,turnDestination(row,userId).split('/play/')[1]??'',userId)}>{row.policyVersion===SEALED_POLICY&&row.lineup.some(c=>newSimultaneousCard(c,row)&&c.playable)?'Play next round':'Take Turn'}</Link>}
     {results>0&&<Link className="delayed-primary" to={'/delayed/'+row.id}>{results===1?'View Game Result':'View Game Results'}</Link>}
     {finale&&<Link className="delayed-primary" to={'/delayed/'+row.id+'?finale=1'}>View Match Result</Link>}
    </div>
@@ -105,10 +106,10 @@ function MatchHome({id,userId}:{id:string;userId:string}){
   {home.held&&<p role="status">This match is on hold while a platform incident is reviewed.</p>}
   {home.correction?.reversed&&<p role="status">The previous result was reversed and the saved game was restored. Check the game’s turn and clock below. Earlier results remain in the audit history.</p>}
   {error&&<p role="alert">{error} <button onClick={refresh}>Refresh</button></p>}
-  <ul className="delayed-lineup" aria-label="Match games">{orderedLobbyGames(home,userId,now).map(c=>{const ours=c.game==='five-alive'?c.playable===true:c.actor===userId,remaining=c.untimed?Infinity:Date.parse(c.expiresAt??'')-now;
+  <ul className="delayed-lineup" aria-label="Match games">{orderedLobbyGames(home,userId,now).map(c=>{const simultaneous=newSimultaneousCard(c,home),ours=simultaneousCard(c)?c.playable===true:c.actor===userId,remaining=c.untimed?Infinity:Date.parse(c.expiresAt??'')-now;
    const reviewed=isReviewedGame(c,userId),expanded=expandedGame===c.id,panelId='completed-game-'+c.id;
    const timeoutLabel=c.result?.reason==='timeout_forfeit'?(c.game==='chess'?(home.players.find(p=>p.id!==c.result?.winner)?.name??'Player')+' timed out':'Forfeit'):'';
-   const scores=c.game!=='chess'&&c.game!=='five-alive'&&home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{c.game!=='ptown-words'&&<small>{c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">Pending</em>}</div></div>)}</div>;
+   const scores=c.game!=='chess'&&c.game!=='five-alive'&&home.acceptedAt&&c.scores&&<div className="delayed-scoreboard" aria-label="Game scores">{home.players.map(p=><div key={p.id}><span>{p.name}{simultaneous&&(p.id===userId?' · You':' · Opponent')}{c.game!=='ptown-words'&&<small>{c.completedRounds?<>{c.completedRounds[p.id]??0} {(c.completedRounds[p.id]??0)===1?'round':'rounds'} completed</>:c.progress?.[p.id]??(c.terminal?'Complete':'')}</small>}</span><div className="async-score-value"><strong data-pending={c.scores?.[p.id]===null||undefined}>{c.scores?.[p.id]===null?'—':c.scores?.[p.id]?.toLocaleString()??'—'}</strong>{!!c.pendingResults?.[p.id]&&<em className="async-pending">{simultaneous?'Result sealed':'Pending'}</em>}</div></div>)}</div>;
    return <li className="delayed-game-card" data-group={lobbyGameGroup(c,home,userId,now)} data-completed={reviewed||undefined} data-unviewed={needsChildReview(c,userId)||undefined} data-reviewable={hasPendingReview(c,userId)||undefined} key={c.id}>
     {reviewed?<><AsyncGameHeader game={c.game} name={gameName(c.game)} disclosure={{expanded,controls:panelId,onToggle:()=>setExpandedGame(old=>old===c.id?null:c.id),summary:
      <span className={'async-completed-outcome '+(c.result&&c.result.delta>0?'delayed-win':c.result&&c.result.delta<0?'delayed-loss':'')}>
@@ -120,15 +121,16 @@ function MatchHome({id,userId}:{id:string;userId:string}){
     {c.game==='five-alive'&&home.acceptedAt&&<FiveAliveMatchWords key={c.id} childId={c.id} revision={c.revision} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'}/>}
     {hasPendingReview(c,userId)&&!home.removedAt&&<Link className="delayed-primary" to={'/delayed/'+id+'?review='+c.id}>View Result</Link>}
     {c.result?<p className={c.result.delta>0?'delayed-win':c.result.delta<0?'delayed-loss':''}><strong>{c.result.delta>0?'W':c.result.delta<0?'L':'T'}{timeoutLabel?' · '+timeoutLabel:''}</strong> · {money(c.result.delta)}</p>:c.terminal?null:
-     home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):c.game==='five-alive'?'Waiting on opponent.':"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
+     home.status==='active'?<div className="delayed-turn-status" data-turn={!home.held&&remaining>0?(ours?'own':'opponent'):undefined}><p><strong>{home.held?'On hold':remaining<=0?'Deadline reached — awaiting server result':simultaneous?(ours?'Round '+(c.round??1)+' available':'Waiting for opponent.'):ours?'Your turn'+(now>=Date.parse(c.lastCallAt??'')?' · Last Call':''):c.game==='five-alive'?'Waiting on opponent.':"Opponent’s turn"}</strong>{!ours&&<PlayingNow matchId={id} childId={c.id} actor={simultaneous?home.players.find(p=>p.id!==userId)?.id??null:c.actor} deadline={Date.parse(c.expiresAt??'')} enabled={!historical&&!home.held&&!home.removedAt&&remaining>0} refresh={refresh}/>}</p>
       {c.untimed?<span>Untimed</span>:<time><Clock size={15}/>{turnTime(c.expiresAt,now)}</time>}
       {!ours&&c.game==='ptown-words'&&c.bagCount!==undefined&&<small>{c.bagCount} letters left in the bag</small>}
-      {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{c.startedAt?'Resume turn':'Take Turn'}</Link>}
+      {ours&&!home.held&&remaining>0&&<Link className="delayed-primary" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>{simultaneous?'Play next round':c.startedAt?'Resume turn':'Take Turn'}</Link>}
+      {simultaneous&&!ours&&!home.held&&remaining>0&&<small>Round {c.round??1} submitted. Results reveal when both finish.</small>}
       {!ours&&(c.game==='ptown-words'||c.game==='chess')&&!home.held&&<Link className="delayed-view-board" state={turnEntryHint(home,c.id,userId)} to={'/delayed/'+id+'/play/'+c.id}>View board</Link>}</div>:<p>Waiting for acceptance</p>}</>}
    {(c.game==='chess'||c.game==='ptown-words')&&home.acceptedAt&&<AdminBoardUndo userId={userId} mode="async" game={c.game} id={c.id}/>}
    </li>;})}</ul>
   {!historical&&home.status==='invited'&&<section className="delayed-accept-card" aria-label="Invitation response"><h3>{home.opponent===userId?'Ready to play?':'Invitation sent'}</h3>
-   <p>The first player in each game is selected randomly.</p>
+   <p>{home.policyVersion===SEALED_POLICY?'Both players can begin independent games after acceptance. Chess and Words keep their existing first-player order.':'The first player in each game is selected randomly.'}</p>
    <p>{home.opponent===userId?'Accept the lineup and stakes shown above to begin.':'Waiting for your opponent to accept this lineup and its stakes.'}</p><p className="delayed-match-policy">Expires {new Date(home.invitationExpiresAt).toLocaleString()}.</p>
    {home.opponent===userId?<div className="delayed-actions"><button className="delayed-primary" disabled={pending} onClick={()=>home.realMoney?setConfirmOffer(home.offerHash):void respond('accept')}>{pending?'Working…':'Accept lineup and stakes'}</button><button className="delayed-secondary" disabled={pending} onClick={()=>void respond('decline')}>Decline</button></div>:
     <button className="delayed-secondary" disabled={pending} onClick={()=>void respond('cancel')}>Cancel invitation</button>}</section>}

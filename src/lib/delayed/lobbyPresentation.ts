@@ -1,3 +1,4 @@
+import {simultaneousCard} from './sealedRounds';
 import type {ChildSummary,Home} from './client';
 import {needsChildReview,pendingReviewCount,hasPendingReview,mayViewFinale} from './reviews';
 import {gameName} from './client';
@@ -11,7 +12,7 @@ export function lobbyGameGroup(child:ChildSummary,home:Home,userId:string,now:nu
  if(isReviewedGame(child,userId))return 3;
  if(child.terminal)return 1;
  if(hasPendingReview(child,userId))return 0;
- if(home.status==='active'&&!home.held&&!home.removedAt&&(child.game==='five-alive'?child.playable===true:child.actor===userId)&&(child.untimed||Date.parse(child.expiresAt??'')>now))return 0;
+ if(home.status==='active'&&!home.held&&!home.removedAt&&(simultaneousCard(child)?child.playable===true:child.actor===userId)&&(child.untimed||Date.parse(child.expiresAt??'')>now))return 0;
  return 2;
 }
 
@@ -25,10 +26,10 @@ export function matchLobbyStatus(home:Home,userId:string,now:number){
  const results=home.lineup.reduce((count,child)=>count+pendingReviewCount(child,userId),0);
  // playable is viewer-specific; an opponent-owned turn deliberately has false.
  const turns=home.status==='active'&&!home.held&&!home.removedAt
-  ?home.lineup.filter(child=>!child.terminal&&turnDeadline(child)>now&&(child.game!=='five-alive'||child.playable===true||child.opponentPlayable===true))
+  ?home.lineup.filter(child=>!child.terminal&&turnDeadline(child)>now&&(!simultaneousCard(child)||child.playable===true||child.opponentPlayable===true))
   :[];
- const own=turns.filter(child=>child.game==='five-alive'?child.playable===true:child.actor===userId&&isAvailableTurn(child,now)).length;
- const other=opponent?turns.filter(child=>child.game==='five-alive'?child.opponentPlayable===true:child.actor===opponent.id).length:0;
+ const own=turns.filter(child=>simultaneousCard(child)?child.playable===true:child.actor===userId&&isAvailableTurn(child,now)).length;
+ const other=opponent?turns.filter(child=>simultaneousCard(child)?child.opponentPlayable===true:child.actor===opponent.id).length:0;
  const invitation=home.status==='invited';
  const accepts=invitation&&home.opponent===userId&&Date.parse(home.invitationExpiresAt)>now;
  const finale=home.status==='settled'&&!home.removedAt&&home.finaleViewed===false&&mayViewFinale(home);

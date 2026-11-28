@@ -1,3 +1,4 @@
+import {SEALED_POLICY} from '@/lib/delayed/sealedRounds';
 import {WordsEndSequence} from '@/components/ptownWords/WordsEndSequence';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {nonWordTurn,turnLabel} from '@/lib/ptownWords/turnPresentation';
@@ -138,12 +139,14 @@ export function ChildResults({childId,matchId,userId}:Identity){
  const final=state?.events.find(e=>e.kind==='child'),child=home?.lineup.find(c=>c.id===childId),winner=final?.receipt.winner??child?.result?.winner,won=winner===userId;
  const reviewingFiveAlive=child?.game==='five-alive'&&!fiveAliveReviewed;
  const finishFiveAlive=useCallback(async()=>{played.current=true;await load();setFiveAliveReviewed(true);},[load]);
+ const [confirmed,setConfirmed]=useState(false);
+ const manualDismiss=home?.policyVersion===SEALED_POLICY;
  const reduced=useReduced(),play=usePlayback(reduced?1200:6000,overlay&&!reviewingFiveAlive&&(!wordsReview||wordsAdjusted)?'overlay:'+childId:'waiting'),busy=useRef(false);
- useEffect(()=>{if(wordsReview&&!wordsAdjusted||reviewingFiveAlive||historyOpen||!overlay||!play.done||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
+ useEffect(()=>{if(wordsReview&&!wordsAdjusted||reviewingFiveAlive||historyOpen||!overlay||(manualDismiss?!confirmed:!play.done)||busy.current||!home||document.hidden||!navigator.onLine)return;busy.current=true;void (final?delayedRpc('delayed_review_ack',{p_event:final.id}):Promise.resolve())
   .then(()=>delayedRpc<Home>('delayed_home',{p_match:matchId}))
   .then(fresh=>navigate('/delayed/'+matchId+(mayViewFinale(fresh)?'?finale=1':''),{replace:true}))
-  .catch(()=>{busy.current=false;setError('Unable to confirm viewing. Return to match home and retry.');});},[wordsReview,wordsAdjusted,reviewingFiveAlive,historyOpen,overlay,play.done,final,home,matchId,navigate]);
- if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
+  .catch(()=>{busy.current=false;setConfirmed(false);setError('Unable to confirm viewing. Please try again.');});},[wordsReview,wordsAdjusted,reviewingFiveAlive,historyOpen,overlay,play.done,manualDismiss,confirmed,final,home,matchId,navigate]);
+ if(error&&!home)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home||!state||!child)return <AsyncTurnStage matchId={matchId} title="Loading saved result…"/>;
  if(reviewingFiveAlive)return <FiveAliveSession mode="async" id={childId} matchId={matchId} userId={userId} opponentName={home.players.find(p=>p.id!==userId)?.name??'Opponent'} reviewOnly onReviewsComplete={finishFiveAlive}/>;
  if(chessReview&&!chessContinued)return <ChessFinalReview view={chessReview} matchId={matchId} onContinue={()=>{setChessContinued(true);setOverlay(true);}}/>;
@@ -153,20 +156,25 @@ export function ChildResults({childId,matchId,userId}:Identity){
  return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Game result" description="" activeTab="cards" setActiveTab={noop} navigation={<>{child.game==='chess'&&<ChessHistoryButton mode="async" matchId={matchId} onOpenChange={setHistoryOpen}/>}<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link></>} panel={<p>Saved game result</p>} announcement={false}><div className="async-winner-overlay" data-winner={won||undefined}>
   {won&&!reduced&&play.elapsed<3000&&<Confetti identity={'child:'+childId+(final?.seen?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<strong>Game Complete</strong>{child.game==='chess'&&(final?.receipt.reason??child.result?.reason)==='timeout_forfeit'&&<p>{home.players.find(p=>p.id!==winner)?.name??'Player'} timed out</p>}
   <strong>{winner?(home.players.find(p=>p.id===winner)?.name??'Winner')+(child.game==='five-alive'?' won the $':' banked the $')+child.stake+' stake':'Tie · $0'}</strong>
+  {error&&<p role="alert">{error}</p>}
+  {manualDismiss&&<button className="async-result-ok" disabled={confirmed} onClick={()=>{setError('');setConfirmed(true);}}>{confirmed?'Working…':'OK'}</button>}
   {child.game==='mega-card-golf'&&<MegaCompetitionScorecard course={(child.config as any).course.name} holes={(child.config as any).course.holes} hole={(child.config as any).course.holes} players={home.players} results={child.holeResults??[]}/>}
  </div></FullscreenGameShell></div>;
 }
 
 function Confetti({identity,userId,winner}:{identity:string;userId:string;winner:string}){const active=useVisible();useEffect(()=>{celebrateCanonicalWinner(identity,userId,[winner],active,false);},[identity,userId,winner,active]);return <div className="async-confetti" aria-hidden="true"/>;}
 export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
+ const [confirmed,setConfirmed]=useState(false);
  const [home,setHome]=useState<Home|null>(null),[error,setError]=useState(''),[imageReady,setImageReady]=useState(false),[ackError,setAckError]=useState(''),[runbackEligible,setRunbackEligible]=useState(false),ackGeneration=useRef(0),navigate=useNavigate(),[playId]=useState(()=>crypto.randomUUID()),reduced=useReduced(),play=usePlayback(7500,home&&imageReady?matchId:'loading'),busy=useRef(false);
  useEffect(()=>{let alive=true;ackGeneration.current++;setRunbackEligible(false);setHome(null);setImageReady(false);setError('');setAckError('');busy.current=false;void delayedRpc<Home>('delayed_history_detail',{p_match:matchId}).then(h=>{if(!alive)return;if(!mayViewFinale(h)){navigate('/delayed/'+matchId+(h.removedAt?'?history=1':''),{replace:true});return;}setHome(h);}).catch(()=>{if(alive)setError('Unable to load match result.');});return()=>{alive=false;ackGeneration.current++;};},[matchId,navigate]);
  const acknowledgeFinale=useCallback(()=>{if(!home||busy.current||document.hidden||!navigator.onLine)return;busy.current=true;setAckError('');const generation=ackGeneration.current;void (home.removedAt?Promise.resolve():delayedRpc('delayed_finale_ack',{p_match:matchId})).then(()=>delayedRpc<Home>('delayed_history_detail',{p_match:matchId})).then(fresh=>{if(generation===ackGeneration.current)setRunbackEligible(fresh.runbackEligible===true&&!fresh.removedAt);}).catch(()=>{if(generation!==ackGeneration.current)return;busy.current=false;setAckError('Unable to confirm viewing. Your saved results remain available.');});},[home,matchId]);
- useEffect(()=>{if(imageReady&&play.done)acknowledgeFinale();},[imageReady,play.done,acknowledgeFinale]);
+ const manualDismiss=home?.policyVersion===SEALED_POLICY;
+ useEffect(()=>{setConfirmed(false);},[matchId]);
+ useEffect(()=>{if(manualDismiss?confirmed:imageReady&&play.done)acknowledgeFinale();},[manualDismiss,confirmed,imageReady,play.done,acknowledgeFinale]);
  if(error)return <main className="delayed-page"><p role="alert">{error}</p><Link to={'/delayed/'+matchId}>Match home</Link></main>;
  if(!home)return <AsyncTurnStage matchId={matchId} title="Loading match finale…"/>;
  const winner=home.net===0?null:home.net>0?userId:home.players.find(p=>p.id!==userId)!.id;
- return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<>{home.lineup.some(c=>c.game==='chess')&&<ChessHistoryButton mode="async" matchId={matchId}/>}<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link></>} panel={<p>Match results</p>} announcement={false}><div className="async-finale" data-phase={imageReady&&play.elapsed>=7500?'breakdown':imageReady&&play.elapsed>=7000?'fade':'ring'}>
+ return <div className="arcade-run" data-shell-presentation-mode="fullscreen"><FullscreenGameShell gameplay={false} title="Match complete" description="" activeTab="cards" setActiveTab={noop} navigation={<>{home.lineup.some(c=>c.game==='chess')&&<ChessHistoryButton mode="async" matchId={matchId}/>}<Link aria-label="Match home" to={'/delayed/'+matchId}><AsyncSessionName realMoney={home.realMoney}>{home.players.map(p=>p.name).join(' vs. ')}</AsyncSessionName></Link></>} panel={<p>Match results</p>} announcement={false}><div className="async-finale" data-phase={manualDismiss?(confirmed?'breakdown':'ring'):imageReady&&play.elapsed>=7500?'breakdown':imageReady&&play.elapsed>=7000?'fade':'ring'}>
   {home.net>0&&!reduced&&<Confetti identity={'match:'+matchId+(home.finaleViewed?':replay:'+playId:'')} userId={userId} winner={winner!}/>}<figure className="async-boxing" data-outcome={winner?'decisive':'draw'}>
    <div className="async-boxing-scene"><img src={winner?boxingWinner:boxingDraw} onLoad={()=>setImageReady(true)} onError={()=>setError('Unable to load the match artwork. The saved results remain available.')} alt={winner?home.players.find(p=>p.id===winner)?.name+' wins the match':'Match drawn'} decoding="async"/>
     {winner&&<span className="async-cash-label" aria-label={'Net winnings $'+Math.abs(home.net).toLocaleString()} style={{'--cash-chars':Math.max(4,('$'+Math.abs(home.net).toLocaleString()).length)} as CSSProperties}>{'$'+Math.abs(home.net).toLocaleString()}</span>}
@@ -174,7 +182,8 @@ export function MatchFinale({matchId,userId}:{matchId:string;userId:string}){
    </div>
   </figure><strong>{winner?home.players.find(p=>p.id===winner)?.name+' wins '+money(Math.abs(home.net)):'Draw · $0'}</strong>
   {home.realMoney&&home.receipt&&<p>Balances have been settled</p>}
+  {manualDismiss&&!confirmed&&<button className="async-result-ok" onClick={()=>setConfirmed(true)}>OK</button>}
   <ol className="async-finale-breakdown">{home.lineup.map(c=><li key={c.id}>{c.ordinal}. {c.game}{c.game==='chess'&&c.result?.reason==='timeout_forfeit'?' · '+(home.players.find(p=>p.id!==c.result?.winner)?.name??'Player')+' timed out':''} · {c.result?.delta?c.result.delta>0?'W':'L':'T'} {money(c.result?.delta??0)}</li>)}</ol>
-  {imageReady&&play.elapsed>=7500&&<div className="async-finale-exit">{ackError&&<p role="alert">{ackError} <button onClick={acknowledgeFinale}>Retry acknowledgement</button></p>}<div className="delayed-actions">{runbackEligible&&<RunbackLink matchId={matchId} returnTo={'/delayed/'+matchId+'?finale=1'} primary/>}<Link className={runbackEligible?'delayed-secondary':'delayed-primary'} to="/delayed">Back to Lobby</Link></div></div>}
+  {(manualDismiss?confirmed:imageReady&&play.elapsed>=7500)&&<div className="async-finale-exit">{ackError&&<p role="alert">{ackError} <button onClick={acknowledgeFinale}>Retry acknowledgement</button></p>}<div className="delayed-actions">{runbackEligible&&<RunbackLink matchId={matchId} returnTo={'/delayed/'+matchId+'?finale=1'} primary/>}<Link className={runbackEligible?'delayed-secondary':'delayed-primary'} to="/delayed">Back to Lobby</Link></div></div>}
  </div></FullscreenGameShell></div>;
 }

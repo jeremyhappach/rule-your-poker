@@ -1,6 +1,7 @@
 import {supabase} from '@/integrations/supabase/client';
 import {invalidateAsyncActivity} from './activityUpdates';
 export interface ChildSummary {holeResults?:{actor:string;hole:number;score:number;at:number}[];id:string;ordinal:number;game:'five-alive'|'chess'|'crib-lab'|'chucky-showdown'|'run21'|'tri-towers'|'ptown-words'|'quintzee'|'boxdrop'|'mega-card-golf'|'take-two';stake:number;config:any;starter:string|null;actor:string|null;
+ flowVersion?:string;completedRounds?:Record<string,number>;round?:number;
  segment:number;revision:number;terminal:boolean;availableAt:string|null;lastCallAt:string|null;expiresAt:string|null;startedAt:string|null;untimed?:boolean;playable?:boolean;opponentPlayable?:boolean;playableDeadline?:string|null;scores?:Record<string,number|null>;pendingResults?:Record<string,number>;reviewCount?:number;progress?:Record<string,string>;bagCount?:number;reviewId?:string;viewed?:boolean;lastMove?:{action:string;points:number};
  result:{reason:string;winner:string|null;delta:number;at:string}|null}
 export interface Home {correction?:AsyncCorrection;id:string;status:string;revision:number;realMoney:boolean;offerHash:string;organizer:string;opponent:string;

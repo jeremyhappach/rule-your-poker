@@ -92,7 +92,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
  const refresh=useCallback(async()=>{
   if(triController.current?.sent){await triController.current.recover();return;}
   const epoch=++generation.current,command=request.current;try{
-  const value=await delayedRequest<Snapshot>(command??{op:'state',childId,...(latest.current&&['run21','tri-towers'].includes(latest.current.game)?{game:latest.current.game}:{})});
+  const value=await delayedRequest<Snapshot>(command??{op:'state',childId,...(latest.current?.flowVersion?{flowVersion:latest.current.flowVersion}:{}),...(latest.current&&['run21','tri-towers'].includes(latest.current.game)?{game:latest.current.game}:{})});
   if(epoch!==generation.current)return;accept(value,command);request.current=null;try{sessionStorage.removeItem(requestKey);}catch{}setPending(false);setError('');return true;
  }catch(e){if(epoch===generation.current){
   interruptAudio();
@@ -148,7 +148,7 @@ export function DelayedTurn({childId,matchId,userId,autoStart=false,players:part
    else if(intent.type==='draw'||intent.type==='take_score')triInput.enqueue({type:intent.type});
    return;
   }
-  request.current={op:'action',game:snapshot.game,childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot,startedAt:performance.now()};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');return await refresh();}
+  request.current={op:'action',game:snapshot.game,...(snapshot.flowVersion?{flowVersion:snapshot.flowVersion}:{}),childId,revision:snapshot.revision,segment:snapshot.segment,requestId:crypto.randomUUID(),intent};freshAction.current={id:request.current.requestId,before:snapshot,startedAt:performance.now()};try{sessionStorage.setItem(requestKey,JSON.stringify(request.current));}catch{}setPending(true);setError('');return await refresh();}
  // A skip has no bonus attempt. Its authoritative terminal outcome still goes
  // through the ordinary game-result owner; an opponent turn returns home.
  useEffect(()=>{if(snapshot&&ended&&!result)navigate('/delayed/'+matchId+(snapshot.terminal?'?review='+childId+'&finished=1':''),{replace:true});},[snapshot,ended,result,matchId,childId,navigate]);

@@ -12859,3 +12859,14 @@ Closed-device updates remain subject to visible-push delivery and existing
 notification policies; reopening corrects missed updates. Physical iPhone icon
 smoke remains acceptance truth. Checkpoint: `async-app-badge-20261127`.
 See [behavior, evidence and smoke](ASYNC_APP_BADGE.md).
+
+## Simultaneous sealed async rounds — publication checkpoint (2026-11-27)
+
+New matches use independent private boards, paired round advancement, completed
+round counts and explicit settlement OK buttons. Existing matches and invitations
+retain their original flow; Chess and Words retain their first-player behavior.
+Both installed migrations, recovery worker version 6, financial rollback proofs,
+independent-session concurrency/recovery, browser checks and full release build
+pass. Admission is enabled only after the exact client commit is verified READY
+on Vercel. Owner gameplay smoke remains pending. Checkpoint:
+`async-sealed-rounds-20261127`. See [qualification and smoke](ASYNC_SEALED_ROUNDS.md).

@@ -21,6 +21,7 @@ export interface State {
  completed:boolean; winner:string|null; segmentStartedAt:number|null;
 }
 export interface Child {
+ sealed?:boolean;partRevision?:number;
  id:string; match_id:string; game_type:Game; config:Config|Record<string,any>;
  starter:string; actor:string; segment:number; revision:number; terminal:boolean;
  available_at:string; expires_at:string; state:State|null; server_at:number;
@@ -53,6 +54,9 @@ async function complete(s:State,row:Child,at:number,rpc:Rpc){
  s.totals[player]+=score;
  s.attempts.push({actor:player,round:s.round,score,at,board:structuredClone(board),...(s.deck?{evidence:s.deck}:{})});
  s.board=null;s.deck=null;s.segmentStartedAt=null;
+ // The sealed-round database coordinator joins the two private submissions.
+ // This adapter owns only this player's unchanged shared-rule board.
+ if(row.sealed)return;
  s.turn++;
  if(s.turn===2){s.turn=0;s.round++;}
  if(s.game==='run21'){
@@ -147,12 +151,12 @@ export async function transition(row:Child,intent:Intent,rpc:Rpc):Promise<Transi
 export async function project(row:Child,viewer:string,rpc:Rpc,prepared?:{visible:unknown;ownBoards:unknown[]}){
  const s=row.state??initial(row),paired=Math.min(...s.players.map(p=>s.attempts.filter(a=>a.actor===p).length));
  const shared=s.game==='take-two'||s.game==='crib-lab'&&!!(row.config as Record<string,unknown>).sharedDeck;
- const disclosed=(p:string,a:Attempt)=>p===viewer||((!shared||row.terminal||s.attempts.some(own=>own.actor===viewer&&own.round===a.round))&&(row.reviewed?row.reviewed.includes(p+':'+a.round):row.terminal||a.round<=paired));
+ const disclosed=(p:string,a:Attempt)=>p===viewer||(row.sealed?a.round<s.round:((!shared||row.terminal||s.attempts.some(own=>own.actor===viewer&&own.round===a.round))&&(row.reviewed?row.reviewed.includes(p+':'+a.round):row.terminal||a.round<=paired)));
  const totals=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&disclosed(p,a)).reduce((n,a)=>n+a.score,0)]));
  const pendingResults=Object.fromEntries(s.players.map(p=>[p,s.attempts.filter(a=>a.actor===p&&!disclosed(p,a)).length]));
  let board:unknown=null;
  if(viewer===row.actor&&s.board)board=prepared?prepared.visible:s.game==='mega-card-golf'?projectPlayerHole(s.board as MegaRun,Number(row.server_at)):s.game==='run21'?structuredClone(s.board):await sqlBoard(s,'visible',row.config,row.server_at,rpc);
- return {id:row.id,matchId:row.match_id,game:row.game_type,config:row.config,revision:row.revision,segment:row.segment,
+ return {id:row.id,matchId:row.match_id,game:row.game_type,config:row.config,revision:row.revision,segment:row.segment,...(row.sealed?{flowVersion:'delayed/sealed/1'}:{}),
   actor:row.actor,round:s.round,board,totals,pendingResults,reviewRevision:row.reviewed?.length??0,terminal:row.terminal,held:!!row.held,expiresAt:row.expires_at,serverAt:Number(row.server_at),
   holeResults:s.game==='mega-card-golf'?s.attempts.filter(a=>disclosed(a.actor,a)).map(a=>({actor:a.actor,hole:a.round,score:a.score,at:a.at})):[],
   ownResults:await Promise.all(s.attempts.filter(a=>a.actor===viewer).map(async (a,index)=>({round:a.round,score:a.score,at:a.at,result:s.game==='mega-card-golf'?completedHole(a.board as MegaRun):a.board.result,

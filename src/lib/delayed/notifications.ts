@@ -1,3 +1,4 @@
+import {simultaneousCard} from './sealedRounds';
 import type {ChildSummary,Home} from './client';
 export type NotificationEvent={id:string;revision:number;read_revision:number;actionable:boolean};
 export const pendingNoticeKeys=(items:NotificationEvent[])=>items.filter(n=>n.actionable||n.read_revision<n.revision).map(n=>`${n.id}:${n.revision}`).sort();
@@ -5,7 +6,7 @@ export const turnDeadline=(child:ChildSummary)=>child.untimed?Infinity:Date.pars
 export const isAvailableTurn=(child:ChildSummary,now:number)=>!child.terminal&&child.playable!==false&&turnDeadline(child)>now;
 
 export function turnDestination(home:Home,userId:string){
- const turns=home.status==='active'&&!home.held?home.lineup.filter(c=>(c.game==='five-alive'?c.playable===true:c.actor===userId)&&isAvailableTurn(c,home.serverAt)):[];
+ const turns=home.status==='active'&&!home.held?home.lineup.filter(c=>(simultaneousCard(c)?c.playable===true:c.actor===userId)&&isAvailableTurn(c,home.serverAt)):[];
  return turns.length===1?`/delayed/${home.id}/play/${turns[0].id}`:`/delayed/${home.id}`;
 }
 

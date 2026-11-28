@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "database": "async_sealed_race_1795820843888",
+  "checks": [
+    "current hosted settlement and financial function definitions match exactly",
+    "simultaneous first starts survive peer CAS conflicts with separate private decks",
+    "concurrent duplicate delivery has one immutable command receipt",
+    "stale same-player command cannot cross a newer board",
+    "simultaneous submissions reveal one paired round and open exactly one successor",
+    "concurrent final children and disabled-account zero-client recovery settle once, real=false",
+    "concurrent final children and disabled-account zero-client recovery settle once, real=true"
+  ]
+}

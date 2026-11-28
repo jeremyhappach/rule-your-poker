@@ -1,0 +1,21 @@
+{
+  "metrics": [
+    {
+      "width": 320,
+      "overflow": false,
+      "cards": 9
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "cards": 9
+    },
+    {
+      "width": 1024,
+      "overflow": false,
+      "cards": 9
+    }
+  ],
+  "errors": [],
+  "explicitSettlementAck": true
+}

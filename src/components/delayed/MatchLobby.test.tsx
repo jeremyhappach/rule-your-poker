@@ -16,6 +16,14 @@ import Delayed from '@/pages/Delayed';
 import {installBrowserMedia} from '@/test/browserMedia';
 const mount=()=>render(<MemoryRouter initialEntries={['/delayed/match']}><Routes><Route path='/delayed/:matchId' element={<Delayed/>}/></Routes></MemoryRouter>);
 const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve();});
+it.each(['run21','tri-towers','quintzee','boxdrop','take-two','crib-lab','chucky-showdown','mega-card-golf'])('shows existing progress slots as completed rounds for new %s',async game=>{
+ mock.home.policyVersion='delayed/sealed/1';mock.home.lineup=[{...mock.home.lineup[3],game,actor:'other',flowVersion:'delayed/sealed/1',playable:true,round:1,completedRounds:{me:0,other:1},pendingResults:{other:1}}];
+ mount();await flush();expect(screen.getByText('0 rounds completed')).toBeTruthy();expect(screen.getByText('1 round completed')).toBeTruthy();expect(screen.getByRole('link',{name:'Play next round'})).toBeTruthy();expect(screen.getByText('Result sealed')).toBeTruthy();
+});
+it('shows waiting after a submission without admitting another round',async()=>{
+ mock.home.policyVersion='delayed/sealed/1';mock.home.lineup=[{...mock.home.lineup[3],flowVersion:'delayed/sealed/1',playable:false,round:1,completedRounds:{me:1,other:0}}];
+ mount();await flush();expect(screen.getByText('Waiting for opponent.')).toBeTruthy();expect(screen.queryByRole('link',{name:'Play next round'})).toBeNull();
+});
 it.each([false,true])('omits Chess numeric scores in active/completed cards (completed=%s)',async terminal=>{
  mock.home.lineup=[{...mock.home.lineup[0],game:'chess',terminal,viewed:terminal,scores:{me:0,other:0}}];
  const ui=mount();await flush();expect(ui.container.querySelector('.delayed-scoreboard')).toBeNull();

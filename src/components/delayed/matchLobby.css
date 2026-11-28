@@ -34,3 +34,6 @@
 
 .delayed-game-mix{font-size:.82rem;line-height:1.35}
 .delayed-game-card[data-reviewable]{border-color:#4baf77;background:#163c2c}
+
+.async-result-ok{min-height:2.75rem;min-width:7rem;padding:.55rem 1.4rem;border:1px solid #b9f2df;border-radius:.45rem;background:#9ee5ce;color:#102d24;font-weight:750}
+.async-result-ok:disabled{opacity:.65}

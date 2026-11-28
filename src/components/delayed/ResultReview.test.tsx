@@ -32,6 +32,14 @@ afterEach(()=>{expect(platformAudio.request).not.toHaveBeenCalled();expect(platf
 const flush=async()=>act(async()=>{await Promise.resolve();await Promise.resolve();});
 const advance=async(ms:number)=>act(async()=>{await vi.advanceTimersByTimeAsync(ms);});
 const gate=()=> <ReviewGate home={mock.home} childId='child' matchId='match' userId='me'>{()=> <h1>Gameplay owner</h1>}</ReviewGate>;
+it('new-match settlement stays visible until OK and acknowledges exactly once',async()=>{
+ mock.home.policyVersion='delayed/sealed/1';mock.home.reviewsComplete=false;mock.state.terminal=true;mock.state.events=[{id:'final',kind:'child',receipt:{winner:'other'},seen:false}];
+ mount(<ChildResults childId='child' matchId='match' userId='me'/>);await flush();
+ expect(screen.getByRole('button',{name:'OK'})).toBeTruthy();await advance(60000);
+ expect(screen.getByText('Other banked the $5 stake')).toBeTruthy();expect(mock.rpc.mock.calls.some(([name])=>name==='delayed_review_ack')).toBe(false);
+ fireEvent.click(screen.getByRole('button',{name:'OK'}));await flush();
+ expect(mock.rpc.mock.calls.filter(([name])=>name==='delayed_review_ack')).toHaveLength(1);expect(screen.getByText('Match home destination')).toBeTruthy();
+});
 const savedChucky=(score=2500,lives=1)=>{
  mock.state.events=[{...event,actorName:'Other',round:2,score,receipt:{game:'chucky-showdown',rules:{ruleset:'chucky-showdown/3'}},
   board:{round:2,roundId:'saved-chucky-round',phase:'round_over',since:100,due:2450,cracks:lives,uses:[2,1,0,2,1,0,2],score:99999,
@@ -126,6 +134,11 @@ it('unmounted presentation cannot submit a delayed ACK',async()=>{const view=mou
 it('lost ACK stays pending and cannot start gameplay',async()=>{const original=mock.rpc.getMockImplementation()!;mock.rpc.mockImplementation((name,args)=>name==='delayed_review_ack'?Promise.reject(Error('lost')):original(name,args));mount(gate());await flush();await advance(13100);expect(screen.getByRole('alert')).toBeTruthy();expect(screen.queryByText('Gameplay owner')).toBeNull();});
 it('reduced motion completes with a visible final result, without a Continue action',async()=>{window.matchMedia=vi.fn().mockReturnValue({matches:true});mount(gate());await flush();await advance(6100);expect(screen.getByText('Your turn!')).toBeTruthy();await advance(2100);expect(screen.getByText('Gameplay owner')).toBeTruthy();});
 it('losing child result has no confetti and acknowledges only after its overlay',async()=>{mock.state.terminal=true;mock.state.events=[{id:'final',kind:'child',receipt:{winner:'other'},seen:false}];const view=mount(<ChildResults childId='child' matchId='match' userId='me'/>);await flush();expect(view.container.querySelector('.async-confetti')).toBeNull();expect(screen.getByText('Game Complete')).toBeTruthy();await advance(3100);expect(screen.getByText('Other banked the $5 stake')).toBeTruthy();expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_review_ack')).toBe(false);});
+it('new match finale holds until OK without a canned pause',async()=>{
+ mock.home.policyVersion='delayed/sealed/1';const view=mount(<MatchFinale matchId='match' userId='me'/>);await flush();fireEvent.load(screen.getByRole('img'));await advance(60000);
+ expect(view.container.querySelector('.async-finale')?.getAttribute('data-phase')).toBe('ring');expect(mock.rpc.mock.calls.some(c=>c[0]==='delayed_finale_ack')).toBe(false);
+ fireEvent.click(screen.getByRole('button',{name:'OK'}));await flush();expect(view.container.querySelector('.async-finale')?.getAttribute('data-phase')).toBe('breakdown');expect(mock.rpc.mock.calls.filter(c=>c[0]==='delayed_finale_ack')).toHaveLength(1);
+});
 it('losing match finale moves the net amount without winner confetti or financial calls',async()=>{const view=mount(<MatchFinale matchId='match' userId='me'/>);await flush();expect(view.container.querySelector('.async-confetti')).toBeNull();expect(screen.getByRole('img',{name:'Other wins the match'})).toBeTruthy();expect(mock.rpc.mock.calls.every(c=>['delayed_history_detail','delayed_finale_ack'].includes(c[0]))).toBe(true);});
 it('draw finale has neither transfer nor confetti',async()=>{mock.home.net=0;const view=mount(<MatchFinale matchId='match' userId='me'/>);await flush();expect(view.container.querySelector('.async-chip-transfer')).toBeNull();expect(view.container.querySelector('.async-confetti')).toBeNull();expect(screen.getByRole('img',{name:'Match drawn'})).toBeTruthy();expect(view.container.querySelectorAll('.boxer-neutral')).toHaveLength(2);expect(view.container.querySelectorAll('.boxer-winner')).toHaveLength(0);});
 

@@ -1,5 +1,6 @@
 import {isUuid} from '../../src/lib/run21/model.js';
 import {fiveAliveAsyncOperation} from '../fiveAlive/async.js';
+import {sealedOperation,recoverSealed} from './sealed.js';
 import {transition,project,gameplayDue,type Child,type Rpc,type Intent} from './adapter.js';
 type RecordRow=Child&{held:boolean;receipt?:{child_id:string;fingerprint:unknown}|null};
 const due=(row:Child)=>{
@@ -7,6 +8,7 @@ const due=(row:Child)=>{
  return row.game_type==='quintzee'&&playing!==null?playing:Math.min(Date.parse(row.expires_at),playing??Infinity);
 };
 export async function synchronize(rpc:Rpc,input:RecordRow,actor:string|null):Promise<RecordRow>{
+ if(input.sealed)return await recoverSealed(rpc,input) as RecordRow;
  let row=input;
  for(let guard=0;guard<(input.game_type==='crib-lab'||input.game_type==='chucky-showdown'?128:8);guard++){
   if(row.terminal||row.held||due(row)>Number(row.server_at))return row;
@@ -25,6 +27,7 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
  if(body.op==='action'&&(!intent||!['start','place','pass','collect','remove','draw','take_score','recycle','roll','score','score_zero','pair','open','replace','discard','stand-pat','select','lock','swap','stand','fold','stay','press','bonus_play','bonus_skip'].includes(intent.type)||
   intent.type==='place'&&(!('items'in intent)&&(!Number.isInteger(intent.column)||intent.column<0||intent.column>4))||
   intent.type==='remove'&&(!Number.isInteger(intent.index)||intent.index<0||intent.index>27)))throw Error('delayed:invalid_action');
+ if(body.flowVersion==='delayed/sealed/1')return sealedOperation(rpc,userId,body);
  // A routing hint grants no authority: SQL checks the stored game, owner, frozen
  // revision/segment, deadlines and receipt before calling the existing commit.
  if(body.op==='action'&&(intent.type==='bonus_play'||intent.type==='bonus_skip')){
@@ -49,6 +52,7 @@ export async function delayedOperation(rpc:Rpc,userId:string,body:Record<string,
   reduced=step.reduced;
  }
  let row:RecordRow=boundary??await rpc('delayed_load',{p_child:body.childId,p_actor:userId,p_request:body.op==='action'?body.requestId:null});
+ if(row.sealed)return sealedOperation(rpc,userId,body,row);
  if(body.op==='action'){
   if(intent.type==='replace'&&row.game_type!=='crib-lab'&&(!('index'in intent)||!Number.isInteger(intent.index)||intent.index<0||intent.index>5))throw Error('delayed:invalid_action');
   if(row.game_type==='chucky-showdown'&&intent.type==='press'&&(!Number.isInteger(intent.level)||intent.level!<1||intent.level!>7))throw Error('delayed:invalid_level');
