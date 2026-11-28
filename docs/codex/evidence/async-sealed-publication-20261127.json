@@ -1,0 +1,87 @@
+{
+  "deployment": {
+    "id": "dpl_CKetb895UErrp86gfvWDiDvM4zCc",
+    "state": "READY",
+    "sha": "f3a54ba916e9f4fd51075b42bf06050982366055"
+  },
+  "publication": {
+    "sha": "f3a54ba916e9f4fd51075b42bf06050982366055",
+    "verifiedAt": "2026-11-28T00:26:12.515Z",
+    "manifests": [
+      {
+        "host": "https://holm357.com",
+        "buildId": "f3a54ba916e9f4fd51075b42bf06050982366055",
+        "publishedAt": "2026-11-28T00:22:24.716Z",
+        "bundleFilename": "assets/index-BQNt0nXc.js",
+        "deploymentId": ""
+      },
+      {
+        "host": "https://ptown-poker.vercel.app",
+        "buildId": "f3a54ba916e9f4fd51075b42bf06050982366055",
+        "publishedAt": "2026-11-28T00:22:24.716Z",
+        "bundleFilename": "assets/index-BQNt0nXc.js",
+        "deploymentId": ""
+      }
+    ],
+    "workerUnauthenticatedStatus": 403,
+    "pageErrors": [],
+    "scope": "Published static bundles and anonymous startup; owner gameplay smoke remains pending"
+  },
+  "activation": {
+    "enabled": true,
+    "activatedAt": "2026-11-28T00:26:22.386226+00:00",
+    "clientCommit": "f3a54ba916e9f4fd51075b42bf06050982366055",
+    "workerVersion": 6,
+    "existingPolicyDigest": "d6c6192fd31282a93cee0f06a58cdf10",
+    "existingMatchesChecked": 82,
+    "existingPoliciesUnchanged": true
+  },
+  "admissionProof": {
+    "games": [
+      {
+        "game": "chucky-showdown",
+        "policy": "delayed/sealed/1",
+        "both_playable": true
+      },
+      {
+        "game": "run21",
+        "policy": "delayed/sealed/1",
+        "both_playable": true
+      },
+      {
+        "game": "tri-towers",
+        "policy": "delayed/sealed/1",
+        "both_playable": true
+      },
+      {
+        "game": "quintzee",
+        "policy": "delayed/sealed/1",
+        "both_playable": true
+      },
+      {
+        "game": "boxdrop",
+        "policy": "delayed/sealed/1",
+        "both_playable": true
+      },
+      {
+        "game": "take-two",
+        "policy": "delayed/sealed/1",
+        "both_playable": true
+      },
+      {
+        "game": "crib-lab",
+        "policy": "delayed/sealed/1",
+        "both_playable": true
+      },
+      {
+        "game": "mega-card-golf",
+        "policy": "delayed/sealed/1",
+        "both_playable": true
+      }
+    ],
+    "scope": "New-match admission and simultaneous Round 1; every fixture rolls back",
+    "status": "PASS"
+  },
+  "remainingAdmissionFixtures": 0,
+  "ownerGameplaySmoke": "pending"
+}

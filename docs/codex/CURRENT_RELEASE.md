@@ -12867,6 +12867,9 @@ round counts and explicit settlement OK buttons. Existing matches and invitation
 retain their original flow; Chess and Words retain their first-player behavior.
 Both installed migrations, recovery worker version 6, financial rollback proofs,
 independent-session concurrency/recovery, browser checks and full release build
-pass. Admission is enabled only after the exact client commit is verified READY
-on Vercel. Owner gameplay smoke remains pending. Checkpoint:
+pass. Client `f3a54ba91` is READY on Vercel and verified at both public origins.
+Admission was enabled November 27 at 6:26 PM America/Chicago; all 82 existing
+match policies were preserved. Post-activation rollback proof confirmed both
+players can start Round 1 in all eight converted games, with no fixture residue.
+Owner gameplay smoke remains pending. [Publication receipt](evidence/async-sealed-publication-20261127.json). Checkpoint:
 `async-sealed-rounds-20261127`. See [qualification and smoke](ASYNC_SEALED_ROUNDS.md).

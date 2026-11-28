@@ -3,8 +3,12 @@
 2026-11-27. Jeremy approved the card preview and implementation for new matches
 only, including explicit OK acknowledgement of settlement messages. Hosted
 migrations `20261127225944` and `20261127230929` are installed and their rollback
-proofs pass. Recovery worker version 6 is active. Admission remains disabled
-until the matching client commit is verified on Vercel. Owner smoke is pending.
+proofs pass. Recovery worker version 6 is active. Client `f3a54ba916e9f4fd51075b42bf06050982366055`
+is READY on Vercel and verified at both public origins. Admission was enabled
+November 27 at 6:26 PM America/Chicago (`2026-11-28T00:26:22Z`). All 82 existing
+matches retained their policies. Post-activation rollback proof passed new-match
+admission and simultaneous Round 1 for all eight converted games; no fixtures
+remain. Owner gameplay smoke is pending. See [publication receipt](evidence/async-sealed-publication-20261127.json).
 
 Worktree: `C:/Users/jerem/source/repos/ptown-async-sealed-rounds`, branch
 `codex/async-sealed-rounds`, based on `820412b7505a5025806d079a3ee79c60ffe4fd55`.
